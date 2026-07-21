@@ -1,0 +1,11 @@
+# Generated Xcode project (XcodeGen owns it; signing/team live here, never committed)
+*.xcodeproj
+
+# Build output
+.build/
+.build-xcode/
+DerivedData/
+
+# Editor / OS
+.vscode/
+.DS_Store
