@@ -185,9 +185,15 @@ limit; iPad ~11):
    binary always-on gas feels wrong on glass.
 3. **Two-zone tap-steer** — hold anywhere = gas, left half = turn left, right
    half = turn right.
-4. **One-touch** — permanent gas, tap = turn one way only. Radically simple;
-   cheap to try. (First trial verdict: unreadable without explanation — the
-   stub needs an intro or a better mapping before a fair A/B.)
+4. **One-touch** — permanent gas, touch = turn. Radically simple; cheap to
+   try. Open design flaw from the first trial: turn-one-way-only means a
+   right turn needs a full circle — classic one-button racers dodged this
+   with tracks that only turn one way, which ours won't be. Candidates
+   before the A/B: **tap flips direction, hold turns** (fully general, costs
+   a tap-vs-hold timing gate — the favourite); alternating per tap is
+   broken (two same-direction corners in a row force a wrong-way turn);
+   restricting the scheme to mostly-one-direction tracks demotes it to a
+   gimmick. If no variant reads well, cut the scheme.
 
 Two-thumb (richer, fewer players per device):
 
