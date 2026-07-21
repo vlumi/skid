@@ -1,0 +1,25 @@
+# Coverage tracks the testable simulation logic, not the SwiftUI view layer
+# (which needs UI automation this project doesn't run). The two are split by
+# Swift target: SkidCore is pure, headlessly-testable logic and is gated;
+# SkidKit is the SwiftUI render/input glue and is ignored wholesale. Keep
+# logic in SkidCore so it's covered automatically — no per-file edits here
+# when a view file is added or split for the lint length limit.
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto          # don't drop below the current project coverage
+        threshold: 2%         # tolerate small fluctuations
+    patch:
+      default:
+        target: 80%           # new (non-ignored) code must be ≥80% covered
+        threshold: 0%         # no slack below the target
+
+comment:
+  # Only comment when coverage actually changed; keeps PRs quiet.
+  require_changes: true
+
+ignore:
+  - "Packages/SkidCore/Sources/SkidKit/**"
+  - "Packages/SkidCore/Tests/**"

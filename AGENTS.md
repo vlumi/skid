@@ -115,6 +115,13 @@ rendering**: derived from sim state (slip above a threshold + current
 surface), accumulated into a draw layer, never fed back into physics. Wire
 skid marks up early — they make the drift readable while tuning the feel.
 
+Performance constraint (device-verified: per-segment strokes turned choppy
+on an iPhone 13 mini once marks piled up): marks must render as a **few
+batched paths** — segments baked into fixed-size chunked `Path`s per visual
+bucket, oldest chunk dropped first, recorded at half tick rate with a
+minimum segment length. Keep the total budget modest; fewer marks beat a
+choppy sim.
+
 ### Cars (procedural, open-wheel)
 
 Cars render as classic buggy-style open-wheelers, old-F1 silhouette: a narrow
@@ -151,20 +158,42 @@ time-trial UI and ghost playback land later.
 
 ## Control schemes to prototype (swap freely against the same sim)
 
-The first milestone is A/B-ing these to find the fun. First wired:
-**arcade touch-pad**.
+The first milestone is A/B-ing these to find the fun; the game view has an
+in-run scheme switcher for on-device trials. Findings from the first device
+trial (bake into every scheme): steering must work **while coasting**;
+throttle wants steps, not binary — always-on gas suits physical buttons, not
+glass — but full analog has too much leeway for a thumb, so quantize
+(currently 3 steps per axis). The d-pad has felt most natural so far; all
+schemes stay in the switcher for a proper A/B down the road.
+
+**Control zones.** "Pad appears where the thumb lands" alone doesn't scale
+past one player: each player owns a **zone** (screen region) and the control
+materializes wherever the thumb lands *within it*, clamped to fit inside.
+Zones carry their own **`up` vector** — schemes compute against it, so a
+corner-seated player's zone rotates to face them and control orientation is
+never ambiguous. On-screen controls are **tinted the owning car's color**.
 
 One-thumb (one touch per player → 4 players fit even on an iPhone's ~5-touch
 limit; iPad ~11):
 
-1. **Arcade touch-pad** *(first)* — thumb down = gas, horizontal offset from
-   touch-start = steer, release = coast/brake. Simplest, most faithful.
-2. **Analog virtual stick** — tilt-forward = throttle, left/right = steer,
-   diagonals blend.
+1. **Virtual d-pad** *(current default)* — d-pad materializes at the thumb
+   within the zone; toward `up` = throttle, pull back = brake/reverse,
+   sideways = steer, diagonals blend; per-axis output quantized into a few
+   steps (currently 3), short travel.
+2. **Arcade touch-pad ("slide")** — thumb down = gas, sideways offset from
+   touch-start = steer, release = coast. Simplest; A/B verdict so far:
+   binary always-on gas feels wrong on glass.
 3. **Two-zone tap-steer** — hold anywhere = gas, left half = turn left, right
    half = turn right.
-4. **One-touch** — permanent gas, tap = turn one way only. Radically simple;
-   cheap to try.
+4. **One-touch** — permanent gas, touch = turn. Radically simple; cheap to
+   try. Open design flaw from the first trial: turn-one-way-only means a
+   right turn needs a full circle — classic one-button racers dodged this
+   with tracks that only turn one way, which ours won't be. Candidates
+   before the A/B: **tap flips direction, hold turns** (fully general, costs
+   a tap-vs-hold timing gate — the favourite); alternating per tap is
+   broken (two same-direction corners in a row force a wrong-way turn);
+   restricting the scheme to mostly-one-direction tracks demotes it to a
+   gimmick. If no variant reads well, cut the scheme.
 
 Two-thumb (richer, fewer players per device):
 
@@ -210,6 +239,13 @@ Non-touch (Mac-prep / controller path):
 No ads, no microtransactions, no accounts, no server, no global leaderboards,
 no third-party runtime dependencies. Networked play is peer-to-peer on the
 local network only.
+
+**No performance tuning or upgrades, ever.** Every car in a race is
+mechanically identical; progression (career ladder, unlocks) may only ever
+grant **cosmetics** to show off. Why: upgrade trees are a long-run balance
+burden, and the game is about player skill — a newcomer on their first race
+must face the same machine as the veteran. ("No accounts" means no
+server/online accounts; local on-device player profiles are fine.)
 
 ## First milestone (do this, nothing more)
 
