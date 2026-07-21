@@ -15,6 +15,12 @@ user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- Controls, round two (first on-device feedback): a **virtual d-pad** is
+  the new default — it appears where the thumb lands (within the player's
+  control zone, tinted the car's color), steers while coasting, and
+  quantizes each axis to half/full steps instead of binary or full-analog;
+  pull back to brake/reverse. A button next to Reset switches schemes
+  in-run (D-pad / Slide / One-touch) for A/B on the device.
 - First drivable prototype: one car, one track, thumb-driven — drive laps
   with the arcade touch-pad (thumb down = gas, slide sideways = steer,
   release = coast) and feel the drift. Skid marks burn onto the asphalt in

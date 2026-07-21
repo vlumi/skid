@@ -1,52 +1,135 @@
+import CoreGraphics
 import Foundation
 import SkidCore
 
-/// Arcade touch-pad, the first scheme: thumb down = gas, horizontal offset
-/// from touch-start = steer, release = coast. One touch, car-relative.
-/// A reference type so the gesture layer can mutate it while the game loop
-/// reads it; the sim only ever sees the `CarInput` values.
-public final class TouchPadControlSource: ControlSource, ObservableObject {
-    /// Horizontal thumb travel (points) for full steer.
-    public var steerTravel: Double = 70
+/// A control scheme driven by one touch. The gesture layer feeds it screen
+/// points; the sim only ever sees the `CarInput` it produces.
+///
+/// Every touch scheme carries its own `up` vector: the scheme's axes are
+/// defined against it, so a per-player control zone can be rotated to face
+/// its player (corner seating on a shared screen) without the scheme
+/// knowing. Default is screen-up.
+public protocol TouchDrivenControlSource: ControlSource, AnyObject {
+    func touchChanged(at location: Vec2)
+    func touchEnded()
+}
 
-    private var touchStartX: Double?
-    private var currentX: Double = 0
+/// Virtual d-pad, the current default: a d-pad materializes where the thumb
+/// lands; displacement toward `up` is throttle (pull back = brake/reverse),
+/// sideways is steer, diagonals blend. Per-axis output is QUANTIZED into
+/// `levels` steps ("2-bit digital" by default: half or full deflection) with
+/// deliberately short travel — findings from the first on-device trial:
+/// steering must work while coasting, but full analog has too much leeway
+/// for a thumb on glass.
+public final class VirtualDPadControlSource: TouchDrivenControlSource {
+    /// Displacement (points) for full deflection. Short on purpose.
+    public var radius: Double = 48
+    /// Per-axis dead zone (points) so a resting thumb doesn't creep.
+    public var deadzone: Double = 10
+    /// Steps per axis direction: 1 = pure digital, 2 = half/full ("2-bit"),
+    /// nil = fully analog. Default 2 — enough modulation to feather a
+    /// drift, no mush.
+    public var levels: Int? = 2
+    /// The zone's local "up" in screen coordinates.
+    public var up = Vec2(0, -1)
+    /// The player's control zone (screen points). The pad materializes where
+    /// the thumb lands but is clamped to stay fully inside this — the model
+    /// that scales to per-player zones on a shared screen. nil = anywhere.
+    public var bounds: CGRect?
+
+    /// Where the pad materialized (screen points); nil while not touching.
+    public private(set) var origin: Vec2?
+    /// Clamped offset of the thumb from `origin`.
+    public private(set) var knob = Vec2.zero
+
+    public init() {}
+
+    public func touchChanged(at location: Vec2) {
+        if origin == nil { origin = clamped(location) }
+        guard let origin else { return }
+        var offset = location - origin
+        let distance = offset.length
+        if distance > radius { offset *= radius / distance }
+        knob = offset
+    }
+
+    public func touchEnded() {
+        origin = nil
+        knob = .zero
+    }
+
+    public func input(for player: PlayerID, at tick: Tick) -> CarInput {
+        guard origin != nil else { return .coast }
+        return CarInput(
+            steer: axis(knob.dot(up.perpendicular)),
+            throttle: axis(knob.dot(up))
+        )
+    }
+
+    private func axis(_ value: Double) -> Double {
+        let magnitude = abs(value)
+        guard magnitude > deadzone else { return 0 }
+        var scaled = min(1, (magnitude - deadzone) / (radius - deadzone))
+        if let levels, levels > 0 {
+            scaled = (scaled * Double(levels)).rounded(.up) / Double(levels)
+        }
+        return (value < 0 ? -1 : 1) * scaled
+    }
+
+    /// Keep the whole pad (arrows included) inside the zone.
+    private func clamped(_ p: Vec2) -> Vec2 {
+        guard let bounds else { return p }
+        let margin = radius + 18
+        let rect = bounds.insetBy(dx: margin, dy: margin)
+        guard rect.width > 0, rect.height > 0 else {
+            return Vec2(bounds.midX, bounds.midY)
+        }
+        return Vec2(min(max(p.x, rect.minX), rect.maxX), min(max(p.y, rect.minY), rect.maxY))
+    }
+}
+
+/// Arcade touch-pad ("slide"), the original scheme, kept as an A/B
+/// candidate: thumb down = full gas, horizontal offset from touch-start =
+/// steer, release = coast. On-device verdict so far: binary always-on gas
+/// suits physical buttons better than glass.
+public final class TouchPadControlSource: TouchDrivenControlSource {
+    /// Thumb travel along the steer axis (points) for full steer.
+    public var steerTravel: Double = 70
+    /// The zone's local "up" in screen coordinates.
+    public var up = Vec2(0, -1)
+
+    private var start: Vec2?
+    private var current = Vec2.zero
     private var touching = false
 
     public init() {}
 
-    public func touchBegan(x: Double) {
-        touchStartX = x
-        currentX = x
-        touching = true
-    }
-
-    public func touchMoved(x: Double) {
-        if touchStartX == nil { touchStartX = x }
-        currentX = x
+    public func touchChanged(at location: Vec2) {
+        if start == nil { start = location }
+        current = location
         touching = true
     }
 
     public func touchEnded() {
-        touchStartX = nil
+        start = nil
         touching = false
     }
 
     public func input(for player: PlayerID, at tick: Tick) -> CarInput {
-        guard touching, let startX = touchStartX else { return .coast }
-        return CarInput(steer: (currentX - startX) / steerTravel, throttle: 1)
+        guard touching, let start else { return .coast }
+        let sideways = (current - start).dot(up.perpendicular)
+        return CarInput(steer: sideways / steerTravel, throttle: 1)
     }
 }
 
-/// One-touch scheme, stubbed to exercise the swap seam early: permanent gas,
+/// One-touch scheme, still a stub exercising the swap seam: permanent gas,
 /// touch = turn left. Radically simple; promoted or cut by the A/B milestone.
-public final class OneTouchControlSource: ControlSource {
+public final class OneTouchControlSource: TouchDrivenControlSource {
     private var touching = false
 
     public init() {}
 
-    public func touchBegan(x: Double) { touching = true }
-    public func touchMoved(x: Double) { touching = true }
+    public func touchChanged(at location: Vec2) { touching = true }
     public func touchEnded() { touching = false }
 
     public func input(for player: PlayerID, at tick: Tick) -> CarInput {

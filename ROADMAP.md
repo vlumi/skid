@@ -67,8 +67,9 @@ the plan B).
 - [ ] Record every run as seed + input stream from the first lap-capable
       build (a replay/ghost is just that, per AGENTS.md — can't be
       retrofitted); playback lands later
-- [ ] Control-scheme A/B harness: swap schemes in-run, remaining one-thumb
-      schemes implemented (analog stick, two-zone, one-touch)
+- [ ] Control-scheme A/B: two-zone tap-steer implemented, one-touch stub
+      made real (the in-run switcher and virtual d-pad already landed with
+      v0.1 device feedback)
 
 ## v0.3.0 — Couch multiplayer (the heart)
 

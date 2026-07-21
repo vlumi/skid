@@ -151,16 +151,30 @@ time-trial UI and ghost playback land later.
 
 ## Control schemes to prototype (swap freely against the same sim)
 
-The first milestone is A/B-ing these to find the fun. First wired:
-**arcade touch-pad**.
+The first milestone is A/B-ing these to find the fun; the game view has an
+in-run scheme switcher for on-device trials. Findings from the first device
+trial (bake into every scheme): steering must work **while coasting**;
+throttle wants steps, not binary — always-on gas suits physical buttons, not
+glass — but full analog has too much leeway for a thumb, so quantize
+("2-bit": half/full per axis).
+
+**Control zones.** "Pad appears where the thumb lands" alone doesn't scale
+past one player: each player owns a **zone** (screen region) and the control
+materializes wherever the thumb lands *within it*, clamped to fit inside.
+Zones carry their own **`up` vector** — schemes compute against it, so a
+corner-seated player's zone rotates to face them and control orientation is
+never ambiguous. On-screen controls are **tinted the owning car's color**.
 
 One-thumb (one touch per player → 4 players fit even on an iPhone's ~5-touch
 limit; iPad ~11):
 
-1. **Arcade touch-pad** *(first)* — thumb down = gas, horizontal offset from
-   touch-start = steer, release = coast/brake. Simplest, most faithful.
-2. **Analog virtual stick** — tilt-forward = throttle, left/right = steer,
-   diagonals blend.
+1. **Virtual d-pad** *(current default)* — d-pad materializes at the thumb
+   within the zone; toward `up` = throttle, pull back = brake/reverse,
+   sideways = steer, diagonals blend; per-axis output quantized to
+   half/full steps, short travel.
+2. **Arcade touch-pad ("slide")** — thumb down = gas, sideways offset from
+   touch-start = steer, release = coast. Simplest; A/B verdict so far:
+   binary always-on gas feels wrong on glass.
 3. **Two-zone tap-steer** — hold anywhere = gas, left half = turn left, right
    half = turn right.
 4. **One-touch** — permanent gas, tap = turn one way only. Radically simple;

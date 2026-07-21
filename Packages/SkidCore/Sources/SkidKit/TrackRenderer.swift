@@ -13,6 +13,10 @@ enum TrackRenderer {
     private static let scuff = Color(red: 0.32, green: 0.26, blue: 0.16)
     private static let playerColors: [Color] = [.red, .yellow, .cyan, .purple]
 
+    static func playerColor(_ index: Int) -> Color {
+        playerColors[index % playerColors.count]
+    }
+
     static func draw(
         race: Race, marks: MarkStore, into context: inout GraphicsContext, size: CGSize
     ) {
@@ -103,6 +107,35 @@ enum TrackRenderer {
                 with: .color(color.opacity(opacity * segment.intensity)),
                 style: StrokeStyle(lineWidth: 4, lineCap: .round)
             )
+        }
+    }
+
+    /// The floating d-pad: a faint disc plus four arrows in the owning
+    /// player's color, arrows lighting up with per-axis engagement (half or
+    /// full step). Drawn in screen coordinates, over the world.
+    static func drawDPad(_ pad: DPadOverlay, into context: inout GraphicsContext) {
+        let disc = CGRect(
+            x: pad.origin.x - pad.radius, y: pad.origin.y - pad.radius,
+            width: pad.radius * 2, height: pad.radius * 2
+        )
+        context.fill(Path(ellipseIn: disc), with: .color(pad.color.opacity(0.12)))
+
+        let arrows: [(Vec2, Double)] = [
+            (pad.up, max(0, pad.input.throttle)),
+            (pad.up * -1, max(0, -pad.input.throttle)),
+            (pad.up.perpendicular, max(0, pad.input.steer)),
+            (pad.up.perpendicular * -1, max(0, -pad.input.steer)),
+        ]
+        for (direction, engagement) in arrows {
+            let tip = pad.origin + direction * (pad.radius + 16)
+            let base = pad.origin + direction * (pad.radius - 14)
+            let side = direction.perpendicular * 14
+            var path = Path()
+            path.move(to: CGPoint(x: tip.x, y: tip.y))
+            path.addLine(to: CGPoint(x: base.x + side.x, y: base.y + side.y))
+            path.addLine(to: CGPoint(x: base.x - side.x, y: base.y - side.y))
+            path.closeSubpath()
+            context.fill(path, with: .color(pad.color.opacity(0.35 + 0.6 * engagement)))
         }
     }
 

@@ -15,7 +15,8 @@ public final class GameSession: ObservableObject {
     public private(set) var marks = MarkStore()
 
     public let player = PlayerID(0)
-    public let controlSource: ControlSource
+    /// Swappable in-run — the A/B seam.
+    public var controlSource: ControlSource
 
     private var lastTime: TimeInterval?
     private var accumulator: TimeInterval = 0

@@ -1,7 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "D-pad" : {
+
+    },
+    "One-touch" : {
+
+    },
     "Reset" : {
+
+    },
+    "Slide" : {
 
     }
   },
