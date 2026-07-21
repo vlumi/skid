@@ -24,33 +24,33 @@ feel the driving. No race, no opponents, no menus.
 
 **Scaffolding:**
 
-- [ ] XcodeGen `project.yml`: `SkidCore` package + `Sources/{iOS,Shared}`,
+- [x] XcodeGen `project.yml`: `SkidCore` package + `Sources/{iOS,Shared}`,
       thin iOS app target, bundle id `fi.misaki.skid`; the sim and input
       layers platform-agnostic so the later Mac target is drop-in
-- [ ] CI: pinned SwiftLint + swift-format (both `--strict`), `swift test`
+- [x] CI: pinned SwiftLint + swift-format (both `--strict`), `swift test`
       with coverage (view layer coverage-ignored), simulator build
-- [ ] String Catalog in place; every user-facing string localized from the
+- [x] String Catalog in place; every user-facing string localized from the
       first commit (English-only content)
 
 **`SkidCore` (where nearly all v0.1 work and tests live):**
 
-- [ ] Fixed-timestep step function `advance(inputs:) -> newState`; seeded
+- [x] Fixed-timestep step function `advance(inputs:) -> newState`; seeded
       RNG; bit-for-bit determinism tests (same inputs → same race)
-- [ ] Hand-written arcade-drift car physics: heading, throttle along
+- [x] Hand-written arcade-drift car physics: heading, throttle along
       heading, grip < 1 so lateral velocity carries the car wide — grip /
       friction / turn-rate exposed as tunables
-- [ ] Track model: asphalt ribbon + grass, `surface(at:) -> Surface` with
+- [x] Track model: asphalt ribbon + grass, `surface(at:) -> Surface` with
       per-surface grip/drag modifiers; wall/kerb collision with bounce;
       layer-aware data model per AGENTS.md (the first track stays flat)
-- [ ] `ControlSource` protocol delivering car-relative `CarInput`
+- [x] `ControlSource` protocol delivering car-relative `CarInput`
 
 **Input & rendering:**
 
-- [ ] **Arcade touch-pad** scheme implemented; at least one more scheme
+- [x] **Arcade touch-pad** scheme implemented; at least one more scheme
       stubbed so the swap seam is exercised
-- [ ] Procedural render: track with striped kerbs, one open-wheel buggy
+- [x] Procedural render: track with striped kerbs, one open-wheel buggy
       (body + four visible tires), fixed full-track camera
-- [ ] Skid marks: per-tire trails from slip + surface, persistent for the
+- [x] Skid marks: per-tire trails from slip + surface, persistent for the
       run — the feedback loop for tuning the drift
 
 **Exit criteria:** drive laps by thumb and honestly answer "is this fun?"
@@ -67,8 +67,9 @@ the plan B).
 - [ ] Record every run as seed + input stream from the first lap-capable
       build (a replay/ghost is just that, per AGENTS.md — can't be
       retrofitted); playback lands later
-- [ ] Control-scheme A/B harness: swap schemes in-run, remaining one-thumb
-      schemes implemented (analog stick, two-zone, one-touch)
+- [ ] Control-scheme A/B: two-zone tap-steer implemented, one-touch stub
+      made real (the in-run switcher and virtual d-pad already landed with
+      v0.1 device feedback)
 
 ## v0.3.0 — Couch multiplayer (the heart)
 
@@ -77,7 +78,8 @@ the plan B).
 - [ ] Car–car collisions in the sim (deterministic, hand-written), behind
       the per-race **contact / ghost** flag — ghost = pass-through,
       pure-speed racing; contact = the derby flavour
-- [ ] Per-player identity: body colours, grid slots, results screen
+- [ ] Per-player identity: body colours **picked by each player at race
+      start**, grid slots, results screen
 - [ ] Split gas/steer two-thumb scheme (1–2 player layouts)
 
 ## v0.4.0 — Solo play: AI drivers & time trial
@@ -139,9 +141,25 @@ the plan B).
 - [ ] Finnish/Japanese localization (String Catalog makes this
       translation-only)
 - [ ] Spectator dressing: stands, trackside props, crowd texture
+- [ ] **Local player profiles**: a chosen name at minimum, all on-device
+      (no server accounts). Open question: allow ad-hoc anonymous players,
+      or track everyone from the start by the name they chose?
+- [ ] **Tournaments**: brackets/series across couch sessions, standings
+      per profile
+- [ ] **Career ladder** with cosmetic-only unlocks (liveries, effects) to
+      show off when racing others — never performance
+- [ ] **Different vehicles** — maybe; only if they stay balance-neutral
+      (distinct look/feel, same competitive envelope)
+- [ ] *(Parked)* **Portable profiles**: bring your profile to someone
+      else's iPad and carry results home, cryptographically owned so nobody
+      can claim your player. Unsolved: nothing stops the same profile
+      "playing" on two devices at once — park it; may be moot once network
+      play exists (your device is your identity)
 
 ## Deliberately out of scope
 
 Per [AGENTS.md](AGENTS.md): no ads, no IAP, no accounts, no server, no global
 leaderboards, no third-party runtime dependencies. Networked play is
 peer-to-peer on the local network only. watchOS/visionOS/tvOS not targeted.
+No performance tuning or upgrades — cosmetic unlocks only (see AGENTS.md for
+the why).
