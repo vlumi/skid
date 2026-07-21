@@ -24,33 +24,33 @@ feel the driving. No race, no opponents, no menus.
 
 **Scaffolding:**
 
-- [ ] XcodeGen `project.yml`: `SkidCore` package + `Sources/{iOS,Shared}`,
+- [x] XcodeGen `project.yml`: `SkidCore` package + `Sources/{iOS,Shared}`,
       thin iOS app target, bundle id `fi.misaki.skid`; the sim and input
       layers platform-agnostic so the later Mac target is drop-in
-- [ ] CI: pinned SwiftLint + swift-format (both `--strict`), `swift test`
+- [x] CI: pinned SwiftLint + swift-format (both `--strict`), `swift test`
       with coverage (view layer coverage-ignored), simulator build
-- [ ] String Catalog in place; every user-facing string localized from the
+- [x] String Catalog in place; every user-facing string localized from the
       first commit (English-only content)
 
 **`SkidCore` (where nearly all v0.1 work and tests live):**
 
-- [ ] Fixed-timestep step function `advance(inputs:) -> newState`; seeded
+- [x] Fixed-timestep step function `advance(inputs:) -> newState`; seeded
       RNG; bit-for-bit determinism tests (same inputs → same race)
-- [ ] Hand-written arcade-drift car physics: heading, throttle along
+- [x] Hand-written arcade-drift car physics: heading, throttle along
       heading, grip < 1 so lateral velocity carries the car wide — grip /
       friction / turn-rate exposed as tunables
-- [ ] Track model: asphalt ribbon + grass, `surface(at:) -> Surface` with
+- [x] Track model: asphalt ribbon + grass, `surface(at:) -> Surface` with
       per-surface grip/drag modifiers; wall/kerb collision with bounce;
       layer-aware data model per AGENTS.md (the first track stays flat)
-- [ ] `ControlSource` protocol delivering car-relative `CarInput`
+- [x] `ControlSource` protocol delivering car-relative `CarInput`
 
 **Input & rendering:**
 
-- [ ] **Arcade touch-pad** scheme implemented; at least one more scheme
+- [x] **Arcade touch-pad** scheme implemented; at least one more scheme
       stubbed so the swap seam is exercised
-- [ ] Procedural render: track with striped kerbs, one open-wheel buggy
+- [x] Procedural render: track with striped kerbs, one open-wheel buggy
       (body + four visible tires), fixed full-track camera
-- [ ] Skid marks: per-tire trails from slip + surface, persistent for the
+- [x] Skid marks: per-tire trails from slip + surface, persistent for the
       run — the feedback loop for tuning the drift
 
 **Exit criteria:** drive laps by thumb and honestly answer "is this fun?"
