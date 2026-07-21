@@ -74,6 +74,18 @@ step function applies each surface's grip/drag modifiers:
 Exact modifier values are feel-tuning, like the drift itself. Track edges are
 walls/kerbs handled by the hand-written collision (bounce), not a surface.
 
+### Checkpoints (a lap must be earned)
+
+Every track carries an **ordered sequence of checkpoints** (invisible gates
+across the ribbon), and a lap counts only when all of them are crossed in
+order before the finish line — cutting across grass, through a crossing, or
+over a jump can never skip part of the track. Checkpoints are sim data on the
+track model, evaluated deterministically per tick like everything else; wrong-
+way driving simply fails to advance the sequence. Track *design* owns the
+rest: hazard shortcuts that stay legal must pass through the gates, and any
+future ramp/jump placement has to be checked against the gate sequence so a
+flight can't bypass one.
+
 ### Height: two layers, ramps, jumps (design the seam, build it later)
 
 Tracks may cross themselves, so the track model is **two-layer** (ground +
