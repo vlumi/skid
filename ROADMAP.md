@@ -1,0 +1,147 @@
+# Roadmap
+
+The implementation plan, in milestone order. Versions are indicative, not
+contractual, and this file is *expected to churn* — milestones get reshaped as
+prototyping answers questions. Everything before 1.0 is beta by definition
+(TestFlight from v0.1). As milestones ship, their detail moves to
+`CHANGELOG.md` and this file keeps only open work. Settled rules, conventions,
+and design decisions live in [AGENTS.md](AGENTS.md); this file is only *when*,
+not *why*.
+
+Guiding order: **the drift is the game.** Milestone one exists to answer "is
+the driving fun?" and nothing that doesn't serve that question lands before it
+is answered. Multiplayer-on-one-device is the product's heart, so it comes
+right after the driving is proven; networking is deliberately last among the
+features because deterministic lockstep is designed in from the first line of
+the sim, not bolted on.
+
+---
+
+## v0.1.0 — One car, one track (is the drift fun?)
+
+The deterministic sim, the first control scheme, and just enough rendering to
+feel the driving. No race, no opponents, no menus.
+
+**Scaffolding:**
+
+- [ ] XcodeGen `project.yml`: `SkidCore` package + `Sources/{iOS,Shared}`,
+      thin iOS app target, bundle id `fi.misaki.skid`; the sim and input
+      layers platform-agnostic so the later Mac target is drop-in
+- [ ] CI: pinned SwiftLint + swift-format (both `--strict`), `swift test`
+      with coverage (view layer coverage-ignored), simulator build
+- [ ] String Catalog in place; every user-facing string localized from the
+      first commit (English-only content)
+
+**`SkidCore` (where nearly all v0.1 work and tests live):**
+
+- [ ] Fixed-timestep step function `advance(inputs:) -> newState`; seeded
+      RNG; bit-for-bit determinism tests (same inputs → same race)
+- [ ] Hand-written arcade-drift car physics: heading, throttle along
+      heading, grip < 1 so lateral velocity carries the car wide — grip /
+      friction / turn-rate exposed as tunables
+- [ ] Track model: asphalt ribbon + grass, `surface(at:) -> Surface` with
+      per-surface grip/drag modifiers; wall/kerb collision with bounce;
+      layer-aware data model per AGENTS.md (the first track stays flat)
+- [ ] `ControlSource` protocol delivering car-relative `CarInput`
+
+**Input & rendering:**
+
+- [ ] **Arcade touch-pad** scheme implemented; at least one more scheme
+      stubbed so the swap seam is exercised
+- [ ] Procedural render: track with striped kerbs, one open-wheel buggy
+      (body + four visible tires), fixed full-track camera
+- [ ] Skid marks: per-tire trails from slip + surface, persistent for the
+      run — the feedback loop for tuning the drift
+
+**Exit criteria:** drive laps by thumb and honestly answer "is this fun?"
+Tuning notes recorded; go/no-go on the drift model (tight-grip fallback is
+the plan B).
+
+## v0.2.0 — Make it a race
+
+- [ ] Lap counting via ordered checkpoints (no shortcuts), start grid +
+      countdown, finish + per-player race time
+- [ ] Remaining hazards as sim surfaces: **mud**, **water**, **oil slicks**
+- [ ] Marks extended: scuffed grass/mud trails; hazard-appropriate effects
+- [ ] Minimal HUD: lap and timing per player, in the style of the classics
+- [ ] Record every run as seed + input stream from the first lap-capable
+      build (a replay/ghost is just that, per AGENTS.md — can't be
+      retrofitted); playback lands later
+- [ ] Control-scheme A/B harness: swap schemes in-run, remaining one-thumb
+      schemes implemented (analog stick, two-zone, one-touch)
+
+## v0.3.0 — Couch multiplayer (the heart)
+
+- [ ] Multitouch routing: one touch per player, 2–4 per-player control
+      zones that don't need to face the player
+- [ ] Car–car collisions in the sim (deterministic, hand-written), behind
+      the per-race **contact / ghost** flag — ghost = pass-through,
+      pure-speed racing; contact = the derby flavour
+- [ ] Per-player identity: body colours, grid slots, results screen
+- [ ] Split gas/steer two-thumb scheme (1–2 player layouts)
+
+## v0.4.0 — Solo play: AI drivers & time trial
+
+- [ ] AI as just another `ControlSource`: racing line + steering toward it,
+      rubber-banding-free difficulty via the same tunables as the player
+- [ ] Single-player vs. 1–3 AI; fill empty grid slots in multiplayer
+- [ ] Deterministic AI (seeded) so races stay reproducible in tests
+- [ ] **Time trial** mode + local hiscores per track (best lap, best race),
+      persisted (versioned store) along with their replays
+- [ ] **Personal-best ghost**: translucent, non-interacting replay car to
+      race against
+
+## v0.5.0 — Content & polish
+
+- [ ] A small track set in the classic style (crossings, chicanes, hazard
+      placement as track design); track picker
+- [ ] Two-layer tracks live: bridges/tunnels as layered crossings, ramps
+      switching layers, jumps (airborne = ballistic) — the seam designed in
+      at v0.1; occluded cars stay visible (local transparency or ghost
+      bubble, per AGENTS.md)
+- [ ] Scheme A/B verdict: pick defaults, keep the winners, cut the losers
+- [ ] Sound + haptics: engine pitch, slides, collisions
+- [ ] Minimal menus/settings — only what a couch session needs
+
+## v0.6.0 — Mac & physical controls
+
+- [ ] macOS target (Universal Purchase, same bundle id), sim untouched —
+      only render/input capture differ
+- [ ] Keyboard scheme (arrows/WASD, 1–2 players) and GameController support
+      as additional `ControlSource`s
+
+## v0.7.0 — Local-network multiplayer
+
+- [ ] Deterministic lockstep over **MultipeerConnectivity**: inputs-only
+      sync, one peer as clock host, join/leave flow
+- [ ] Cross-device play (iPhone/iPad/Mac in one room), no server
+- [ ] Local network privacy strings + Bonjour service declarations
+- [ ] Stretch: scale beyond 4 players (lockstep makes it reachable)
+
+## v1.0.0 — The store release
+
+- [ ] App name decided (with search), icon from the game's own drawing code
+- [ ] One ASC record (Universal Purchase), listing text + screenshots,
+      privacy questionnaire (nothing collected)
+- [ ] Release lane (versioning lock-step, archive + upload) and
+      `RELEASING.md`
+- [ ] Submit, await review, release
+
+## Backlog (unversioned)
+
+- [ ] Full replay viewer (watch/scrub any stored run — the data exists from
+      v0.2); shareable ghost files between devices
+- [ ] Track editor or procedural track variations
+- [ ] Full vertical loops — the crazy one; only if the two-layer jump model
+      proves fun (and readable) in play
+- [ ] Damage/pickup mischief (dropped oil, turbo) — only if the core race
+      wants more chaos
+- [ ] Finnish/Japanese localization (String Catalog makes this
+      translation-only)
+- [ ] Spectator dressing: stands, trackside props, crowd texture
+
+## Deliberately out of scope
+
+Per [AGENTS.md](AGENTS.md): no ads, no IAP, no accounts, no server, no global
+leaderboards, no third-party runtime dependencies. Networked play is
+peer-to-peer on the local network only. watchOS/visionOS/tvOS not targeted.

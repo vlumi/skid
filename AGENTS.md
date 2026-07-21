@@ -7,9 +7,8 @@ stage — the first job is to find out whether the driving is fun**, not to buil
 a finished game. Don't build menus, modes, or netcode before the core feel is
 proven.
 
-Separate project from its siblings [Donpa Squad](https://github.com/vlumi/donpa)
-(Minesweeper) and Lattice Five (Morpion Solitaire). Reuse their *approach* by
-copying and adapting, never by sharing a package.
+The repo is fully independent and self-contained: it shares no code or
+packages with any other project.
 
 ## The one architectural rule everything hangs on
 
@@ -32,7 +31,7 @@ networked play all compose instead of each being a rewrite.
 
 ## The simulation core (pure, deterministic, headless-tested)
 
-Mirror Donpa's pure-core discipline:
+The discipline:
 
 - A **`SkidCore` Swift package** holds the car physics, track/collision, race
   state, and step function. **No SpriteKit, no SwiftUI, no I/O.** The step is
@@ -50,10 +49,93 @@ Mirror Donpa's pure-core discipline:
 
 The car has momentum and **slides**: steering rotates the heading, throttle
 accelerates along the heading, but grip < 1 so lateral velocity carries the car
-wide through a turn — the *Slicks 'n' Slide* drift. Tune grip / friction /
+wide through a turn — the classic top-down-racer drift. Tune grip / friction /
 turn-rate for feel; this is where the effort goes and where the game lives or
 dies. A tight/grippy model is the fallback if drift proves un-fun, but drift is
 the point.
+
+## Track & surfaces (sim data, not decoration)
+
+The look to aim for is the classic top-down circuit: a wide asphalt ribbon
+with red/white-striped kerb edging, the whole track on screen at once, grass
+filling everything off-track; crossings/bridges and spectator dressing can
+come later. Surfaces are **part of the simulation**, not just rendering — the
+track model answers `surface(at: Point) -> Surface` deterministically, and the
+step function applies each surface's grip/drag modifiers:
+
+- **Asphalt** — baseline grip, no drag.
+- **Grass** (all off-track ground) — reduced grip plus drag; running wide is
+  survivable but costs speed.
+- **Mud** — heavy drag, low grip; a bog to avoid.
+- **Water** — low grip and strong drag; puddles punish the racing line.
+- **Oil slick** — near-zero grip patch on the asphalt; momentum carries the
+  car straight through while steering does almost nothing.
+
+Exact modifier values are feel-tuning, like the drift itself. Track edges are
+walls/kerbs handled by the hand-written collision (bounce), not a surface.
+
+### Height: two layers, ramps, jumps (design the seam, build it later)
+
+Tracks may cross themselves, so the track model is **two-layer** (ground +
+elevated) from the start: every track segment/wall carries a layer, the car
+carries a current layer, and `surface(at:)` and collision are asked per-layer
+— cars and walls on different layers don't interact. Bridges and tunnels are
+then just overlapping segments on different layers; short **ramps** switch
+the car's layer; a ramp taken fast enough becomes a **jump** — a brief
+airborne ballistic state (no grip, no steering, no surface drag) until
+landing. None of this is built early: the only thing v0.1 must get right is
+that layer is a *field in the data model*, not a later refactor of a
+hardcoded-flat world. Full vertical loops are a backlog curiosity, not
+designed for.
+
+Rendering rule for whenever layers do land: **a car is never invisible.**
+Upper-layer geometry that covers a car on the layer below goes locally
+semi-transparent — or, at minimum, the hidden car shows through as a
+semi-transparent bubble/ghost tracking its position — so a player under a
+bridge or in a tunnel never loses their car. (A loop's top section would get
+the same treatment.) Pure rendering; the sim knows nothing of it.
+
+### Marks on the ground (cheap, high-value feedback)
+
+Hard lateral slip on asphalt burns rubber; driving over grass or mud scuffs
+it. Marks are per-tire trails that persist for the whole race and are **pure
+rendering**: derived from sim state (slip above a threshold + current
+surface), accumulated into a draw layer, never fed back into physics. Wire
+skid marks up early — they make the drift readable while tuning the feel.
+
+### Cars (procedural, open-wheel)
+
+Cars render as classic buggy-style open-wheelers, old-F1 silhouette: a narrow
+body with all four tires visible outside it, in the per-player colour. A
+handful of procedural shapes, no image assets; the visible tires are what
+anchor the skid-mark trails (and can later show steering angle).
+
+### Car contact is a race option, not a constant
+
+Two race modes exist from the moment a second car does, as a per-race flag on
+the sim (both run the identical deterministic step):
+
+- **Contact** — cars collide and bump each other; hectic, derby-flavoured.
+- **Ghost** — cars pass through each other; the classic pure-speed skill
+  race. Render overlapping ghost cars slightly transparent so pileups on the
+  racing line stay readable.
+
+Walls and surfaces behave the same in both; only car–car interaction toggles.
+
+### Time trials, ghosts, hiscores (determinism pays twice)
+
+Because the sim is deterministic and inputs are data, a **replay is just the
+RNG seed + the per-tick input stream** — tiny to store. That enables:
+
+- **Time challenges** — solo time-trial mode; local hiscores per track (best
+  lap, best race). Local only; global leaderboards stay out of scope.
+- **Ghosts** — a hiscore replays as a translucent ghost car driven by its
+  recorded inputs through a parallel sim run. Ghosts never interact with the
+  live race (regardless of the contact flag) and never write marks.
+
+**Record seed + inputs from the first build that can finish a lap** — replay
+data cannot be retrofitted onto bests that weren't captured, even though the
+time-trial UI and ghost playback land later.
 
 ## Control schemes to prototype (swap freely against the same sim)
 
@@ -78,7 +160,7 @@ Two-thumb (richer, fewer players per device):
 
 Non-touch (Mac-prep / controller path):
 
-6. **Keyboard** (Mac) — arrows/WASD; the original's scheme, viable for 1–2.
+6. **Keyboard** (Mac) — arrows/WASD; the keyboard-era classic, viable for 1–2.
 7. **GameController** — stick + triggers; the "real couch" path.
 
 ## Platforms & phases
@@ -95,7 +177,7 @@ Non-touch (Mac-prep / controller path):
   exchange inputs, one peer as clock host. Stretch: scale to many players
   (lockstep's inputs-only sync is what makes that reachable).
 
-## Conventions (carried from Donpa — apply once real code exists)
+## Conventions (apply once real code exists)
 
 - **Toolchain:** Xcode + Swift 6, **XcodeGen** (`.xcodeproj` generated,
   gitignored, never committed; signing/team live only there).
@@ -124,3 +206,8 @@ One car, one static track, the deterministic arcade-drift sim, and a
 least one more scheme stubbed so swapping is exercised early. Goal: drive one
 car around and answer "is this fun?" No multiplayer, no AI, no menus, no
 netcode yet.
+
+Surface-wise the first track needs only asphalt + grass (the seam that proves
+the surface model); mud, water, and oil slicks are content to add once the
+drift is proven fun. Skid marks are the one piece of polish allowed in early —
+they're feedback for tuning, not decoration.

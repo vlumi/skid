@@ -9,3 +9,6 @@ DerivedData/
 # Editor / OS
 .vscode/
 .DS_Store
+
+# SwiftPM per-user state (schemes, user data)
+.swiftpm/

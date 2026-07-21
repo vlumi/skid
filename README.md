@@ -1,8 +1,8 @@
 # Skid
 
 A top-down, drift-happy local-multiplayer racing game for Apple platforms — a
-modern heir to keyboard-era couch racers like *Slicks 'n' Slide*, rebuilt
-around controls that actually work on a phone.
+modern heir to the keyboard-era couch racers of the DOS days, rebuilt around
+controls that actually work on a phone.
 
 > **Status: prototyping.** "Skid" is a working repo name; the App Store name
 > will be chosen (and researched) later. The first goal is only to find out
@@ -17,6 +17,12 @@ precise lines. Controls are **relative to the car** (steer + throttle), so a
 player's control zone doesn't need to face them — which is what lets several
 people share a small screen.
 
+Tracks are classic top-down circuits: a wide asphalt ribbon with striped
+kerbs, grass everywhere off-track, and hazards on and around the racing line —
+mud, water, oil slicks. Hard cornering burns rubber onto the asphalt, and
+running wide leaves tracks in the grass. The cars are little buggy-style
+open-wheelers — old-school F1 silhouettes with all four tires showing.
+
 Planned arc:
 
 - **Phase 1 — local, one device.** Single-player (vs. AI) and 2–4 player
@@ -29,7 +35,7 @@ Planned arc:
 ## Principles
 
 - **All graphics procedural** — cars, track, effects drawn in code; no image
-  assets. (Carried from the author's other games.)
+  assets.
 - **The same control scheme drives every mode** — single-player, local split,
   and networked all consume one input abstraction; a control scheme is just an
   input source. Several schemes are prototyped and swappable.
@@ -40,13 +46,6 @@ Planned arc:
   languages are drop-in later.
 - No server, no accounts, no tracking.
 
-## Related
-
-By the same author as [Donpa Squad](https://github.com/vlumi/donpa)
-(Minesweeper) and Lattice Five (Morpion Solitaire); shares their engineering
-discipline (pure testable core, XcodeGen, pinned lint/format, CI) but is a
-**separate codebase** — patterns copied and adapted, never shared as a package.
-
 ## License
 
-MIT (code).
+MIT. See [LICENSE](LICENSE).
