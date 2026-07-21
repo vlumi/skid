@@ -225,6 +225,13 @@ No ads, no microtransactions, no accounts, no server, no global leaderboards,
 no third-party runtime dependencies. Networked play is peer-to-peer on the
 local network only.
 
+**No performance tuning or upgrades, ever.** Every car in a race is
+mechanically identical; progression (career ladder, unlocks) may only ever
+grant **cosmetics** to show off. Why: upgrade trees are a long-run balance
+burden, and the game is about player skill — a newcomer on their first race
+must face the same machine as the veteran. ("No accounts" means no
+server/online accounts; local on-device player profiles are fine.)
+
 ## First milestone (do this, nothing more)
 
 One car, one static track, the deterministic arcade-drift sim, and a

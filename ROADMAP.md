@@ -78,7 +78,8 @@ the plan B).
 - [ ] Car–car collisions in the sim (deterministic, hand-written), behind
       the per-race **contact / ghost** flag — ghost = pass-through,
       pure-speed racing; contact = the derby flavour
-- [ ] Per-player identity: body colours, grid slots, results screen
+- [ ] Per-player identity: body colours **picked by each player at race
+      start**, grid slots, results screen
 - [ ] Split gas/steer two-thumb scheme (1–2 player layouts)
 
 ## v0.4.0 — Solo play: AI drivers & time trial
@@ -140,9 +141,25 @@ the plan B).
 - [ ] Finnish/Japanese localization (String Catalog makes this
       translation-only)
 - [ ] Spectator dressing: stands, trackside props, crowd texture
+- [ ] **Local player profiles**: a chosen name at minimum, all on-device
+      (no server accounts). Open question: allow ad-hoc anonymous players,
+      or track everyone from the start by the name they chose?
+- [ ] **Tournaments**: brackets/series across couch sessions, standings
+      per profile
+- [ ] **Career ladder** with cosmetic-only unlocks (liveries, effects) to
+      show off when racing others — never performance
+- [ ] **Different vehicles** — maybe; only if they stay balance-neutral
+      (distinct look/feel, same competitive envelope)
+- [ ] *(Parked)* **Portable profiles**: bring your profile to someone
+      else's iPad and carry results home, cryptographically owned so nobody
+      can claim your player. Unsolved: nothing stops the same profile
+      "playing" on two devices at once — park it; may be moot once network
+      play exists (your device is your identity)
 
 ## Deliberately out of scope
 
 Per [AGENTS.md](AGENTS.md): no ads, no IAP, no accounts, no server, no global
 leaderboards, no third-party runtime dependencies. Networked play is
 peer-to-peer on the local network only. watchOS/visionOS/tvOS not targeted.
+No performance tuning or upgrades — cosmetic unlocks only (see AGENTS.md for
+the why).
