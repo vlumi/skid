@@ -96,17 +96,20 @@ enum TrackRenderer {
     }
 
     private static func drawMarks(_ marks: MarkStore, into context: inout GraphicsContext) {
-        for segment in marks.segments {
-            var path = Path()
-            path.move(to: CGPoint(x: segment.a.x, y: segment.a.y))
-            path.addLine(to: CGPoint(x: segment.b.x, y: segment.b.y))
-            let color = segment.kind == .rubber ? rubber : scuff
-            let opacity = segment.kind == .rubber ? 0.5 : 0.6
-            context.stroke(
-                path,
-                with: .color(color.opacity(opacity * segment.intensity)),
-                style: StrokeStyle(lineWidth: 4, lineCap: .round)
-            )
+        // Marks arrive pre-batched into chunked paths — a few dozen stroke
+        // calls total, whatever the segment count.
+        let style = StrokeStyle(lineWidth: 4, lineCap: .round)
+        for bucket in MarkStore.Bucket.allCases {
+            guard let chunkList = marks.chunks[bucket] else { continue }
+            let color: Color
+            switch bucket {
+            case .rubberLight: color = rubber.opacity(0.25)
+            case .rubberHeavy: color = rubber.opacity(0.5)
+            case .scuff: color = scuff.opacity(0.55)
+            }
+            for chunk in chunkList {
+                context.stroke(chunk.path, with: .color(color), style: style)
+            }
         }
     }
 

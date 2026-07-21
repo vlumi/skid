@@ -115,6 +115,13 @@ rendering**: derived from sim state (slip above a threshold + current
 surface), accumulated into a draw layer, never fed back into physics. Wire
 skid marks up early — they make the drift readable while tuning the feel.
 
+Performance constraint (device-verified: per-segment strokes turned choppy
+on an iPhone 13 mini once marks piled up): marks must render as a **few
+batched paths** — segments baked into fixed-size chunked `Path`s per visual
+bucket, oldest chunk dropped first, recorded at half tick rate with a
+minimum segment length. Keep the total budget modest; fewer marks beat a
+choppy sim.
+
 ### Cars (procedural, open-wheel)
 
 Cars render as classic buggy-style open-wheelers, old-F1 silhouette: a narrow
@@ -156,7 +163,8 @@ in-run scheme switcher for on-device trials. Findings from the first device
 trial (bake into every scheme): steering must work **while coasting**;
 throttle wants steps, not binary — always-on gas suits physical buttons, not
 glass — but full analog has too much leeway for a thumb, so quantize
-("2-bit": half/full per axis).
+(currently 3 steps per axis). The d-pad has felt most natural so far; all
+schemes stay in the switcher for a proper A/B down the road.
 
 **Control zones.** "Pad appears where the thumb lands" alone doesn't scale
 past one player: each player owns a **zone** (screen region) and the control
@@ -170,15 +178,16 @@ limit; iPad ~11):
 
 1. **Virtual d-pad** *(current default)* — d-pad materializes at the thumb
    within the zone; toward `up` = throttle, pull back = brake/reverse,
-   sideways = steer, diagonals blend; per-axis output quantized to
-   half/full steps, short travel.
+   sideways = steer, diagonals blend; per-axis output quantized into a few
+   steps (currently 3), short travel.
 2. **Arcade touch-pad ("slide")** — thumb down = gas, sideways offset from
    touch-start = steer, release = coast. Simplest; A/B verdict so far:
    binary always-on gas feels wrong on glass.
 3. **Two-zone tap-steer** — hold anywhere = gas, left half = turn left, right
    half = turn right.
 4. **One-touch** — permanent gas, tap = turn one way only. Radically simple;
-   cheap to try.
+   cheap to try. (First trial verdict: unreadable without explanation — the
+   stub needs an intro or a better mapping before a fair A/B.)
 
 Two-thumb (richer, fewer players per device):
 

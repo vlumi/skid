@@ -47,7 +47,7 @@ public final class GameSession: ObservableObject {
             let input = controlSource.input(for: player, at: race.tick)
             race.advance(inputs: [player: input])
             for car in race.cars {
-                marks.record(car: car, on: race.track)
+                marks.record(car: car, on: race.track, tick: race.tick)
             }
             accumulator -= Race.dt
             ticks += 1

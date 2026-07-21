@@ -15,6 +15,11 @@ user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- Smooth marks on small phones: skid marks now render as a few batched
+  strokes instead of one per segment (choppy on iPhone 13 mini once they
+  piled up), record at half tick rate, and keep a smaller budget — oldest
+  marks still fade out first. D-pad gets a third step per axis for finer
+  throttle/steer modulation.
 - Controls, round two (first on-device feedback): a **virtual d-pad** is
   the new default — it appears where the thumb lands (within the player's
   control zone, tinted the car's color), steers while coasting, and

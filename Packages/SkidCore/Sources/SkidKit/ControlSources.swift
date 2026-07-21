@@ -26,10 +26,10 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     public var radius: Double = 48
     /// Per-axis dead zone (points) so a resting thumb doesn't creep.
     public var deadzone: Double = 10
-    /// Steps per axis direction: 1 = pure digital, 2 = half/full ("2-bit"),
-    /// nil = fully analog. Default 2 — enough modulation to feather a
-    /// drift, no mush.
-    public var levels: Int? = 2
+    /// Steps per axis direction: 1 = pure digital, nil = fully analog.
+    /// Default 3 (⅓ / ⅔ / full) — second device trial wanted a bit more
+    /// modulation than half/full, still no analog mush.
+    public var levels: Int? = 3
     /// The zone's local "up" in screen coordinates.
     public var up = Vec2(0, -1)
     /// The player's control zone (screen points). The pad materializes where
