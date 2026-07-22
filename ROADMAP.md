@@ -84,13 +84,13 @@ the plan B).
 
 ## v0.4.0 — Solo play: AI drivers & time trial
 
-- [ ] AI as just another `ControlSource`: racing line + steering toward it,
+- [x] AI as just another `ControlSource`: racing line + steering toward it,
       rubber-banding-free difficulty via the same tunables as the player
-- [ ] Single-player vs. 1–3 AI; fill empty grid slots in multiplayer
-- [ ] Deterministic AI (seeded) so races stay reproducible in tests
-- [ ] **Time trial** mode + local hiscores per track (best lap, best race),
+- [x] Single-player vs. 1–3 AI; fill empty grid slots in multiplayer
+- [x] Deterministic AI (seeded) so races stay reproducible in tests
+- [x] **Time trial** mode + local hiscores per track (best lap, best race),
       persisted (versioned store) along with their replays
-- [ ] **Personal-best ghost**: translucent, non-interacting replay car to
+- [x] **Personal-best ghost**: translucent, non-interacting replay car to
       race against
 
 ## v0.5.0 — Content & polish
