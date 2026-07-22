@@ -58,11 +58,11 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     /// Per-axis dead zone (points) so a resting thumb doesn't creep.
     public var deadzone: Double = 10
     /// Steps per axis direction: 1 = pure digital, nil = fully analog.
-    /// Default 3 (⅓ / ⅔ / full).
-    public var levels: Int? = 3
+    /// Default analog — the on-device feel favourite.
+    public var levels: Int?
     /// Response curve: 1 = linear; >1 = softer near center, steeper at
-    /// the edges (applied before quantization).
-    public var expo: Double = 1
+    /// the edges (applied before quantization). Default is a gentle curve.
+    public var expo: Double = 1.4
     /// The zone's local "up" in screen coordinates.
     public var up = Vec2(0, -1)
     /// The player's control zone; the pad is clamped to stay fully inside.

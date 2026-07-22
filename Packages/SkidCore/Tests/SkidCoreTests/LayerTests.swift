@@ -138,6 +138,27 @@ final class LayerTests: XCTestCase {
         XCTAssertEqual(track.gates[3].layer, 0)
     }
 
+    func testUnderBridgeRoadCannotClimbOntoDeck() {
+        // Device repro: driving the flat diagonal UNDER the bridge, a car
+        // would clip a ramp line off-axis and pop onto the deck without ever
+        // driving a slope. A grounded car on the under-bridge road must stay
+        // grounded the whole way — only the real ramp footprints lift a car.
+        var race = Race(track: TrackLibrary.overpass(), players: [PlayerID(0)])
+        // The under-bridge diagonal runs from ~(850,745) up to ~(650,190),
+        // passing the crossing point (785,566) beneath the deck.
+        let lowStart = Vec2(850, 745)
+        let lowEnd = Vec2(650, 190)
+        let dir = (lowEnd - lowStart).normalized
+        race.cars[0].state.position = lowStart
+        race.cars[0].state.heading = atan2(dir.y, dir.x)
+        for _ in 0..<(4 * Race.tickRate) {
+            race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
+            XCTAssertEqual(
+                race.cars[0].state.layer, 0,
+                "under-bridge car climbed onto the deck without a ramp")
+        }
+    }
+
     func testLayeredDeterminism() {
         func run() -> Race {
             var race = Race(

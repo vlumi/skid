@@ -16,9 +16,13 @@ extension TrackLibrary {
                 from: Vec2(1350 - reach, 500), to: Vec2(size.x - wall, 500),
                 forward: Vec2(0, -1)),
             Gate(from: Vec2(900, wall), to: Vec2(900, 190 + reach), forward: Vec2(-1, 0)),
-            // The hairpin apex gate: generous toward the neck so a shallow
-            // tip-cut over grass still counts (grass is the penalty).
-            Gate(from: Vec2(700, 600), to: Vec2(1150, 600), forward: Vec2(0, 1)),
+            // The hairpin apex gate, ACROSS the tip (not behind it): a car
+            // only crosses it heading outward (+x) once it has actually
+            // rounded the far end near x≈980 — cutting the neck straight
+            // across to the return lane travels −x and never trips it, so
+            // the loop must be driven. Reaches out to the wall so running
+            // wide over grass at the tip still counts (grass is the penalty).
+            Gate(from: Vec2(960, 500), to: Vec2(960, 700), forward: Vec2(1, 0)),
             Gate(
                 from: Vec2(760, 745), to: Vec2(760, size.y - wall),
                 forward: Vec2(1, 0)),
@@ -41,7 +45,8 @@ extension TrackLibrary {
                 Vec2(690 - Double(i) * 50, 820 + (i % 2 == 0 ? -28 : 28))
             },
             startHeading: 0,
-            size: size
+            size: size,
+            pit: Vec2(760, 360)  // infield of the bowl, clear of every lane
         )
     }
 
