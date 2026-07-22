@@ -20,15 +20,24 @@ public struct CarState: Equatable, Sendable, Codable {
     public var velocity: Vec2
     /// Radians; 0 = +x, counterclockwise in math coords.
     public var heading: Double
-    /// Which height layer the car is on (flat v0.1: always 0).
+    /// Which height layer the car is on.
     public var layer: Int
+    /// Ticks of flight remaining; while > 0 the car is ballistic — no
+    /// steering, no throttle, no grip, no surface drag.
+    public var airborneTicks: Int
 
-    public init(position: Vec2, velocity: Vec2 = .zero, heading: Double = 0, layer: Int = 0) {
+    public init(
+        position: Vec2, velocity: Vec2 = .zero, heading: Double = 0, layer: Int = 0,
+        airborneTicks: Int = 0
+    ) {
         self.position = position
         self.velocity = velocity
         self.heading = heading
         self.layer = layer
+        self.airborneTicks = airborneTicks
     }
+
+    public var isAirborne: Bool { airborneTicks > 0 }
 
     public var forward: Vec2 { Vec2(angle: heading) }
 

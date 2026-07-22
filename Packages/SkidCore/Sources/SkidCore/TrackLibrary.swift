@@ -6,7 +6,7 @@ import Foundation
 public enum TrackLibrary {
     /// Every built-in track, in picker order.
     public static var all: [Track] {
-        [practiceLoop(), gauntlet(), hairpin()]
+        [practiceLoop(), gauntlet(), hairpin(), overpass()]
     }
 
     /// Lookup by stable id; unknown ids fall back to the practice loop.
