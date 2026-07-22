@@ -16,6 +16,9 @@ public final class GameSession: ObservableObject {
 
     public private(set) var race: Race
     public private(set) var marks = MarkStore()
+    /// Where each gate paints its checkpoint line on the road (nil = the
+    /// gate never touches the ribbon). Static per track; computed once.
+    public let gateSpans: [(a: Vec2, b: Vec2)?]
     /// The whole run as seed + inputs — replay/ghost currency, recorded
     /// from the first lap-capable build because it can't be retrofitted.
     public private(set) var recording: RaceRecording
@@ -33,13 +36,15 @@ public final class GameSession: ObservableObject {
 
     public init(controlSource: ControlSource) {
         self.controlSource = controlSource
+        let track = TrackLibrary.practiceLoop()
         self.race = Race(
-            track: TrackLibrary.practiceLoop(),
+            track: track,
             players: [PlayerID(0)],
             seed: 1,
             config: Self.raceConfig
         )
         self.recording = RaceRecording(seed: 1, players: [PlayerID(0)])
+        self.gateSpans = track.gates.map { track.ribbonSpan(of: $0) }
     }
 
     /// Advance sim time to `time` (a `TimelineView` timestamp, seconds).
