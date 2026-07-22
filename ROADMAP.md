@@ -140,6 +140,11 @@ the plan B).
 
 ## Backlog (unversioned)
 
+- [ ] **Per-player control scheme**: let each player pick their own scheme
+      at setup, instead of the current one global scheme for everyone. Each
+      `PlayerControls` already owns an instance of every scheme; the
+      selection would move from the shared `rig.scheme` to per-player, plus
+      a setup UI.
 - [ ] Full replay viewer (watch/scrub any stored run — the data exists from
       v0.2); shareable ghost files between devices
 - [ ] **Track editor** (pulled forward — hand-authoring geometry hit its
