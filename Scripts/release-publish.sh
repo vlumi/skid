@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Release step 2 (the stateful one): bump the build number (and the
-# marketing version when VERSION=x.y.z is given), verify the CHANGELOG's
-# version/build heading was written BY HAND, land it all on main via an
-# auto-merged PR (main is protected), then tag the merge.
+# marketing version when VERSION=x.y.z is given), stamp the CHANGELOG's
+# "Unreleased (next build)" section into this build's heading, land it all
+# on main via an auto-merged PR (main is protected), then tag the merge.
 #
-# The changelog is editorial: rename "### Unreleased (next build)" to
-# "### vX.Y.Z build N — YYYY-MM-DD" yourself (and open a fresh pending
-# section above it) before running this; the edit may sit uncommitted —
-# it rides in the release PR. The script only checks it exists.
+# The changelog bullets are editorial (each user-facing PR writes its own
+# under "### Unreleased (next build)", and the "## vX.Y.Z" marketing heading
+# is hand-set); this step only does the mechanical promotion of that section
+# to "### vX.Y.Z build N — <today>" and opens a fresh Unreleased above it.
 #
 # State crosses to the next step via the tagged commit on main, not through
 # the shell — so `release-distribute` can run standalone later.
@@ -27,16 +27,14 @@ fi
 tag="$(tag_name "$new_version" "$new_build")"
 say "Cutting ${tag} (was v${version} build ${build})…"
 
-# The changelog heading is hand-written — refuse to cut without it.
-heading="### v${new_version} build ${new_build}"
-grep -qF "$heading" CHANGELOG.md || die "CHANGELOG.md is missing \"${heading} — <date>\".
-Rename the pending \"### Unreleased (next build)\" section to it by hand
-(and open a fresh empty pending section above it), then rerun."
-grep -qF "### Unreleased (next build)" CHANGELOG.md \
-    || die "CHANGELOG.md has no fresh \"### Unreleased (next build)\" section — open one above the new heading."
-
 write_setting MARKETING_VERSION "$new_version"
 write_setting CURRENT_PROJECT_VERSION "$new_build"
+
+# Stamp the changelog: rename "Unreleased (next build)" to this build's
+# mechanical heading and open a fresh Unreleased. Bullets stay as the cycle's
+# PRs wrote them; the "## ${new_version}" marketing heading stays hand-written.
+say "Stamping the changelog…"
+promote_changelog_build "$new_version" "$new_build"
 
 branch="release/${tag}"
 git switch -c "$branch"

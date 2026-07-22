@@ -8,8 +8,9 @@ Grouped by **marketing version** (a roadmap milestone), then by **build
 number** within it — the version stays steady while the build climbs each
 TestFlight upload. Each version's top section, **Unreleased (next build)**,
 collects entries merged to `main` but not yet in a TestFlight build; cutting a
-release renames it to that build's heading and opens a fresh empty one. A
-user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
+release **stamps** it into that build's heading and opens a fresh empty one. A
+user-facing PR writes its own bullet here, and the `## vX.Y.Z` marketing
+heading is hand-set when a milestone ships (see [AGENTS.md](AGENTS.md)).
 
 ## v0.5.0
 
