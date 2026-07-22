@@ -184,6 +184,11 @@ materializes wherever the thumb lands *within it*, clamped to fit inside.
 Zones carry their own **`up` vector** — schemes compute against it, so a
 corner-seated player's zone rotates to face them and control orientation is
 never ambiguous. On-screen controls are **tinted the owning car's color**.
+A touch belongs to the zone it started in for its whole life. Current
+layouts: 1P full screen; 2P left/right halves (side-by-side couch); 3–4P
+quadrants with the top row's `up` flipped (sitting across a tabletop
+device). Shared screens show faint zone outlines with a color tab on each
+player's home edge.
 
 One-thumb (one touch per player → 4 players fit even on an iPhone's ~5-touch
 limit; iPad ~11):

@@ -1,6 +1,15 @@
 import SkidCore
 import SwiftUI
 
+/// Everything one frame of the world needs, as plain values (the Canvas
+/// renderer closure is not MainActor, so it gets copies, not the session).
+struct WorldScene {
+    var race: Race
+    var marks: MarkStore
+    var gateSpans: [(a: Vec2, b: Vec2)?]
+    var colors: [Color]
+}
+
 /// Draws the whole world procedurally into a `Canvas` context — grass,
 /// kerbed asphalt ribbon, start line, marks, cars. No image assets anywhere.
 enum TrackRenderer {
@@ -11,16 +20,18 @@ enum TrackRenderer {
     private static let kerbWhite = Color(white: 0.95)
     private static let rubber = Color(white: 0.15)
     private static let scuff = Color(red: 0.32, green: 0.26, blue: 0.16)
-    private static let playerColors: [Color] = [.red, .yellow, .cyan, .purple]
 
-    static func playerColor(_ index: Int) -> Color {
-        playerColors[index % playerColors.count]
-    }
+    /// The car colors players pick from. Deliberately loud, classic-arcade.
+    static let carPalette: [Color] = [
+        .red, .yellow, .cyan, .purple,
+        Color(red: 0.3, green: 0.85, blue: 0.3), .orange, .pink, .white,
+    ]
 
-    static func draw(
-        race: Race, marks: MarkStore, gateSpans: [(a: Vec2, b: Vec2)?],
-        into context: inout GraphicsContext, size: CGSize
-    ) {
+    static func draw(scene: WorldScene, into context: inout GraphicsContext, size: CGSize) {
+        let race = scene.race
+        let marks = scene.marks
+        let gateSpans = scene.gateSpans
+        let colors = scene.colors
         let track = race.track
         let scale = min(size.width / track.size.x, size.height / track.size.y)
         let offset = CGSize(
@@ -31,18 +42,62 @@ enum TrackRenderer {
         context.translateBy(x: offset.width, y: offset.height)
         context.scaleBy(x: scale, y: scale)
 
+        func color(_ index: Int) -> Color {
+            index < colors.count ? colors[index] : carPalette[index % carPalette.count]
+        }
+
         drawRibbon(track: track, into: &context)
         drawPatches(track: track, into: &context)
         // Which players are waiting on which gate, in car colors.
         var nextByGate: [Int: [Color]] = [:]
         for (index, car) in race.cars.enumerated() where car.progress.finishedAt == nil {
-            nextByGate[car.progress.nextGate, default: []].append(playerColor(index))
+            nextByGate[car.progress.nextGate, default: []].append(color(index))
         }
-        drawGates(gateSpans: gateSpans, nextByGate: nextByGate, into: &context)
+        drawGates(
+            gateSpans: gateSpans, nextByGate: nextByGate,
+            worldCenter: Vec2(track.size.x / 2, track.size.y / 2), into: &context)
         drawMarks(marks, into: &context)
-        for (index, car) in race.cars.enumerated() {
-            draw(car: car.state, color: playerColors[index % playerColors.count], into: &context)
+
+        // Ghost mode: overlapping pass-through cars go translucent so
+        // pileups on the racing line stay readable.
+        var translucent: Set<Int> = []
+        if !race.config.carContact {
+            for i in 0..<race.cars.count {
+                for j in (i + 1)..<race.cars.count {
+                    let gap = race.cars[i].state.position.distance(
+                        to: race.cars[j].state.position)
+                    if gap < CarGeometry.radius * 2.6 {
+                        translucent.insert(i)
+                        translucent.insert(j)
+                    }
+                }
+            }
         }
+        for (index, car) in race.cars.enumerated() {
+            draw(
+                car: car.state, color: color(index),
+                opacity: translucent.contains(index) ? 0.55 : 1,
+                into: &context
+            )
+        }
+    }
+
+    /// A player's zone chrome on a shared screen: faint colored outline plus
+    /// a corner tab on the player's own edge (where their `up` points from).
+    static func drawZone(_ zone: ZoneChrome, into context: inout GraphicsContext) {
+        let rect = zone.rect.insetBy(dx: 3, dy: 3)
+        context.stroke(
+            Path(roundedRect: rect, cornerRadius: 10),
+            with: .color(zone.color.opacity(0.28)),
+            lineWidth: 2
+        )
+        // Tab at the middle of the zone's "home" edge (opposite of up).
+        let center = Vec2(rect.midX, rect.midY)
+        let halfSpan = zone.up.y != 0 ? rect.height / 2 : rect.width / 2
+        let edge = center - zone.up * (halfSpan - 8)
+        let tab = CGRect(x: edge.x - 22, y: edge.y - 5, width: 44, height: 10)
+        context.fill(
+            Path(roundedRect: tab, cornerRadius: 5), with: .color(zone.color.opacity(0.6)))
     }
 
     private static func ribbonPath(_ track: Track) -> Path {
@@ -104,7 +159,7 @@ enum TrackRenderer {
     /// per-player guidance that stays honest with 2–4 players on screen.
     /// The last gate is the start/finish and keeps its checkers.
     private static func drawGates(
-        gateSpans: [(a: Vec2, b: Vec2)?], nextByGate: [Int: [Color]],
+        gateSpans: [(a: Vec2, b: Vec2)?], nextByGate: [Int: [Color]], worldCenter: Vec2,
         into context: inout GraphicsContext
     ) {
         for (index, span) in gateSpans.enumerated() {
@@ -122,28 +177,35 @@ enum TrackRenderer {
                     style: StrokeStyle(lineWidth: 4, lineCap: .round)
                 )
             }
-            drawPosts(span: span, colors: nextByGate[index] ?? [], into: &context)
+            drawPosts(
+                span: span, colors: nextByGate[index] ?? [], worldCenter: worldCenter,
+                into: &context)
         }
     }
 
-    /// The two gate posts, plus one dot per waiting player stacked outward
-    /// past each post, in that player's color.
+    /// The two gate posts, plus one dot per waiting player in that player's
+    /// color — clustered past the infield-side post (the infield always has
+    /// room by track design; the outer post may sit against the wall).
     private static func drawPosts(
-        span: (a: Vec2, b: Vec2), colors: [Color], into context: inout GraphicsContext
+        span: (a: Vec2, b: Vec2), colors: [Color], worldCenter: Vec2,
+        into context: inout GraphicsContext
     ) {
-        let outward = (span.b - span.a).normalized
-        for (end, direction) in [(span.a, outward * -1), (span.b, outward)] {
+        for end in [span.a, span.b] {
             let post = CGRect(x: end.x - 6, y: end.y - 6, width: 12, height: 12)
             context.fill(Path(ellipseIn: post), with: .color(kerbWhite))
             context.stroke(
                 Path(ellipseIn: post), with: .color(.black.opacity(0.55)), lineWidth: 2)
-            for (slot, color) in colors.enumerated() {
-                let center = end + direction * (22 + Double(slot) * 22)
-                let dot = CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)
-                context.fill(Path(ellipseIn: dot), with: .color(color))
-                context.stroke(
-                    Path(ellipseIn: dot), with: .color(.white.opacity(0.9)), lineWidth: 2.5)
-            }
+        }
+        let infield =
+            span.a.distance(to: worldCenter) <= span.b.distance(to: worldCenter)
+            ? (post: span.a, other: span.b) : (post: span.b, other: span.a)
+        let direction = (infield.post - infield.other).normalized
+        for (slot, color) in colors.enumerated() {
+            let center = infield.post + direction * (22 + Double(slot) * 22)
+            let dot = CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)
+            context.fill(Path(ellipseIn: dot), with: .color(color))
+            context.stroke(
+                Path(ellipseIn: dot), with: .color(.white.opacity(0.9)), lineWidth: 2.5)
         }
     }
 
@@ -225,8 +287,11 @@ enum TrackRenderer {
         }
     }
 
-    private static func draw(car: CarState, color: Color, into context: inout GraphicsContext) {
+    private static func draw(
+        car: CarState, color: Color, opacity: Double = 1, into context: inout GraphicsContext
+    ) {
         var car2D = context
+        car2D.opacity = opacity
         car2D.translateBy(x: car.position.x, y: car.position.y)
         car2D.rotate(by: Angle(radians: car.heading))
 
