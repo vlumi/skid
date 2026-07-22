@@ -89,10 +89,12 @@ cutting across grass still counts; grass *is* the penalty (drag + low grip).
 Gates exist to kill gross shortcuts only, like circling near the start line
 or lapping the infield center.
 
-Checkpoints are **visible**: each gate paints a translucent white line
-across the asphalt (its on-ribbon part — `Track.ribbonSpan(of:)`), and the
-player's *next* gate renders highlighted so there's never a hidden
-checkpoint to miss. The start/finish keeps its checkered line. Track
+Checkpoints are **visible, drawn like physical gates**: a faint line across
+the asphalt (its on-ribbon part — `Track.ribbonSpan(of:)`) with a **post at
+each ribbon edge**, slalom-style. Next-gate guidance is **per player**: a
+dot in each car's color lights up beside the posts of that player's next
+gate — honest with 2–4 players on one screen, where a single global
+highlight would lie. The start/finish keeps its checkered line. Track
 *design* owns the rest: any future ramp/jump placement has to be checked
 against the gate sequence so a flight can't bypass one.
 

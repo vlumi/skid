@@ -17,9 +17,11 @@ user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
 - Checkpoints you can see and can't unfairly miss: gates now span the
   whole corridor (running wide over grass still counts — the grass is the
-  penalty), only gross cuts through the infield don't. Each checkpoint
-  shows as a translucent line across the road with your **next** one
-  highlighted; the start/finish keeps its checkers.
+  penalty), only gross cuts through the infield don't. Each checkpoint is
+  drawn like a physical gate — a faint line with a post at each road edge —
+  and a dot in **your car's color** lights up beside your next gate's
+  posts (each player gets their own dots); the start/finish keeps its
+  checkers.
 - It's a race now: three laps against the clock — 3-2-1-GO countdown
   holding the car on the grid, lap counting through ordered directional
   checkpoints (cutting the track or driving backwards never counts), and
