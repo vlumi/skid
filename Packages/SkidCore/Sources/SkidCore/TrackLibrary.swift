@@ -81,19 +81,36 @@ public enum TrackLibrary {
         }
     }
 
-    /// Gates across the ribbon at the four compass midpoints, ordered along
-    /// the driving direction (each directional); start/finish last, on the
-    /// bottom straight.
+    /// Gates at the four compass midpoints, ordered along the driving
+    /// direction (each directional); start/finish last, on the bottom
+    /// straight. Gates are FORGIVING: each spans the whole corridor — from a
+    /// modest reach into the infield out to the boundary wall — so running
+    /// wide over grass still counts (grass already taxes speed). Only a
+    /// gross cut across the middle misses one.
     private static func gates() -> [Gate] {
-        func gate(at center: Vec2, across direction: Vec2, forward: Vec2) -> Gate {
-            let half = direction.normalized * (ribbonWidth / 2 + 20)
-            return Gate(from: center - half, to: center + half, forward: forward)
-        }
+        let wall = 8.0
+        // How far past the inner ribbon edge a gate reaches into the
+        // infield. Deep enough that a rally line through the grass counts,
+        // shallow enough that circling the infield center can't lap.
+        let infieldReach = ribbonWidth / 2 + 150
         return [
-            gate(at: Vec2(right, cy), across: Vec2(1, 0), forward: Vec2(0, -1)),  // right side, up
-            gate(at: Vec2(cx, top + 130), across: Vec2(0, 1), forward: Vec2(-1, 0)),  // pinch, left
-            gate(at: Vec2(left, cy), across: Vec2(1, 0), forward: Vec2(0, 1)),  // left side, down
-            gate(at: Vec2(cx, bottom), across: Vec2(0, 1), forward: Vec2(1, 0)),  // start/finish
+            // Right side, driving up: infield → right wall.
+            Gate(
+                from: Vec2(right - infieldReach, cy), to: Vec2(worldSize.x - wall, cy),
+                forward: Vec2(0, -1)),
+            // Pinch on the top straight, driving left: top wall → infield.
+            Gate(
+                from: Vec2(cx, wall), to: Vec2(cx, top + 130 + infieldReach),
+                forward: Vec2(-1, 0)),
+            // Left side, driving down: left wall → infield.
+            Gate(
+                from: Vec2(wall, cy), to: Vec2(left + infieldReach, cy),
+                forward: Vec2(0, 1)),
+            // Start/finish on the bottom straight, driving right:
+            // infield → bottom wall.
+            Gate(
+                from: Vec2(cx, bottom - infieldReach), to: Vec2(cx, worldSize.y - wall),
+                forward: Vec2(1, 0)),
         ]
     }
 

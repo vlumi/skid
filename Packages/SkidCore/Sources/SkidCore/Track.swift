@@ -119,6 +119,25 @@ public struct Track: Equatable, Sendable, Codable {
         return best
     }
 
+    /// The portion of a gate that lies on the asphalt ribbon — where a
+    /// checkpoint line paints on the road. The gate itself is wider (it
+    /// spans the whole corridor); this is only its visible part. nil if the
+    /// gate never touches the ribbon.
+    public func ribbonSpan(of gate: Gate, samples: Int = 64) -> (a: Vec2, b: Vec2)? {
+        let dir = gate.b - gate.a
+        var first: Double?
+        var last: Double?
+        for i in 0...samples {
+            let t = Double(i) / Double(samples)
+            if distanceToCenterline(gate.a + dir * t) <= width / 2 {
+                if first == nil { first = t }
+                last = t
+            }
+        }
+        guard let first, let last else { return nil }
+        return (gate.a + dir * first, gate.a + dir * last)
+    }
+
     /// What the car at `p` on `layer` is driving on. Patches win over the
     /// ribbon; everything beyond the ribbon is grass. The ribbon itself
     /// lives on layer 0 (flat v0.1 content).

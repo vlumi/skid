@@ -76,15 +76,25 @@ walls/kerbs handled by the hand-written collision (bounce), not a surface.
 
 ### Checkpoints (a lap must be earned)
 
-Every track carries an **ordered sequence of checkpoints** (invisible gates
-across the ribbon), and a lap counts only when all of them are crossed in
-order before the finish line — cutting across grass, through a crossing, or
-over a jump can never skip part of the track. Checkpoints are sim data on the
-track model, evaluated deterministically per tick like everything else; wrong-
-way driving simply fails to advance the sequence. Track *design* owns the
-rest: hazard shortcuts that stay legal must pass through the gates, and any
-future ramp/jump placement has to be checked against the gate sequence so a
-flight can't bypass one.
+Every track carries an **ordered sequence of directional checkpoint gates**,
+and a lap counts only when all of them are crossed in order, in the driving
+direction, before the finish line. Checkpoints are sim data on the track
+model, evaluated deterministically per tick like everything else; wrong-way
+driving simply fails to advance the sequence.
+
+Gates are **forgiving by design** (first device trial: ribbon-width gates
+made laps impossible to earn when running wide): each spans the whole
+corridor — from a modest reach into the infield out to the boundary — so
+cutting across grass still counts; grass *is* the penalty (drag + low grip).
+Gates exist to kill gross shortcuts only, like circling near the start line
+or lapping the infield center.
+
+Checkpoints are **visible**: each gate paints a translucent white line
+across the asphalt (its on-ribbon part — `Track.ribbonSpan(of:)`), and the
+player's *next* gate renders highlighted so there's never a hidden
+checkpoint to miss. The start/finish keeps its checkered line. Track
+*design* owns the rest: any future ramp/jump placement has to be checked
+against the gate sequence so a flight can't bypass one.
 
 ### Height: two layers, ramps, jumps (design the seam, build it later)
 

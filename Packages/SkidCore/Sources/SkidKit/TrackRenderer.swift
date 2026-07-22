@@ -18,7 +18,8 @@ enum TrackRenderer {
     }
 
     static func draw(
-        race: Race, marks: MarkStore, into context: inout GraphicsContext, size: CGSize
+        race: Race, marks: MarkStore, gateSpans: [(a: Vec2, b: Vec2)?],
+        into context: inout GraphicsContext, size: CGSize
     ) {
         let track = race.track
         let scale = min(size.width / track.size.x, size.height / track.size.y)
@@ -32,7 +33,13 @@ enum TrackRenderer {
 
         drawRibbon(track: track, into: &context)
         drawPatches(track: track, into: &context)
-        drawStartLine(track: track, into: &context)
+        let nextGate = race.cars.first?.progress.nextGate
+        drawGateLines(gateSpans: gateSpans, nextGate: nextGate, into: &context)
+        drawStartLine(
+            span: gateSpans.last.flatMap { $0 },
+            highlighted: nextGate == gateSpans.count - 1,
+            into: &context
+        )
         drawMarks(marks, into: &context)
         for (index, car) in race.cars.enumerated() {
             draw(car: car.state, color: playerColors[index % playerColors.count], into: &context)
@@ -92,12 +99,45 @@ enum TrackRenderer {
         }
     }
 
-    private static func drawStartLine(track: Track, into context: inout GraphicsContext) {
-        guard let start = track.gates.last else { return }
+    /// Checkpoint lines on the road: the on-ribbon part of every gate but
+    /// the last (that's the start line), translucent white with the
+    /// player's NEXT gate highlighted — you can always see where to go.
+    private static func drawGateLines(
+        gateSpans: [(a: Vec2, b: Vec2)?], nextGate: Int?, into context: inout GraphicsContext
+    ) {
+        for (index, span) in gateSpans.enumerated().dropLast() {
+            guard let span else { continue }
+            let isNext = index == nextGate
+            var path = Path()
+            path.move(to: CGPoint(x: span.a.x, y: span.a.y))
+            path.addLine(to: CGPoint(x: span.b.x, y: span.b.y))
+            context.stroke(
+                path,
+                with: .color(.white.opacity(isNext ? 0.85 : 0.3)),
+                style: StrokeStyle(lineWidth: isNext ? 7 : 4, lineCap: .round)
+            )
+        }
+    }
+
+    private static func drawStartLine(
+        span: (a: Vec2, b: Vec2)?, highlighted: Bool, into context: inout GraphicsContext
+    ) {
+        guard let start = span else { return }
+        if highlighted {
+            // The start/finish is the next gate: glow under the checkers.
+            var path = Path()
+            path.move(to: CGPoint(x: start.a.x, y: start.a.y))
+            path.addLine(to: CGPoint(x: start.b.x, y: start.b.y))
+            context.stroke(
+                path,
+                with: .color(.white.opacity(0.6)),
+                style: StrokeStyle(lineWidth: 14, lineCap: .round)
+            )
+        }
         // Two rows of checkers across the ribbon.
         let along = (start.b - start.a).normalized
         let across = along.perpendicular
-        let squares = 12
+        let squares = max(6, Int((start.b - start.a).length / 13))
         let side = (start.b - start.a).length / Double(squares)
         for row in 0..<2 {
             for i in 0..<squares where (i + row) % 2 == 0 {

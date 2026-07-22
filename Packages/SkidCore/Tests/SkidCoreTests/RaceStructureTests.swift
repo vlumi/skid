@@ -118,6 +118,39 @@ final class RaceStructureTests: XCTestCase {
         XCTAssertEqual(replayed, race)
     }
 
+    func testGatesCoverTheWholeCorridor() {
+        let track = TrackLibrary.practiceLoop()
+        let rightGate = track.gates[0]
+        // Running wide over the grass, close to the wall: still counts.
+        XCTAssertTrue(rightGate.crossedForward(movingFrom: Vec2(1560, 520), to: Vec2(1560, 480)))
+        // On the ribbon, obviously.
+        XCTAssertTrue(rightGate.crossedForward(movingFrom: Vec2(1360, 520), to: Vec2(1360, 480)))
+        // But a gross cut deep through the infield misses it — circling the
+        // middle can't lap.
+        XCTAssertFalse(rightGate.crossedForward(movingFrom: Vec2(1100, 520), to: Vec2(1100, 480)))
+        // Every gate spans far more than the ribbon.
+        for gate in track.gates {
+            XCTAssertGreaterThan((gate.b - gate.a).length, track.width * 2)
+        }
+    }
+
+    func testRibbonSpansPaintOnTheRoad() {
+        let track = TrackLibrary.practiceLoop()
+        for gate in track.gates {
+            let span = track.ribbonSpan(of: gate)
+            XCTAssertNotNil(span)
+            guard let span else { continue }
+            // Both ends sit on (or a sample-step off) the asphalt.
+            let tolerance = track.width / 2 + 12
+            XCTAssertLessThanOrEqual(track.distanceToCenterline(span.a), tolerance)
+            XCTAssertLessThanOrEqual(track.distanceToCenterline(span.b), tolerance)
+            // And the visible line is about one ribbon wide.
+            let length = (span.b - span.a).length
+            XCTAssertGreaterThan(length, track.width * 0.7)
+            XCTAssertLessThan(length, track.width * 1.4)
+        }
+    }
+
     func testPracticeLoopHazardPatches() {
         let track = TrackLibrary.practiceLoop()
         XCTAssertEqual(track.patches.count, 3)

@@ -29,11 +29,15 @@ public struct GameView: View {
                     )
                     let race = session.race
                     let marks = session.marks
+                    let spans = session.gateSpans
                     let pad = padOverlay()
                     ZStack {
                         Canvas { context, size in
                             var world = context
-                            TrackRenderer.draw(race: race, marks: marks, into: &world, size: size)
+                            TrackRenderer.draw(
+                                race: race, marks: marks, gateSpans: spans,
+                                into: &world, size: size
+                            )
                             if let pad {
                                 TrackRenderer.drawDPad(pad, into: &context)
                             }
