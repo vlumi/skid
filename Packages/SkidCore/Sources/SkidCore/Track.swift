@@ -114,6 +114,10 @@ public struct Track: Equatable, Sendable, Codable {
     /// Centerline segment indexes on the elevated layer (1) — bridges.
     /// Everything else is ground (0).
     public var elevatedSegments: Set<Int>
+    /// Ground-layer segments that render as sloped approaches (gradient
+    /// wedges climbing to the deck). Purely visual — the car is on the
+    /// ground layer until it crosses the ramp line at the deck's edge.
+    public var rampSegments: Set<Int>
     /// Layer transition lines (bridge approaches, jump ramps).
     public var ramps: [Ramp]
     public var walls: [Wall]
@@ -131,6 +135,7 @@ public struct Track: Equatable, Sendable, Codable {
         centerline: [Vec2],
         width: Double,
         elevatedSegments: Set<Int> = [],
+        rampSegments: Set<Int> = [],
         ramps: [Ramp] = [],
         walls: [Wall] = [],
         gates: [Gate] = [],
@@ -143,6 +148,7 @@ public struct Track: Equatable, Sendable, Codable {
         self.centerline = centerline
         self.width = width
         self.elevatedSegments = elevatedSegments
+        self.rampSegments = rampSegments
         self.ramps = ramps
         self.walls = walls
         self.gates = gates

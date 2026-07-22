@@ -10,33 +10,46 @@ extension TrackLibrary {
         let size = Vec2(1600, 1000)
         let width = 110.0
         let points = overpassCenterline()
-        // The elevated span is the single long NE→SW diagonal segment
-        // between (950,190) and (700,760).
+        // The dive is three segments: a sloped approach (ground), the
+        // elevated deck, and a sloped descent (ground). The car changes
+        // layer exactly where the deck begins/ends — the slopes are real
+        // road it drives up, not a warp.
         let diveStart = Vec2(950, 190)
+        let deckStart = Vec2(905, 293)
+        let deckEnd = Vec2(745, 657)
         let diveEnd = Vec2(700, 760)
-        let elevated = Set([points.firstIndex(of: diveStart) ?? 0])
+        let approachIndex = points.firstIndex(of: diveStart) ?? 0
+        let deckIndex = points.firstIndex(of: deckStart) ?? 0
+        let descentIndex = points.firstIndex(of: deckEnd) ?? 0
         let diveDirection = (diveEnd - diveStart).normalized
         let across = diveDirection.perpendicular
 
-        func rampLine(at t: Double) -> (Vec2, Vec2) {
-            let center = diveStart + (diveEnd - diveStart) * t
-            let half = across * (width / 2 + 26)
-            return (center - half, center + half)
+        func line(at point: Vec2) -> (Vec2, Vec2) {
+            // Only as wide as the ramp mouth — grazing the line from the
+            // grass must not flip a car's layer.
+            let half = across * (width / 2 + 8)
+            return (point - half, point + half)
         }
-        let up = rampLine(at: 0.1)
-        let down = rampLine(at: 0.9)
-        let bridgeGateLine = rampLine(at: 0.5)
+        let up = line(at: deckStart)
+        let down = line(at: deckEnd)
+        let bridgeGateLine = line(at: (deckStart + deckEnd) * 0.5)
+
+        let walls =
+            boundaryWalls(size: size)
+            + rampWalls(ground: diveStart, deck: deckStart, width: width)
+            + rampWalls(ground: diveEnd, deck: deckEnd, width: width)
 
         return Track(
             id: "overpass",
             centerline: points,
             width: width,
-            elevatedSegments: elevated,
+            elevatedSegments: [deckIndex],
+            rampSegments: [approachIndex, descentIndex],
             ramps: [
                 Ramp(from: up.0, to: up.1, forward: diveDirection),
                 Ramp(from: down.0, to: down.1, forward: diveDirection),
             ],
-            walls: boundaryWalls(size: size),
+            walls: walls,
             gates: overpassGates(
                 size: size, width: width, bridgeGateLine: bridgeGateLine,
                 diveDirection: diveDirection),
@@ -51,6 +64,19 @@ extension TrackLibrary {
             startHeading: 0,
             size: size
         )
+    }
+
+    /// Retaining walls along a ramp's sides: a ramp is entered from the
+    /// connecting road below or from the deck above — never sideways.
+    private static func rampWalls(ground: Vec2, deck: Vec2, width: Double) -> [Wall] {
+        let up = (deck - ground).normalized
+        let side = up.perpendicular
+        return [-1.0, 1.0].map { sign in
+            Wall(
+                from: ground + side * (width / 2 * sign),
+                to: deck + side * ((width / 2 + 8) * sign)
+            )
+        }
     }
 
     private static func overpassGates(
@@ -96,8 +122,10 @@ extension TrackLibrary {
         arc(center: Vec2(1150, 640), radius: 170, from: .pi / 2, to: 0)
         points.append(Vec2(1320, 360))
         arc(center: Vec2(1150, 360), radius: 170, from: 0, to: -.pi / 2)
-        // Dive over the bridge: one long elevated diagonal to the left lobe.
+        // The dive: sloped approach, elevated deck, sloped descent.
         points.append(Vec2(950, 190))
+        points.append(Vec2(905, 293))
+        points.append(Vec2(745, 657))
         points.append(Vec2(700, 760))
         // Left lobe: bottom, up the left side, across its top.
         points.append(Vec2(650, 810))
