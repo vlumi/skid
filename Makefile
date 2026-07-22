@@ -15,7 +15,7 @@ PROJECT_INPUTS := project.yml \
 	$(wildcard Sources/*/*.xcstrings)
 
 Skid.xcodeproj: $(PROJECT_INPUTS)
-	@xcodegen generate
+	@Scripts/generate.sh
 
 .PHONY: generate
 generate: Skid.xcodeproj  ## Regenerate Skid.xcodeproj from project.yml (if stale)
@@ -69,39 +69,48 @@ clean:  ## Remove the generated project + local build output
 	@echo "removed Skid.xcodeproj, .build-xcode, package .build, dist"
 
 # --- Release lane -----------------------------------------------------------
-# Cut a TestFlight build: `make release` runs preflight → publish → distribute.
-# publish lands the version bump on main via an auto-merged PR and tags it;
-# distribute archives/exports/uploads from that commit. UPLOAD=0 stops after
-# export. Run from a clean, up-to-date main.
+# Cut a build: `make release` runs preflight → publish → tag → distribute.
+# Each step is its own script, re-deriving its inputs from git + project.yml,
+# so any one can be re-run standalone (e.g. Scripts/release-tag.sh ios) after
+# a stall. Mirrors donpa's lane.
+#
+# PLATFORM selects scope (default ios; macos/all reserved for a Mac target).
+# UPLOAD=0 stops after export (no ASC upload).
+PLATFORM ?= ios
 UPLOAD ?= 1
 DIST_FLAGS := $(if $(filter 0,$(UPLOAD)),--no-upload,)
 
 .PHONY: release
-release: release-distribute  ## Cut a release to TestFlight (UPLOAD=0 to skip the upload)
-	@echo "✓ release complete."
+release: release-distribute  ## Cut a release (PLATFORM=ios|macos|all, UPLOAD=0 to skip ASC)
+	@echo "✓ release complete (PLATFORM=$(PLATFORM))."
 
 .PHONY: release-build
 release-build:  ## Like `release` but stop after export (no upload)
 	@$(MAKE) release UPLOAD=0
 
 .PHONY: release-preflight
-release-preflight:  ## Release step 1: verify a clean, up-to-date main
+release-preflight:  ## Release step 1: verify a clean, up-to-date base (main or release/X.Y.x)
 	@Scripts/release-preflight.sh
 
 .PHONY: release-publish
-release-publish: release-preflight  ## Release step 2: bump + changelog cut via auto-merged PR, tag main
-	@Scripts/release-publish.sh
+release-publish: release-preflight  ## Release step 2: bump, open auto-merging PR, wait for CI
+	@Scripts/release-publish.sh $(PLATFORM)
+
+.PHONY: release-tag
+release-tag: release-publish  ## Release step 3: tag the merge commit + publish GitHub releases
+	@Scripts/release-tag.sh $(PLATFORM)
 
 .PHONY: release-distribute
-release-distribute: release-publish  ## Release step 3: archive/export (+ upload unless UPLOAD=0)
-	@Scripts/release-distribute.sh $(DIST_FLAGS)
+release-distribute: release-tag  ## Release step 4: archive/export (+ upload unless UPLOAD=0)
+	@Scripts/release-distribute.sh $(PLATFORM) $(DIST_FLAGS)
 
-# Distribute is the likeliest step to fail (archive/export/upload) and is safe
-# to repeat. These standalone retries have NO prereqs.
+# Distribute is the likeliest step to fail (archive/export/ASC upload) and is
+# safe to repeat. This standalone retry has NO prereqs — it re-distributes an
+# already-tagged release after verifying the tag exists.
 .PHONY: release-distribute-retry
-release-distribute-retry:  ## Re-distribute an already-tagged release (no bump/PR/tag)
-	@Scripts/release-distribute.sh $(DIST_FLAGS) --require-tag
+release-distribute-retry:  ## Re-distribute an already-tagged release (no PR/tag steps)
+	@Scripts/release-distribute.sh $(PLATFORM) $(DIST_FLAGS) --require-tag
 
 .PHONY: release-upload
 release-upload:  ## Upload the already-built dist/ package (no rebuild)
-	@Scripts/release-distribute.sh --upload-only
+	@Scripts/release-distribute.sh $(PLATFORM) --upload-only
