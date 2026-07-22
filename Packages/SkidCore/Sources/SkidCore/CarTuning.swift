@@ -16,6 +16,8 @@ public struct CarTuning: Equatable, Sendable, Codable {
     public var steerFullSpeed: Double
     /// Velocity kept along the wall normal after a bounce, 0…1.
     public var wallRestitution: Double
+    /// Bounciness of car–car contact, 0…1.
+    public var carRestitution: Double
 
     public init(
         engineAccel: Double = 320,
@@ -24,7 +26,8 @@ public struct CarTuning: Equatable, Sendable, Codable {
         reverseMaxSpeed: Double = 140,
         turnRate: Double = 3.4,
         steerFullSpeed: Double = 120,
-        wallRestitution: Double = 0.45
+        wallRestitution: Double = 0.45,
+        carRestitution: Double = 0.4
     ) {
         self.engineAccel = engineAccel
         self.brakeAccel = brakeAccel
@@ -33,5 +36,6 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.turnRate = turnRate
         self.steerFullSpeed = steerFullSpeed
         self.wallRestitution = wallRestitution
+        self.carRestitution = carRestitution
     }
 }

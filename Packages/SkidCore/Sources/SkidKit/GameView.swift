@@ -1,172 +1,134 @@
 import SkidCore
 import SwiftUI
 
-/// The whole screen: the track fitted to the view, the race HUD, one
-/// full-screen touch surface feeding the active control scheme, and the
-/// in-run scheme switcher for on-device A/B.
-public struct GameView: View {
-    @StateObject private var session: GameSession
-    @StateObject private var rig: ControlRig
-
-    public init() {
-        let rig = ControlRig()
-        _rig = StateObject(wrappedValue: rig)
-        _session = StateObject(wrappedValue: GameSession(controlSource: rig.active))
+/// Top-level couch-game state: setup → race → (results) → race again.
+@MainActor
+public final class CouchGame: ObservableObject {
+    public enum Phase {
+        case setup
+        case racing
     }
 
-    public var body: some View {
-        ZStack(alignment: .topTrailing) {
-            GeometryReader { geo in
-                TimelineView(.animation) { timeline in
-                    // Step the sim on the main actor, then hand the Canvas
-                    // plain value copies — its renderer closure is not
-                    // MainActor. (`let _ =` is the ViewBuilder side-effect
-                    // idiom; a bare `_ =` isn't a valid builder statement.)
-                    // swiftlint:disable:next redundant_discardable_let
-                    let _ = step(
-                        size: geo.size,
-                        time: timeline.date.timeIntervalSinceReferenceDate
-                    )
-                    let race = session.race
-                    let marks = session.marks
-                    let spans = session.gateSpans
-                    let pad = padOverlay()
-                    ZStack {
-                        Canvas { context, size in
-                            var world = context
-                            TrackRenderer.draw(
-                                race: race, marks: marks, gateSpans: spans,
-                                into: &world, size: size
-                            )
-                            if let pad {
-                                TrackRenderer.drawDPad(pad, into: &context)
-                            }
-                        }
-                        RaceHUD(race: race)
-                    }
-                }
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            rig.active.touchChanged(
-                                at: Vec2(value.location.x, value.location.y))
-                        }
-                        .onEnded { _ in
-                            rig.active.touchEnded()
-                        }
-                )
-            }
-            .ignoresSafeArea()
+    static let palette: [Color] = TrackRenderer.carPalette
 
-            HStack(spacing: 10) {
-                Button {
-                    rig.cycle()
-                    session.controlSource = rig.active
-                } label: {
-                    pill(Text(rig.label, bundle: .module))
-                }
-                Button {
-                    session.reset()
-                } label: {
-                    pill(Text("Reset", bundle: .module))
+    @Published public private(set) var phase: Phase = .setup
+    @Published public var playerCount = 1
+    @Published public private(set) var colorIndices = [0, 1, 2, 3]
+    @Published public var carContact = true
+
+    @Published public private(set) var session: GameSession?
+    public private(set) var rig: CouchRig?
+
+    private var seed: UInt64 = 1
+
+    public init() {
+        // Dev affordance for automated screenshots/tests: launch straight
+        // into a race (`-skid-players N -skid-autostart`).
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-skid-players"),
+            index + 1 < arguments.count, let count = Int(arguments[index + 1])
+        {
+            playerCount = max(1, min(4, count))
+        }
+        if arguments.contains("-skid-autostart") {
+            startRace()
+        }
+    }
+
+    /// Cycle one player's color to the next not taken by anyone else.
+    public func cycleColor(slot: Int) {
+        guard colorIndices.indices.contains(slot) else { return }
+        let taken = Set(colorIndices.enumerated().filter { $0.offset != slot }.map(\.element))
+        var next = colorIndices[slot]
+        repeat {
+            next = (next + 1) % Self.palette.count
+        } while taken.contains(next)
+        colorIndices[slot] = next
+    }
+
+    public func startRace() {
+        let colors = Array(colorIndices.prefix(playerCount))
+        let rig = CouchRig(colorIndices: colors, scheme: rig?.scheme ?? .dpad)
+        self.rig = rig
+        seed += 1
+        session = Self.makeSession(
+            rig: rig, playerCount: playerCount, carContact: carContact, seed: seed)
+        phase = .racing
+    }
+
+    public func raceAgain() {
+        guard let rig else { return }
+        for player in rig.players {
+            player.releaseAll()
+        }
+        seed += 1
+        session = Self.makeSession(
+            rig: rig, playerCount: playerCount, carContact: carContact, seed: seed)
+    }
+
+    public func backToSetup() {
+        phase = .setup
+        session = nil
+        rig = nil
+    }
+
+    private static func makeSession(
+        rig: CouchRig, playerCount: Int, carContact: Bool, seed: UInt64
+    ) -> GameSession {
+        let players = (0..<playerCount).map { PlayerID($0) }
+        let config = RaceConfig(
+            laps: 3, countdownTicks: 3 * Race.tickRate, carContact: carContact)
+        let inputFor: (PlayerID, Tick) -> CarInput = { [weak rig] player, tick in
+            guard let rig, rig.players.indices.contains(player.rawValue) else { return .coast }
+            let controls = rig.players[player.rawValue]
+            return controls.source(for: rig.scheme).input(for: player, at: tick)
+        }
+        return GameSession(players: players, config: config, seed: seed, inputFor: inputFor)
+    }
+
+    /// Car colors in car order, for the renderer and HUD.
+    public var carColors: [Color] {
+        (rig?.players.map(\.colorIndex) ?? Array(colorIndices.prefix(playerCount)))
+            .map { Self.palette[$0] }
+    }
+}
+
+/// The whole app: setup screen or the race.
+public struct GameView: View {
+    @StateObject private var game = CouchGame()
+
+    public init() {}
+
+    public var body: some View {
+        ZStack {
+            switch game.phase {
+            case .setup:
+                SetupView(game: game)
+            case .racing:
+                if let session = game.session, let rig = game.rig {
+                    RaceScreen(game: game, session: session, rig: rig)
                 }
             }
-            .padding()
         }
         .statusBarHiddenIfAvailable()
         .persistentSystemOverlays(.hidden)
     }
-
-    private func step(size: CGSize, time: TimeInterval) {
-        rig.updateBounds(CGRect(origin: .zero, size: size))
-        session.advance(to: time)
-    }
-
-    /// The floating d-pad, when it's the active scheme and a thumb is down.
-    private func padOverlay() -> DPadOverlay? {
-        guard rig.scheme == .dpad, let origin = rig.dpad.origin else { return nil }
-        return DPadOverlay(
-            origin: origin,
-            up: rig.dpad.up,
-            radius: rig.dpad.radius,
-            input: rig.dpad.input(for: session.player, at: session.race.tick),
-            color: TrackRenderer.playerColor(0)
-        )
-    }
-
-    private func pill(_ text: Text) -> some View {
-        text
-            .font(.callout.bold())
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(.black.opacity(0.35), in: Capsule())
-            .foregroundStyle(.white)
-    }
-}
-
-/// Everything the renderer needs to draw the floating d-pad, colored by the
-/// owning player's car color.
-struct DPadOverlay {
-    var origin: Vec2
-    var up: Vec2
-    var radius: Double
-    var input: CarInput
-    var color: Color
-}
-
-/// Countdown, lap counter, and timing — minimal, in the classics' spirit.
-struct RaceHUD: View {
-    let race: Race
-
-    var body: some View {
-        ZStack {
-            if case .countdown(let remaining) = race.phase {
-                Text(verbatim: "\((remaining + Race.tickRate - 1) / Race.tickRate)")
-                    .font(.system(size: 96, weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .shadow(radius: 4)
-            } else if race.raceTicks < Race.tickRate * 3 / 4 {
-                Text("GO!", bundle: .module)
-                    .font(.system(size: 72, weight: .black, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .shadow(radius: 4)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                if let progress = race.cars.first?.progress, let laps = race.config.laps {
-                    Text("Lap \(min(progress.lap + 1, laps))/\(laps)", bundle: .module)
-                        .font(.headline.monospacedDigit())
-                    Text(verbatim: formatTicks(currentTicks(progress)))
-                        .font(.title3.monospacedDigit().bold())
-                    if let best = progress.bestLapTicks {
-                        Text("Best \(formatTicks(best))", bundle: .module)
-                            .font(.subheadline.monospacedDigit())
-                    }
-                }
-            }
-            .foregroundStyle(.white)
-            .shadow(radius: 2)
-            .padding(.leading, 16)
-            .padding(.top, 12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .allowsHitTesting(false)
-    }
-
-    private func currentTicks(_ progress: CarProgress) -> Tick {
-        if let finished = progress.finishedAt {
-            return finished - race.config.countdownTicks
-        }
-        return race.raceTicks
-    }
 }
 
 extension View {
-    fileprivate func statusBarHiddenIfAvailable() -> some View {
+    func statusBarHiddenIfAvailable() -> some View {
         #if os(iOS)
         return statusBarHidden(true)
         #else
         return self
         #endif
+    }
+
+    func pillStyle() -> some View {
+        font(.callout.bold())
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.black.opacity(0.35), in: Capsule())
+            .foregroundStyle(.white)
     }
 }

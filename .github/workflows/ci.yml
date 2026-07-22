@@ -46,6 +46,11 @@ jobs:
   test:
     name: Test core logic
     runs-on: macos-26
+    permissions:
+      contents: read
+      # Codecov uploads authenticate via GitHub OIDC — no upload token to
+      # provision or rotate (public repo + Codecov GitHub App).
+      id-token: write
     steps:
       - uses: actions/checkout@v7
       - uses: maxim-lobanov/setup-xcode@v1
@@ -79,9 +84,8 @@ jobs:
         uses: codecov/codecov-action@v7
         with:
           files: Packages/SkidCore/coverage.lcov
+          use_oidc: true
           fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   build:
     name: Build app

@@ -73,14 +73,14 @@ the plan B).
 
 ## v0.3.0 — Couch multiplayer (the heart)
 
-- [ ] Multitouch routing: one touch per player, 2–4 per-player control
+- [x] Multitouch routing: one touch per player, 2–4 per-player control
       zones that don't need to face the player
-- [ ] Car–car collisions in the sim (deterministic, hand-written), behind
+- [x] Car–car collisions in the sim (deterministic, hand-written), behind
       the per-race **contact / ghost** flag — ghost = pass-through,
       pure-speed racing; contact = the derby flavour
-- [ ] Per-player identity: body colours **picked by each player at race
+- [x] Per-player identity: body colours **picked by each player at race
       start**, grid slots, results screen
-- [ ] Split gas/steer two-thumb scheme (1–2 player layouts)
+- [x] Split gas/steer two-thumb scheme (1–2 player layouts)
 
 ## v0.4.0 — Solo play: AI drivers & time trial
 

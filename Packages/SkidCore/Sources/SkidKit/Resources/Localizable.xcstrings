@@ -4,10 +4,16 @@
     "Best %@" : {
 
     },
+    "Contact" : {
+
+    },
     "D-pad" : {
 
     },
     "GO!" : {
+
+    },
+    "Ghost" : {
 
     },
     "Lap %lld/%lld" : {
@@ -16,10 +22,28 @@
     "One-touch" : {
 
     },
+    "P%lld" : {
+
+    },
+    "Players" : {
+
+    },
+    "Race again" : {
+
+    },
     "Reset" : {
 
     },
+    "Setup" : {
+
+    },
     "Slide" : {
+
+    },
+    "Split" : {
+
+    },
+    "Start" : {
 
     },
     "Two-zone" : {
