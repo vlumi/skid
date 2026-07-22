@@ -15,9 +15,14 @@ let package = Package(
         .library(name: "SkidKit", targets: ["SkidKit"]),
         // Dev tool: renders the app icon from the game's own drawing code.
         .executable(name: "skid-icon", targets: ["SkidIcon"]),
+        // Dev tool: validates + canonicalizes the bundled track designs.
+        .executable(name: "skid-tracks", targets: ["SkidTracks"]),
     ],
     targets: [
-        .target(name: "SkidCore"),
+        .target(
+            name: "SkidCore",
+            resources: [.copy("Resources/Tracks")]
+        ),
         .target(
             name: "SkidKit",
             dependencies: ["SkidCore"],
@@ -26,6 +31,10 @@ let package = Package(
         .executableTarget(
             name: "SkidIcon",
             dependencies: ["SkidKit"]
+        ),
+        .executableTarget(
+            name: "SkidTracks",
+            dependencies: ["SkidCore"]
         ),
         .testTarget(
             name: "SkidCoreTests",

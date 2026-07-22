@@ -1,0 +1,247 @@
+{
+  "design" : {
+    "extraWalls" : [
+      {
+        "a" : {
+          "x" : 822.6,
+          "y" : 343.7
+        },
+        "b" : {
+          "x" : 726.6,
+          "y" : 562.1
+        },
+        "layer" : 1
+      },
+      {
+        "a" : {
+          "x" : 923.4,
+          "y" : 387.9
+        },
+        "b" : {
+          "x" : 827.4,
+          "y" : 606.3
+        },
+        "layer" : 1
+      }
+    ],
+    "gates" : [
+      {
+        "node" : 2,
+        "span" : {
+          "corridor" : {
+            "reach" : 130
+          }
+        },
+        "t" : 0.5
+      },
+      {
+        "node" : 5,
+        "span" : {
+          "deck" : {
+
+          }
+        },
+        "t" : 0.5
+      },
+      {
+        "node" : 9,
+        "span" : {
+          "corridor" : {
+            "reach" : 130
+          }
+        },
+        "t" : 0.5
+      },
+      {
+        "node" : 11,
+        "span" : {
+          "absolute" : {
+            "half" : 90
+          }
+        },
+        "t" : 0.47258064516129034
+      },
+      {
+        "node" : 1,
+        "span" : {
+          "corridor" : {
+            "reach" : 110
+          }
+        },
+        "t" : 0.4854586129753915
+      }
+    ],
+    "grid" : {
+      "back" : 50,
+      "gap" : 45,
+      "lateral" : 26
+    },
+    "hazards" : [
+      {
+        "center" : {
+          "x" : 1320,
+          "y" : 700
+        },
+        "layer" : 0,
+        "radius" : 40,
+        "surface" : {
+          "water" : {
+
+          }
+        }
+      },
+      {
+        "center" : {
+          "x" : 365,
+          "y" : 275
+        },
+        "layer" : 0,
+        "radius" : 42,
+        "surface" : {
+          "mud" : {
+
+          }
+        }
+      },
+      {
+        "center" : {
+          "x" : 560,
+          "y" : 815
+        },
+        "layer" : 0,
+        "radius" : 30,
+        "surface" : {
+          "oil" : {
+
+          }
+        }
+      }
+    ],
+    "id" : "overpass",
+    "name" : "Overpass",
+    "nodes" : [
+      {
+        "edge" : "ground",
+        "fillet" : 45,
+        "id" : 1,
+        "kerb" : false,
+        "position" : {
+          "x" : 873,
+          "y" : 810
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 2,
+        "kerb" : false,
+        "position" : {
+          "x" : 1320,
+          "y" : 810
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 3,
+        "kerb" : false,
+        "position" : {
+          "x" : 1320,
+          "y" : 190
+        }
+      },
+      {
+        "edge" : "rampUp",
+        "fillet" : 40,
+        "id" : 4,
+        "kerb" : false,
+        "position" : {
+          "x" : 950,
+          "y" : 190
+        }
+      },
+      {
+        "edge" : "deck",
+        "fillet" : 0,
+        "id" : 5,
+        "kerb" : false,
+        "position" : {
+          "x" : 905,
+          "y" : 293
+        }
+      },
+      {
+        "edge" : "rampDown",
+        "fillet" : 0,
+        "id" : 6,
+        "kerb" : false,
+        "position" : {
+          "x" : 745,
+          "y" : 657
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 30,
+        "id" : 7,
+        "kerb" : false,
+        "position" : {
+          "x" : 700,
+          "y" : 760
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 35,
+        "id" : 8,
+        "kerb" : false,
+        "position" : {
+          "x" : 650,
+          "y" : 810
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 9,
+        "kerb" : false,
+        "position" : {
+          "x" : 280,
+          "y" : 810
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 10,
+        "kerb" : false,
+        "position" : {
+          "x" : 280,
+          "y" : 190
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 45,
+        "id" : 11,
+        "kerb" : false,
+        "position" : {
+          "x" : 650,
+          "y" : 190
+        }
+      }
+    ],
+    "pit" : {
+      "x" : 1040,
+      "y" : 550
+    },
+    "revision" : 1,
+    "size" : {
+      "x" : 1600,
+      "y" : 1000
+    },
+    "theme" : "grass",
+    "width" : 110
+  },
+  "version" : 1
+}
