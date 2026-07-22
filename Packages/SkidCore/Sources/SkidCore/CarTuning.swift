@@ -42,4 +42,16 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.carRestitution = carRestitution
         self.jumpTicksPerSpeed = jumpTicksPerSpeed
     }
+
+    /// A slowed-down copy for learning: acceleration and speed caps scale
+    /// by `pace` (0…1], agility stays — a slower car that turns just as
+    /// well is easier, not just slower. Pace 1 is the game.
+    public func scaled(pace: Double) -> CarTuning {
+        var tuning = self
+        tuning.engineAccel *= pace
+        tuning.brakeAccel *= pace
+        tuning.maxSpeed *= pace
+        tuning.reverseMaxSpeed *= pace
+        return tuning
+    }
 }

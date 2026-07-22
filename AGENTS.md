@@ -194,7 +194,11 @@ trial (bake into every scheme): steering must work **while coasting**;
 throttle wants steps, not binary — always-on gas suits physical buttons, not
 glass — but full analog has too much leeway for a thumb, so quantize
 (currently 3 steps per axis). The d-pad has felt most natural so far; all
-schemes stay in the switcher for a proper A/B down the road.
+schemes stay in the switcher for a proper A/B down the road. The verdict
+runs on the **Tuning panel** (pause menu): dead zone, travel, steps
+(analog…3), response curve (expo — softer near center), and a learning
+**Pace** dial (scales accel/top speed, agility untouched; hiscores only
+record at full pace) — all persisted, d-pad dials applied live.
 
 **Control zones.** "Pad appears where the thumb lands" alone doesn't scale
 past one player: each player owns a **zone** (screen region) and the control
