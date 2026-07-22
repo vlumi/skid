@@ -15,6 +15,18 @@ user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Couch multiplayer**: 2–4 players on one device, one thumb each. A
+  setup screen picks player count, per-player car colors (tap to cycle),
+  and **Contact** (cars bump — derby chaos) vs **Ghost** (pass through —
+  pure speed) before each race. Every player gets their own control zone
+  (halves for two, quadrants for four — the top row's controls face
+  players sitting across the table), outlined in their color; touches
+  are routed by where they start, so thumbs never steal each other's
+  cars. Per-player lap chips in the HUD, next-checkpoint dots per player,
+  and a results card with standings and best laps when everyone's done.
+- New **Split** two-thumb scheme in the switcher: one thumb gas/brake,
+  the other steer, both in quantized steps.
+
 - Checkpoints you can see and can't unfairly miss: gates now span the
   whole corridor (running wide over grass still counts — the grass is the
   penalty), only gross cuts through the infield don't. Each checkpoint is
