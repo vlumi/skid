@@ -59,15 +59,15 @@ the plan B).
 
 ## v0.2.0 — Make it a race
 
-- [ ] Lap counting via ordered checkpoints (no shortcuts), start grid +
+- [x] Lap counting via ordered checkpoints (no shortcuts), start grid +
       countdown, finish + per-player race time
-- [ ] Remaining hazards as sim surfaces: **mud**, **water**, **oil slicks**
-- [ ] Marks extended: scuffed grass/mud trails; hazard-appropriate effects
-- [ ] Minimal HUD: lap and timing per player, in the style of the classics
-- [ ] Record every run as seed + input stream from the first lap-capable
+- [x] Remaining hazards as sim surfaces: **mud**, **water**, **oil slicks**
+- [x] Marks extended: scuffed grass/mud trails; hazard-appropriate effects
+- [x] Minimal HUD: lap and timing per player, in the style of the classics
+- [x] Record every run as seed + input stream from the first lap-capable
       build (a replay/ghost is just that, per AGENTS.md — can't be
       retrofitted); playback lands later
-- [ ] Control-scheme A/B: two-zone tap-steer implemented, one-touch stub
+- [x] Control-scheme A/B: two-zone tap-steer implemented, one-touch stub
       made real (the in-run switcher and virtual d-pad already landed with
       v0.1 device feedback)
 

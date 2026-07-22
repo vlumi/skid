@@ -122,17 +122,60 @@ public final class TouchPadControlSource: TouchDrivenControlSource {
     }
 }
 
-/// One-touch scheme, still a stub exercising the swap seam: permanent gas,
-/// touch = turn left. Radically simple; promoted or cut by the A/B milestone.
+/// Two-zone tap-steer: hold anywhere = gas; which half of the zone the
+/// thumb is in (relative to the zone's `up`) picks the steer direction.
+/// Digital by design.
+public final class TwoZoneControlSource: TouchDrivenControlSource {
+    /// The player's control zone; halves are split across its center.
+    public var bounds: CGRect?
+    /// The zone's local "up" in screen coordinates.
+    public var up = Vec2(0, -1)
+
+    private var location: Vec2?
+
+    public init() {}
+
+    public func touchChanged(at location: Vec2) { self.location = location }
+    public func touchEnded() { location = nil }
+
+    public func input(for player: PlayerID, at tick: Tick) -> CarInput {
+        guard let location else { return .coast }
+        let center = bounds.map { Vec2($0.midX, $0.midY) } ?? location
+        let sideways = (location - center).dot(up.perpendicular)
+        let steer: Double = sideways == 0 ? 0 : (sideways < 0 ? -1 : 1)
+        return CarInput(steer: steer, throttle: 1)
+    }
+}
+
+/// One-touch: permanent gas; **hold turns, a quick tap flips the turning
+/// direction** — the variant that fixes turn-one-way-only (a right turn no
+/// longer needs a full circle). One timing gate: a touch shorter than
+/// `tapTicks` is a flip, longer is a turn.
 public final class OneTouchControlSource: TouchDrivenControlSource {
+    /// Touches shorter than this (sim ticks, ~0.18 s) count as a tap.
+    public var tapTicks: Tick = 11
+
     private var touching = false
+    private var heldTicks = 0
+    private var direction: Double = -1  // start turning left, like the loop
 
     public init() {}
 
     public func touchChanged(at location: Vec2) { touching = true }
-    public func touchEnded() { touching = false }
+
+    public func touchEnded() {
+        if touching, heldTicks < tapTicks {
+            direction = -direction
+        }
+        touching = false
+        heldTicks = 0
+    }
 
     public func input(for player: PlayerID, at tick: Tick) -> CarInput {
-        CarInput(steer: touching ? -1 : 0, throttle: 1)
+        guard touching else { return CarInput(steer: 0, throttle: 1) }
+        heldTicks += 1
+        // Only steer once the touch outlives a tap, so a flip doesn't twitch
+        // the car the wrong way first.
+        return CarInput(steer: heldTicks >= tapTicks ? direction : 0, throttle: 1)
     }
 }

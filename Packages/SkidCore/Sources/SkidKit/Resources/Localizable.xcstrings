@@ -1,7 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Best %@" : {
+
+    },
     "D-pad" : {
+
+    },
+    "GO!" : {
+
+    },
+    "Lap %lld/%lld" : {
 
     },
     "One-touch" : {
@@ -11,6 +20,9 @@
 
     },
     "Slide" : {
+
+    },
+    "Two-zone" : {
 
     }
   },
