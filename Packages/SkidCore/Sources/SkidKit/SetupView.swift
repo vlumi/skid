@@ -97,6 +97,28 @@ struct SetupView: View {
                     }
                 }
             }
+            if game.aiCount > 0 {
+                HStack(spacing: 10) {
+                    choice(
+                        Text("Easy", bundle: .module),
+                        selected: game.aiDifficulty == .easy
+                    ) {
+                        game.aiDifficulty = .easy
+                    }
+                    choice(
+                        Text("Medium", bundle: .module),
+                        selected: game.aiDifficulty == .medium
+                    ) {
+                        game.aiDifficulty = .medium
+                    }
+                    choice(
+                        Text("Hard", bundle: .module),
+                        selected: game.aiDifficulty == .hard
+                    ) {
+                        game.aiDifficulty = .hard
+                    }
+                }
+            }
             HStack(spacing: 10) {
                 choice(Text("Contact", bundle: .module), selected: game.carContact) {
                     game.carContact = true
