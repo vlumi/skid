@@ -1,13 +1,25 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "AI" : {
+
+    },
     "Best %@" : {
+
+    },
+    "Best lap %@" : {
+
+    },
+    "Best race %@" : {
 
     },
     "Contact" : {
 
     },
     "D-pad" : {
+
+    },
+    "Face-to-face" : {
 
     },
     "GO!" : {
@@ -22,10 +34,16 @@
     "One-touch" : {
 
     },
+    "Open corner" : {
+
+    },
     "P%lld" : {
 
     },
     "Players" : {
+
+    },
+    "Race" : {
 
     },
     "Race again" : {
@@ -37,6 +55,9 @@
     "Setup" : {
 
     },
+    "Side-by-side" : {
+
+    },
     "Slide" : {
 
     },
@@ -44,6 +65,9 @@
 
     },
     "Start" : {
+
+    },
+    "Time trial" : {
 
     },
     "Two-zone" : {

@@ -25,7 +25,7 @@ struct RaceScreen: View {
                     let colors = game.carColors
                     let scene = WorldScene(
                         race: race, marks: session.marks, gateSpans: session.gateSpans,
-                        colors: colors
+                        colors: colors, ghosts: session.ghost?.cars ?? []
                     )
                     let pads = padOverlays()
                     let zones = zoneChrome()
@@ -74,6 +74,7 @@ struct RaceScreen: View {
     private func step(size: CGSize, time: TimeInterval) {
         rig.layout(size: CGRect(origin: .zero, size: size).size)
         session.advance(to: time)
+        game.noteProgress()
     }
 
     /// Every active floating d-pad, in its owner's color.
@@ -166,6 +167,16 @@ struct RaceHUD: View {
                     Text(verbatim: formatTicks(race.raceTicks))
                         .font(.headline.monospacedDigit())
                         .padding(.top, 2)
+                } else if let car = race.cars.first {
+                    // Time trial: the live lap clock is the whole game.
+                    let lapTicks = max(
+                        0, race.tick - max(car.progress.lapStartTick, race.config.countdownTicks))
+                    Text(verbatim: formatTicks(lapTicks))
+                        .font(.title3.monospacedDigit().bold())
+                    if let best = car.progress.bestLapTicks {
+                        Text("Best \(formatTicks(best))", bundle: .module)
+                            .font(.subheadline.monospacedDigit())
+                    }
                 }
             }
             .foregroundStyle(.white)

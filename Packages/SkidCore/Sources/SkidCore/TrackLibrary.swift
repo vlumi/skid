@@ -24,6 +24,7 @@ public enum TrackLibrary {
     /// driven left-to-right).
     public static func practiceLoop() -> Track {
         Track(
+            id: "practice-loop",
             centerline: centerline(),
             width: ribbonWidth,
             walls: boundaryWalls(),

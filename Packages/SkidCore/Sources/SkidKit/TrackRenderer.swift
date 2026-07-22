@@ -8,6 +8,8 @@ struct WorldScene {
     var marks: MarkStore
     var gateSpans: [(a: Vec2, b: Vec2)?]
     var colors: [Color]
+    /// PB-ghost cars to draw translucently (time trial), if any.
+    var ghosts: [CarState] = []
 }
 
 /// Draws the whole world procedurally into a `Canvas` context — grass,
@@ -72,6 +74,11 @@ enum TrackRenderer {
                     }
                 }
             }
+        }
+        // The PB ghost drives under the real cars, translucent and
+        // colorless — present, never in the way.
+        for ghost in scene.ghosts {
+            draw(car: ghost, color: .white, opacity: 0.38, into: &context)
         }
         for (index, car) in race.cars.enumerated() {
             draw(
