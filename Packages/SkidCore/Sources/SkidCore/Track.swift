@@ -15,16 +15,20 @@ public struct Wall: Equatable, Sendable, Codable {
 }
 
 /// An ordered checkpoint gate across the ribbon — a lap counts only when
-/// every gate is crossed in order (lap logic itself lands with race
-/// structure; the data and crossing test live here from day one).
+/// every gate is crossed in order, in the driving direction.
 public struct Gate: Equatable, Sendable, Codable {
     public var a: Vec2
     public var b: Vec2
+    /// The driving direction through the gate; a crossing only counts when
+    /// the movement has a positive component along it. `.zero` accepts both
+    /// directions (undirected gate).
+    public var forward: Vec2
     public var layer: Int
 
-    public init(from a: Vec2, to b: Vec2, layer: Int = 0) {
+    public init(from a: Vec2, to b: Vec2, forward: Vec2 = .zero, layer: Int = 0) {
         self.a = a
         self.b = b
+        self.forward = forward
         self.layer = layer
     }
 
@@ -36,6 +40,14 @@ public struct Gate: Equatable, Sendable, Codable {
         let d3 = (b - a).cross(start - a)
         let d4 = (b - a).cross(end - a)
         return d1 * d2 <= 0 && d3 * d4 <= 0 && !(d1 == 0 && d2 == 0)
+    }
+
+    /// A crossing that also moves along `forward` — the one that advances
+    /// race progress. Driving through backwards never counts.
+    public func crossedForward(movingFrom start: Vec2, to end: Vec2) -> Bool {
+        guard isCrossed(movingFrom: start, to: end) else { return false }
+        guard forward.lengthSquared > 0 else { return true }
+        return (end - start).dot(forward) > 0
     }
 }
 

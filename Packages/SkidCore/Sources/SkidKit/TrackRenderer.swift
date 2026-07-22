@@ -31,6 +31,7 @@ enum TrackRenderer {
         context.scaleBy(x: scale, y: scale)
 
         drawRibbon(track: track, into: &context)
+        drawPatches(track: track, into: &context)
         drawStartLine(track: track, into: &context)
         drawMarks(marks, into: &context)
         for (index, car) in race.cars.enumerated() {
@@ -66,6 +67,29 @@ enum TrackRenderer {
             with: .color(asphalt),
             style: StrokeStyle(lineWidth: track.width, lineCap: .round, lineJoin: .round)
         )
+    }
+
+    private static func drawPatches(track: Track, into context: inout GraphicsContext) {
+        for patch in track.patches {
+            let rect = CGRect(
+                x: patch.center.x - patch.radius, y: patch.center.y - patch.radius,
+                width: patch.radius * 2, height: patch.radius * 2
+            )
+            let color: Color
+            switch patch.surface {
+            case .mud: color = Color(red: 0.42, green: 0.30, blue: 0.16)
+            case .water: color = Color(red: 0.23, green: 0.46, blue: 0.77).opacity(0.9)
+            case .oil: color = Color(white: 0.1).opacity(0.55)
+            case .asphalt, .grass: color = .clear
+            }
+            context.fill(Path(ellipseIn: rect), with: .color(color))
+            // A darker rim so patches read against both asphalt and grass.
+            context.stroke(
+                Path(ellipseIn: rect.insetBy(dx: 1.5, dy: 1.5)),
+                with: .color(color.opacity(0.8)),
+                lineWidth: 3
+            )
+        }
     }
 
     private static func drawStartLine(track: Track, into context: inout GraphicsContext) {
@@ -106,6 +130,8 @@ enum TrackRenderer {
             case .rubberLight: color = rubber.opacity(0.25)
             case .rubberHeavy: color = rubber.opacity(0.5)
             case .scuff: color = scuff.opacity(0.55)
+            case .mudTrail: color = Color(red: 0.42, green: 0.30, blue: 0.16).opacity(0.5)
+            case .wetTrail: color = Color(red: 0.35, green: 0.5, blue: 0.7).opacity(0.35)
             }
             for chunk in chunkList {
                 context.stroke(chunk.path, with: .color(color), style: style)

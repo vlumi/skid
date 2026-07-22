@@ -28,7 +28,7 @@ public enum TrackLibrary {
             width: ribbonWidth,
             walls: boundaryWalls(),
             gates: gates(),
-            patches: [],
+            patches: patches(),
             startSlots: startSlots(),
             startHeading: 0,
             size: worldSize
@@ -82,17 +82,29 @@ public enum TrackLibrary {
     }
 
     /// Gates across the ribbon at the four compass midpoints, ordered along
-    /// the driving direction; start/finish last, on the bottom straight.
+    /// the driving direction (each directional); start/finish last, on the
+    /// bottom straight.
     private static func gates() -> [Gate] {
-        func gate(at center: Vec2, across direction: Vec2) -> Gate {
+        func gate(at center: Vec2, across direction: Vec2, forward: Vec2) -> Gate {
             let half = direction.normalized * (ribbonWidth / 2 + 20)
-            return Gate(from: center - half, to: center + half)
+            return Gate(from: center - half, to: center + half, forward: forward)
         }
         return [
-            gate(at: Vec2(right, cy), across: Vec2(1, 0)),  // right side, heading up
-            gate(at: Vec2(cx, top + 130), across: Vec2(0, 1)),  // mid-pinch, heading left
-            gate(at: Vec2(left, cy), across: Vec2(1, 0)),  // left side, heading down
-            gate(at: Vec2(cx, bottom), across: Vec2(0, 1)),  // start/finish
+            gate(at: Vec2(right, cy), across: Vec2(1, 0), forward: Vec2(0, -1)),  // right side, up
+            gate(at: Vec2(cx, top + 130), across: Vec2(0, 1), forward: Vec2(-1, 0)),  // pinch, left
+            gate(at: Vec2(left, cy), across: Vec2(1, 0), forward: Vec2(0, 1)),  // left side, down
+            gate(at: Vec2(cx, bottom), across: Vec2(0, 1), forward: Vec2(1, 0)),  // start/finish
+        ]
+    }
+
+    /// The hazards, placed as track design: an oil slick on the right
+    /// straight before the corner, mud pinching the bottom straight's entry,
+    /// and water clipping the exit of the top-right corner.
+    private static func patches() -> [SurfacePatch] {
+        [
+            SurfacePatch(center: Vec2(right - 20, cy + 90), radius: 34, surface: .oil),
+            SurfacePatch(center: Vec2(left + 260, bottom - 52), radius: 55, surface: .mud),
+            SurfacePatch(center: Vec2(cx + 320, top + 44), radius: 48, surface: .water),
         ]
     }
 
