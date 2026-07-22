@@ -153,6 +153,18 @@ the sim (both run the identical deterministic step):
 
 Walls and surfaces behave the same in both; only car–car interaction toggles.
 
+### AI drivers (an input source, like everything else)
+
+An AI opponent is a **pure deterministic function** of car state + track
+producing the same car-relative `CarInput` a thumb would — reproducible in
+tests, replayable, lockstep-safe. It aims at a lookahead point along the
+centerline, lifts for upcoming curvature, and backs out when pinned
+(stuck-recovery is its only memory). **No rubber-banding, ever**: difficulty
+is a skill ladder over the driver's own dials (lookahead, throttle cap,
+corner caution) — AI cars are mechanically identical to players', per the
+no-upgrades rule. AI fills empty grid slots; it must never be needed to
+make solo play work.
+
 ### Time trials, ghosts, hiscores (determinism pays twice)
 
 Because the sim is deterministic and inputs are data, a **replay is just the
@@ -184,11 +196,12 @@ materializes wherever the thumb lands *within it*, clamped to fit inside.
 Zones carry their own **`up` vector** — schemes compute against it, so a
 corner-seated player's zone rotates to face them and control orientation is
 never ambiguous. On-screen controls are **tinted the owning car's color**.
-A touch belongs to the zone it started in for its whole life. Current
-layouts: 1P full screen; 2P left/right halves (side-by-side couch); 3–4P
-quadrants with the top row's `up` flipped (sitting across a tabletop
-device). Shared screens show faint zone outlines with a color tab on each
-player's home edge.
+A touch belongs to the zone it started in for its whole life. Seating is a
+**setup choice, never a guess**: 1P full screen; 2P picks **side-by-side**
+(left/right halves) or **face-to-face** (top/bottom, top flipped); 3P picks
+which quadrant stays **open**; 4P quadrants. Top-row zones' `up` flips
+(sitting across a tabletop device). Shared screens show faint zone outlines
+with a color tab on each player's home edge.
 
 One-thumb (one touch per player → 4 players fit even on an iPhone's ~5-touch
 limit; iPad ~11):

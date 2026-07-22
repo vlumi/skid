@@ -72,6 +72,9 @@ public struct SurfacePatch: Equatable, Sendable, Codable {
 /// carries a layer so crossings never require a data-model refactor; v0.1
 /// content stays flat on layer 0.
 public struct Track: Equatable, Sendable, Codable {
+    /// Stable identity for persistence (hiscores key). "" for ad-hoc
+    /// test tracks.
+    public var id: String
     /// Closed loop — the last point connects back to the first.
     public var centerline: [Vec2]
     /// Full width of the asphalt ribbon.
@@ -89,6 +92,7 @@ public struct Track: Equatable, Sendable, Codable {
     public var size: Vec2
 
     public init(
+        id: String = "",
         centerline: [Vec2],
         width: Double,
         walls: [Wall] = [],
@@ -98,6 +102,7 @@ public struct Track: Equatable, Sendable, Codable {
         startHeading: Double = 0,
         size: Vec2
     ) {
+        self.id = id
         self.centerline = centerline
         self.width = width
         self.walls = walls
@@ -117,6 +122,65 @@ public struct Track: Equatable, Sendable, Codable {
             best = min(best, p.distance(toSegment: a, b))
         }
         return best
+    }
+
+    /// The closest point on the centerline loop to `p`, as (segment index,
+    /// parameter along it).
+    public func closestCenterlinePoint(to p: Vec2) -> (segment: Int, t: Double) {
+        var best = (segment: 0, t: 0.0)
+        var bestDistance = Double.greatestFiniteMagnitude
+        for i in centerline.indices {
+            let a = centerline[i]
+            let b = centerline[(i + 1) % centerline.count]
+            let closest = p.closestPoint(onSegment: a, b)
+            let distance = p.distance(to: closest)
+            if distance < bestDistance {
+                bestDistance = distance
+                let length = (b - a).length
+                let t = length > 0 ? (closest - a).length / length : 0
+                best = (i, t)
+            }
+        }
+        return best
+    }
+
+    /// Total length of the centerline loop.
+    public var centerlineLength: Double {
+        var total = 0.0
+        for i in centerline.indices {
+            total += centerline[i].distance(to: centerline[(i + 1) % centerline.count])
+        }
+        return total
+    }
+
+    /// Walk `distance` units forward along the centerline loop, starting
+    /// from the point nearest `p` — the AI's lookahead target. Distances
+    /// beyond a full loop wrap; zero-length segments (arc/straight joints
+    /// share endpoints) are skipped. Degenerate loops (no length at all)
+    /// return their first point.
+    public func pointAlongCenterline(from p: Vec2, distance: Double) -> Vec2 {
+        guard !centerline.isEmpty else { return p }
+        let perimeter = centerlineLength
+        guard perimeter > 0 else { return centerline[0] }
+        var (segment, t) = closestCenterlinePoint(to: p)
+        var remaining = distance.truncatingRemainder(dividingBy: perimeter)
+        for _ in 0..<(centerline.count * 2 + 2) {
+            let a = centerline[segment]
+            let b = centerline[(segment + 1) % centerline.count]
+            let length = (b - a).length
+            if length > 0 {
+                let left = length * (1 - t)
+                if remaining <= left {
+                    return a + (b - a) * min(1, t + remaining / length)
+                }
+                remaining -= left
+            }
+            segment = (segment + 1) % centerline.count
+            t = 0
+        }
+        // Defensive only: `remaining < perimeter` guarantees an in-loop
+        // return; degenerate loops exited at the guard above.
+        return centerline[segment]
     }
 
     /// The portion of a gate that lies on the asphalt ribbon — where a

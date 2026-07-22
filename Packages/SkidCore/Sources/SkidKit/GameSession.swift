@@ -24,7 +24,9 @@ public final class GameSession: ObservableObject {
     public let gateSpans: [(a: Vec2, b: Vec2)?]
 
     public let players: [PlayerID]
-    private let inputFor: (PlayerID, Tick) -> CarInput
+    /// The PB ghost running alongside, if any (time trial).
+    public let ghost: GhostPlayback?
+    private let inputFor: (PlayerID, Race) -> CarInput
 
     private var lastTime: TimeInterval?
     private var accumulator: TimeInterval = 0
@@ -36,11 +38,13 @@ public final class GameSession: ObservableObject {
         players: [PlayerID],
         config: RaceConfig,
         seed: UInt64,
-        inputFor: @escaping (PlayerID, Tick) -> CarInput
+        ghost: GhostPlayback? = nil,
+        inputFor: @escaping (PlayerID, Race) -> CarInput
     ) {
         let track = TrackLibrary.practiceLoop()
         self.players = players
         self.inputFor = inputFor
+        self.ghost = ghost
         self.race = Race(track: track, players: players, seed: seed, config: config)
         self.recording = RaceRecording(seed: seed, players: players)
         self.gateSpans = track.gates.map { track.ribbonSpan(of: $0) }
@@ -59,10 +63,11 @@ public final class GameSession: ObservableObject {
         while accumulator >= Race.dt, ticks < Self.maxTicksPerFrame {
             var inputs: [PlayerID: CarInput] = [:]
             for player in players {
-                inputs[player] = inputFor(player, race.tick)
+                inputs[player] = inputFor(player, race)
             }
             recording.append(inputs)
             race.advance(inputs: inputs)
+            ghost?.advanceTick()
             for car in race.cars {
                 marks.record(car: car, on: race.track, tick: race.tick)
             }

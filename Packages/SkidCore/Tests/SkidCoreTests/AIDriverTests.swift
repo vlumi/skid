@@ -1,0 +1,130 @@
+import XCTest
+
+@testable import SkidCore
+
+final class AIDriverTests: XCTestCase {
+    /// The one that matters: a default AI driver completes a full lap of
+    /// the practice loop, gates and all, in a sane time.
+    func testAICompletesALap() {
+        var race = Race(
+            track: TrackLibrary.practiceLoop(), players: [PlayerID(0)],
+            config: RaceConfig(laps: 1)
+        )
+        var driver = AIDriver()
+        var ticks = 0
+        while race.cars[0].progress.finishedAt == nil, ticks < 90 * Race.tickRate {
+            let input = driver.input(car: race.cars[0].state, track: race.track)
+            race.advance(inputs: [PlayerID(0): input])
+            ticks += 1
+        }
+        let progress = race.cars[0].progress
+        XCTAssertNotNil(
+            progress.finishedAt,
+            "AI failed to lap in 90s (gate \(progress.nextGate), lap \(progress.lap))"
+        )
+        // And not absurdly slowly either — the loop is ~20s of driving.
+        XCTAssertLessThan(race.cars[0].progress.finishedAt!, 60 * Race.tickRate)
+    }
+
+    func testAIIsDeterministic() {
+        func run() -> (Race, AIDriver) {
+            var race = Race(
+                track: TrackLibrary.practiceLoop(),
+                players: [PlayerID(0), PlayerID(1)],
+                config: RaceConfig(laps: 2)
+            )
+            var drivers = [AIDriver.make(.hard), AIDriver.make(.easy, gridIndex: 2)]
+            for _ in 0..<(30 * Race.tickRate) {
+                var inputs: [PlayerID: CarInput] = [:]
+                for i in drivers.indices {
+                    inputs[PlayerID(i)] = drivers[i].input(
+                        car: race.cars[i].state, track: race.track)
+                }
+                race.advance(inputs: inputs)
+            }
+            return (race, drivers[0])
+        }
+        let a = run()
+        let b = run()
+        XCTAssertEqual(a.0, b.0)
+        XCTAssertEqual(a.1, b.1)
+    }
+
+    func testDifficultiesAreOrderedAndEasyStillLaps() {
+        // Same start, same track, free running (no finish to park at):
+        // harder drivers make more progress.
+        func progress(_ driver: AIDriver, seconds: Int, laps: Int? = nil) -> (
+            score: Int, race: Race
+        ) {
+            var race = Race(
+                track: TrackLibrary.practiceLoop(), players: [PlayerID(0)],
+                config: RaceConfig(laps: laps))
+            var ai = driver
+            for _ in 0..<(seconds * Race.tickRate) {
+                let input = ai.input(car: race.cars[0].state, track: race.track)
+                race.advance(inputs: [PlayerID(0): input])
+            }
+            let car = race.cars[0]
+            return (car.progress.lap * race.track.gates.count + car.progress.nextGate, race)
+        }
+        let easy = progress(AIDriver.make(.easy), seconds: 40)
+        let medium = progress(AIDriver.make(.medium), seconds: 40)
+        let hard = progress(AIDriver.make(.hard), seconds: 40)
+        XCTAssertGreaterThanOrEqual(hard.score, medium.score)
+        XCTAssertGreaterThanOrEqual(medium.score, easy.score)
+        XCTAssertGreaterThan(hard.score, easy.score)
+        // And even the wobbliest easy driver finishes a lap eventually.
+        let longEasy = progress(AIDriver.make(.easy, gridIndex: 2), seconds: 90, laps: 1)
+        XCTAssertNotNil(longEasy.race.cars[0].progress.finishedAt)
+    }
+
+    func testEasyDriverActuallyTouchesGrass() {
+        // Device feedback: Easy looked too clean. Its line wander must be
+        // big enough to genuinely run wide off the ribbon now and then.
+        var race = Race(track: TrackLibrary.practiceLoop(), players: [PlayerID(0)])
+        var driver = AIDriver.make(.easy)
+        var grassTicks = 0
+        for _ in 0..<(45 * Race.tickRate) {
+            let input = driver.input(car: race.cars[0].state, track: race.track)
+            race.advance(inputs: [PlayerID(0): input])
+            if race.track.surface(at: race.cars[0].state.position) == .grass {
+                grassTicks += 1
+            }
+        }
+        XCTAssertGreaterThan(grassTicks, 30, "easy AI never ran wide onto the grass")
+    }
+
+    func testCenterlineWalkEdgeCases() {
+        let track = TrackLibrary.practiceLoop()
+        // Distances beyond a full loop wrap instead of bailing out.
+        let start = Vec2(700, 800)
+        let wrapped = track.pointAlongCenterline(
+            from: start, distance: track.centerlineLength * 10 + 100)
+        let direct = track.pointAlongCenterline(from: start, distance: 100)
+        XCTAssertLessThan(wrapped.distance(to: direct), 1e-6)
+        // A degenerate loop with no length returns its first point.
+        let dot = Track(centerline: [Vec2(5, 5), Vec2(5, 5)], width: 10, size: Vec2(10, 10))
+        XCTAssertEqual(dot.pointAlongCenterline(from: .zero, distance: 50), Vec2(5, 5))
+        // An empty centerline returns the query point.
+        let empty = Track(centerline: [], width: 10, size: Vec2(10, 10))
+        XCTAssertEqual(empty.pointAlongCenterline(from: Vec2(1, 2), distance: 50), Vec2(1, 2))
+    }
+
+    func testCenterlineWalk() {
+        let track = TrackLibrary.practiceLoop()
+        // A point on the bottom straight walks forward along +x.
+        let start = Vec2(700, 800)
+        let ahead = track.pointAlongCenterline(from: start, distance: 100)
+        XCTAssertEqual(ahead.y, 800, accuracy: 1)
+        XCTAssertEqual(ahead.x, 800, accuracy: 1)
+        // Walking a full loop length returns near the start point.
+        var perimeter = 0.0
+        for i in track.centerline.indices {
+            let a = track.centerline[i]
+            let b = track.centerline[(i + 1) % track.centerline.count]
+            perimeter += a.distance(to: b)
+        }
+        let around = track.pointAlongCenterline(from: start, distance: perimeter)
+        XCTAssertLessThan(around.distance(to: Vec2(700, 800)), 2)
+    }
+}
