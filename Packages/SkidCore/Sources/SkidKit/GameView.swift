@@ -38,6 +38,7 @@ public final class CouchGame: ObservableObject {
         didSet { aiCount = min(aiCount, 4 - playerCount) }
     }
     @Published public var aiCount = 0
+    @Published public var aiDifficulty: AIDriver.Difficulty = .medium
     @Published public private(set) var colorIndices = [0, 1, 2, 3]
     @Published public var carContact = true
     /// 2P seating: side-by-side vs face-to-face.
@@ -101,7 +102,9 @@ public final class CouchGame: ObservableObject {
             colorIndices: humanColors, scheme: rig?.scheme ?? .dpad, seating: seating)
         self.rig = rig
         aiFleet.drivers = Dictionary(
-            uniqueKeysWithValues: (0..<ai).map { (PlayerID(humans + $0), AIDriver.skill($0)) })
+            uniqueKeysWithValues: (0..<ai).map {
+                (PlayerID(humans + $0), AIDriver.make(aiDifficulty, gridIndex: $0))
+            })
         seed += 1
         session = makeSession(humans: humans, totalCars: humans + ai)
         phase = .racing
@@ -114,7 +117,7 @@ public final class CouchGame: ObservableObject {
         }
         let humans = rig.players.count
         for (offset, player) in aiFleet.drivers.keys.sorted().enumerated() {
-            aiFleet.drivers[player] = AIDriver.skill(offset)
+            aiFleet.drivers[player] = AIDriver.make(aiDifficulty, gridIndex: offset)
         }
         seed += 1
         session = makeSession(humans: humans, totalCars: humans + aiFleet.drivers.count)

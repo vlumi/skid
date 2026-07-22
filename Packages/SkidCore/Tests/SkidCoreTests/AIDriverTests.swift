@@ -33,7 +33,7 @@ final class AIDriverTests: XCTestCase {
                 players: [PlayerID(0), PlayerID(1)],
                 config: RaceConfig(laps: 2)
             )
-            var drivers = [AIDriver.skill(0), AIDriver.skill(2)]
+            var drivers = [AIDriver.make(.hard), AIDriver.make(.easy, gridIndex: 2)]
             for _ in 0..<(30 * Race.tickRate) {
                 var inputs: [PlayerID: CarInput] = [:]
                 for i in drivers.indices {
@@ -50,23 +50,32 @@ final class AIDriverTests: XCTestCase {
         XCTAssertEqual(a.1, b.1)
     }
 
-    func testSkillLadderIsOrdered() {
-        // A higher skill index must not out-drive a lower one: same start,
-        // same track, compare race progress (laps + gates) after a stretch.
-        func progress(skill: Int) -> Int {
-            var race = Race(track: TrackLibrary.practiceLoop(), players: [PlayerID(0)])
-            var driver = AIDriver.skill(skill)
-            for _ in 0..<(20 * Race.tickRate) {
-                let input = driver.input(car: race.cars[0].state, track: race.track)
+    func testDifficultiesAreOrderedAndEasyStillLaps() {
+        // Same start, same track, free running (no finish to park at):
+        // harder drivers make more progress.
+        func progress(_ driver: AIDriver, seconds: Int, laps: Int? = nil) -> (
+            score: Int, race: Race
+        ) {
+            var race = Race(
+                track: TrackLibrary.practiceLoop(), players: [PlayerID(0)],
+                config: RaceConfig(laps: laps))
+            var ai = driver
+            for _ in 0..<(seconds * Race.tickRate) {
+                let input = ai.input(car: race.cars[0].state, track: race.track)
                 race.advance(inputs: [PlayerID(0): input])
             }
             let car = race.cars[0]
-            return car.progress.lap * race.track.gates.count + car.progress.nextGate
+            return (car.progress.lap * race.track.gates.count + car.progress.nextGate, race)
         }
-        // The extremes must separate; adjacent skills may tie over a short
-        // stretch.
-        XCTAssertGreaterThanOrEqual(progress(skill: 0), progress(skill: 3))
-        XCTAssertGreaterThan(progress(skill: 0), 0)
+        let easy = progress(AIDriver.make(.easy), seconds: 40)
+        let medium = progress(AIDriver.make(.medium), seconds: 40)
+        let hard = progress(AIDriver.make(.hard), seconds: 40)
+        XCTAssertGreaterThanOrEqual(hard.score, medium.score)
+        XCTAssertGreaterThanOrEqual(medium.score, easy.score)
+        XCTAssertGreaterThan(hard.score, easy.score)
+        // And even the wobbliest easy driver finishes a lap eventually.
+        let longEasy = progress(AIDriver.make(.easy, gridIndex: 2), seconds: 90, laps: 1)
+        XCTAssertNotNil(longEasy.race.cars[0].progress.finishedAt)
     }
 
     func testCenterlineWalk() {
