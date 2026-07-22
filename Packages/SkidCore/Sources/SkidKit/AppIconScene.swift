@@ -37,15 +37,14 @@ public struct AppIconScene: View {
                 arc(radius: 1052 * s), with: .color(Color(red: 0.82, green: 0.16, blue: 0.14)),
                 style: StrokeStyle(lineWidth: 66 * s, dash: [110 * s, 110 * s]))
 
-            // The drift: two rubber arcs sweeping up the asphalt to the
-            // car's rear axle, hugging the outside of the kerb.
-            for offset in [-45.0, 45.0] {
+            // The drift: two rubber arcs CURVING WITH THE CORNER —
+            // concentric with the kerb, one per rear tire, ending exactly
+            // at the swung-out rear axle.
+            for offset in [-44.0, 44.0] {
                 var trail = Path()
-                trail.move(to: CGPoint(x: (990 + offset * 1.1) * s, y: 1065 * s))
-                trail.addQuadCurve(
-                    to: CGPoint(x: (700 + offset * 0.73) * s, y: (460 + offset * 0.73) * s),
-                    control: CGPoint(x: (740 + offset * 1.1) * s, y: (790 + offset * 0.6) * s)
-                )
+                trail.addArc(
+                    center: corner, radius: (1302 + offset) * s,
+                    startAngle: .degrees(-8), endAngle: .degrees(-41), clockwise: true)
                 context.stroke(
                     trail, with: .color(.black.opacity(0.45)),
                     style: StrokeStyle(lineWidth: 42 * s, lineCap: .round))
@@ -58,11 +57,19 @@ public struct AppIconScene: View {
             // makes it read as a drift, not a parked car.
             var car = context
             car.translateBy(x: 620 * s, y: 380 * s)
-            car.rotate(by: .degrees(-135))
+            car.rotate(by: .degrees(-152))
             car.scaleBy(x: 10.4 * s, y: 10.4 * s)
             for offset in CarGeometry.tireOffsets {
-                let tire = CGRect(x: offset.x - 4.5, y: offset.y - 3, width: 9, height: 6)
-                car.fill(Path(roundedRect: tire, cornerRadius: 2), with: .color(Color(white: 0.12)))
+                var tire = car
+                tire.translateBy(x: offset.x, y: offset.y)
+                if offset.x > 0 {
+                    // Front wheels on opposite lock — counter-steering out
+                    // of the slide.
+                    tire.rotate(by: .degrees(26))
+                }
+                tire.fill(
+                    Path(roundedRect: CGRect(x: -4.5, y: -3, width: 9, height: 6), cornerRadius: 2),
+                    with: .color(Color(white: 0.12)))
             }
             let body = CGRect(
                 x: -CarGeometry.length / 2, y: -CarGeometry.width / 4,
