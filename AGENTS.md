@@ -203,6 +203,15 @@ which quadrant stays **open**; 4P quadrants. Top-row zones' `up` flips
 (sitting across a tabletop device). Shared screens show faint zone outlines
 with a color tab on each player's home edge.
 
+**Chrome respects the zones.** On shared screens, each player's HUD chip
+sits in their own zone's home corner, rotated to face them; the countdown
+mirrors for flipped players. Meta actions (scheme, reset, exit) never float
+over someone's thumb area — during a race there is exactly one small
+**pause** button on the zone seam (screen center, over the infield), and
+everything else lives in the pause menu behind it (pausing freezes the sim
+and the clock). System edge swipes are deferred (`defersSystemGestures`) so
+a thumb at the screen edge doesn't summon Control Center mid-corner.
+
 One-thumb (one touch per player → 4 players fit even on an iPhone's ~5-touch
 limit; iPad ~11):
 

@@ -26,6 +26,8 @@ public final class GameSession: ObservableObject {
     public let players: [PlayerID]
     /// The PB ghost running alongside, if any (time trial).
     public let ghost: GhostPlayback?
+    /// Frozen: the sim doesn't advance and the clock doesn't accumulate.
+    public var paused = false
     private let inputFor: (PlayerID, Race) -> CarInput
 
     private var lastTime: TimeInterval?
@@ -52,6 +54,11 @@ public final class GameSession: ObservableObject {
 
     /// Advance sim time to `time` (a `TimelineView` timestamp, seconds).
     public func advance(to time: TimeInterval) {
+        if paused {
+            // Keep the wall clock anchored so resuming doesn't owe ticks.
+            lastTime = time
+            return
+        }
         guard let last = lastTime else {
             lastTime = time
             return
