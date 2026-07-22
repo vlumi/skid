@@ -51,9 +51,12 @@ public final class CouchGame: ObservableObject {
     @Published public private(set) var session: GameSession?
     public private(set) var rig: CouchRig?
     public private(set) var hiscores: HiscoreBook
+    public let settings = GameSettings()
 
     private let hiscoreFile = HiscoreFile()
     private let aiFleet = AIFleet()
+    private let sound = SoundEngine()
+    private let haptics = Haptics()
     private var aiColorIndices: [Int] = []
     private var seed: UInt64 = 1
     private var notedLapCount = 0
@@ -132,7 +135,24 @@ public final class CouchGame: ObservableObject {
         phase = .setup
         session = nil
         rig = nil
+        sound.stop()
     }
+
+    /// Called every frame by the race screen: audio lifecycle follows the
+    /// toggles, and a paused race falls silent instead of droning.
+    public func audioFrame() {
+        guard let session else { return }
+        guard settings.soundOn, phase == .racing else {
+            sound.stop()
+            return
+        }
+        sound.start()
+        if session.paused || session.race.phase == .finished {
+            sound.update(race: session.race, humanCount: humanCount, paused: true)
+        }
+    }
+
+    private var humanCount: Int { rig?.players.count ?? 1 }
 
     private func makeSession(humans: Int, totalCars: Int) -> GameSession {
         let players = (0..<totalCars).map { PlayerID($0) }
@@ -164,9 +184,19 @@ public final class CouchGame: ObservableObject {
             }
             return fleet.input(for: player, in: race)
         }
-        return GameSession(
+        let session = GameSession(
             track: track, players: players, config: config, seed: seed, ghost: ghost,
             inputFor: inputFor)
+        session.onTick = { [weak self] race in
+            guard let self else { return }
+            if self.settings.soundOn {
+                self.sound.update(race: race, humanCount: humans, paused: false)
+            }
+            if self.settings.hapticsOn {
+                self.haptics.play(events: race.lastEvents, humanCount: humans)
+            }
+        }
+        return session
     }
 
     /// Called every frame by the race screen: fold the (single) human's
