@@ -15,6 +15,15 @@ user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Sound**, all synthesized live (no audio files, like the graphics):
+  an engine note that climbs with your speed, tire noise when you slide,
+  and thumps when you hit walls or each other. Respects the silent
+  switch and mixes politely with your own music.
+- **Haptics**: taps for impacts (harder hit, harder tap) and a success
+  buzz when you take the flag.
+- Sound and haptics toggles in the pause menu, remembered across
+  launches.
+
 - **Overpass** — the figure-eight, and the two-layer system it rides on:
   yellow-striped ramps lift you onto a **bridge** over the crossing (with
   its own checkpoint — the overpass must be driven, not dodged), stray
