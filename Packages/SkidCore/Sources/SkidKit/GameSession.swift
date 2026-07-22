@@ -3,47 +3,46 @@ import SkidCore
 
 /// Drives the deterministic sim from render-loop time: accumulates elapsed
 /// wall time and steps the race at its fixed timestep, however many ticks a
-/// frame owes. Rendering reads the latest state; input comes from whatever
-/// `ControlSource` was injected — the sim never knows which.
+/// frame owes. Rendering reads the latest state; per-player input comes
+/// from the injected provider — the sim never knows which scheme or finger
+/// produced it.
+///
+/// One session = one race. "Race again" builds a fresh session (new seed),
+/// so recording/marks/timing state can never leak between runs.
 ///
 /// Deliberately no `@Published`: the game view redraws every frame via
 /// `TimelineView(.animation)` anyway, and publishing per-frame sim state
 /// would mutate observable state mid-view-update.
 @MainActor
 public final class GameSession: ObservableObject {
-    /// A three-lap race with a three-second countdown.
-    static let raceConfig = RaceConfig(laps: 3, countdownTicks: 3 * Race.tickRate)
-
     public private(set) var race: Race
     public private(set) var marks = MarkStore()
-    /// Where each gate paints its checkpoint line on the road (nil = the
-    /// gate never touches the ribbon). Static per track; computed once.
-    public let gateSpans: [(a: Vec2, b: Vec2)?]
     /// The whole run as seed + inputs — replay/ghost currency, recorded
     /// from the first lap-capable build because it can't be retrofitted.
     public private(set) var recording: RaceRecording
+    /// Where each gate paints its checkpoint line on the road.
+    public let gateSpans: [(a: Vec2, b: Vec2)?]
 
-    public let player = PlayerID(0)
-    /// Swappable in-run — the A/B seam.
-    public var controlSource: ControlSource
+    public let players: [PlayerID]
+    private let inputFor: (PlayerID, Tick) -> CarInput
 
     private var lastTime: TimeInterval?
     private var accumulator: TimeInterval = 0
-    private var seed: UInt64 = 1
     /// Don't spiral after a long pause (backgrounding, debugger): cap the
     /// ticks owed by any single frame.
     private static let maxTicksPerFrame = 12
 
-    public init(controlSource: ControlSource) {
-        self.controlSource = controlSource
+    public init(
+        players: [PlayerID],
+        config: RaceConfig,
+        seed: UInt64,
+        inputFor: @escaping (PlayerID, Tick) -> CarInput
+    ) {
         let track = TrackLibrary.practiceLoop()
-        self.race = Race(
-            track: track,
-            players: [PlayerID(0)],
-            seed: 1,
-            config: Self.raceConfig
-        )
-        self.recording = RaceRecording(seed: 1, players: [PlayerID(0)])
+        self.players = players
+        self.inputFor = inputFor
+        self.race = Race(track: track, players: players, seed: seed, config: config)
+        self.recording = RaceRecording(seed: seed, players: players)
         self.gateSpans = track.gates.map { track.ribbonSpan(of: $0) }
     }
 
@@ -58,8 +57,10 @@ public final class GameSession: ObservableObject {
 
         var ticks = 0
         while accumulator >= Race.dt, ticks < Self.maxTicksPerFrame {
-            let input = controlSource.input(for: player, at: race.tick)
-            let inputs = [player: input]
+            var inputs: [PlayerID: CarInput] = [:]
+            for player in players {
+                inputs[player] = inputFor(player, race.tick)
+            }
             recording.append(inputs)
             race.advance(inputs: inputs)
             for car in race.cars {
@@ -71,17 +72,6 @@ public final class GameSession: ObservableObject {
         if ticks == Self.maxTicksPerFrame {
             accumulator = 0
         }
-    }
-
-    public func reset() {
-        seed += 1
-        race = Race(
-            track: race.track, players: [player], seed: seed, config: Self.raceConfig
-        )
-        recording = RaceRecording(seed: seed, players: [player])
-        marks.reset()
-        accumulator = 0
-        lastTime = nil
     }
 }
 

@@ -7,10 +7,15 @@ public struct RaceConfig: Equatable, Sendable, Codable {
     public var laps: Int?
     /// Ticks of start countdown, during which cars are held on the grid.
     public var countdownTicks: Int
+    /// Car contact is a race option, not a constant: `true` = cars collide
+    /// and bump (derby flavour); `false` = ghost racing, cars pass through
+    /// each other (pure speed). Walls and surfaces behave the same in both.
+    public var carContact: Bool
 
-    public init(laps: Int? = nil, countdownTicks: Int = 0) {
+    public init(laps: Int? = nil, countdownTicks: Int = 0, carContact: Bool = true) {
         self.laps = laps
         self.countdownTicks = countdownTicks
+        self.carContact = carContact
     }
 }
 
@@ -64,7 +69,8 @@ public struct Race: Equatable, Sendable {
     public let config: RaceConfig
     public var tuning: CarTuning
     public private(set) var tick: Tick
-    public private(set) var cars: [Car]
+    /// Setter internal so tests can stage scenarios (@testable).
+    public internal(set) var cars: [Car]
     /// Seeded, injected randomness — unused by the core physics, but any
     /// future random effect must draw from here to stay reproducible.
     public private(set) var rng: SeededRNG
@@ -109,19 +115,53 @@ public struct Race: Equatable, Sendable {
                 cars[i].progress.lapStartTick = tick
             }
         }
+        var origins = [Vec2](repeating: .zero, count: cars.count)
         for i in cars.indices {
             var car = cars[i]
-            let from = car.state.position
+            origins[i] = car.state.position
             let locked = held || car.progress.finishedAt != nil
             var state = car.state
             step(car: &state, input: locked ? .coast : (inputs[car.id] ?? .coast))
             car.state = state
-            if !held {
-                updateProgress(car: &car, movedFrom: from)
-            }
             cars[i] = car
         }
+        if config.carContact, !held {
+            collideCars()
+        }
+        if !held {
+            for i in cars.indices {
+                var car = cars[i]
+                updateProgress(car: &car, movedFrom: origins[i])
+                cars[i] = car
+            }
+        }
         tick += 1
+    }
+
+    /// Car–car contact: equal-mass circles push apart and exchange the
+    /// closing velocity component with restitution. Pairs resolve in index
+    /// order — deterministic like everything else.
+    private mutating func collideCars() {
+        guard cars.count > 1 else { return }
+        for i in 0..<(cars.count - 1) {
+            for j in (i + 1)..<cars.count {
+                guard cars[i].state.layer == cars[j].state.layer else { continue }
+                let offset = cars[j].state.position - cars[i].state.position
+                let dist = offset.length
+                let minDist = CarGeometry.radius * 2
+                guard dist < minDist, dist > 0 else { continue }
+                let normal = offset.normalized
+                let push = normal * ((minDist - dist) / 2)
+                cars[i].state.position -= push
+                cars[j].state.position += push
+                let closing = (cars[j].state.velocity - cars[i].state.velocity).dot(normal)
+                if closing < 0 {
+                    let impulse = normal * (-(1 + tuning.carRestitution) * closing / 2)
+                    cars[i].state.velocity -= impulse
+                    cars[j].state.velocity += impulse
+                }
+            }
+        }
     }
 
     private func updateProgress(car: inout Car, movedFrom from: Vec2) {
