@@ -33,10 +33,10 @@ struct RaceScreen: View {
                         var world = context
                         TrackRenderer.draw(scene: scene, into: &world, size: size)
                         for zone in zones {
-                            TrackRenderer.drawZone(zone, into: &context)
+                            OverlayRenderer.drawZone(zone, into: &context)
                         }
                         for pad in pads {
-                            TrackRenderer.drawDPad(pad, into: &context)
+                            OverlayRenderer.drawDPad(pad, into: &context)
                         }
                     }
                     InputSurface(rig: rig)

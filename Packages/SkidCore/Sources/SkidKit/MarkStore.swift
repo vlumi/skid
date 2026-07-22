@@ -62,6 +62,12 @@ public struct MarkStore {
     public mutating func record(car: Car, on track: Track, tick: Tick) {
         guard tick % Self.recordEvery == 0 else { return }
         let state = car.state
+        // Marks live on the ground layer only: nothing prints from the
+        // bridge (it would draw under it) or from mid-air.
+        guard state.layer == 0, !state.isAirborne else {
+            lastTirePositions[car.id] = nil
+            return
+        }
         let tires = state.tirePositions
         defer { lastTirePositions[car.id] = tires }
         guard let previous = lastTirePositions[car.id], previous.count == tires.count else {

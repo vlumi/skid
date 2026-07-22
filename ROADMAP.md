@@ -98,13 +98,19 @@ the plan B).
 - [x] A small track set in the classic style (chicanes, a hairpin, hazard
       placement as track design); track picker (crossings arrive with the
       two-layer item below)
-- [ ] Two-layer tracks live: bridges/tunnels as layered crossings, ramps
-      switching layers, jumps (airborne = ballistic) — the seam designed in
-      at v0.1; occluded cars stay visible (local transparency or ghost
-      bubble, per AGENTS.md)
+- [x] Two-layer tracks live: bridges as layered crossings (Overpass
+      figure-8), ramps switching layers, jumps (airborne = ballistic,
+      launching ramps ready for a jump track), bridge fall-off; occluded
+      cars stay visible (ghost bubble, per AGENTS.md)
 - [ ] Scheme A/B verdict: pick defaults, keep the winners, cut the losers
 - [ ] Sound + haptics: engine pitch, slides, collisions
 - [ ] Minimal menus/settings — only what a couch session needs
+- [ ] **Release lane** (pulled forward from v1.0): `make release` —
+      lock-step version/build bump, archive, TestFlight upload — plus
+      `RELEASING.md`; **v0.5 ends with a TestFlight build**
+- [ ] **App icon** (pulled forward from v1.0): generated from the game's
+      own drawing code (`make icon`) — a drift scene, no image assets
+      authored by hand
 
 ## v0.6.0 — Mac & physical controls
 
@@ -123,12 +129,12 @@ the plan B).
 
 ## v1.0.0 — The store release
 
-- [ ] App name decided (with search), icon from the game's own drawing code
+- [ ] App name decided (with search); icon polish pass (light/dark/tinted
+      variants — the base icon ships with v0.5)
 - [ ] One ASC record (Universal Purchase), listing text + screenshots,
       privacy questionnaire (nothing collected)
-- [ ] Release lane (versioning lock-step, archive + upload) and
-      `RELEASING.md`
-- [ ] Submit, await review, release
+- [ ] Submit, await review, release (release lane already live since
+      v0.5)
 
 ## Backlog (unversioned)
 

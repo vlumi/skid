@@ -106,7 +106,8 @@ public struct AIDriver: Equatable, Sendable, Codable {
         // shifted sideways by the slow line-wander, so weaker drivers
         // confidently follow a wrong line and run wide instead of merely
         // twitching on the right one.
-        let lineTarget = track.pointAlongCenterline(from: car.position, distance: lookahead)
+        let lineTarget = track.pointAlongCenterline(
+            from: car.position, distance: lookahead, preferLayer: car.layer)
         let wander = lineWander * sin(Double(age) * 0.011 + phase)
         let target = lineTarget + (lineTarget - car.position).normalized.perpendicular * wander
         let toTarget = target - car.position
@@ -122,7 +123,8 @@ public struct AIDriver: Equatable, Sendable, Codable {
         // Lift for corners: compare the near line direction with the line
         // direction further ahead; the more they disagree, the harder the
         // driver breathes. Badly misaligned (spun, recovering) → crawl.
-        let ahead = track.pointAlongCenterline(from: car.position, distance: lookahead * 2.5)
+        let ahead = track.pointAlongCenterline(
+            from: car.position, distance: lookahead * 2.5, preferLayer: car.layer)
         let nearDirection = toTarget.normalized
         let farDirection = (ahead - target).normalized
         let turniness = 1 - nearDirection.dot(farDirection)  // 0 straight … 2 U-turn
