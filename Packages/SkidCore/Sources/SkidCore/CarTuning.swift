@@ -18,6 +18,8 @@ public struct CarTuning: Equatable, Sendable, Codable {
     public var wallRestitution: Double
     /// Bounciness of car–car contact, 0…1.
     public var carRestitution: Double
+    /// Flight ticks per unit of speed off a launching ramp (capped at 1 s).
+    public var jumpTicksPerSpeed: Double
 
     public init(
         engineAccel: Double = 320,
@@ -27,7 +29,8 @@ public struct CarTuning: Equatable, Sendable, Codable {
         turnRate: Double = 3.4,
         steerFullSpeed: Double = 120,
         wallRestitution: Double = 0.45,
-        carRestitution: Double = 0.4
+        carRestitution: Double = 0.4,
+        jumpTicksPerSpeed: Double = 0.055
     ) {
         self.engineAccel = engineAccel
         self.brakeAccel = brakeAccel
@@ -37,5 +40,6 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.steerFullSpeed = steerFullSpeed
         self.wallRestitution = wallRestitution
         self.carRestitution = carRestitution
+        self.jumpTicksPerSpeed = jumpTicksPerSpeed
     }
 }

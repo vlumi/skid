@@ -107,17 +107,23 @@ carries a current layer, and `surface(at:)` and collision are asked per-layer
 then just overlapping segments on different layers; short **ramps** switch
 the car's layer; a ramp taken fast enough becomes a **jump** — a brief
 airborne ballistic state (no grip, no steering, no surface drag) until
-landing. None of this is built early: the only thing v0.1 must get right is
-that layer is a *field in the data model*, not a later refactor of a
-hardcoded-flat world. Full vertical loops are a backlog curiosity, not
-designed for.
+landing. **Implemented (v0.5)**: centerline segments carry layers
+(`elevatedSegments`), `Ramp` lines switch the car's layer (crossed forward
+= up, backward = down; `launches` throws the car ballistic, flight scaled
+by speed — `CarTuning.jumpTicksPerSpeed`), and a grounded elevated car that
+strays off its ribbon **falls off the bridge** (short drop, back to
+ground). Airborne = no steering/throttle/grip/drag until landing; airborne
+cars don't collide. Gates and the AI's line anchor are layer-aware. Full
+vertical loops remain a backlog curiosity, not designed for.
 
-Rendering rule for whenever layers do land: **a car is never invisible.**
-Upper-layer geometry that covers a car on the layer below goes locally
-semi-transparent — or, at minimum, the hidden car shows through as a
-semi-transparent bubble/ghost tracking its position — so a player under a
-bridge or in a tunnel never loses their car. (A loop's top section would get
-the same treatment.) Pure rendering; the sim knows nothing of it.
+Rendering rule: **a car is never invisible.** Implemented as the bubble
+variant: a car under the bridge shows through as a semi-transparent bubble
+in its color tracking its position. Bridges draw with a drop shadow
+(trimmed clear of the ramp mouths) and a lighter, butt-capped deck; ramps
+render as **gradient slope wedges** (road-gray climbing to deck-gray,
+retaining-wall edges, chevrons along the driving direction); airborne cars
+draw scaled up with a ground shadow; marks only ever print on the ground
+layer. Pure rendering; the sim knows nothing of it.
 
 ### Marks on the ground (cheap, high-value feedback)
 

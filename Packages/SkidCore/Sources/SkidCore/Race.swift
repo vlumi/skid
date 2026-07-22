@@ -131,11 +131,47 @@ public struct Race: Equatable, Sendable {
         if !held {
             for i in cars.indices {
                 var car = cars[i]
+                applyRamps(car: &car, movedFrom: origins[i])
                 updateProgress(car: &car, movedFrom: origins[i])
                 cars[i] = car
             }
         }
         tick += 1
+    }
+
+    /// Ramp lines switch layers; launching ramps also throw the car into a
+    /// brief ballistic flight scaled by its speed. Driving back through a
+    /// ramp backward takes the car down again. A grounded elevated car
+    /// that strays off its ribbon falls back to the ground layer.
+    private func applyRamps(car: inout Car, movedFrom from: Vec2) {
+        guard !car.state.isAirborne else { return }
+        var flippedThisTick = false
+        for ramp in track.ramps {
+            switch ramp.crossing(movingFrom: from, to: car.state.position) {
+            case 1 where car.state.layer == ramp.fromLayer:
+                car.state.layer = ramp.toLayer
+                flippedThisTick = true
+                if ramp.launches {
+                    let flight = Int(car.state.velocity.length * tuning.jumpTicksPerSpeed)
+                    car.state.airborneTicks = min(60, flight)
+                }
+            case -1 where car.state.layer == ramp.toLayer:
+                car.state.layer = ramp.fromLayer
+                flippedThisTick = true
+            default:
+                break
+            }
+        }
+        // Never fall off on the very tick a ramp flipped the layer — the
+        // car is at the deck's edge by definition there.
+        if !flippedThisTick, car.state.layer > 0,
+            track.distanceToCenterline(car.state.position, layer: car.state.layer)
+                > track.width / 2 + 6
+        {
+            // Off the edge of the bridge: a short drop back to the ground.
+            car.state.layer = 0
+            car.state.airborneTicks = 8
+        }
     }
 
     /// Car–car contact: equal-mass circles push apart and exchange the
@@ -145,7 +181,9 @@ public struct Race: Equatable, Sendable {
         guard cars.count > 1 else { return }
         for i in 0..<(cars.count - 1) {
             for j in (i + 1)..<cars.count {
-                guard cars[i].state.layer == cars[j].state.layer else { continue }
+                guard cars[i].state.layer == cars[j].state.layer,
+                    !cars[i].state.isAirborne, !cars[j].state.isAirborne
+                else { continue }
                 let offset = cars[j].state.position - cars[i].state.position
                 let dist = offset.length
                 let minDist = CarGeometry.radius * 2
@@ -184,6 +222,14 @@ public struct Race: Equatable, Sendable {
 
     private func step(car: inout CarState, input: CarInput) {
         let dt = Race.dt
+        if car.isAirborne {
+            // Ballistic: no steering, no throttle, no grip, no drag — the
+            // car flies straight until it lands.
+            car.airborneTicks -= 1
+            car.position += car.velocity * dt
+            collideWithWalls(car: &car)
+            return
+        }
         let surface = track.surface(at: car.position, layer: car.layer)
 
         // Steering: yaw follows steer, scaled up to full effect at
