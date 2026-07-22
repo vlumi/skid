@@ -144,13 +144,26 @@ public struct Track: Equatable, Sendable, Codable {
         return best
     }
 
+    /// Total length of the centerline loop.
+    public var centerlineLength: Double {
+        var total = 0.0
+        for i in centerline.indices {
+            total += centerline[i].distance(to: centerline[(i + 1) % centerline.count])
+        }
+        return total
+    }
+
     /// Walk `distance` units forward along the centerline loop, starting
-    /// from the point nearest `p` — the AI's lookahead target. Zero-length
-    /// segments (arc/straight joints share endpoints) are skipped.
+    /// from the point nearest `p` — the AI's lookahead target. Distances
+    /// beyond a full loop wrap; zero-length segments (arc/straight joints
+    /// share endpoints) are skipped. Degenerate loops (no length at all)
+    /// return their first point.
     public func pointAlongCenterline(from p: Vec2, distance: Double) -> Vec2 {
         guard !centerline.isEmpty else { return p }
+        let perimeter = centerlineLength
+        guard perimeter > 0 else { return centerline[0] }
         var (segment, t) = closestCenterlinePoint(to: p)
-        var remaining = distance
+        var remaining = distance.truncatingRemainder(dividingBy: perimeter)
         for _ in 0..<(centerline.count * 2 + 2) {
             let a = centerline[segment]
             let b = centerline[(segment + 1) % centerline.count]
@@ -165,6 +178,8 @@ public struct Track: Equatable, Sendable, Codable {
             segment = (segment + 1) % centerline.count
             t = 0
         }
+        // Defensive only: `remaining < perimeter` guarantees an in-loop
+        // return; degenerate loops exited at the guard above.
         return centerline[segment]
     }
 

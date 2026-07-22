@@ -94,6 +94,22 @@ final class AIDriverTests: XCTestCase {
         XCTAssertGreaterThan(grassTicks, 30, "easy AI never ran wide onto the grass")
     }
 
+    func testCenterlineWalkEdgeCases() {
+        let track = TrackLibrary.practiceLoop()
+        // Distances beyond a full loop wrap instead of bailing out.
+        let start = Vec2(700, 800)
+        let wrapped = track.pointAlongCenterline(
+            from: start, distance: track.centerlineLength * 10 + 100)
+        let direct = track.pointAlongCenterline(from: start, distance: 100)
+        XCTAssertLessThan(wrapped.distance(to: direct), 1e-6)
+        // A degenerate loop with no length returns its first point.
+        let dot = Track(centerline: [Vec2(5, 5), Vec2(5, 5)], width: 10, size: Vec2(10, 10))
+        XCTAssertEqual(dot.pointAlongCenterline(from: .zero, distance: 50), Vec2(5, 5))
+        // An empty centerline returns the query point.
+        let empty = Track(centerline: [], width: 10, size: Vec2(10, 10))
+        XCTAssertEqual(empty.pointAlongCenterline(from: Vec2(1, 2), distance: 50), Vec2(1, 2))
+    }
+
     func testCenterlineWalk() {
         let track = TrackLibrary.practiceLoop()
         // A point on the bottom straight walks forward along +x.
