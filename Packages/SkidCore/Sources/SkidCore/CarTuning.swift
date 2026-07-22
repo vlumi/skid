@@ -14,6 +14,12 @@ public struct CarTuning: Equatable, Sendable, Codable {
     /// Forward speed at which steering reaches full effectiveness — below
     /// it, steering scales down so a parked car can't spin in place.
     public var steerFullSpeed: Double
+    /// How fast the steering actuator chases the raw input, in units of
+    /// full-deflection per second. It smooths the input (a twitch no longer
+    /// snaps the nose) without lowering the ceiling: full lock is still
+    /// reached in ~1/steerRate seconds. Agility-neutral, so `scaled(pace:)`
+    /// leaves it alone.
+    public var steerRate: Double
     /// Velocity kept along the wall normal after a bounce, 0…1.
     public var wallRestitution: Double
     /// Bounciness of car–car contact, 0…1.
@@ -28,6 +34,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         reverseMaxSpeed: Double = 140,
         turnRate: Double = 3.4,
         steerFullSpeed: Double = 120,
+        steerRate: Double = 9,
         wallRestitution: Double = 0.45,
         carRestitution: Double = 0.4,
         jumpTicksPerSpeed: Double = 0.055
@@ -38,6 +45,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.reverseMaxSpeed = reverseMaxSpeed
         self.turnRate = turnRate
         self.steerFullSpeed = steerFullSpeed
+        self.steerRate = steerRate
         self.wallRestitution = wallRestitution
         self.carRestitution = carRestitution
         self.jumpTicksPerSpeed = jumpTicksPerSpeed

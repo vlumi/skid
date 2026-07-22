@@ -55,7 +55,8 @@ public enum TrackLibrary {
             patches: patches(),
             startSlots: startSlots(),
             startHeading: 0,
-            size: worldSize
+            size: worldSize,
+            pit: Vec2(800, 550)  // infield center, clear of the loop
         )
     }
 

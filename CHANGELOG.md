@@ -16,6 +16,28 @@ heading is hand-set when a milestone ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Friendlier controls, same skill ceiling**: the wheel now eases toward
+  your thumb instead of snapping, so a twitch no longer jerks the nose —
+  full lock is still just as quick to reach. Analog steering with a gentle
+  response curve is the new default (the on-thumb favourite); the Tuning
+  panel still lets you dial it back.
+- **A heading dart** ahead of each car's nose, in its colour, so you can
+  see where you're actually pointing mid-drift — when the car is sliding
+  sideways, the nose and the travel direction part ways.
+- **Overpass, less brutal up top**: the bridge deck now has retaining
+  rails down its middle (only up on the deck — the road underneath passes
+  clean through), so reaching the mid-bridge checkpoint isn't a tightrope.
+  The ramp walls line up with the deck edge and no longer jut into the
+  road running beneath, and you can't clip onto the deck from the wrong
+  side any more.
+- **Hairpin actually has to be driven**: its apex checkpoint sits across
+  the tip now, so cutting straight across the neck to the return lane no
+  longer counts — you have to round the far end.
+- **The pause button has a home**: every track now has a "pit" — an
+  infield spot near the start/finish — and the pause button lives there,
+  always off the racing line instead of pinned to screen-centre (where it
+  sometimes sat right on the road).
+
 ### v0.1.0 build 2 — 2026-07-22
 
 - A **Tuning** panel in the pause menu, for finding the feel on real
