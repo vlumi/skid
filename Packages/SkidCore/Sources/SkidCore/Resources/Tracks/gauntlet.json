@@ -1,0 +1,227 @@
+{
+  "design" : {
+    "extraWalls" : [
+
+    ],
+    "gates" : [
+      {
+        "node" : 6,
+        "span" : {
+          "corridor" : {
+            "reach" : 150
+          }
+        },
+        "t" : 0.5
+      },
+      {
+        "node" : 9,
+        "span" : {
+          "corridor" : {
+            "reach" : 150
+          }
+        },
+        "t" : 0.5
+      },
+      {
+        "node" : 12,
+        "span" : {
+          "corridor" : {
+            "reach" : 150
+          }
+        },
+        "t" : 0.5
+      },
+      {
+        "node" : 5,
+        "span" : {
+          "corridor" : {
+            "reach" : 150
+          }
+        },
+        "t" : 0.4626865671641791
+      }
+    ],
+    "grid" : {
+      "back" : 70,
+      "gap" : 50,
+      "lateral" : 28
+    },
+    "hazards" : [
+      {
+        "center" : {
+          "x" : 590,
+          "y" : 230
+        },
+        "layer" : 0,
+        "radius" : 32,
+        "surface" : {
+          "oil" : {
+
+          }
+        }
+      },
+      {
+        "center" : {
+          "x" : 580,
+          "y" : 740
+        },
+        "layer" : 0,
+        "radius" : 48,
+        "surface" : {
+          "mud" : {
+
+          }
+        }
+      },
+      {
+        "center" : {
+          "x" : 1336,
+          "y" : 370
+        },
+        "layer" : 0,
+        "radius" : 44,
+        "surface" : {
+          "water" : {
+
+          }
+        }
+      }
+    ],
+    "id" : "gauntlet",
+    "name" : "Gauntlet",
+    "nodes" : [
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 1,
+        "kerb" : false,
+        "position" : {
+          "x" : 240,
+          "y" : 800
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 45,
+        "id" : 2,
+        "kerb" : false,
+        "position" : {
+          "x" : 470,
+          "y" : 800
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 40,
+        "id" : 3,
+        "kerb" : false,
+        "position" : {
+          "x" : 540,
+          "y" : 672
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 40,
+        "id" : 4,
+        "kerb" : false,
+        "position" : {
+          "x" : 620,
+          "y" : 672
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 45,
+        "id" : 5,
+        "kerb" : false,
+        "position" : {
+          "x" : 690,
+          "y" : 800
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 6,
+        "kerb" : false,
+        "position" : {
+          "x" : 1360,
+          "y" : 800
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 7,
+        "kerb" : false,
+        "position" : {
+          "x" : 1360,
+          "y" : 200
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 55,
+        "id" : 8,
+        "kerb" : false,
+        "position" : {
+          "x" : 990,
+          "y" : 200
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 45,
+        "id" : 9,
+        "kerb" : false,
+        "position" : {
+          "x" : 860,
+          "y" : 330
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 45,
+        "id" : 10,
+        "kerb" : false,
+        "position" : {
+          "x" : 740,
+          "y" : 330
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 55,
+        "id" : 11,
+        "kerb" : false,
+        "position" : {
+          "x" : 610,
+          "y" : 200
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 12,
+        "kerb" : false,
+        "position" : {
+          "x" : 240,
+          "y" : 200
+        }
+      }
+    ],
+    "pit" : {
+      "x" : 800,
+      "y" : 550
+    },
+    "revision" : 1,
+    "size" : {
+      "x" : 1600,
+      "y" : 1000
+    },
+    "theme" : "grass",
+    "width" : 112
+  },
+  "version" : 1
+}

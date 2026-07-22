@@ -1,0 +1,187 @@
+{
+  "design" : {
+    "extraWalls" : [
+
+    ],
+    "gates" : [
+      {
+        "node" : 2,
+        "span" : {
+          "corridor" : {
+            "reach" : 150
+          }
+        },
+        "t" : 0.5
+      },
+      {
+        "node" : 5,
+        "span" : {
+          "corridor" : {
+            "reach" : 150
+          }
+        },
+        "t" : 0.5
+      },
+      {
+        "node" : 8,
+        "span" : {
+          "corridor" : {
+            "reach" : 150
+          }
+        },
+        "t" : 0.5
+      },
+      {
+        "node" : 1,
+        "span" : {
+          "corridor" : {
+            "reach" : 150
+          }
+        },
+        "t" : 0.5
+      }
+    ],
+    "grid" : {
+      "back" : 70,
+      "gap" : 50,
+      "lateral" : 28
+    },
+    "hazards" : [
+      {
+        "center" : {
+          "x" : 1340,
+          "y" : 590
+        },
+        "layer" : 0,
+        "radius" : 34,
+        "surface" : {
+          "oil" : {
+
+          }
+        }
+      },
+      {
+        "center" : {
+          "x" : 500,
+          "y" : 748
+        },
+        "layer" : 0,
+        "radius" : 55,
+        "surface" : {
+          "mud" : {
+
+          }
+        }
+      },
+      {
+        "center" : {
+          "x" : 1120,
+          "y" : 244
+        },
+        "layer" : 0,
+        "radius" : 48,
+        "surface" : {
+          "water" : {
+
+          }
+        }
+      }
+    ],
+    "id" : "practice-loop",
+    "name" : "Practice",
+    "nodes" : [
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 1,
+        "kerb" : false,
+        "position" : {
+          "x" : 240,
+          "y" : 800
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 2,
+        "kerb" : false,
+        "position" : {
+          "x" : 1360,
+          "y" : 800
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 3,
+        "kerb" : false,
+        "position" : {
+          "x" : 1360,
+          "y" : 200
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 55,
+        "id" : 4,
+        "kerb" : false,
+        "position" : {
+          "x" : 990,
+          "y" : 200
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 45,
+        "id" : 5,
+        "kerb" : false,
+        "position" : {
+          "x" : 860,
+          "y" : 330
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 45,
+        "id" : 6,
+        "kerb" : false,
+        "position" : {
+          "x" : 740,
+          "y" : 330
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 55,
+        "id" : 7,
+        "kerb" : false,
+        "position" : {
+          "x" : 610,
+          "y" : 200
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 8,
+        "kerb" : false,
+        "position" : {
+          "x" : 240,
+          "y" : 200
+        }
+      }
+    ],
+    "pit" : {
+      "x" : 800,
+      "y" : 550
+    },
+    "revision" : 1,
+    "size" : {
+      "x" : 1600,
+      "y" : 1000
+    },
+    "theme" : "grass",
+    "width" : 130
+  },
+  "version" : 1
+}
