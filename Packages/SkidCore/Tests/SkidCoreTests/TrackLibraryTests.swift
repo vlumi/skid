@@ -37,6 +37,10 @@ final class TrackLibraryTests: XCTestCase {
                     "\(track.id): hazard nowhere near the racing line"
                 )
             }
+            // The pit (pause-button anchor) must be clear of the racing line.
+            XCTAssertGreaterThan(
+                track.distanceToCenterline(track.pit), track.width / 2,
+                "\(track.id): pit sits on the ribbon")
             // Driving forward from pole crosses the start/finish gate.
             let pole = track.startSlots[0]
             let ahead = pole + Vec2(angle: track.startHeading) * 400

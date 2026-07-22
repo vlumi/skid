@@ -48,10 +48,12 @@ public final class GameSettings: ObservableObject {
     // D-pad feel (applied live, every frame).
     @AppStorage("skid.dpad.deadzone") public var dpadDeadzone = 10.0
     @AppStorage("skid.dpad.travel") public var dpadTravel = 48.0
-    /// Steps per axis; 0 = fully analog.
-    @AppStorage("skid.dpad.steps") public var dpadSteps = 3
-    /// Response curve; 1 = linear, higher = softer near center.
-    @AppStorage("skid.dpad.expo") public var dpadExpo = 1.0
+    /// Steps per axis; 0 = fully analog. Analog is the default — on-device
+    /// feel testing found it the most natural.
+    @AppStorage("skid.dpad.steps") public var dpadSteps = 0
+    /// Response curve; 1 = linear, higher = softer near center. A gentle
+    /// curve is the default so small corrections stay small.
+    @AppStorage("skid.dpad.expo") public var dpadExpo = 1.4
 
     /// Game pace for learning: scales acceleration + speed caps (agility
     /// stays). Applies on the next race (Reset). Hiscores only record at
