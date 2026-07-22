@@ -95,8 +95,9 @@ the plan B).
 
 ## v0.5.0 — Content & polish
 
-- [ ] A small track set in the classic style (crossings, chicanes, hazard
-      placement as track design); track picker
+- [x] A small track set in the classic style (chicanes, a hairpin, hazard
+      placement as track design); track picker (crossings arrive with the
+      two-layer item below)
 - [ ] Two-layer tracks live: bridges/tunnels as layered crossings, ramps
       switching layers, jumps (airborne = ballistic) — the seam designed in
       at v0.1; occluded cars stay visible (local transparency or ghost
