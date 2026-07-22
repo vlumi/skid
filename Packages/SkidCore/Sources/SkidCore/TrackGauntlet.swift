@@ -45,7 +45,8 @@ extension TrackLibrary {
                 Vec2(930 - Double(i) * 50, bottom + (i % 2 == 0 ? -28 : 28))
             },
             startHeading: 0,
-            size: size
+            size: size,
+            pit: Vec2(800, 550)  // infield center, clear of both straights
         )
     }
 

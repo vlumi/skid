@@ -43,10 +43,12 @@ struct RaceScreen: View {
                     RaceHUD(race: race, colors: colors, rig: rig, size: geo.size)
 
                     // Meta controls live OUT of everyone's way: one small
-                    // pause toggle on the zone seam, over the infield —
-                    // never a Reset under someone's racing thumb.
+                    // pause toggle parked on genuine infield/grass (never on
+                    // the racing line, which the old fixed screen-center did
+                    // on tracks whose ribbon runs through the middle) — never
+                    // a Reset under someone's racing thumb.
                     if race.phase != .finished, !session.paused {
-                        pauseButton(at: CGPoint(x: geo.size.width / 2, y: geo.size.height / 2))
+                        pauseButton(at: pausePoint(track: race.track, screen: geo.size))
                     }
                     if session.paused {
                         PauseMenu(
@@ -60,6 +62,19 @@ struct RaceScreen: View {
         }
         .ignoresSafeArea()
         .defersEdgeSwipes(!session.paused && !session.raceOver)
+    }
+
+    /// The pause button's screen point: the track's authored pit, mapped
+    /// through the same aspect-fit transform the renderer uses
+    /// (`TrackRenderer.draw`), so the button always sits on the same infield
+    /// spot per track instead of a fixed screen center that can fall on road.
+    private func pausePoint(track: Track, screen: CGSize) -> CGPoint {
+        let scale = min(screen.width / track.size.x, screen.height / track.size.y)
+        let offset = CGSize(
+            width: (screen.width - track.size.x * scale) / 2,
+            height: (screen.height - track.size.y * scale) / 2)
+        return CGPoint(
+            x: offset.width + track.pit.x * scale, y: offset.height + track.pit.y * scale)
     }
 
     private func pauseButton(at point: CGPoint) -> some View {
