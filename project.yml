@@ -45,7 +45,7 @@ targets:
         # "Skid-iOS".
         PRODUCT_NAME: Skid
         MARKETING_VERSION: "0.5.0"
-        CURRENT_PROJECT_VERSION: "2"
+        CURRENT_PROJECT_VERSION: "3"
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Team committed on purpose (it's not a secret): the release lane
