@@ -30,6 +30,14 @@ struct SetupView: View {
                     }
                 }
 
+                HStack(spacing: 10) {
+                    ForEach(TrackLibrary.all, id: \.id) { track in
+                        choice(trackName(track.id), selected: game.trackID == track.id) {
+                            game.trackID = track.id
+                        }
+                    }
+                }
+
                 if game.mode == .race {
                     raceOptions
                 }
@@ -50,8 +58,17 @@ struct SetupView: View {
         }
     }
 
+    /// Display name for a built-in track id.
+    private func trackName(_ id: String) -> Text {
+        switch id {
+        case "gauntlet": return Text("Gauntlet", bundle: .module)
+        case "hairpin": return Text("Hairpin", bundle: .module)
+        default: return Text("Practice", bundle: .module)
+        }
+    }
+
     @ViewBuilder private var hiscoreLine: some View {
-        let best = game.hiscores.best(for: TrackLibrary.practiceLoop().id)
+        let best = game.hiscores.best(for: game.trackID)
         HStack(spacing: 14) {
             if let lap = best.bestLapTicks {
                 Text("Best lap \(formatTicks(lap))", bundle: .module)

@@ -15,6 +15,13 @@ user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Two new tracks**, picked on the setup screen: **Gauntlet** — the
+  rectangle pinched on both straights, narrower road, mud filling the
+  bottom chicane — and **Hairpin** — a fast bowl feeding a tight 180°
+  peninsula with its own checkpoint at the apex. Hiscores, ghosts, and
+  time trial are all per-track. Every built-in track has to prove an AI
+  can lap it before it ships.
+
 - Race chrome that stays out of the way: each player's lap/time chip now
   lives in their **own corner, facing them** (rotated for players across
   the table), the countdown shows both ways in face-to-face games, and

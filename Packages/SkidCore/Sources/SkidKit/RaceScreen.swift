@@ -58,6 +58,7 @@ struct RaceScreen: View {
             }
         }
         .ignoresSafeArea()
+        .defersEdgeSwipes(!session.paused && !session.raceOver)
     }
 
     private func pauseButton(at point: CGPoint) -> some View {
