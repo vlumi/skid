@@ -8,7 +8,12 @@ cd "$(dirname "$0")/.."
 
 command -v gh >/dev/null || die "gh CLI not found (needed to open + auto-merge the release PR)."
 command -v xcodegen >/dev/null || die "xcodegen not found (brew install xcodegen)."
-[ -z "$(git status --porcelain)" ] || die "working tree not clean — commit or stash first."
+# The one allowed local edit: CHANGELOG.md — the version/build heading is
+# written BY HAND before the cut, and the publish step carries it into the
+# release PR.
+dirty="$(git status --porcelain | grep -v '^ M CHANGELOG.md$' || true)"
+[ -z "$dirty" ] || die "working tree not clean (only a hand-edited CHANGELOG.md may be pending):
+$dirty"
 [ "$(git branch --show-current)" = "main" ] || die "not on main."
 say "Fetching origin…"
 git fetch --quiet origin main

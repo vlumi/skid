@@ -1,6 +1,18 @@
 # Releasing
 
-Cutting a TestFlight build is one command from a clean, up-to-date `main`:
+Cutting a TestFlight build is two steps from a clean, up-to-date `main`:
+
+1. **Edit CHANGELOG.md by hand** (version numbers are editorial, never
+   scripted): rename the pending section
+
+   ```md
+   ### Unreleased (next build)        →  ### v0.5.0 build 1 — 2026-07-23
+   ```
+
+   and open a fresh empty `### Unreleased (next build)` above it. Leaving
+   this edit uncommitted is fine — it rides in the release PR.
+
+2. Run the lane:
 
 ```sh
 make release              # bump build → PR → tag → archive → upload
@@ -8,16 +20,19 @@ make release VERSION=0.6.0  # also bump the marketing version (build resets to 1
 make release-build        # same, but stop after export (no upload)
 ```
 
+The publish step refuses to cut if the CHANGELOG heading for the new
+version+build is missing.
+
 The lane is three scripts chained by the Makefile, each standalone:
 
 1. **`release-preflight`** — refuses unless you're on a clean `main`
    matching `origin`, with `gh` and `xcodegen` available. Pure; run anytime.
 2. **`release-publish`** — bumps `CURRENT_PROJECT_VERSION` (and
-   `MARKETING_VERSION` when `VERSION=` is given), cuts the CHANGELOG's
-   *Unreleased (next build)* section into this build's heading, lands the
-   bump on `main` via an **auto-merged PR** (main is protected), and tags
-   the merge `vX.Y.Z-bN`. State crosses to the next step via that tagged
-   commit, not the shell.
+   `MARKETING_VERSION` when `VERSION=` is given), **verifies the
+   hand-written CHANGELOG heading**, lands it all on `main` via an
+   **auto-merged PR** (main is protected), and tags the merge
+   `vX.Y.Z-bN`. State crosses to the next step via that tagged commit,
+   not the shell.
 3. **`release-distribute`** — regenerates the project, archives
    `Skid-iOS`, exports the `.ipa` (`Scripts/ExportOptions.plist`,
    automatic signing), and uploads it to App Store Connect.
@@ -56,5 +71,6 @@ Neither touches git, PRs, or tags.
   resets to 1 on a version bump.
 - Tags are `vX.Y.Z-bN` on the release's merge commit on `main`.
 - The CHANGELOG convention: each user-facing PR writes bullets under
-  *Unreleased (next build)*; the publish step renames that section to the
-  build's heading and opens a fresh one (see AGENTS.md).
+  *Unreleased (next build)*; at cut time YOU rename that section to the
+  build's heading and open a fresh one — version numbers in the changelog
+  are set by hand, the lane only verifies them (see AGENTS.md).
