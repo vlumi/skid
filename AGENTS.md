@@ -118,10 +118,12 @@ vertical loops remain a backlog curiosity, not designed for.
 
 Rendering rule: **a car is never invisible.** Implemented as the bubble
 variant: a car under the bridge shows through as a semi-transparent bubble
-in its color tracking its position. Bridges draw with a drop shadow and a
-lighter deck; ramp lines paint as yellow-striped bands; airborne cars draw
-scaled up with a ground shadow; marks only ever print on the ground layer.
-Pure rendering; the sim knows nothing of it.
+in its color tracking its position. Bridges draw with a drop shadow
+(trimmed clear of the ramp mouths) and a lighter, butt-capped deck; ramps
+render as **gradient slope wedges** (road-gray climbing to deck-gray,
+retaining-wall edges, chevrons along the driving direction); airborne cars
+draw scaled up with a ground shadow; marks only ever print on the ground
+layer. Pure rendering; the sim knows nothing of it.
 
 ### Marks on the ground (cheap, high-value feedback)
 

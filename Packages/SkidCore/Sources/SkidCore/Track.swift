@@ -245,6 +245,20 @@ public struct Track: Equatable, Sendable, Codable {
         return centerline[segment]
     }
 
+    /// Whether `p` lies on a sloped ramp approach. Rendering cares: a car
+    /// climbing a ramp is between layers — it draws above the deck (no
+    /// popping under the bridge edge) and never gets an occlusion bubble.
+    public func isOnRamp(_ p: Vec2) -> Bool {
+        for i in rampSegments {
+            let a = centerline[i]
+            let b = centerline[(i + 1) % centerline.count]
+            if p.distance(toSegment: a, b) <= width / 2 + 10 {
+                return true
+            }
+        }
+        return false
+    }
+
     /// The portion of a gate that lies on the asphalt ribbon — where a
     /// checkpoint line paints on the road. The gate itself is wider (it
     /// spans the whole corridor); this is only its visible part. nil if the

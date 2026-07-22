@@ -81,8 +81,14 @@ enum TrackRenderer {
         for ghost in scene.ghosts where !ghost.isAirborne {
             draw(car: ghost, color: .white, opacity: 0.38, into: &context)
         }
+        // A car on a ramp slope is transitioning between layers: it draws
+        // ABOVE the deck (else its nose slides under the bridge edge and
+        // the car "warps" on top when the layer flips mid-car).
+        func onRamp(_ car: Car) -> Bool {
+            !track.rampSegments.isEmpty && track.isOnRamp(car.state.position)
+        }
         for (index, car) in race.cars.enumerated()
-        where car.state.layer == 0 && !car.state.isAirborne {
+        where car.state.layer == 0 && !car.state.isAirborne && !onRamp(car) {
             draw(
                 car: car.state, color: colorAt(index),
                 opacity: translucent.contains(index) ? 0.55 : 1,
@@ -94,9 +100,10 @@ enum TrackRenderer {
             drawRibbon(track: track, layer: 1, into: &context)
             drawGates(gateChrome, layerFilter: 1, into: &context)
             // Never-invisible rule: a ground car hidden under the bridge
-            // shows through as a bubble in its color.
+            // shows through as a bubble in its color. Ramp climbers are
+            // fully visible on their slope — no bubble.
             for (index, car) in race.cars.enumerated()
-            where car.state.layer == 0
+            where car.state.layer == 0 && !onRamp(car)
                 && track.distanceToCenterline(car.state.position, layer: 1)
                     < track.width / 2 + 8
             {
@@ -107,8 +114,9 @@ enum TrackRenderer {
                 context.stroke(
                     Path(ellipseIn: bubble), with: .color(.white.opacity(0.85)), lineWidth: 2.5)
             }
+            // Bridge cars, and ramp climbers on their way up/down.
             for (index, car) in race.cars.enumerated()
-            where car.state.layer == 1 && !car.state.isAirborne {
+            where !car.state.isAirborne && (car.state.layer == 1 || onRamp(car)) {
                 draw(car: car.state, color: colorAt(index), into: &context)
             }
         }
@@ -167,11 +175,13 @@ enum TrackRenderer {
         // wedges meet it — butt caps, or a half-circle bulges over the ramp.
         let cap: CGLineCap = layer > 0 ? .butt : .round
         if layer > 0 {
-            // The bridge floats: a soft drop shadow under its whole span.
+            // The bridge floats: a soft drop shadow under its span —
+            // trimmed at both ends so no dark band falls across the ramp
+            // mouths where the deck meets its slopes.
             var shadow = context
             shadow.translateBy(x: 7, y: 12)
             shadow.stroke(
-                path,
+                path.trimmedPath(from: 0.06, to: 0.94),
                 with: .color(.black.opacity(0.25)),
                 style: StrokeStyle(lineWidth: track.width + 18, lineCap: cap, lineJoin: .round)
             )
@@ -407,22 +417,33 @@ extension TrackRenderer {
                 edge.addLine(to: CGPoint(x: d.x, y: d.y))
                 context.stroke(edge, with: .color(kerbWhite), lineWidth: 5)
             }
-            // Chevrons pointing up the slope.
-            let length = ground.distance(to: deck)
-            for t in [0.3, 0.55, 0.8] {
-                let base = ground + up * (length * t)
-                let tip = base + up * 16
-                let wing = side * (track.width * 0.28)
-                var chevron = Path()
-                chevron.move(to: CGPoint(x: (base - wing).x, y: (base - wing).y))
-                chevron.addLine(to: CGPoint(x: tip.x, y: tip.y))
-                chevron.addLine(to: CGPoint(x: (base + wing).x, y: (base + wing).y))
-                context.stroke(
-                    chevron,
-                    with: .color(.white.opacity(0.55)),
-                    style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
-                )
-            }
+            // Chevrons along the DRIVING direction (centerline order) —
+            // on the descent that's down-slope; arrows pointing at the
+            // driver read as a wrong-way sign.
+            drawChevrons(
+                from: ground, to: deck, drive: (b - a).normalized,
+                wing: side * (track.width * 0.28), into: &context)
+        }
+    }
+
+    private static func drawChevrons(
+        from ground: Vec2, to deck: Vec2, drive: Vec2, wing: Vec2,
+        into context: inout GraphicsContext
+    ) {
+        let up = (deck - ground).normalized
+        let length = ground.distance(to: deck)
+        for t in [0.3, 0.55, 0.8] {
+            let base = ground + up * (length * t) - drive * 8
+            let tip = base + drive * 16
+            var chevron = Path()
+            chevron.move(to: CGPoint(x: (base - wing).x, y: (base - wing).y))
+            chevron.addLine(to: CGPoint(x: tip.x, y: tip.y))
+            chevron.addLine(to: CGPoint(x: (base + wing).x, y: (base + wing).y))
+            context.stroke(
+                chevron,
+                with: .color(.white.opacity(0.55)),
+                style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
+            )
         }
     }
 }
