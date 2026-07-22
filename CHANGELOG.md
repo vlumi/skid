@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 3 — 2026-07-22
+
 - **Aim-to-drive**, a new control scheme in the switcher: a floating stick
   like the d-pad, but you just point where you want to go — the car turns
   toward it at a natural pace and backs up when you point behind it. No
