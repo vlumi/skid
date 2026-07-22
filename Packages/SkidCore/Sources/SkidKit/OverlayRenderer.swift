@@ -50,4 +50,33 @@ enum OverlayRenderer {
             context.fill(path, with: .color(pad.color.opacity(0.35 + 0.6 * engagement)))
         }
     }
+
+    /// The floating aim stick: a faint disc plus a single pointer from the
+    /// origin toward the aimed direction, in the owning player's color —
+    /// where you point is where the car heads.
+    static func drawAim(_ aim: AimOverlay, into context: inout GraphicsContext) {
+        let disc = CGRect(
+            x: aim.origin.x - aim.radius, y: aim.origin.y - aim.radius,
+            width: aim.radius * 2, height: aim.radius * 2
+        )
+        context.fill(Path(ellipseIn: disc), with: .color(aim.color.opacity(0.12)))
+        guard aim.knob.length > 1 else { return }
+        let direction = aim.knob.normalized
+        let tip = aim.origin + direction * (aim.radius + 18)
+        let base = aim.origin + direction * (aim.radius - 10)
+        let side = direction.perpendicular * 13
+        // A shaft toward the aim, capped with an arrowhead.
+        context.stroke(
+            Path {
+                $0.move(to: CGPoint(x: aim.origin.x, y: aim.origin.y))
+                $0.addLine(to: CGPoint(x: base.x, y: base.y))
+            },
+            with: .color(aim.color.opacity(0.7)), lineWidth: 5)
+        var head = Path()
+        head.move(to: CGPoint(x: tip.x, y: tip.y))
+        head.addLine(to: CGPoint(x: base.x + side.x, y: base.y + side.y))
+        head.addLine(to: CGPoint(x: base.x - side.x, y: base.y - side.y))
+        head.closeSubpath()
+        context.fill(head, with: .color(aim.color.opacity(0.9)))
+    }
 }

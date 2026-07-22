@@ -27,6 +27,7 @@ struct RaceScreen: View {
                     colors: colors, ghosts: session.ghost?.cars ?? []
                 )
                 let pads = padOverlays()
+                let aims = aimOverlays()
                 let zones = zoneChrome()
                 ZStack {
                     Canvas { context, size in
@@ -37,6 +38,9 @@ struct RaceScreen: View {
                         }
                         for pad in pads {
                             OverlayRenderer.drawDPad(pad, into: &context)
+                        }
+                        for aim in aims {
+                            OverlayRenderer.drawAim(aim, into: &context)
                         }
                     }
                     InputSurface(rig: rig)
@@ -108,6 +112,20 @@ struct RaceScreen: View {
                 up: controls.dpad.up,
                 radius: controls.dpad.radius,
                 input: controls.dpad.input(for: controls.player, at: session.race.tick),
+                color: CouchGame.palette[controls.colorIndex]
+            )
+        }
+    }
+
+    /// Every active floating aim stick, in its owner's color.
+    private func aimOverlays() -> [AimOverlay] {
+        guard rig.scheme == .aim else { return [] }
+        return rig.players.compactMap { controls in
+            guard let origin = controls.aim.origin else { return nil }
+            return AimOverlay(
+                origin: origin,
+                knob: controls.aim.knob,
+                radius: controls.aim.radius,
                 color: CouchGame.palette[controls.colorIndex]
             )
         }
@@ -199,6 +217,15 @@ struct DPadOverlay {
     var up: Vec2
     var radius: Double
     var input: CarInput
+    var color: Color
+}
+
+/// The floating aim stick's screen state: where it landed, the current
+/// thumb offset (the aimed direction), and the player's color.
+struct AimOverlay {
+    var origin: Vec2
+    var knob: Vec2
+    var radius: Double
     var color: Color
 }
 
