@@ -1,26 +1,24 @@
 #!/usr/bin/env bash
-# Release step 3 (pure): regenerate the project from the checked-out tree,
-# then archive, export, and (unless --no-upload) upload the iOS app to App
-# Store Connect / TestFlight. Builds straight from the checked-out main,
-# which is the tagged release commit after the publish step.
+# Release step 4 (pure): regenerate the project from the checked-out tree, then
+# archive, export, and (unless --no-upload) upload each selected platform via the
+# existing Scripts/distribute.sh. Reads nothing but its platform argument; builds
+# straight from the checked-out release base (main or release/X.Y.x), which is
+# the tagged merge commit after the prior step.
 #
-# Usage: release-distribute.sh [--no-upload|--upload-only] [--require-tag]
+# Usage: release-distribute.sh <ios|macos|all> [--no-upload|--upload-only] [--require-tag]
 #   --no-upload:   archive/export only, skip the ASC upload
 #   --upload-only: upload the already-built dist/ package, skip archive/export
-#   --require-tag: verify a git tag exists for project.yml's version+build
-#                  (the standalone retry — only re-distribute a real release)
-#
-# One-time setup (see RELEASING.md):
-#   • App Store Connect API key: put the .p8 at
-#     ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8 and copy
-#     Scripts/.asc-config.example → Scripts/.asc-config with its IDs.
-#   • Signing is automatic (-allowProvisioningUpdates); no cert/profile to
-#     install by hand.
+#                  (and skip the project regen — there's nothing to rebuild)
+#   --require-tag: verify a git tag already exists for project.yml's current
+#                  version+build (used by the standalone retry, so you can only
+#                  re-distribute a release that was actually tagged).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 . Scripts/release-lib.sh
 
-mode=full
+platform="$(require_platform "${1:-}")"
+shift || true
+mode=full        # full | no-upload | upload-only
 require_tag=0
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -32,62 +30,34 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-version="$(read_unique MARKETING_VERSION)"
-build="$(read_unique CURRENT_PROJECT_VERSION)"
-tag="$(tag_name "$version" "$build")"
 if [ "$require_tag" -eq 1 ]; then
-    git rev-parse -q --verify "refs/tags/${tag}" >/dev/null \
-        || die "no ${tag} tag — nothing tagged to re-distribute. Run \`make release\` for a fresh cut."
-    echo "✓ ${tag} tag present — re-distributing."
+    version="$(read_unique MARKETING_VERSION)"
+    build="$(read_unique CURRENT_PROJECT_VERSION)"
+    for p in $([ "$platform" = all ] && echo "ios macos" || echo "$platform"); do
+        tag_exists "$p" "$version" "$build" \
+            || die "no $(tag_prefix "$p")/v${version}-${build} tag — nothing tagged to re-distribute. Run \`make release\` for a fresh cut."
+    done
+    echo "✓ tag(s) for v${version}-${build} present — re-distributing."
 fi
 
-out="dist/ios"
-archive="${out}/Skid-ios.xcarchive"
+# Regenerate only when we're going to build; upload-only reuses dist/ as-is.
+[ "$mode" = upload-only ] || Scripts/generate.sh >/dev/null
 
-if [ "$mode" != upload-only ]; then
-    say "Regenerating project…"
-    xcodegen generate >/dev/null
-    rm -rf "$out"
-    mkdir -p "$out"
+distribute() {
+    case "$mode" in
+        full)        Scripts/distribute.sh "$1" ;;
+        no-upload)   Scripts/distribute.sh "$1" --no-upload ;;
+        upload-only) Scripts/distribute.sh "$1" --upload-only ;;
+    esac
+}
 
-    say "Archiving Skid-iOS (${tag})…"
-    xcodebuild archive \
-        -project Skid.xcodeproj \
-        -scheme Skid-iOS \
-        -destination "generic/platform=iOS" \
-        -archivePath "$archive" \
-        -allowProvisioningUpdates
+say "Distributing…"
+case "$platform" in ios|all) distribute ios ;; esac
+case "$platform" in macos|all) distribute macos ;; esac
 
-    say "Exporting (.ipa)…"
-    xcodebuild -exportArchive \
-        -archivePath "$archive" \
-        -exportPath "$out" \
-        -exportOptionsPlist Scripts/ExportOptions.plist \
-        -allowProvisioningUpdates
-fi
-
-if [ "$mode" = no-upload ]; then
-    echo "✓ built ${tag} — package in ${out}/ (upload skipped)."
-    exit 0
-fi
-
-pkg="$(ls "${out}"/*.ipa 2>/dev/null | head -1)"
-[ -n "$pkg" ] || die "no .ipa in ${out}/ — run without --upload-only first."
-
-# Load the API key IDs (gitignored). The .p8 is auto-discovered by Key ID
-# from ~/.appstoreconnect/private_keys/.
-config="Scripts/.asc-config"
-[ -f "$config" ] || die "$config missing — copy Scripts/.asc-config.example and fill in your ASC API Key ID + Issuer ID."
-# shellcheck disable=SC1090
-. "$config"
-: "${ASC_KEY_ID:?set ASC_KEY_ID in $config}"
-: "${ASC_ISSUER_ID:?set ASC_ISSUER_ID in $config}"
-
-say "Uploading ${tag} to App Store Connect…"
-xcrun altool --upload-app \
-    --type ios \
-    --file "$pkg" \
-    --apiKey "$ASC_KEY_ID" \
-    --apiIssuer "$ASC_ISSUER_ID"
-
-echo "✓ uploaded ${tag} — TestFlight processing takes a few minutes."
+echo
+case "$mode" in
+    full)        echo "✓ distributed (${platform}) — uploaded to App Store Connect." ;;
+    no-upload)   echo "✓ built (${platform}) — packages in dist/ (upload skipped)." ;;
+    upload-only) echo "✓ uploaded (${platform}) — existing dist/ packages sent to App Store Connect." ;;
+esac
