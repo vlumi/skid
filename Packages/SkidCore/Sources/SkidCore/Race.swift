@@ -1,5 +1,51 @@
 import Foundation
 
+/// How a run is structured. Defaults make a free practice session (no
+/// countdown, no finish); a real race sets both.
+public struct RaceConfig: Equatable, Sendable, Codable {
+    /// Laps to the flag; nil = free practice, drive forever.
+    public var laps: Int?
+    /// Ticks of start countdown, during which cars are held on the grid.
+    public var countdownTicks: Int
+
+    public init(laps: Int? = nil, countdownTicks: Int = 0) {
+        self.laps = laps
+        self.countdownTicks = countdownTicks
+    }
+}
+
+/// One car's progress through the gate sequence. A lap is earned by
+/// crossing every gate in order, in the driving direction — cutting the
+/// track can never skip ahead.
+public struct CarProgress: Equatable, Sendable, Codable {
+    /// Index into `track.gates` of the next gate that counts.
+    public var nextGate = 0
+    /// Completed laps.
+    public var lap = 0
+    /// Tick the current lap started at.
+    public var lapStartTick: Tick = 0
+    /// Completed lap durations, in ticks.
+    public var lapTimes: [Tick] = []
+    /// Tick the car took the flag, once it has.
+    public var finishedAt: Tick?
+
+    public init() {}
+
+    public var bestLapTicks: Tick? { lapTimes.min() }
+}
+
+/// One car in the race: identity + dynamic state + race progress.
+public struct Car: Equatable, Sendable, Codable {
+    public let id: PlayerID
+    public var state: CarState
+    public var progress = CarProgress()
+
+    public init(id: PlayerID, state: CarState) {
+        self.id = id
+        self.state = state
+    }
+}
+
 /// The whole deterministic simulation: same inputs → same states,
 /// bit-for-bit. Advances at a fixed timestep; no I/O, no rendering, no
 /// wall-clock time anywhere.
@@ -8,7 +54,14 @@ public struct Race: Equatable, Sendable {
     public static let tickRate = 60
     public static let dt = 1.0 / Double(tickRate)
 
+    public enum Phase: Equatable, Sendable {
+        case countdown(remainingTicks: Int)
+        case running
+        case finished
+    }
+
     public let track: Track
+    public let config: RaceConfig
     public var tuning: CarTuning
     public private(set) var tick: Tick
     public private(set) var cars: [Car]
@@ -17,9 +70,11 @@ public struct Race: Equatable, Sendable {
     public private(set) var rng: SeededRNG
 
     public init(
-        track: Track, players: [PlayerID], tuning: CarTuning = CarTuning(), seed: UInt64 = 0
+        track: Track, players: [PlayerID], tuning: CarTuning = CarTuning(), seed: UInt64 = 0,
+        config: RaceConfig = RaceConfig()
     ) {
         self.track = track
+        self.config = config
         self.tuning = tuning
         self.tick = 0
         self.rng = SeededRNG(seed: seed)
@@ -31,14 +86,60 @@ public struct Race: Equatable, Sendable {
         }
     }
 
-    /// Advance one tick. Missing inputs coast.
+    public var phase: Phase {
+        if tick < config.countdownTicks {
+            return .countdown(remainingTicks: config.countdownTicks - tick)
+        }
+        if config.laps != nil, !cars.isEmpty, cars.allSatisfy({ $0.progress.finishedAt != nil }) {
+            return .finished
+        }
+        return .running
+    }
+
+    /// Ticks of racing so far (excludes the countdown).
+    public var raceTicks: Tick { max(0, tick - config.countdownTicks) }
+
+    /// Advance one tick. Missing inputs coast; cars held in the countdown
+    /// and rolling out after their flag always coast.
     public mutating func advance(inputs: [PlayerID: CarInput]) {
+        let held = tick < config.countdownTicks
+        if tick == config.countdownTicks {
+            // First running tick: lap timing starts now, for everyone.
+            for i in cars.indices {
+                cars[i].progress.lapStartTick = tick
+            }
+        }
         for i in cars.indices {
-            var state = cars[i].state
-            step(car: &state, input: inputs[cars[i].id] ?? .coast)
-            cars[i].state = state
+            var car = cars[i]
+            let from = car.state.position
+            let locked = held || car.progress.finishedAt != nil
+            var state = car.state
+            step(car: &state, input: locked ? .coast : (inputs[car.id] ?? .coast))
+            car.state = state
+            if !held {
+                updateProgress(car: &car, movedFrom: from)
+            }
+            cars[i] = car
         }
         tick += 1
+    }
+
+    private func updateProgress(car: inout Car, movedFrom from: Vec2) {
+        guard car.progress.finishedAt == nil, !track.gates.isEmpty else { return }
+        let gate = track.gates[car.progress.nextGate]
+        guard gate.layer == car.state.layer,
+            gate.crossedForward(movingFrom: from, to: car.state.position)
+        else { return }
+        car.progress.nextGate += 1
+        guard car.progress.nextGate == track.gates.count else { return }
+        // Crossed the start/finish with every gate collected: lap earned.
+        car.progress.nextGate = 0
+        car.progress.lap += 1
+        car.progress.lapTimes.append(tick - car.progress.lapStartTick)
+        car.progress.lapStartTick = tick
+        if let laps = config.laps, car.progress.lap >= laps {
+            car.progress.finishedAt = tick
+        }
     }
 
     private func step(car: inout CarState, input: CarInput) {

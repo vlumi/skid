@@ -14,6 +14,8 @@ public struct MarkStore {
         case rubberLight  // moderate slide on asphalt
         case rubberHeavy  // hard slide on asphalt
         case scuff  // torn into grass/mud off the ribbon
+        case mudTrail  // mud carried back onto the asphalt
+        case wetTrail  // water carried back onto the asphalt
     }
 
     /// Up to `chunkSegments` mark segments baked into one path.
@@ -25,6 +27,9 @@ public struct MarkStore {
     public private(set) var chunks: [Bucket: [Chunk]] = [:]
 
     private var lastTirePositions: [PlayerID: [Vec2]] = [:]
+    /// Mud/water clinging to a car's tires: what it drove through and for
+    /// how many more recorded ticks it keeps printing onto the asphalt.
+    private var carryover: [PlayerID: (bucket: Bucket, remaining: Int)] = [:]
 
     /// Marks record at half the sim rate — visually indistinguishable at
     /// speed, halves both memory and stroke load.
@@ -41,12 +46,15 @@ public struct MarkStore {
     static let heavyRubberSlip: Double = 190
     /// Ground speed where off-road driving starts scuffing.
     static let scuffSpeedThreshold: Double = 50
+    /// Recorded ticks of mud/water tire prints after leaving the hazard.
+    static let carryoverTicks = 50
 
     public init() {}
 
     public mutating func reset() {
         chunks.removeAll()
         lastTirePositions.removeAll()
+        carryover.removeAll()
     }
 
     /// Record marks for one car after a sim tick. Rubber comes off the rear
@@ -64,11 +72,26 @@ public struct MarkStore {
         let slip = state.slipSpeed
         let speed = state.velocity.length
 
+        // Driving through mud/water loads the tires; they print it back
+        // onto the asphalt for a while — the classic look.
+        switch surface {
+        case .mud: carryover[car.id] = (.mudTrail, Self.carryoverTicks)
+        case .water: carryover[car.id] = (.wetTrail, Self.carryoverTicks)
+        default: break
+        }
+
         let bucket: Bucket
         let tireRange: Range<Int>
         if surface == .asphalt, slip > Self.rubberSlipThreshold {
             bucket = slip > Self.heavyRubberSlip ? .rubberHeavy : .rubberLight
             tireRange = 0..<2  // rear pair
+        } else if surface == .asphalt, let carried = carryover[car.id], carried.remaining > 0,
+            speed > Self.scuffSpeedThreshold
+        {
+            bucket = carried.bucket
+            tireRange = 0..<4
+            carryover[car.id] =
+                carried.remaining > 1 ? (carried.bucket, carried.remaining - 1) : nil
         } else if surface != .asphalt, surface != .oil, speed > Self.scuffSpeedThreshold {
             bucket = .scuff
             tireRange = 0..<4

@@ -11,8 +11,17 @@ import SkidCore
 /// would mutate observable state mid-view-update.
 @MainActor
 public final class GameSession: ObservableObject {
+    /// A three-lap race with a three-second countdown.
+    static let raceConfig = RaceConfig(laps: 3, countdownTicks: 3 * Race.tickRate)
+
     public private(set) var race: Race
     public private(set) var marks = MarkStore()
+    /// Where each gate paints its checkpoint line on the road (nil = the
+    /// gate never touches the ribbon). Static per track; computed once.
+    public let gateSpans: [(a: Vec2, b: Vec2)?]
+    /// The whole run as seed + inputs — replay/ghost currency, recorded
+    /// from the first lap-capable build because it can't be retrofitted.
+    public private(set) var recording: RaceRecording
 
     public let player = PlayerID(0)
     /// Swappable in-run — the A/B seam.
@@ -20,17 +29,22 @@ public final class GameSession: ObservableObject {
 
     private var lastTime: TimeInterval?
     private var accumulator: TimeInterval = 0
+    private var seed: UInt64 = 1
     /// Don't spiral after a long pause (backgrounding, debugger): cap the
     /// ticks owed by any single frame.
     private static let maxTicksPerFrame = 12
 
     public init(controlSource: ControlSource) {
         self.controlSource = controlSource
+        let track = TrackLibrary.practiceLoop()
         self.race = Race(
-            track: TrackLibrary.practiceLoop(),
+            track: track,
             players: [PlayerID(0)],
-            seed: 1
+            seed: 1,
+            config: Self.raceConfig
         )
+        self.recording = RaceRecording(seed: 1, players: [PlayerID(0)])
+        self.gateSpans = track.gates.map { track.ribbonSpan(of: $0) }
     }
 
     /// Advance sim time to `time` (a `TimelineView` timestamp, seconds).
@@ -45,7 +59,9 @@ public final class GameSession: ObservableObject {
         var ticks = 0
         while accumulator >= Race.dt, ticks < Self.maxTicksPerFrame {
             let input = controlSource.input(for: player, at: race.tick)
-            race.advance(inputs: [player: input])
+            let inputs = [player: input]
+            recording.append(inputs)
+            race.advance(inputs: inputs)
             for car in race.cars {
                 marks.record(car: car, on: race.track, tick: race.tick)
             }
@@ -58,9 +74,22 @@ public final class GameSession: ObservableObject {
     }
 
     public func reset() {
-        race = Race(track: race.track, players: [player], seed: 1)
+        seed += 1
+        race = Race(
+            track: race.track, players: [player], seed: seed, config: Self.raceConfig
+        )
+        recording = RaceRecording(seed: seed, players: [player])
         marks.reset()
         accumulator = 0
         lastTime = nil
     }
+}
+
+/// mm:ss.hh from a tick count, for lap/race times.
+public func formatTicks(_ ticks: Tick) -> String {
+    let totalHundredths = ticks * 100 / Race.tickRate
+    let minutes = totalHundredths / 6000
+    let seconds = (totalHundredths % 6000) / 100
+    let hundredths = totalHundredths % 100
+    return String(format: "%d:%02d.%02d", minutes, seconds, hundredths)
 }

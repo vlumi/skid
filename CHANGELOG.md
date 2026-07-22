@@ -15,6 +15,25 @@ user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- Checkpoints you can see and can't unfairly miss: gates now span the
+  whole corridor (running wide over grass still counts — the grass is the
+  penalty), only gross cuts through the infield don't. Each checkpoint
+  shows as a translucent line across the road with your **next** one
+  highlighted; the start/finish keeps its checkers.
+- It's a race now: three laps against the clock — 3-2-1-GO countdown
+  holding the car on the grid, lap counting through ordered directional
+  checkpoints (cutting the track or driving backwards never counts), and
+  a lap/time HUD with your best lap. After the flag the car rolls out and
+  the final time stays up; Reset starts a fresh race.
+- Hazards on the racing line: a mud bog pinching the bottom straight, a
+  water pool clipping the top-right exit, and an oil slick on the right
+  straight — each with its own grip/drag feel, and mud/water print tire
+  trails back onto the asphalt for a while after you drive through.
+- Every run is now recorded as seed + input stream (tiny, deterministic)
+  — the raw material for future replays, ghosts, and hiscores.
+- Two more control schemes in the switcher: **Two-zone** (hold = gas,
+  half of the screen picks the turn) and a real **One-touch** (permanent
+  gas; hold = turn, quick tap = flip turning direction).
 - Smooth marks on small phones: skid marks now render as a few batched
   strokes instead of one per segment (choppy on iPhone 13 mini once they
   piled up), record at half tick rate, and keep a smaller budget — oldest
