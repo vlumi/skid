@@ -41,6 +41,8 @@ public final class CouchGame: ObservableObject {
     @Published public var aiDifficulty: AIDriver.Difficulty = .medium
     @Published public private(set) var colorIndices = [0, 1, 2, 3]
     @Published public var carContact = true
+    /// The chosen circuit (a `Track.id` from `TrackLibrary.all`).
+    @Published public var trackID = "practice-loop"
     /// 2P seating: side-by-side vs face-to-face.
     @Published public var faceToFace = false
     /// 3P seating: which quadrant stays open.
@@ -71,6 +73,9 @@ public final class CouchGame: ObservableObject {
             index + 1 < arguments.count, let count = Int(arguments[index + 1])
         {
             aiCount = max(0, min(4 - playerCount, count))
+        }
+        if let index = arguments.firstIndex(of: "-skid-track"), index + 1 < arguments.count {
+            trackID = TrackLibrary.track(id: arguments[index + 1]).id
         }
         if arguments.contains("-skid-autostart") {
             startRace()
@@ -131,6 +136,7 @@ public final class CouchGame: ObservableObject {
 
     private func makeSession(humans: Int, totalCars: Int) -> GameSession {
         let players = (0..<totalCars).map { PlayerID($0) }
+        let track = TrackLibrary.track(id: trackID)
         let config: RaceConfig
         switch mode {
         case .race:
@@ -142,9 +148,7 @@ public final class CouchGame: ObservableObject {
         }
         let ghost: GhostPlayback? =
             mode == .timeTrial
-            ? GhostPlayback(
-                record: hiscores.best(for: TrackLibrary.practiceLoop().id),
-                track: TrackLibrary.practiceLoop())
+            ? GhostPlayback(record: hiscores.best(for: track.id), track: track)
             : nil
         notedLapCount = 0
         notedFinish = false
@@ -161,7 +165,8 @@ public final class CouchGame: ObservableObject {
             return fleet.input(for: player, in: race)
         }
         return GameSession(
-            players: players, config: config, seed: seed, ghost: ghost, inputFor: inputFor)
+            track: track, players: players, config: config, seed: seed, ghost: ghost,
+            inputFor: inputFor)
     }
 
     /// Called every frame by the race screen: fold the (single) human's
@@ -225,10 +230,19 @@ public struct GameView: View {
 extension View {
     func statusBarHiddenIfAvailable() -> some View {
         #if os(iOS)
-        // Thumbs live at the screen edges: hide the status bar AND make
-        // system edge swipes (home indicator, notification/control center)
-        // require the deliberate double-swipe instead of one graze.
-        return statusBarHidden(true).defersSystemGestures(on: .all)
+        return statusBarHidden(true)
+        #else
+        return self
+        #endif
+    }
+
+    /// Thumbs live at the screen edges during play: make system edge swipes
+    /// (home indicator, notification/control center) require the deliberate
+    /// double-swipe — but only while actually racing. Menus, pause, and
+    /// results keep normal one-swipe system gestures.
+    func defersEdgeSwipes(_ active: Bool) -> some View {
+        #if os(iOS)
+        return defersSystemGestures(on: active ? .all : [])
         #else
         return self
         #endif

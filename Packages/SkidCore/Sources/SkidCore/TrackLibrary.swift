@@ -1,8 +1,31 @@
 import Foundation
 
-/// Built-in tracks. v0.1 ships exactly one: a flat practice loop for
-/// answering "is the drift fun?".
+/// Built-in tracks, all flat (crossings arrive with the two-layer
+/// milestone). Every track: closed asphalt ribbon in grass, directional
+/// corridor gates (start/finish last), 4 grid slots, hazards as design.
 public enum TrackLibrary {
+    /// Every built-in track, in picker order.
+    public static var all: [Track] {
+        [practiceLoop(), gauntlet(), hairpin()]
+    }
+
+    /// Lookup by stable id; unknown ids fall back to the practice loop.
+    public static func track(id: String) -> Track {
+        all.first { $0.id == id } ?? practiceLoop()
+    }
+
+    /// Playfield boundary walls, inset from the world edge (shared by all
+    /// built-in tracks).
+    static func boundaryWalls(size: Vec2) -> [Wall] {
+        let inset = 8.0
+        let bounds = [
+            Vec2(inset, inset), Vec2(size.x - inset, inset),
+            Vec2(size.x - inset, size.y - inset), Vec2(inset, size.y - inset),
+        ]
+        return bounds.indices.map { i in
+            Wall(from: bounds[i], to: bounds[(i + 1) % bounds.count])
+        }
+    }
     // The practice loop's dimensions: a rounded rectangle centered in a
     // 1600×1000 world, with the top straight pinched toward the middle to
     // make one interesting drift corner.
@@ -27,7 +50,7 @@ public enum TrackLibrary {
             id: "practice-loop",
             centerline: centerline(),
             width: ribbonWidth,
-            walls: boundaryWalls(),
+            walls: boundaryWalls(size: worldSize),
             gates: gates(),
             patches: patches(),
             startSlots: startSlots(),
@@ -68,18 +91,6 @@ public enum TrackLibrary {
         // Bottom-left corner (180° → 90°).
         arc(center: Vec2(left + corner, bottom - corner), from: .pi, to: .pi / 2, steps: 6)
         return points
-    }
-
-    /// Playfield boundary walls, inset from the world edge.
-    private static func boundaryWalls() -> [Wall] {
-        let inset = 8.0
-        let bounds = [
-            Vec2(inset, inset), Vec2(worldSize.x - inset, inset),
-            Vec2(worldSize.x - inset, worldSize.y - inset), Vec2(inset, worldSize.y - inset),
-        ]
-        return bounds.indices.map { i in
-            Wall(from: bounds[i], to: bounds[(i + 1) % bounds.count])
-        }
     }
 
     /// Gates at the four compass midpoints, ordered along the driving
