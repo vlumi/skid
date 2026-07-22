@@ -54,7 +54,8 @@ extension TrackDesign {
             patches: hazards,
             startSlots: slots,
             startHeading: heading,
-            size: size
+            size: size,
+            pit: pit
         )
         for (index, slot) in track.startSlots.enumerated()
         where track.surface(at: slot) != .asphalt {
@@ -245,7 +246,9 @@ extension TrackDesign {
     }
 
     /// Retaining walls along each ramp edge's sides: a ramp is entered
-    /// from the road below or the deck above, never sideways.
+    /// from the road below or the deck above, never sideways. Constant
+    /// half-width so the wall tracks the ribbon edge, stopping short of
+    /// the deck so it never juts into a road passing beneath the foot.
     private func rampRetainingWalls(corners: [Corner]) -> [Wall] {
         var walls: [Wall] = []
         for i in nodes.indices {
@@ -254,12 +257,14 @@ extension TrackDesign {
             let start = corners[i].points[corners[i].points.count - 1]
             let end = corners[(i + 1) % nodes.count].points[0]
             let (ground, deck) = kind == .rampUp ? (start, end) : (end, start)
-            let side = (deck - ground).normalized.perpendicular
+            let axis = (deck - ground).normalized
+            let side = axis.perpendicular
+            let top = deck - axis * 14
             for sign in [-1.0, 1.0] {
                 walls.append(
                     Wall(
                         from: ground + side * (width / 2 * sign),
-                        to: deck + side * ((width / 2 + 8) * sign)))
+                        to: top + side * (width / 2 * sign)))
             }
         }
         return walls
@@ -297,8 +302,9 @@ extension TrackDesign {
         let layer = kind(ofEdge: i) == .deck ? 1 : 0
         switch anchor.span {
         case .corridor(let reach):
-            let inward = infieldNormal(of: direction)
-            let inner = anchorPoint + inward * (width / 2 + reach)
+            let distance = width / 2 + reach
+            let inward = infieldNormal(of: direction, at: anchorPoint, innerDistance: distance)
+            let inner = anchorPoint + inward * distance
             let outer = raycastToBoundary(from: anchorPoint, along: inward * -1)
             return Gate(from: inner, to: outer, forward: direction, layer: layer)
         case .deck:
@@ -324,7 +330,7 @@ extension TrackDesign {
         let edge = next(of: i).position - start
         let direction = edge.normalized
         let line = start + direction * (anchor.t * edge.length)
-        let inward = infieldNormal(of: direction)
+        let inward = infieldNormal(of: direction, at: line, innerDistance: width / 2 + 100)
         let slots = (0..<4).map { slot in
             line - direction * (grid.back + Double(slot) * grid.gap)
                 + inward * (slot % 2 == 0 ? grid.lateral : -grid.lateral)
@@ -342,6 +348,8 @@ extension TrackDesign {
 
     /// The polygon's signed area decides which perpendicular points at the
     /// infield: interior is left of travel on a counterclockwise loop.
+    /// Only a fallback — a figure-8's lobes wind OPPOSITE ways and its
+    /// total area cancels, so gates probe their local side instead.
     private var windingSign: Double {
         var doubledArea = 0.0
         for i in nodes.indices {
@@ -350,8 +358,32 @@ extension TrackDesign {
         return doubledArea > 0 ? 1 : -1
     }
 
-    private func infieldNormal(of direction: Vec2) -> Vec2 {
-        direction.perpendicular * windingSign
+    /// Which perpendicular of `direction` points at the infield HERE:
+    /// probe both sides at the would-be inner endpoint and keep the one
+    /// that lands inside the polygon (even-odd, so self-crossing
+    /// figure-8s answer per lobe). Falls back to the global winding when
+    /// the probes agree (reach overshooting a thin infield).
+    private func infieldNormal(
+        of direction: Vec2, at anchor: Vec2, innerDistance: Double
+    ) -> Vec2 {
+        let side = direction.perpendicular
+        let plus = polygonContains(anchor + side * innerDistance)
+        let minus = polygonContains(anchor - side * innerDistance)
+        guard plus != minus else { return side * windingSign }
+        return plus ? side : side * -1
+    }
+
+    /// Even-odd point-in-polygon over the node ring.
+    private func polygonContains(_ point: Vec2) -> Bool {
+        var inside = false
+        for i in nodes.indices {
+            let a = nodes[i].position
+            let b = next(of: i).position
+            guard (a.y > point.y) != (b.y > point.y) else { continue }
+            let crossingX = a.x + (point.y - a.y) / (b.y - a.y) * (b.x - a.x)
+            if point.x < crossingX { inside.toggle() }
+        }
+        return inside
     }
 
     /// Where a ray from `point` exits the playfield's wall rectangle
