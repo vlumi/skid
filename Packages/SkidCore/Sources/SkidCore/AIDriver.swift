@@ -17,6 +17,14 @@ public struct AIDriver: Equatable, Sendable, Codable {
     /// Human imperfection: amplitude of a slow, deterministic steering sway
     /// that keeps the driver off the perfect line. 0 = metronome.
     public var wobble: Double
+    /// Human imperfection, the bigger one: how far (units) the driver's
+    /// AIMED line slowly wanders off the centerline — beyond the ribbon's
+    /// half-width, the driver genuinely runs wide onto the grass and has to
+    /// recover. 0 = always the right line.
+    public var lineWander: Double
+    /// Phase shift for the imperfection clocks, so a grid of equal drivers
+    /// doesn't wander in lockstep.
+    public var phase: Double
 
     private var stuckTicks = 0
     private var reverseTicks = 0
@@ -28,13 +36,17 @@ public struct AIDriver: Equatable, Sendable, Codable {
         steerGain: Double = 2.2,
         throttleCap: Double = 1.0,
         cornerCaution: Double = 1.0,
-        wobble: Double = 0
+        wobble: Double = 0,
+        lineWander: Double = 0,
+        phase: Double = 0
     ) {
         self.lookahead = lookahead
         self.steerGain = steerGain
         self.throttleCap = throttleCap
         self.cornerCaution = cornerCaution
         self.wobble = wobble
+        self.lineWander = lineWander
+        self.phase = phase
     }
 
     /// Selectable strength. Even `hard` is deliberately not the perfect
@@ -49,19 +61,23 @@ public struct AIDriver: Equatable, Sendable, Codable {
     /// one race so the field spreads out.
     public static func make(_ difficulty: Difficulty, gridIndex: Int = 0) -> AIDriver {
         let spread = Double(gridIndex)
+        let phase = spread * 2.1
         switch difficulty {
         case .easy:
             return AIDriver(
-                lookahead: 115, throttleCap: 0.55 - spread * 0.04,
-                cornerCaution: 2.1 + spread * 0.2, wobble: 0.4)
+                lookahead: 115, throttleCap: 0.58 - spread * 0.04,
+                cornerCaution: 2.0 + spread * 0.2, wobble: 0.35,
+                lineWander: 85, phase: phase)
         case .medium:
             return AIDriver(
                 lookahead: 135, throttleCap: 0.74 - spread * 0.04,
-                cornerCaution: 1.5 + spread * 0.15, wobble: 0.2)
+                cornerCaution: 1.5 + spread * 0.15, wobble: 0.18,
+                lineWander: 35, phase: phase)
         case .hard:
             return AIDriver(
                 lookahead: 150, throttleCap: 0.94 - spread * 0.03,
-                cornerCaution: 1.05 + spread * 0.12, wobble: 0.07)
+                cornerCaution: 1.05 + spread * 0.12, wobble: 0.06,
+                lineWander: 12, phase: phase)
         }
     }
 
@@ -86,8 +102,13 @@ public struct AIDriver: Equatable, Sendable, Codable {
             return CarInput(steer: 0, throttle: -1)
         }
 
-        // Aim at a point down the racing line (the centerline, for now).
-        let target = track.pointAlongCenterline(from: car.position, distance: lookahead)
+        // Aim at a point down the racing line (the centerline, for now) —
+        // shifted sideways by the slow line-wander, so weaker drivers
+        // confidently follow a wrong line and run wide instead of merely
+        // twitching on the right one.
+        let lineTarget = track.pointAlongCenterline(from: car.position, distance: lookahead)
+        let wander = lineWander * sin(Double(age) * 0.011 + phase)
+        let target = lineTarget + (lineTarget - car.position).normalized.perpendicular * wander
         let toTarget = target - car.position
         let desired = atan2(toTarget.y, toTarget.x)
         let rawError = desired - car.heading
@@ -95,7 +116,7 @@ public struct AIDriver: Equatable, Sendable, Codable {
         // The sway: a slow sine over the driver's own clock — deterministic,
         // but keeps weaker drivers visibly human, drifting off-line and
         // correcting.
-        let sway = wobble * sin(Double(age) * 0.045)
+        let sway = wobble * sin(Double(age) * 0.045 + phase)
         let steer = max(-1, min(1, error * steerGain + sway))
 
         // Lift for corners: compare the near line direction with the line
