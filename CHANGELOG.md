@@ -6,11 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Grouped by **marketing version** (a roadmap milestone), then by **build
 number** within it — the version stays steady while the build climbs each
-TestFlight upload. Each version's top section, **Unreleased (next build)**,
-collects entries merged to `main` but not yet in a TestFlight build; cutting a
-release **stamps** it into that build's heading and opens a fresh empty one. A
-user-facing PR writes its own bullet here, and the `## vX.Y.Z` marketing
-heading is hand-set when a milestone ships (see [AGENTS.md](AGENTS.md)).
+TestFlight upload (see [RELEASING.md](RELEASING.md)). The build heading is
+just `### build N — <date>`; the version comes from the `## vX.Y.Z` above it.
+
+Each version's top section, **Unreleased (next build)**, collects entries
+merged to `main` but not yet in a TestFlight build; cutting a release renames
+it to that build's heading and opens a fresh empty one. Keep that heading
+immediately followed by its list items (no prose between), so the release
+script can promote it with a one-line edit. A user-facing PR writes its own
+bullet here; the `## vX.Y.Z` marketing heading is hand-set when a milestone
+ships (see [AGENTS.md](AGENTS.md)).
 
 ## v0.5.0
 
@@ -48,7 +53,7 @@ heading is hand-set when a milestone ships (see [AGENTS.md](AGENTS.md)).
   always off the racing line instead of pinned to screen-centre (where it
   sometimes sat right on the road).
 
-### v0.5.0 build 2 — 2026-07-22
+### build 2 — 2026-07-22
 
 - A **Tuning** panel in the pause menu, for finding the feel on real
   thumbs: d-pad dead zone, travel, steps (including full analog), and a
