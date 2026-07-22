@@ -12,3 +12,7 @@ DerivedData/
 
 # SwiftPM per-user state (schemes, user data)
 .swiftpm/
+
+# Release lane output + local ASC credentials
+dist/
+Scripts/.asc-config
