@@ -1,147 +1,73 @@
 import Foundation
 
-/// Built-in tracks, all flat (crossings arrive with the two-layer
-/// milestone). Every track: closed asphalt ribbon in grass, directional
+/// Built-in tracks, authored as `TrackDesign` values and compiled once at
+/// first use. Every track: closed asphalt ribbon in grass, directional
 /// corridor gates (start/finish last), 4 grid slots, hazards as design.
 public enum TrackLibrary {
-    /// Every built-in track, in picker order.
-    public static var all: [Track] {
-        [practiceLoop(), gauntlet(), hairpin(), overpass()]
+    /// Every built-in design, in picker order.
+    static let designs: [TrackDesign] = [
+        practiceLoopDesign, gauntletDesign, hairpinDesign, overpassDesign,
+    ]
+
+    /// Every built-in track, compiled once — the designs are build
+    /// artifacts, so a failure here is a broken build, not a runtime
+    /// condition to limp through.
+    public static let all: [Track] = designs.map { design in
+        do {
+            return try design.compile()
+        } catch {
+            fatalError("built-in design '\(design.id)' failed to compile: \(error)")
+        }
     }
 
     /// Lookup by stable id; unknown ids fall back to the practice loop.
     public static func track(id: String) -> Track {
-        all.first { $0.id == id } ?? practiceLoop()
+        all.first { $0.id == id } ?? all[0]
     }
 
-    /// Playfield boundary walls, inset from the world edge (shared by all
-    /// built-in tracks).
-    static func boundaryWalls(size: Vec2) -> [Wall] {
-        let inset = 8.0
-        let bounds = [
-            Vec2(inset, inset), Vec2(size.x - inset, inset),
-            Vec2(size.x - inset, size.y - inset), Vec2(inset, size.y - inset),
-        ]
-        return bounds.indices.map { i in
-            Wall(from: bounds[i], to: bounds[(i + 1) % bounds.count])
-        }
-    }
-    // The practice loop's dimensions: a rounded rectangle centered in a
-    // 1600×1000 world, with the top straight pinched toward the middle to
-    // make one interesting drift corner.
-    private static let worldSize = Vec2(1600, 1000)
-    private static let ribbonWidth = 130.0
-    private static let cx = 800.0
-    private static let cy = 500.0
-    private static let halfX = 560.0  // straight half-length, x
-    private static let halfY = 300.0  // straight half-length, y
-    private static let corner = 170.0  // corner radius
-    private static var bottom: Double { cy + halfY }
-    private static var top: Double { cy - halfY }
-    private static var right: Double { cx + halfX }
-    private static var left: Double { cx - halfX }
-
-    /// A rounded-rectangle circuit with a pinched waist on the top straight.
-    /// Asphalt ribbon in grass, boundary walls at the playfield edge, four
-    /// checkpoint gates (the last is start/finish on the bottom straight,
-    /// driven left-to-right).
-    public static func practiceLoop() -> Track {
-        Track(
-            id: "practice-loop",
-            centerline: centerline(),
-            width: ribbonWidth,
-            walls: boundaryWalls(size: worldSize),
-            gates: gates(),
-            patches: patches(),
-            startSlots: startSlots(),
-            startHeading: 0,
-            size: worldSize,
-            pit: Vec2(800, 550)  // infield center, clear of the loop
-        )
+    /// The authored display name for a track id.
+    public static func displayName(id: String) -> String {
+        designs.first { $0.id == id }?.name ?? id
     }
 
-    private static func centerline() -> [Vec2] {
-        var points: [Vec2] = []
-        // Start at the left end of the bottom straight, wind clockwise on
-        // screen (y grows downward): bottom straight → right corners → top
-        // (with pinch) → left corners → back.
-        func arc(center: Vec2, from: Double, to: Double, steps: Int) {
-            for i in 0...steps {
-                let angle = from + (to - from) * Double(i) / Double(steps)
-                points.append(center + Vec2(angle: angle) * corner)
-            }
-        }
-        // Bottom straight, left → right.
-        points.append(Vec2(left + corner, bottom))
-        points.append(Vec2(right - corner, bottom))
-        // Bottom-right corner (90° → 0°).
-        arc(center: Vec2(right - corner, bottom - corner), from: .pi / 2, to: 0, steps: 6)
-        // Right side, up.
-        points.append(Vec2(right, top + corner))
-        // Top-right corner (0° → -90°).
-        arc(center: Vec2(right - corner, top + corner), from: 0, to: -.pi / 2, steps: 6)
-        // Top straight with a pinch: dip toward the middle and back out.
-        points.append(Vec2(cx + 190, top))
-        points.append(Vec2(cx + 60, top + 130))
-        points.append(Vec2(cx - 60, top + 130))
-        points.append(Vec2(cx - 190, top))
-        // Top-left corner (-90° → -180°).
-        arc(center: Vec2(left + corner, top + corner), from: -.pi / 2, to: -.pi, steps: 6)
-        // Left side, down.
-        points.append(Vec2(left, bottom - corner))
-        // Bottom-left corner (180° → 90°).
-        arc(center: Vec2(left + corner, bottom - corner), from: .pi, to: .pi / 2, steps: 6)
-        return points
-    }
+    // Named accessors for the built-ins (tests and demos use these).
+    public static func practiceLoop() -> Track { track(id: "practice-loop") }
+    public static func gauntlet() -> Track { track(id: "gauntlet") }
+    public static func hairpin() -> Track { track(id: "hairpin") }
+    public static func overpass() -> Track { track(id: "overpass") }
 
-    /// Gates at the four compass midpoints, ordered along the driving
-    /// direction (each directional); start/finish last, on the bottom
-    /// straight. Gates are FORGIVING: each spans the whole corridor — from a
-    /// modest reach into the infield out to the boundary wall — so running
-    /// wide over grass still counts (grass already taxes speed). Only a
-    /// gross cut across the middle misses one.
-    private static func gates() -> [Gate] {
-        let wall = 8.0
-        // How far past the inner ribbon edge a gate reaches into the
-        // infield. Deep enough that a rally line through the grass counts,
-        // shallow enough that circling the infield center can't lap.
-        let infieldReach = ribbonWidth / 2 + 150
-        return [
-            // Right side, driving up: infield → right wall.
-            Gate(
-                from: Vec2(right - infieldReach, cy), to: Vec2(worldSize.x - wall, cy),
-                forward: Vec2(0, -1)),
-            // Pinch on the top straight, driving left: top wall → infield.
-            Gate(
-                from: Vec2(cx, wall), to: Vec2(cx, top + 130 + infieldReach),
-                forward: Vec2(-1, 0)),
-            // Left side, driving down: left wall → infield.
-            Gate(
-                from: Vec2(wall, cy), to: Vec2(left + infieldReach, cy),
-                forward: Vec2(0, 1)),
-            // Start/finish on the bottom straight, driving right:
-            // infield → bottom wall.
-            Gate(
-                from: Vec2(cx, bottom - infieldReach), to: Vec2(cx, worldSize.y - wall),
-                forward: Vec2(1, 0)),
-        ]
-    }
-
-    /// The hazards, placed as track design: an oil slick on the right
-    /// straight before the corner, mud pinching the bottom straight's entry,
-    /// and water clipping the exit of the top-right corner.
-    private static func patches() -> [SurfacePatch] {
-        [
-            SurfacePatch(center: Vec2(right - 20, cy + 90), radius: 34, surface: .oil),
-            SurfacePatch(center: Vec2(left + 260, bottom - 52), radius: 55, surface: .mud),
-            SurfacePatch(center: Vec2(cx + 320, top + 44), radius: 48, surface: .water),
-        ]
-    }
-
-    /// Grid on the bottom straight, before the start line, facing +x.
-    private static func startSlots() -> [Vec2] {
-        (0..<4).map { i in
-            Vec2(cx - 70 - Double(i) * 50, bottom + (i % 2 == 0 ? -28 : 28))
-        }
-    }
+    /// A rounded-rectangle circuit with a pinched waist on the top
+    /// straight to make one interesting drift corner. The pinch corners
+    /// carry small fillets, so the chicane flows instead of kinking.
+    static let practiceLoopDesign = TrackDesign(
+        id: "practice-loop",
+        name: "Practice",
+        size: Vec2(1600, 1000),
+        width: 130,
+        nodes: [
+            .init(id: 1, position: Vec2(240, 800), fillet: 170),
+            .init(id: 2, position: Vec2(1360, 800), fillet: 170),
+            .init(id: 3, position: Vec2(1360, 200), fillet: 170),
+            .init(id: 4, position: Vec2(990, 200), fillet: 55),
+            .init(id: 5, position: Vec2(860, 330), fillet: 45),
+            .init(id: 6, position: Vec2(740, 330), fillet: 45),
+            .init(id: 7, position: Vec2(610, 200), fillet: 55),
+            .init(id: 8, position: Vec2(240, 200), fillet: 170),
+        ],
+        gates: [
+            .init(node: 2, t: 0.5),  // right side, driving up
+            .init(node: 5, t: 0.5),  // the pinch, driving left
+            .init(node: 8, t: 0.5),  // left side, driving down
+            .init(node: 1, t: 0.5),  // start/finish, driving right
+        ],
+        hazards: [
+            // Oil on the right straight before the corner, mud pinching
+            // the bottom straight's entry, water clipping the top-right
+            // corner's exit.
+            SurfacePatch(center: Vec2(1340, 590), radius: 34, surface: .oil),
+            SurfacePatch(center: Vec2(500, 748), radius: 55, surface: .mud),
+            SurfacePatch(center: Vec2(1120, 244), radius: 48, surface: .water),
+        ],
+        pit: Vec2(800, 550)
+    )
 }
