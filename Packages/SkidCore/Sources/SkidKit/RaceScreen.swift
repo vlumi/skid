@@ -49,7 +49,8 @@ struct RaceScreen: View {
                         pauseButton(at: CGPoint(x: geo.size.width / 2, y: geo.size.height / 2))
                     }
                     if session.paused {
-                        PauseMenu(game: game, session: session, rig: rig)
+                        PauseMenu(
+                            game: game, session: session, rig: rig, settings: game.settings)
                     }
                     if race.phase == .finished {
                         ResultsCard(game: game, race: race, colors: colors)
@@ -78,6 +79,7 @@ struct RaceScreen: View {
         rig.layout(size: CGRect(origin: .zero, size: size).size)
         session.advance(to: time)
         game.noteProgress()
+        game.audioFrame()
     }
 
     /// Every active floating d-pad, in its owner's color.
@@ -114,6 +116,7 @@ struct PauseMenu: View {
     let game: CouchGame
     let session: GameSession
     @ObservedObject var rig: CouchRig
+    @ObservedObject var settings: GameSettings
 
     var body: some View {
         VStack(spacing: 12) {
@@ -126,6 +129,20 @@ struct PauseMenu: View {
                 rig.cycleScheme()
             } label: {
                 Text(rig.schemeLabel, bundle: .module).pillStyle()
+            }
+            HStack(spacing: 10) {
+                Button {
+                    settings.soundOn.toggle()
+                } label: {
+                    Text("Sound", bundle: .module).pillStyle()
+                        .opacity(settings.soundOn ? 1 : 0.45)
+                }
+                Button {
+                    settings.hapticsOn.toggle()
+                } label: {
+                    Text("Haptics", bundle: .module).pillStyle()
+                        .opacity(settings.hapticsOn ? 1 : 0.45)
+                }
             }
             Button {
                 game.raceAgain()

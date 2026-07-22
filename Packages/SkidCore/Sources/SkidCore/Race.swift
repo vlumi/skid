@@ -51,6 +51,16 @@ public struct Car: Equatable, Sendable, Codable {
     }
 }
 
+/// Something audible/tactile that happened during a tick — derived
+/// deterministically from the sim, consumed by sound/haptics. Never fed
+/// back into physics.
+public enum RaceEvent: Equatable, Sendable {
+    case wallImpact(PlayerID, speed: Double)
+    case carImpact(PlayerID, PlayerID, closingSpeed: Double)
+    case lapCompleted(PlayerID, lapTicks: Tick)
+    case finished(PlayerID)
+}
+
 /// The whole deterministic simulation: same inputs → same states,
 /// bit-for-bit. Advances at a fixed timestep; no I/O, no rendering, no
 /// wall-clock time anywhere.
@@ -74,6 +84,9 @@ public struct Race: Equatable, Sendable {
     /// Seeded, injected randomness — unused by the core physics, but any
     /// future random effect must draw from here to stay reproducible.
     public private(set) var rng: SeededRNG
+    /// What happened during the most recent `advance` — impacts, laps,
+    /// finishes. Deterministic like everything else.
+    public private(set) var lastEvents: [RaceEvent] = []
 
     public init(
         track: Track, players: [PlayerID], tuning: CarTuning = CarTuning(), seed: UInt64 = 0,
@@ -115,14 +128,18 @@ public struct Race: Equatable, Sendable {
                 cars[i].progress.lapStartTick = tick
             }
         }
+        lastEvents.removeAll()
         var origins = [Vec2](repeating: .zero, count: cars.count)
         for i in cars.indices {
             var car = cars[i]
             origins[i] = car.state.position
             let locked = held || car.progress.finishedAt != nil
             var state = car.state
-            step(car: &state, input: locked ? .coast : (inputs[car.id] ?? .coast))
+            let wallImpact = step(car: &state, input: locked ? .coast : (inputs[car.id] ?? .coast))
             car.state = state
+            if wallImpact > 60 {
+                lastEvents.append(.wallImpact(car.id, speed: wallImpact))
+            }
             cars[i] = car
         }
         if config.carContact, !held {
@@ -132,7 +149,17 @@ public struct Race: Equatable, Sendable {
             for i in cars.indices {
                 var car = cars[i]
                 applyRamps(car: &car, movedFrom: origins[i])
+                let lapsBefore = car.progress.lapTimes.count
+                let finishedBefore = car.progress.finishedAt != nil
                 updateProgress(car: &car, movedFrom: origins[i])
+                if car.progress.lapTimes.count > lapsBefore,
+                    let lap = car.progress.lapTimes.last
+                {
+                    lastEvents.append(.lapCompleted(car.id, lapTicks: lap))
+                }
+                if !finishedBefore, car.progress.finishedAt != nil {
+                    lastEvents.append(.finished(car.id))
+                }
                 cars[i] = car
             }
         }
@@ -197,6 +224,10 @@ public struct Race: Equatable, Sendable {
                     let impulse = normal * (-(1 + tuning.carRestitution) * closing / 2)
                     cars[i].state.velocity -= impulse
                     cars[j].state.velocity += impulse
+                    if -closing > 70 {
+                        lastEvents.append(
+                            .carImpact(cars[i].id, cars[j].id, closingSpeed: -closing))
+                    }
                 }
             }
         }
@@ -220,15 +251,16 @@ public struct Race: Equatable, Sendable {
         }
     }
 
-    private func step(car: inout CarState, input: CarInput) {
+    /// Returns the hardest wall impact this tick (0 if none).
+    @discardableResult
+    private func step(car: inout CarState, input: CarInput) -> Double {
         let dt = Race.dt
         if car.isAirborne {
             // Ballistic: no steering, no throttle, no grip, no drag — the
             // car flies straight until it lands.
             car.airborneTicks -= 1
             car.position += car.velocity * dt
-            collideWithWalls(car: &car)
-            return
+            return collideWithWalls(car: &car)
         }
         let surface = track.surface(at: car.position, layer: car.layer)
 
@@ -259,10 +291,12 @@ public struct Race: Equatable, Sendable {
         car.velocity = fwd * forwardSpeed + lateral
         car.position += car.velocity * dt
 
-        collideWithWalls(car: &car)
+        return collideWithWalls(car: &car)
     }
 
-    private func collideWithWalls(car: inout CarState) {
+    /// Returns the hardest into-wall speed absorbed (0 if no contact).
+    private func collideWithWalls(car: inout CarState) -> Double {
+        var hardest = 0.0
         for wall in track.walls where wall.layer == car.layer {
             let closest = car.position.closestPoint(onSegment: wall.a, wall.b)
             let offset = car.position - closest
@@ -275,7 +309,9 @@ public struct Race: Equatable, Sendable {
             let intoWall = car.velocity.dot(normal)
             if intoWall < 0 {
                 car.velocity -= normal * intoWall * (1 + tuning.wallRestitution)
+                hardest = max(hardest, -intoWall)
             }
         }
+        return hardest
     }
 }

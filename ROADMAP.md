@@ -103,8 +103,10 @@ the plan B).
       launching ramps ready for a jump track), bridge fall-off; occluded
       cars stay visible (ghost bubble, per AGENTS.md)
 - [ ] Scheme A/B verdict: pick defaults, keep the winners, cut the losers
-- [ ] Sound + haptics: engine pitch, slides, collisions
-- [ ] Minimal menus/settings — only what a couch session needs
+- [x] Sound + haptics: engine pitch, slides, collisions (procedural, no
+      audio assets; toggles in setup/pause, persisted)
+- [x] Minimal menus/settings — only what a couch session needs (setup
+      screen + pause menu + sound/haptics toggles)
 - [ ] **Release lane** (pulled forward from v1.0): `make release` —
       lock-step version/build bump, archive, TestFlight upload — plus
       `RELEASING.md`; **v0.5 ends with a TestFlight build**

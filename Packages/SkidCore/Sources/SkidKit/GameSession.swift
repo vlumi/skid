@@ -30,6 +30,10 @@ public final class GameSession: ObservableObject {
     /// Published (unlike per-frame state) so chrome like edge-gesture
     /// deferral can react — it only flips on explicit user action.
     @Published public var paused = false
+    /// Called after every sim tick with the fresh race — the event stream
+    /// consumer seam (sound, haptics). Events from intermediate ticks in a
+    /// frame are never skipped.
+    public var onTick: ((Race) -> Void)?
     /// Published once when the race reaches .finished — chrome outside the
     /// per-frame redraw (edge-gesture deferral) keys off this. Set via a
     /// hop off the render pass, never mid-view-update.
@@ -84,6 +88,7 @@ public final class GameSession: ObservableObject {
             for car in race.cars {
                 marks.record(car: car, on: race.track, tick: race.tick)
             }
+            onTick?(race)
             accumulator -= Race.dt
             ticks += 1
         }
