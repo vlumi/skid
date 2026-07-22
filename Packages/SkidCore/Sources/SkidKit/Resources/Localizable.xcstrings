@@ -1,54 +1,33 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "Best %@" : {
-
-    },
-    "Contact" : {
-
-    },
-    "D-pad" : {
-
-    },
-    "GO!" : {
-
-    },
-    "Ghost" : {
-
-    },
-    "Lap %lld/%lld" : {
-
-    },
-    "One-touch" : {
-
-    },
-    "P%lld" : {
-
-    },
-    "Players" : {
-
-    },
-    "Race again" : {
-
-    },
-    "Reset" : {
-
-    },
-    "Setup" : {
-
-    },
-    "Slide" : {
-
-    },
-    "Split" : {
-
-    },
-    "Start" : {
-
-    },
-    "Two-zone" : {
-
-    }
+  "sourceLanguage": "en",
+  "strings": {
+    "AI": {},
+    "Best %@": {},
+    "Best lap %@": {},
+    "Best race %@": {},
+    "Contact": {},
+    "D-pad": {},
+    "Easy": {},
+    "Face-to-face": {},
+    "GO!": {},
+    "Ghost": {},
+    "Hard": {},
+    "Lap %lld/%lld": {},
+    "Medium": {},
+    "One-touch": {},
+    "Open corner": {},
+    "P%lld": {},
+    "Players": {},
+    "Race": {},
+    "Race again": {},
+    "Reset": {},
+    "Setup": {},
+    "Side-by-side": {},
+    "Slide": {},
+    "Split": {},
+    "Start": {},
+    "Time trial": {},
+    "Two-zone": {}
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

@@ -15,6 +15,21 @@ user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **AI drivers**: fill the grid with up to 3 opponents from the setup
+  screen. They drive the same cars with the same physics (no
+  rubber-banding — a skill ladder of lookahead/caution instead), follow
+  the racing line, drift the corners, and recover when they hit a wall.
+- **Time trial**: lap forever against the clock — live lap timer,
+  session best, and your all-time **best lap** and **best race** are now
+  saved per track (survives relaunch). The best race also stores its
+  full replay…
+- **Personal-best ghost**: …which drives alongside you in time trial as
+  a translucent ghost car — race your own record. Never collides, never
+  leaves marks.
+- **Seating options**: 2-player picks side-by-side or face-to-face;
+  3-player picks which corner of the screen stays open — controls always
+  face the player.
+
 - **Couch multiplayer**: 2–4 players on one device, one thumb each. A
   setup screen picks player count, per-player car colors (tap to cycle),
   and **Contact** (cars bump — derby chaos) vs **Ghost** (pass through —
