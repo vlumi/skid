@@ -15,16 +15,20 @@ public struct Wall: Equatable, Sendable, Codable {
 }
 
 /// An ordered checkpoint gate across the ribbon — a lap counts only when
-/// every gate is crossed in order (lap logic itself lands with race
-/// structure; the data and crossing test live here from day one).
+/// every gate is crossed in order, in the driving direction.
 public struct Gate: Equatable, Sendable, Codable {
     public var a: Vec2
     public var b: Vec2
+    /// The driving direction through the gate; a crossing only counts when
+    /// the movement has a positive component along it. `.zero` accepts both
+    /// directions (undirected gate).
+    public var forward: Vec2
     public var layer: Int
 
-    public init(from a: Vec2, to b: Vec2, layer: Int = 0) {
+    public init(from a: Vec2, to b: Vec2, forward: Vec2 = .zero, layer: Int = 0) {
         self.a = a
         self.b = b
+        self.forward = forward
         self.layer = layer
     }
 
@@ -36,6 +40,14 @@ public struct Gate: Equatable, Sendable, Codable {
         let d3 = (b - a).cross(start - a)
         let d4 = (b - a).cross(end - a)
         return d1 * d2 <= 0 && d3 * d4 <= 0 && !(d1 == 0 && d2 == 0)
+    }
+
+    /// A crossing that also moves along `forward` — the one that advances
+    /// race progress. Driving through backwards never counts.
+    public func crossedForward(movingFrom start: Vec2, to end: Vec2) -> Bool {
+        guard isCrossed(movingFrom: start, to: end) else { return false }
+        guard forward.lengthSquared > 0 else { return true }
+        return (end - start).dot(forward) > 0
     }
 }
 
@@ -105,6 +117,25 @@ public struct Track: Equatable, Sendable, Codable {
             best = min(best, p.distance(toSegment: a, b))
         }
         return best
+    }
+
+    /// The portion of a gate that lies on the asphalt ribbon — where a
+    /// checkpoint line paints on the road. The gate itself is wider (it
+    /// spans the whole corridor); this is only its visible part. nil if the
+    /// gate never touches the ribbon.
+    public func ribbonSpan(of gate: Gate, samples: Int = 64) -> (a: Vec2, b: Vec2)? {
+        let dir = gate.b - gate.a
+        var first: Double?
+        var last: Double?
+        for i in 0...samples {
+            let t = Double(i) / Double(samples)
+            if distanceToCenterline(gate.a + dir * t) <= width / 2 {
+                if first == nil { first = t }
+                last = t
+            }
+        }
+        guard let first, let last else { return nil }
+        return (gate.a + dir * first, gate.a + dir * last)
     }
 
     /// What the car at `p` on `layer` is driving on. Patches win over the

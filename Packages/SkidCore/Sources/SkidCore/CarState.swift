@@ -49,14 +49,3 @@ public struct CarState: Equatable, Sendable, Codable {
         return CarGeometry.tireOffsets.map { position + fwd * $0.x + side * $0.y }
     }
 }
-
-/// One car in the race: identity + state.
-public struct Car: Equatable, Sendable, Codable {
-    public let id: PlayerID
-    public var state: CarState
-
-    public init(id: PlayerID, state: CarState) {
-        self.id = id
-        self.state = state
-    }
-}

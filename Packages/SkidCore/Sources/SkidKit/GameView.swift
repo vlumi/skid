@@ -1,8 +1,8 @@
 import SkidCore
 import SwiftUI
 
-/// The whole v0.1 screen: the track fitted to the view, the car, the marks,
-/// one full-screen touch surface feeding the active control scheme, and the
+/// The whole screen: the track fitted to the view, the race HUD, one
+/// full-screen touch surface feeding the active control scheme, and the
 /// in-run scheme switcher for on-device A/B.
 public struct GameView: View {
     @StateObject private var session: GameSession
@@ -29,13 +29,20 @@ public struct GameView: View {
                     )
                     let race = session.race
                     let marks = session.marks
+                    let spans = session.gateSpans
                     let pad = padOverlay()
-                    Canvas { context, size in
-                        var world = context
-                        TrackRenderer.draw(race: race, marks: marks, into: &world, size: size)
-                        if let pad {
-                            TrackRenderer.drawDPad(pad, into: &context)
+                    ZStack {
+                        Canvas { context, size in
+                            var world = context
+                            TrackRenderer.draw(
+                                race: race, marks: marks, gateSpans: spans,
+                                into: &world, size: size
+                            )
+                            if let pad {
+                                TrackRenderer.drawDPad(pad, into: &context)
+                            }
                         }
+                        RaceHUD(race: race)
                     }
                 }
                 .gesture(
@@ -71,7 +78,7 @@ public struct GameView: View {
     }
 
     private func step(size: CGSize, time: TimeInterval) {
-        rig.dpad.bounds = CGRect(origin: .zero, size: size)
+        rig.updateBounds(CGRect(origin: .zero, size: size))
         session.advance(to: time)
     }
 
@@ -105,6 +112,53 @@ struct DPadOverlay {
     var radius: Double
     var input: CarInput
     var color: Color
+}
+
+/// Countdown, lap counter, and timing — minimal, in the classics' spirit.
+struct RaceHUD: View {
+    let race: Race
+
+    var body: some View {
+        ZStack {
+            if case .countdown(let remaining) = race.phase {
+                Text(verbatim: "\((remaining + Race.tickRate - 1) / Race.tickRate)")
+                    .font(.system(size: 96, weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .shadow(radius: 4)
+            } else if race.raceTicks < Race.tickRate * 3 / 4 {
+                Text("GO!", bundle: .module)
+                    .font(.system(size: 72, weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .shadow(radius: 4)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                if let progress = race.cars.first?.progress, let laps = race.config.laps {
+                    Text("Lap \(min(progress.lap + 1, laps))/\(laps)", bundle: .module)
+                        .font(.headline.monospacedDigit())
+                    Text(verbatim: formatTicks(currentTicks(progress)))
+                        .font(.title3.monospacedDigit().bold())
+                    if let best = progress.bestLapTicks {
+                        Text("Best \(formatTicks(best))", bundle: .module)
+                            .font(.subheadline.monospacedDigit())
+                    }
+                }
+            }
+            .foregroundStyle(.white)
+            .shadow(radius: 2)
+            .padding(.leading, 16)
+            .padding(.top, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func currentTicks(_ progress: CarProgress) -> Tick {
+        if let finished = progress.finishedAt {
+            return finished - race.config.countdownTicks
+        }
+        return race.raceTicks
+    }
 }
 
 extension View {
