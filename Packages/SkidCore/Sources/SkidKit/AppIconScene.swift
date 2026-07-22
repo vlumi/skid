@@ -19,7 +19,7 @@ public struct AppIconScene: View {
 
             // A kerbed corner sweeping through the bottom-left: grass
             // outside, striped kerb band on the ribbon edge.
-            let corner = CGPoint(x: -260 * s, y: 1290 * s)
+            let corner = CGPoint(x: -380 * s, y: 1420 * s)
             func arc(radius: CGFloat) -> Path {
                 var path = Path()
                 path.addArc(
@@ -37,14 +37,28 @@ public struct AppIconScene: View {
                 arc(radius: 1052 * s), with: .color(Color(red: 0.82, green: 0.16, blue: 0.14)),
                 style: StrokeStyle(lineWidth: 66 * s, dash: [110 * s, 110 * s]))
 
-            // The drift: two rubber arcs CURVING WITH THE CORNER —
-            // concentric with the kerb, one per rear tire, ending exactly
-            // at the swung-out rear axle.
-            for offset in [-44.0, 44.0] {
+            // The drift: one rubber arc per rear tire, curving with the
+            // corner (concentric with the kerb) and ending EXACTLY at that
+            // tire — computed from the car's own transform, so the marks
+            // stay glued to the wheels whatever the drift angle.
+            let carCenter = Vec2(620, 380)
+            let carRotation = Angle.degrees(-152)
+            let carScale = 10.4
+            let cosR = cos(carRotation.radians)
+            let sinR = sin(carRotation.radians)
+            for frame in [Vec2(-11, -9), Vec2(-11, 9)] {  // rear tires, car frame
+                let rotated = Vec2(
+                    frame.x * cosR - frame.y * sinR,
+                    frame.x * sinR + frame.y * cosR
+                )
+                let tire = carCenter + rotated * carScale
+                let spoke = tire - Vec2(corner.x / s, corner.y / s)
+                let radius = spoke.length
+                let endAngle = Angle(radians: atan2(spoke.y, spoke.x))
                 var trail = Path()
                 trail.addArc(
-                    center: corner, radius: (1302 + offset) * s,
-                    startAngle: .degrees(-8), endAngle: .degrees(-41), clockwise: true)
+                    center: corner, radius: radius * s,
+                    startAngle: .degrees(-9), endAngle: endAngle, clockwise: true)
                 context.stroke(
                     trail, with: .color(.black.opacity(0.45)),
                     style: StrokeStyle(lineWidth: 42 * s, lineCap: .round))
@@ -56,9 +70,9 @@ public struct AppIconScene: View {
             // travel, which the trails show) — the oversteer angle is what
             // makes it read as a drift, not a parked car.
             var car = context
-            car.translateBy(x: 620 * s, y: 380 * s)
-            car.rotate(by: .degrees(-152))
-            car.scaleBy(x: 10.4 * s, y: 10.4 * s)
+            car.translateBy(x: carCenter.x * s, y: carCenter.y * s)
+            car.rotate(by: carRotation)
+            car.scaleBy(x: carScale * s, y: carScale * s)
             for offset in CarGeometry.tireOffsets {
                 var tire = car
                 tire.translateBy(x: offset.x, y: offset.y)
