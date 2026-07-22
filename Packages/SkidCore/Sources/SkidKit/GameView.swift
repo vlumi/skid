@@ -185,7 +185,8 @@ public final class CouchGame: ObservableObject {
             return fleet.input(for: player, in: race)
         }
         let session = GameSession(
-            track: track, players: players, config: config, seed: seed, ghost: ghost,
+            track: track, players: players, config: config, seed: seed,
+            tuning: CarTuning().scaled(pace: settings.pace), ghost: ghost,
             inputFor: inputFor)
         session.onTick = { [weak self] race in
             guard let self else { return }
@@ -199,11 +200,26 @@ public final class CouchGame: ObservableObject {
         return session
     }
 
+    /// Push the persisted d-pad tuning onto every player's pad — called
+    /// each frame, so panel changes apply live mid-race.
+    public func applyControlTuning() {
+        guard let rig else { return }
+        for controls in rig.players {
+            controls.dpad.deadzone = settings.dpadDeadzone
+            controls.dpad.radius = settings.dpadTravel
+            controls.dpad.levels = settings.dpadSteps > 0 ? settings.dpadSteps : nil
+            controls.dpad.expo = settings.dpadExpo
+        }
+    }
+
     /// Called every frame by the race screen: fold the (single) human's
     /// results into the hiscores as they happen. Multi-human races don't
-    /// record — hiscores are personal.
+    /// record — hiscores are personal. Slowed-pace runs never record:
+    /// bests are set at full speed only.
     public func noteProgress() {
-        guard let session, let rig, rig.players.count == 1 else { return }
+        guard let session, let rig, rig.players.count == 1, settings.pace > 0.999 else {
+            return
+        }
         let trackID = session.race.track.id
         guard let car = session.race.cars.first else { return }
         var improved = false
