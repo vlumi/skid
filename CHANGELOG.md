@@ -16,6 +16,11 @@ heading is hand-set when a milestone ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Aim-to-drive**, a new control scheme in the switcher: a floating stick
+  like the d-pad, but you just point where you want to go — the car turns
+  toward it at a natural pace and backs up when you point behind it. No
+  separate gas and brake to juggle. The d-pad and the other schemes are
+  all still there to A/B against.
 - **Smoother corners on every track**: curves now bake at a fine, even
   resolution, and the previously sharp chicane and figure-eight joins
   flow instead of kinking — most visible on the Overpass's diagonals and

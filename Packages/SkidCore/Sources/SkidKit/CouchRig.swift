@@ -13,6 +13,7 @@ public final class PlayerControls {
     public private(set) var up = Vec2(0, -1)
 
     public let dpad = VirtualDPadControlSource()
+    public let aim = AimControlSource()
     public let slide = TouchPadControlSource()
     public let twoZone = TwoZoneControlSource()
     public let oneTouch = OneTouchControlSource()
@@ -26,6 +27,7 @@ public final class PlayerControls {
     public func source(for scheme: ControlScheme) -> TouchDrivenControlSource {
         switch scheme {
         case .dpad: return dpad
+        case .aim: return aim
         case .slide: return slide
         case .twoZone: return twoZone
         case .oneTouch: return oneTouch
@@ -38,6 +40,7 @@ public final class PlayerControls {
         self.up = up
         dpad.bounds = rect
         dpad.up = up
+        aim.bounds = rect
         slide.up = up
         twoZone.bounds = rect
         twoZone.up = up
@@ -182,6 +185,7 @@ public final class CouchRig: ObservableObject {
     public var schemeLabel: LocalizedStringKey {
         switch scheme {
         case .dpad: return "D-pad"
+        case .aim: return "Aim"
         case .slide: return "Slide"
         case .twoZone: return "Two-zone"
         case .oneTouch: return "One-touch"

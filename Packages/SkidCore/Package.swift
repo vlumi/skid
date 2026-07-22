@@ -38,7 +38,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SkidCoreTests",
-            dependencies: ["SkidCore"]
+            dependencies: ["SkidCore", "SkidKit"]
         ),
     ]
 )
