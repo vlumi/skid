@@ -145,21 +145,26 @@ public struct Race: Equatable, Sendable {
     /// that strays off its ribbon falls back to the ground layer.
     private func applyRamps(car: inout Car, movedFrom from: Vec2) {
         guard !car.state.isAirborne else { return }
+        var flippedThisTick = false
         for ramp in track.ramps {
             switch ramp.crossing(movingFrom: from, to: car.state.position) {
             case 1 where car.state.layer == ramp.fromLayer:
                 car.state.layer = ramp.toLayer
+                flippedThisTick = true
                 if ramp.launches {
                     let flight = Int(car.state.velocity.length * tuning.jumpTicksPerSpeed)
                     car.state.airborneTicks = min(60, flight)
                 }
             case -1 where car.state.layer == ramp.toLayer:
                 car.state.layer = ramp.fromLayer
+                flippedThisTick = true
             default:
                 break
             }
         }
-        if car.state.layer > 0,
+        // Never fall off on the very tick a ramp flipped the layer — the
+        // car is at the deck's edge by definition there.
+        if !flippedThisTick, car.state.layer > 0,
             track.distanceToCenterline(car.state.position, layer: car.state.layer)
                 > track.width / 2 + 6
         {

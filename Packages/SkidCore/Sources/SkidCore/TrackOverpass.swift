@@ -25,9 +25,12 @@ extension TrackLibrary {
         let across = diveDirection.perpendicular
 
         func line(at point: Vec2) -> (Vec2, Vec2) {
-            // Only as wide as the ramp mouth — grazing the line from the
-            // grass must not flip a car's layer.
-            let half = across * (width / 2 + 8)
+            // Slightly NARROWER than the deck ribbon: any crossing then
+            // lands safely inside the deck's fall-off tolerance — a car
+            // hugging the retaining wall can't flip layers and instantly
+            // fall off the edge (the reverse-onto-the-bridge bubble bug).
+            // The walls funnel every possible crossing within this span.
+            let half = across * (width / 2 - 2)
             return (point - half, point + half)
         }
         let up = line(at: deckStart)
@@ -46,8 +49,13 @@ extension TrackLibrary {
             elevatedSegments: [deckIndex],
             rampSegments: [approachIndex, descentIndex],
             ramps: [
+                // Up: ground → deck at the deck's start.
                 Ramp(from: up.0, to: up.1, forward: diveDirection),
-                Ramp(from: down.0, to: down.1, forward: diveDirection),
+                // Down: deck → ground at the deck's end (forward descends;
+                // crossing it backward climbs back up).
+                Ramp(
+                    from: down.0, to: down.1, forward: diveDirection,
+                    fromLayer: 1, toLayer: 0),
             ],
             walls: walls,
             gates: overpassGates(

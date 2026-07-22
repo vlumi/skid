@@ -94,6 +94,34 @@ final class LayerTests: XCTestCase {
         XCTAssertEqual(race.cars[0].state.layer, 0)
     }
 
+    func testReversingBackOverTheBridgeStaysOnDeck() {
+        // Device repro: reversing from the descent ramp back over the
+        // bridge left the car on layer 0 under the deck (a bubble the
+        // whole way). Reverse the full span and assert the car rides ON
+        // the deck.
+        var race = Race(track: TrackLibrary.overpass(), players: [PlayerID(0)])
+        let diveStart = Vec2(950, 190)
+        let diveEnd = Vec2(700, 760)
+        let dir = (diveEnd - diveStart).normalized
+        race.cars[0].state.position = diveStart + (diveEnd - diveStart) * 0.95
+        race.cars[0].state.heading = atan2(dir.y, dir.x)  // facing down-slope
+        var sawDeck = false
+        for _ in 0..<(10 * Race.tickRate) {
+            race.advance(inputs: [PlayerID(0): CarInput(throttle: -1)])
+            let t =
+                (race.cars[0].state.position - diveStart).dot(dir)
+                / diveStart.distance(to: diveEnd)
+            if t > 0.35, t < 0.65 {
+                sawDeck = true
+                XCTAssertEqual(
+                    race.cars[0].state.layer, 1,
+                    "reversing onto the bridge must climb to the deck")
+                XCTAssertFalse(race.cars[0].state.isAirborne)
+            }
+        }
+        XCTAssertTrue(sawDeck, "car never traversed the deck in reverse")
+    }
+
     func testOverpassBridgeGeometry() {
         let track = TrackLibrary.overpass()
         XCTAssertFalse(track.elevatedSegments.isEmpty)
