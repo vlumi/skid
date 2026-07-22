@@ -129,6 +129,11 @@ public struct Track: Equatable, Sendable, Codable {
     public var startHeading: Double
     /// World bounds, for the renderer's letterboxing.
     public var size: Vec2
+    /// The "pit": an authored infield point, clear of the racing line, that
+    /// holds off-track chrome (today just the pause button, so it never lands
+    /// on the ribbon). One per track, placed by hand near start/finish.
+    /// Defaults to the world center for ad-hoc tracks that don't set one.
+    public var pit: Vec2
 
     public init(
         id: String = "",
@@ -142,7 +147,8 @@ public struct Track: Equatable, Sendable, Codable {
         patches: [SurfacePatch] = [],
         startSlots: [Vec2] = [],
         startHeading: Double = 0,
-        size: Vec2
+        size: Vec2,
+        pit: Vec2? = nil
     ) {
         self.id = id
         self.centerline = centerline
@@ -156,6 +162,7 @@ public struct Track: Equatable, Sendable, Codable {
         self.startSlots = startSlots
         self.startHeading = startHeading
         self.size = size
+        self.pit = pit ?? size * 0.5
     }
 
     /// Which layer a centerline segment lives on.
