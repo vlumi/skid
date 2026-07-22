@@ -51,6 +51,38 @@ public struct Gate: Equatable, Sendable, Codable {
     }
 }
 
+/// A layer transition line across the ribbon: crossing it along `forward`
+/// takes the car from `fromLayer` to `toLayer` (driving back down crosses
+/// it backward). With `launches`, the forward crossing throws the car —
+/// a jump ramp: brief ballistic flight scaled by speed.
+public struct Ramp: Equatable, Sendable, Codable {
+    public var a: Vec2
+    public var b: Vec2
+    public var forward: Vec2
+    public var fromLayer: Int
+    public var toLayer: Int
+    public var launches: Bool
+
+    public init(
+        from a: Vec2, to b: Vec2, forward: Vec2, fromLayer: Int = 0, toLayer: Int = 1,
+        launches: Bool = false
+    ) {
+        self.a = a
+        self.b = b
+        self.forward = forward
+        self.fromLayer = fromLayer
+        self.toLayer = toLayer
+        self.launches = launches
+    }
+
+    /// -1 = crossed backward, +1 = crossed forward, 0 = not crossed.
+    public func crossing(movingFrom start: Vec2, to end: Vec2) -> Int {
+        let gate = Gate(from: a, to: b, forward: forward)
+        guard gate.isCrossed(movingFrom: start, to: end) else { return 0 }
+        return (end - start).dot(forward) > 0 ? 1 : -1
+    }
+}
+
 /// A patch of non-asphalt surface (mud, water, oil) placed on or off the
 /// ribbon. Circles keep the lookup trivially deterministic.
 public struct SurfacePatch: Equatable, Sendable, Codable {
@@ -79,8 +111,11 @@ public struct Track: Equatable, Sendable, Codable {
     public var centerline: [Vec2]
     /// Full width of the asphalt ribbon.
     public var width: Double
-    /// Ribbon layer per centerline segment index isn't needed yet (flat
-    /// v0.1); the ribbon lives on layer 0.
+    /// Centerline segment indexes on the elevated layer (1) — bridges.
+    /// Everything else is ground (0).
+    public var elevatedSegments: Set<Int>
+    /// Layer transition lines (bridge approaches, jump ramps).
+    public var ramps: [Ramp]
     public var walls: [Wall]
     /// Ordered checkpoint gates; the last one is the start/finish line.
     public var gates: [Gate]
@@ -95,6 +130,8 @@ public struct Track: Equatable, Sendable, Codable {
         id: String = "",
         centerline: [Vec2],
         width: Double,
+        elevatedSegments: Set<Int> = [],
+        ramps: [Ramp] = [],
         walls: [Wall] = [],
         gates: [Gate] = [],
         patches: [SurfacePatch] = [],
@@ -105,6 +142,8 @@ public struct Track: Equatable, Sendable, Codable {
         self.id = id
         self.centerline = centerline
         self.width = width
+        self.elevatedSegments = elevatedSegments
+        self.ramps = ramps
         self.walls = walls
         self.gates = gates
         self.patches = patches
@@ -113,10 +152,17 @@ public struct Track: Equatable, Sendable, Codable {
         self.size = size
     }
 
-    /// Distance from `p` to the centerline loop.
-    public func distanceToCenterline(_ p: Vec2) -> Double {
+    /// Which layer a centerline segment lives on.
+    public func segmentLayer(_ index: Int) -> Int {
+        elevatedSegments.contains(index) ? 1 : 0
+    }
+
+    /// Distance from `p` to the centerline loop — optionally only the
+    /// segments of one layer (per-layer ribbon lookups).
+    public func distanceToCenterline(_ p: Vec2, layer: Int? = nil) -> Double {
         var best = Double.greatestFiniteMagnitude
         for i in centerline.indices {
+            if let layer, segmentLayer(i) != layer { continue }
             let a = centerline[i]
             let b = centerline[(i + 1) % centerline.count]
             best = min(best, p.distance(toSegment: a, b))
@@ -125,17 +171,23 @@ public struct Track: Equatable, Sendable, Codable {
     }
 
     /// The closest point on the centerline loop to `p`, as (segment index,
-    /// parameter along it).
-    public func closestCenterlinePoint(to p: Vec2) -> (segment: Int, t: Double) {
+    /// parameter along it). `preferLayer` breaks the tie where two layers
+    /// overlap in 2D (a bridge crossing): anchor to the car's own layer.
+    public func closestCenterlinePoint(
+        to p: Vec2, preferLayer: Int? = nil
+    ) -> (segment: Int, t: Double) {
         var best = (segment: 0, t: 0.0)
-        var bestDistance = Double.greatestFiniteMagnitude
+        var bestScore = Double.greatestFiniteMagnitude
         for i in centerline.indices {
             let a = centerline[i]
             let b = centerline[(i + 1) % centerline.count]
             let closest = p.closestPoint(onSegment: a, b)
-            let distance = p.distance(to: closest)
-            if distance < bestDistance {
-                bestDistance = distance
+            var score = p.distance(to: closest)
+            if let preferLayer, segmentLayer(i) != preferLayer {
+                score += width  // other-layer segments lose ties decisively
+            }
+            if score < bestScore {
+                bestScore = score
                 let length = (b - a).length
                 let t = length > 0 ? (closest - a).length / length : 0
                 best = (i, t)
@@ -157,12 +209,16 @@ public struct Track: Equatable, Sendable, Codable {
     /// from the point nearest `p` — the AI's lookahead target. Distances
     /// beyond a full loop wrap; zero-length segments (arc/straight joints
     /// share endpoints) are skipped. Degenerate loops (no length at all)
-    /// return their first point.
-    public func pointAlongCenterline(from p: Vec2, distance: Double) -> Vec2 {
+    /// return their first point. `preferLayer` anchors the start to the
+    /// car's own layer where a bridge overlaps the road below; the walk
+    /// itself flows over every layer (ramps carry the car up and down).
+    public func pointAlongCenterline(
+        from p: Vec2, distance: Double, preferLayer: Int? = nil
+    ) -> Vec2 {
         guard !centerline.isEmpty else { return p }
         let perimeter = centerlineLength
         guard perimeter > 0 else { return centerline[0] }
-        var (segment, t) = closestCenterlinePoint(to: p)
+        var (segment, t) = closestCenterlinePoint(to: p, preferLayer: preferLayer)
         var remaining = distance.truncatingRemainder(dividingBy: perimeter)
         for _ in 0..<(centerline.count * 2 + 2) {
             let a = centerline[segment]
@@ -203,14 +259,13 @@ public struct Track: Equatable, Sendable, Codable {
     }
 
     /// What the car at `p` on `layer` is driving on. Patches win over the
-    /// ribbon; everything beyond the ribbon is grass. The ribbon itself
-    /// lives on layer 0 (flat v0.1 content).
+    /// ribbon; everything beyond that layer's ribbon is grass.
     public func surface(at p: Vec2, layer: Int = 0) -> Surface {
         for patch in patches where patch.layer == layer {
             if p.distance(to: patch.center) <= patch.radius {
                 return patch.surface
             }
         }
-        return layer == 0 && distanceToCenterline(p) <= width / 2 ? .asphalt : .grass
+        return distanceToCenterline(p, layer: layer) <= width / 2 ? .asphalt : .grass
     }
 }

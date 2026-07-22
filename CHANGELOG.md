@@ -15,6 +15,14 @@ user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Overpass** — the figure-eight, and the two-layer system it rides on:
+  yellow-striped ramps lift you onto a **bridge** over the crossing (with
+  its own checkpoint — the overpass must be driven, not dodged), stray
+  off the edge and you drop back down. Cars under the bridge show
+  through as a colored bubble so nobody ever loses their car. Jump
+  ramps (full ballistic flight, no steering mid-air) are in the engine,
+  waiting for a track that dares to use them.
+
 - **Two new tracks**, picked on the setup screen: **Gauntlet** — the
   rectangle pinched on both straights, narrower road, mud filling the
   bottom chicane — and **Hairpin** — a fast bowl feeding a tight 180°

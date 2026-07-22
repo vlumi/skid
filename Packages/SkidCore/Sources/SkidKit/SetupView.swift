@@ -63,6 +63,7 @@ struct SetupView: View {
         switch id {
         case "gauntlet": return Text("Gauntlet", bundle: .module)
         case "hairpin": return Text("Hairpin", bundle: .module)
+        case "overpass": return Text("Overpass", bundle: .module)
         default: return Text("Practice", bundle: .module)
         }
     }
