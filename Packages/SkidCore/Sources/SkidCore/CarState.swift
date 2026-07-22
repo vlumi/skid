@@ -25,16 +25,23 @@ public struct CarState: Equatable, Sendable, Codable {
     /// Ticks of flight remaining; while > 0 the car is ballistic — no
     /// steering, no throttle, no grip, no surface drag.
     public var airborneTicks: Int
+    /// The steering actually applied this tick, −1…1. It chases the raw
+    /// input at a bounded rate (`CarTuning.steerRate`) instead of matching
+    /// it instantly, so a twitchy thumb doesn't snap the nose — the wheel
+    /// takes a moment to reach lock. Part of the state so replays stay
+    /// bit-exact.
+    public var steerActuator: Double
 
     public init(
         position: Vec2, velocity: Vec2 = .zero, heading: Double = 0, layer: Int = 0,
-        airborneTicks: Int = 0
+        airborneTicks: Int = 0, steerActuator: Double = 0
     ) {
         self.position = position
         self.velocity = velocity
         self.heading = heading
         self.layer = layer
         self.airborneTicks = airborneTicks
+        self.steerActuator = steerActuator
     }
 
     public var isAirborne: Bool { airborneTicks > 0 }

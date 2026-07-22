@@ -37,10 +37,9 @@ extension TrackLibrary {
         let down = line(at: deckEnd)
         let bridgeGateLine = line(at: (deckStart + deckEnd) * 0.5)
 
-        let walls =
-            boundaryWalls(size: size)
-            + rampWalls(ground: diveStart, deck: deckStart, width: width)
-            + rampWalls(ground: diveEnd, deck: deckEnd, width: width)
+        let walls = overpassWalls(
+            size: size, width: width, across: across,
+            dive: Dive(start: diveStart, deckStart: deckStart, deckEnd: deckEnd, end: diveEnd))
 
         return Track(
             id: "overpass",
@@ -70,20 +69,67 @@ extension TrackLibrary {
                 Vec2(1040 - Double(i) * 45, 810 + (i % 2 == 0 ? -26 : 26))
             },
             startHeading: 0,
-            size: size
+            size: size,
+            pit: Vec2(1040, 550)  // right-lobe infield, by the start/finish
         )
     }
 
+    /// Boundary + ramp retaining walls (layer 0) plus deck rails (layer 1).
+    /// The deck rails keep reaching the mid-bridge checkpoint from being a
+    /// tightrope: a car that drifts wide up top is caught, not dropped. Being
+    /// layer-specific, the road running underneath passes straight through
+    /// them; they cover the span's middle and stop short of the ramp mouths.
+    /// The four points of the dive, in drive order: ground → deck start →
+    /// deck end → ground.
+    private struct Dive {
+        var start: Vec2
+        var deckStart: Vec2
+        var deckEnd: Vec2
+        var end: Vec2
+    }
+
+    private static func overpassWalls(
+        size: Vec2, width: Double, across: Vec2, dive: Dive
+    ) -> [Wall] {
+        boundaryWalls(size: size)
+            + rampWalls(ground: dive.start, deck: dive.deckStart, width: width)
+            + rampWalls(ground: dive.end, deck: dive.deckEnd, width: width)
+            + deckWalls(
+                deckStart: dive.deckStart, deckEnd: dive.deckEnd, across: across, width: width)
+    }
+
     /// Retaining walls along a ramp's sides: a ramp is entered from the
-    /// connecting road below or from the deck above — never sideways.
+    /// connecting road below or from the deck above — never sideways. The
+    /// walls follow the ramp axis and hold a constant half-width the whole
+    /// way, so the wall edge lines up with the ribbon edge at both ends
+    /// (the old splay from width/2 to width/2+8 left the top端 flaring off
+    /// the deck edge). They stop just short of the deck so they don't jut
+    /// into the road that runs underneath at the ramp foot.
     private static func rampWalls(ground: Vec2, deck: Vec2, width: Double) -> [Wall] {
-        let up = (deck - ground).normalized
-        let side = up.perpendicular
+        let axis = (deck - ground).normalized
+        let side = axis.perpendicular
+        let half = width / 2
+        // Pull the top end back a touch so the descent ramp's walls don't
+        // overlap the flat road passing beneath the deck's foot.
+        let top = deck - axis * 14
         return [-1.0, 1.0].map { sign in
-            Wall(
-                from: ground + side * (width / 2 * sign),
-                to: deck + side * ((width / 2 + 8) * sign)
-            )
+            Wall(from: ground + side * (half * sign), to: top + side * (half * sign))
+        }
+    }
+
+    /// Layer-1 retaining walls down the two edges of the bridge deck,
+    /// covering its middle and stopping short of each ramp mouth. Only
+    /// elevated cars (layer 1) collide with these; the ground road under the
+    /// bridge is unaffected.
+    private static func deckWalls(
+        deckStart: Vec2, deckEnd: Vec2, across: Vec2, width: Double
+    ) -> [Wall] {
+        // Leave the first/last fifth of the span open for the ramp mouths.
+        let a = deckStart + (deckEnd - deckStart) * 0.2
+        let b = deckStart + (deckEnd - deckStart) * 0.8
+        let half = across * (width / 2)
+        return [-1.0, 1.0].map { sign in
+            Wall(from: a + half * sign, to: b + half * sign, layer: 1)
         }
     }
 

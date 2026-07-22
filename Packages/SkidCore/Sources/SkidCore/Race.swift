@@ -264,12 +264,19 @@ public struct Race: Equatable, Sendable {
         }
         let surface = track.surface(at: car.position, layer: car.layer)
 
-        // Steering: yaw follows steer, scaled up to full effect at
+        // The wheel chases the thumb at a bounded rate instead of matching it
+        // instantly — a twitch no longer snaps the nose, but full lock is
+        // still reached in ~1/steerRate s, so the ceiling is unchanged.
+        let maxStep = tuning.steerRate * dt
+        let delta = input.steer - car.steerActuator
+        car.steerActuator += max(-maxStep, min(maxStep, delta))
+
+        // Steering: yaw follows the actuator, scaled up to full effect at
         // steerFullSpeed; reversing mirrors the wheel like a real car.
         let speedAlongHeading = car.velocity.dot(car.forward)
         let effectiveness = min(1, abs(speedAlongHeading) / tuning.steerFullSpeed)
         let direction: Double = speedAlongHeading < 0 ? -1 : 1
-        car.heading += input.steer * tuning.turnRate * effectiveness * direction * dt
+        car.heading += car.steerActuator * tuning.turnRate * effectiveness * direction * dt
 
         // Decompose the world-space velocity against the NEW heading: the
         // nose turned away from the momentum, so part of it is now lateral —
