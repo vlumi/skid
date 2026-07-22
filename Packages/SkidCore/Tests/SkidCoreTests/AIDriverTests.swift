@@ -78,6 +78,22 @@ final class AIDriverTests: XCTestCase {
         XCTAssertNotNil(longEasy.race.cars[0].progress.finishedAt)
     }
 
+    func testEasyDriverActuallyTouchesGrass() {
+        // Device feedback: Easy looked too clean. Its line wander must be
+        // big enough to genuinely run wide off the ribbon now and then.
+        var race = Race(track: TrackLibrary.practiceLoop(), players: [PlayerID(0)])
+        var driver = AIDriver.make(.easy)
+        var grassTicks = 0
+        for _ in 0..<(45 * Race.tickRate) {
+            let input = driver.input(car: race.cars[0].state, track: race.track)
+            race.advance(inputs: [PlayerID(0): input])
+            if race.track.surface(at: race.cars[0].state.position) == .grass {
+                grassTicks += 1
+            }
+        }
+        XCTAssertGreaterThan(grassTicks, 30, "easy AI never ran wide onto the grass")
+    }
+
     func testCenterlineWalk() {
         let track = TrackLibrary.practiceLoop()
         // A point on the bottom straight walks forward along +x.
