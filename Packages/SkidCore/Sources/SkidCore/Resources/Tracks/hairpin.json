@@ -1,0 +1,207 @@
+{
+  "design" : {
+    "extraWalls" : [
+
+    ],
+    "gates" : [
+      {
+        "node" : 1,
+        "span" : {
+          "corridor" : {
+            "reach" : 150
+          }
+        },
+        "t" : 0.5079365079365079
+      },
+      {
+        "node" : 2,
+        "span" : {
+          "corridor" : {
+            "reach" : 150
+          }
+        },
+        "t" : 0.5113636363636364
+      },
+      {
+        "node" : 5,
+        "span" : {
+          "absolute" : {
+            "half" : 80
+          }
+        },
+        "t" : 0.4806451612903226
+      },
+      {
+        "node" : 10,
+        "span" : {
+          "corridor" : {
+            "reach" : 17
+          }
+        },
+        "t" : 0.41
+      }
+    ],
+    "grid" : {
+      "back" : 70,
+      "gap" : 50,
+      "lateral" : 28
+    },
+    "hazards" : [
+      {
+        "center" : {
+          "x" : 700,
+          "y" : 578
+        },
+        "layer" : 0,
+        "radius" : 42,
+        "surface" : {
+          "mud" : {
+
+          }
+        }
+      },
+      {
+        "center" : {
+          "x" : 820,
+          "y" : 190
+        },
+        "layer" : 0,
+        "radius" : 30,
+        "surface" : {
+          "oil" : {
+
+          }
+        }
+      },
+      {
+        "center" : {
+          "x" : 1350,
+          "y" : 660
+        },
+        "layer" : 0,
+        "radius" : 42,
+        "surface" : {
+          "water" : {
+
+          }
+        }
+      }
+    ],
+    "id" : "hairpin",
+    "name" : "Hairpin",
+    "nodes" : [
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 1,
+        "kerb" : false,
+        "position" : {
+          "x" : 1350,
+          "y" : 820
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 2,
+        "kerb" : false,
+        "position" : {
+          "x" : 1350,
+          "y" : 190
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 170,
+        "id" : 3,
+        "kerb" : false,
+        "position" : {
+          "x" : 470,
+          "y" : 190
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 60,
+        "id" : 4,
+        "kerb" : false,
+        "position" : {
+          "x" : 470,
+          "y" : 480
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 80,
+        "id" : 5,
+        "kerb" : false,
+        "position" : {
+          "x" : 980,
+          "y" : 525
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 80,
+        "id" : 6,
+        "kerb" : false,
+        "position" : {
+          "x" : 980,
+          "y" : 680
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 40,
+        "id" : 7,
+        "kerb" : false,
+        "position" : {
+          "x" : 620,
+          "y" : 680
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 40,
+        "id" : 8,
+        "kerb" : false,
+        "position" : {
+          "x" : 430,
+          "y" : 700
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 25,
+        "id" : 9,
+        "kerb" : false,
+        "position" : {
+          "x" : 355,
+          "y" : 760
+        }
+      },
+      {
+        "edge" : "ground",
+        "fillet" : 30,
+        "id" : 10,
+        "kerb" : false,
+        "position" : {
+          "x" : 350,
+          "y" : 820
+        }
+      }
+    ],
+    "pit" : {
+      "x" : 760,
+      "y" : 360
+    },
+    "revision" : 1,
+    "size" : {
+      "x" : 1600,
+      "y" : 1000
+    },
+    "theme" : "grass",
+    "width" : 116
+  },
+  "version" : 1
+}

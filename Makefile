@@ -54,6 +54,15 @@ icon:  ## Regenerate the app icon from the game's own drawing code
 	@swift run --package-path Packages/SkidCore skid-icon \
 		"$(CURDIR)/Sources/Shared/Assets.xcassets/AppIcon.appiconset/icon-1024.png"
 
+.PHONY: tracks-lint
+tracks-lint:  ## Validate the bundled track designs
+	@swift run --package-path Packages/SkidCore skid-tracks lint
+
+.PHONY: tracks-export
+tracks-export:  ## Re-encode the bundled track designs canonically
+	@swift run --package-path Packages/SkidCore skid-tracks export \
+		"$(CURDIR)/Packages/SkidCore/Sources/SkidCore/Resources/Tracks"
+
 .PHONY: clean
 clean:  ## Remove the generated project + local build output
 	@rm -rf Skid.xcodeproj .build-xcode Packages/SkidCore/.build dist
