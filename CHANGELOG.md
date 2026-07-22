@@ -16,6 +16,8 @@ heading is hand-set when a milestone ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### v0.1.0 build 2 — 2026-07-22
+
 - A **Tuning** panel in the pause menu, for finding the feel on real
   thumbs: d-pad dead zone, travel, steps (including full analog), and a
   response **curve** (softer near the center for smoother small
