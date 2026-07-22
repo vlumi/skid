@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Export options for App Store distribution (used by
+  Scripts/release-distribute.sh via `xcodebuild -exportArchive`). Automatic
+  signing matches Xcode's Organizer, so no distribution cert/profile has to
+  be installed by hand — `-allowProvisioningUpdates` fetches what it needs.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store-connect</string>
+    <key>destination</key>
+    <string>export</string>
+    <key>teamID</key>
+    <string>U84DT7P75P</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>uploadSymbols</key>
+    <true/>
+</dict>
+</plist>

@@ -264,7 +264,9 @@ Non-touch (Mac-prep / controller path):
 ## Conventions (apply once real code exists)
 
 - **Toolchain:** Xcode + Swift 6, **XcodeGen** (`.xcodeproj` generated,
-  gitignored, never committed; signing/team live only there).
+  gitignored, never committed). The team ID IS committed in `project.yml`
+  (it's not a secret, and the release lane's headless automatic signing
+  needs it); certs/profiles are fetched by `-allowProvisioningUpdates`.
 - **Bundle id:** `fi.misaki.skid` (working). **Universal Purchase** from the
   start if it ships to both platforms. MIT, no monetization.
 - **Localization:** English-only for now, but String Catalog + `Text(_,

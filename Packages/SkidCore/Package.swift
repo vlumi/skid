@@ -13,6 +13,8 @@ let package = Package(
         .library(name: "SkidCore", targets: ["SkidCore"]),
         // SwiftUI rendering + input glue. Depends on SkidCore.
         .library(name: "SkidKit", targets: ["SkidKit"]),
+        // Dev tool: renders the app icon from the game's own drawing code.
+        .executable(name: "skid-icon", targets: ["SkidIcon"]),
     ],
     targets: [
         .target(name: "SkidCore"),
@@ -20,6 +22,10 @@ let package = Package(
             name: "SkidKit",
             dependencies: ["SkidCore"],
             resources: [.process("Resources/Localizable.xcstrings")]
+        ),
+        .executableTarget(
+            name: "SkidIcon",
+            dependencies: ["SkidKit"]
         ),
         .testTarget(
             name: "SkidCoreTests",
