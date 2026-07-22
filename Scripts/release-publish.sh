@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # Release step 2 (the stateful one): bump the build number (and the
-# marketing version when VERSION=x.y.z is given), cut the CHANGELOG's
-# "Unreleased (next build)" section into this build's heading, land it all
-# on main via an auto-merged PR (main is protected), then tag the merge.
+# marketing version when VERSION=x.y.z is given), verify the CHANGELOG's
+# version/build heading was written BY HAND, land it all on main via an
+# auto-merged PR (main is protected), then tag the merge.
+#
+# The changelog is editorial: rename "### Unreleased (next build)" to
+# "### vX.Y.Z build N — YYYY-MM-DD" yourself (and open a fresh pending
+# section above it) before running this; the edit may sit uncommitted —
+# it rides in the release PR. The script only checks it exists.
 #
 # State crosses to the next step via the tagged commit on main, not through
 # the shell — so `release-distribute` can run standalone later.
@@ -22,24 +27,16 @@ fi
 tag="$(tag_name "$new_version" "$new_build")"
 say "Cutting ${tag} (was v${version} build ${build})…"
 
+# The changelog heading is hand-written — refuse to cut without it.
+heading="### v${new_version} build ${new_build}"
+grep -qF "$heading" CHANGELOG.md || die "CHANGELOG.md is missing \"${heading} — <date>\".
+Rename the pending \"### Unreleased (next build)\" section to it by hand
+(and open a fresh empty pending section above it), then rerun."
+grep -qF "### Unreleased (next build)" CHANGELOG.md \
+    || die "CHANGELOG.md has no fresh \"### Unreleased (next build)\" section — open one above the new heading."
+
 write_setting MARKETING_VERSION "$new_version"
 write_setting CURRENT_PROJECT_VERSION "$new_build"
-
-# Cut the changelog: the pending section becomes this build's heading, and a
-# fresh empty pending section opens above it.
-python3 - "$new_version" "$new_build" <<'EOF'
-import sys
-version, build = sys.argv[1], sys.argv[2]
-from datetime import date
-path = "CHANGELOG.md"
-text = open(path).read()
-pending = "### Unreleased (next build)"
-if pending not in text:
-    sys.exit("CHANGELOG.md has no pending section to cut")
-heading = f"### v{version} build {build} — {date.today().isoformat()}"
-text = text.replace(pending, f"{pending}\n\n{heading}", 1)
-open(path, "w").write(text)
-EOF
 
 branch="release/${tag}"
 git switch -c "$branch"
