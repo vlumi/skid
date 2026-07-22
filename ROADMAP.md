@@ -142,7 +142,17 @@ the plan B).
 
 - [ ] Full replay viewer (watch/scrub any stored run — the data exists from
       v0.2); shareable ghost files between devices
-- [ ] Track editor or procedural track variations
+- [ ] **Track editor** (pulled forward — hand-authoring geometry hit its
+      quality ceiling): visual editing of a track's nodes, gates, and
+      hazards. The `TrackDesign` data format it reads/writes already
+      ships; dev-tool first, spike decides how far it goes. Procedural
+      track variations remain a maybe.
+- [ ] **Map themes**: whole-map looks beyond grass (sand/desert, snow, …).
+      The track format already carries a `theme` field; the renderer
+      learns it when the first second theme lands.
+- [ ] **Selective kerb striping**: red/white stripes only lining chosen
+      corners' outer edges, plain white edges elsewhere — a per-corner
+      `kerb` flag already in the track format; renderer support pending.
 - [ ] Full vertical loops — the crazy one; only if the two-layer jump model
       proves fun (and readable) in play
 - [ ] Damage/pickup mischief (dropped oil, turbo) — only if the core race

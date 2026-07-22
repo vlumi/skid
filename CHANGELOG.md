@@ -16,6 +16,11 @@ heading is hand-set when a milestone ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Smoother corners on every track**: curves now bake at a fine, even
+  resolution, and the previously sharp chicane and figure-eight joins
+  flow instead of kinking — most visible on the Overpass's diagonals and
+  the Hairpin's tip. Under the hood, every track is now *data* (a design
+  of corner nodes the game compiles), the groundwork for a track editor.
 - **Friendlier controls, same skill ceiling**: the wheel now eases toward
   your thumb instead of snapping, so a twitch no longer jerks the nose —
   full lock is still just as quick to reach. Analog steering with a gentle
