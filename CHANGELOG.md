@@ -15,6 +15,15 @@ user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- Race chrome that stays out of the way: each player's lap/time chip now
+  lives in their **own corner, facing them** (rotated for players across
+  the table), the countdown shows both ways in face-to-face games, and
+  the in-race buttons are gone — one small **pause** button on the center
+  seam opens a menu (resume / scheme / reset / setup) and actually
+  freezes the race. System edge swipes now need the deliberate
+  double-swipe, so a thumb at the edge doesn't summon Control Center
+  mid-corner.
+
 - **AI drivers**: fill the grid with up to 3 opponents from the setup
   screen. They drive the same cars with the same physics (no
   rubber-banding — a skill ladder of lookahead/caution instead), follow

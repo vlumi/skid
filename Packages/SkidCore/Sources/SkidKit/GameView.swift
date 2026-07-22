@@ -225,7 +225,10 @@ public struct GameView: View {
 extension View {
     func statusBarHiddenIfAvailable() -> some View {
         #if os(iOS)
-        return statusBarHidden(true)
+        // Thumbs live at the screen edges: hide the status bar AND make
+        // system edge swipes (home indicator, notification/control center)
+        // require the deliberate double-swipe instead of one graze.
+        return statusBarHidden(true).defersSystemGestures(on: .all)
         #else
         return self
         #endif
