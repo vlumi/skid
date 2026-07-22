@@ -225,10 +225,19 @@ public struct GameView: View {
 extension View {
     func statusBarHiddenIfAvailable() -> some View {
         #if os(iOS)
-        // Thumbs live at the screen edges: hide the status bar AND make
-        // system edge swipes (home indicator, notification/control center)
-        // require the deliberate double-swipe instead of one graze.
-        return statusBarHidden(true).defersSystemGestures(on: .all)
+        return statusBarHidden(true)
+        #else
+        return self
+        #endif
+    }
+
+    /// Thumbs live at the screen edges during play: make system edge swipes
+    /// (home indicator, notification/control center) require the deliberate
+    /// double-swipe — but only while actually racing. Menus, pause, and
+    /// results keep normal one-swipe system gestures.
+    func defersEdgeSwipes(_ active: Bool) -> some View {
+        #if os(iOS)
+        return defersSystemGestures(on: active ? .all : [])
         #else
         return self
         #endif
