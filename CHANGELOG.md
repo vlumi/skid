@@ -11,10 +11,17 @@ collects entries merged to `main` but not yet in a TestFlight build; cutting a
 release renames it to that build's heading and opens a fresh empty one. A
 user-facing PR writes its own bullet here (see [AGENTS.md](AGENTS.md)).
 
-## [Unreleased]
+## v0.5.0
 
 ### Unreleased (next build)
 
+- A **Tuning** panel in the pause menu, for finding the feel on real
+  thumbs: d-pad dead zone, travel, steps (including full analog), and a
+  response **curve** (softer near the center for smoother small
+  corrections) — all applied live mid-race — plus a **Pace** dial that
+  slows acceleration and top speed for learning (agility stays; applies
+  on Reset, and slowed runs never touch your hiscores). All remembered
+  across launches.
 - **Sound**, all synthesized live (no audio files, like the graphics):
   an engine note that climbs with your speed, tire noise when you slide,
   and thumps when you hit walls or each other. Respects the silent

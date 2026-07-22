@@ -51,13 +51,15 @@ public final class GameSession: ObservableObject {
         players: [PlayerID],
         config: RaceConfig,
         seed: UInt64,
+        tuning: CarTuning = CarTuning(),
         ghost: GhostPlayback? = nil,
         inputFor: @escaping (PlayerID, Race) -> CarInput
     ) {
         self.players = players
         self.inputFor = inputFor
         self.ghost = ghost
-        self.race = Race(track: track, players: players, seed: seed, config: config)
+        self.race = Race(
+            track: track, players: players, tuning: tuning, seed: seed, config: config)
         self.recording = RaceRecording(seed: seed, players: players)
         self.gateSpans = track.gates.map { track.ribbonSpan(of: $0) }
     }

@@ -30,11 +30,18 @@ public enum ControlScheme: CaseIterable, Sendable {
     case split
 }
 
-/// Deadzone + travel + step quantization shared by the thumb schemes.
-func quantizedAxis(_ value: Double, deadzone: Double, travel: Double, levels: Int?) -> Double {
+/// Deadzone + travel + optional response curve + step quantization shared
+/// by the thumb schemes. `expo` > 1 bends the response: soft near the
+/// center (small thumb moves stay gentle), building toward the edges.
+func quantizedAxis(
+    _ value: Double, deadzone: Double, travel: Double, levels: Int?, expo: Double = 1
+) -> Double {
     let magnitude = abs(value)
     guard magnitude > deadzone else { return 0 }
     var scaled = min(1, (magnitude - deadzone) / (travel - deadzone))
+    if expo != 1 {
+        scaled = pow(scaled, expo)
+    }
     if let levels, levels > 0 {
         scaled = (scaled * Double(levels)).rounded(.up) / Double(levels)
     }
@@ -53,6 +60,9 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     /// Steps per axis direction: 1 = pure digital, nil = fully analog.
     /// Default 3 (⅓ / ⅔ / full).
     public var levels: Int? = 3
+    /// Response curve: 1 = linear; >1 = softer near center, steeper at
+    /// the edges (applied before quantization).
+    public var expo: Double = 1
     /// The zone's local "up" in screen coordinates.
     public var up = Vec2(0, -1)
     /// The player's control zone; the pad is clamped to stay fully inside.
@@ -97,9 +107,10 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
         guard origin != nil else { return .coast }
         return CarInput(
             steer: quantizedAxis(
-                knob.dot(up.perpendicular), deadzone: deadzone, travel: radius, levels: levels),
+                knob.dot(up.perpendicular), deadzone: deadzone, travel: radius,
+                levels: levels, expo: expo),
             throttle: quantizedAxis(
-                knob.dot(up), deadzone: deadzone, travel: radius, levels: levels)
+                knob.dot(up), deadzone: deadzone, travel: radius, levels: levels, expo: expo)
         )
     }
 

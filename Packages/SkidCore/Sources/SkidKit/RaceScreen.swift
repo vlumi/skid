@@ -77,6 +77,7 @@ struct RaceScreen: View {
 
     private func step(size: CGSize, time: TimeInterval) {
         rig.layout(size: CGRect(origin: .zero, size: size).size)
+        game.applyControlTuning()
         session.advance(to: time)
         game.noteProgress()
         game.audioFrame()
@@ -117,8 +118,19 @@ struct PauseMenu: View {
     let session: GameSession
     @ObservedObject var rig: CouchRig
     @ObservedObject var settings: GameSettings
+    @State private var showTuning = false
 
     var body: some View {
+        if showTuning {
+            TuningPanel(settings: settings) {
+                showTuning = false
+            }
+        } else {
+            menu
+        }
+    }
+
+    private var menu: some View {
         VStack(spacing: 12) {
             Button {
                 session.paused = false
@@ -143,6 +155,11 @@ struct PauseMenu: View {
                     Text("Haptics", bundle: .module).pillStyle()
                         .opacity(settings.hapticsOn ? 1 : 0.45)
                 }
+            }
+            Button {
+                showTuning = true
+            } label: {
+                Text("Tuning", bundle: .module).pillStyle()
             }
             Button {
                 game.raceAgain()

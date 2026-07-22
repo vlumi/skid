@@ -37,12 +37,26 @@ public final class Haptics {
     }
 }
 
-/// Player-facing toggles, persisted across launches. Small on purpose —
-/// only what a couch session needs.
+/// Player-facing toggles + the control-tuning playground, persisted across
+/// launches. The tuning dials exist to be A/B-ed on device before the
+/// scheme verdict — they may shrink once the feel is settled.
 @MainActor
 public final class GameSettings: ObservableObject {
     @AppStorage("skid.sound") public var soundOn = true
     @AppStorage("skid.haptics") public var hapticsOn = true
+
+    // D-pad feel (applied live, every frame).
+    @AppStorage("skid.dpad.deadzone") public var dpadDeadzone = 10.0
+    @AppStorage("skid.dpad.travel") public var dpadTravel = 48.0
+    /// Steps per axis; 0 = fully analog.
+    @AppStorage("skid.dpad.steps") public var dpadSteps = 3
+    /// Response curve; 1 = linear, higher = softer near center.
+    @AppStorage("skid.dpad.expo") public var dpadExpo = 1.0
+
+    /// Game pace for learning: scales acceleration + speed caps (agility
+    /// stays). Applies on the next race (Reset). Hiscores only record at
+    /// full pace.
+    @AppStorage("skid.pace") public var pace = 1.0
 
     public init() {}
 }

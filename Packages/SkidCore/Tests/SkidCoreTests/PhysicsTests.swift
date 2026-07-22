@@ -133,4 +133,18 @@ final class PhysicsTests: XCTestCase {
         XCTAssertLessThan(tires[1].y, 100)
         XCTAssertGreaterThan(tires[2].y, 100)
     }
+
+    func testPaceScalingSlowsWithoutDumbingDown() {
+        let full = CarTuning()
+        let learner = full.scaled(pace: 0.7)
+        XCTAssertEqual(learner.maxSpeed, full.maxSpeed * 0.7, accuracy: 1e-9)
+        XCTAssertEqual(learner.engineAccel, full.engineAccel * 0.7, accuracy: 1e-9)
+        XCTAssertEqual(learner.brakeAccel, full.brakeAccel * 0.7, accuracy: 1e-9)
+        XCTAssertEqual(learner.reverseMaxSpeed, full.reverseMaxSpeed * 0.7, accuracy: 1e-9)
+        // Agility and everything else stays — slower, not clumsier.
+        XCTAssertEqual(learner.turnRate, full.turnRate)
+        XCTAssertEqual(learner.steerFullSpeed, full.steerFullSpeed)
+        XCTAssertEqual(learner.wallRestitution, full.wallRestitution)
+        XCTAssertEqual(full.scaled(pace: 1), full)
+    }
 }
