@@ -43,8 +43,8 @@ public struct AppIconScene: View {
                 var trail = Path()
                 trail.move(to: CGPoint(x: (990 + offset * 1.1) * s, y: 1065 * s))
                 trail.addQuadCurve(
-                    to: CGPoint(x: (560 + offset * 0.95) * s, y: (480 + offset * 0.6) * s),
-                    control: CGPoint(x: (700 + offset * 1.2) * s, y: (790 + offset * 0.8) * s)
+                    to: CGPoint(x: (700 + offset * 0.73) * s, y: (460 + offset * 0.73) * s),
+                    control: CGPoint(x: (740 + offset * 1.1) * s, y: (790 + offset * 0.6) * s)
                 )
                 context.stroke(
                     trail, with: .color(.black.opacity(0.45)),
@@ -53,9 +53,12 @@ public struct AppIconScene: View {
 
             // The car, big and sideways — mid-drift. Same recipe as the
             // in-game car, scaled up.
+            // Nose rotated INTO the left-hand corner (past the direction of
+            // travel, which the trails show) — the oversteer angle is what
+            // makes it read as a drift, not a parked car.
             var car = context
             car.translateBy(x: 620 * s, y: 380 * s)
-            car.rotate(by: .degrees(-58))
+            car.rotate(by: .degrees(-135))
             car.scaleBy(x: 10.4 * s, y: 10.4 * s)
             for offset in CarGeometry.tireOffsets {
                 let tire = CGRect(x: offset.x - 4.5, y: offset.y - 3, width: 9, height: 6)
