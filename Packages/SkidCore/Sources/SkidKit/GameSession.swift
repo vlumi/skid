@@ -43,13 +43,13 @@ public final class GameSession: ObservableObject {
     private static let maxTicksPerFrame = 12
 
     public init(
+        track: Track,
         players: [PlayerID],
         config: RaceConfig,
         seed: UInt64,
         ghost: GhostPlayback? = nil,
         inputFor: @escaping (PlayerID, Race) -> CarInput
     ) {
-        let track = TrackLibrary.practiceLoop()
         self.players = players
         self.inputFor = inputFor
         self.ghost = ghost
