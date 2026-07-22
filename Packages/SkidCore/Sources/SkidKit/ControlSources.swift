@@ -24,10 +24,19 @@ public protocol TouchDrivenControlSource: ControlSource, AnyObject {
 /// The scheme roster, A/B-able in-run.
 public enum ControlScheme: CaseIterable, Sendable {
     case dpad
+    case aim
     case slide
     case twoZone
     case oneTouch
     case split
+}
+
+/// A touch scheme that steers toward a pointed direction needs to know
+/// where the car is currently facing (world heading, radians). The routing
+/// layer sets this each tick, before `input(for:at:)`, for schemes that
+/// adopt it; touch-only schemes ignore it.
+public protocol HeadingAwareControlSource: TouchDrivenControlSource {
+    func setCarHeading(_ heading: Double)
 }
 
 /// Deadzone + travel + optional response curve + step quantization shared
@@ -115,6 +124,105 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     }
 
     /// Keep the whole pad (arrows included) inside the zone.
+    private func clamped(_ p: Vec2) -> Vec2 {
+        guard let bounds else { return p }
+        let margin = radius + 18
+        let rect = bounds.insetBy(dx: margin, dy: margin)
+        guard rect.width > 0, rect.height > 0 else {
+            return Vec2(bounds.midX, bounds.midY)
+        }
+        return Vec2(min(max(p.x, rect.minX), rect.maxX), min(max(p.y, rect.minY), rect.maxY))
+    }
+}
+
+/// Aim-to-drive: a floating stick like the d-pad, but the thumb's ANGLE is
+/// the direction you want to go — the car turns toward it at a natural rate
+/// and drives there, backing up when the target sits behind it. No gas/
+/// brake to juggle: push where you want to be. Needs the car's heading, so
+/// it's a `HeadingAwareControlSource`.
+public final class AimControlSource: HeadingAwareControlSource {
+    /// Displacement (points) at which the aim is at full commitment (full
+    /// throttle when roughly ahead). Short, like the d-pad.
+    public var radius: Double = 48
+    /// Thumb offsets shorter than this (points) don't aim — a resting or
+    /// barely-nudged thumb coasts rather than snapping to a direction.
+    public var deadzone: Double = 10
+    /// How sharply steer ramps with the heading error: full lock is
+    /// commanded once the target is this many radians off the nose. Small
+    /// errors get proportionally gentle steer, so the car settles instead
+    /// of sawing across the aim.
+    public var fullSteerError = Double.pi / 3
+    /// Past this much error (radians) the target is "behind": reverse
+    /// toward it instead of looping all the way around.
+    public var reverseThreshold = Double.pi * 2 / 3
+    /// The player's control zone; the stick is clamped to stay inside.
+    public var bounds: CGRect?
+
+    /// Where the stick materialized; nil while not touching.
+    public private(set) var origin: Vec2?
+    /// Clamped offset of the thumb from `origin`.
+    public private(set) var knob = Vec2.zero
+
+    private var activeTouch: TouchID?
+    private var carHeading = 0.0
+
+    public init() {}
+
+    public func setCarHeading(_ heading: Double) { carHeading = heading }
+
+    public func touchBegan(id: TouchID, at location: Vec2) {
+        guard activeTouch == nil else { return }
+        activeTouch = id
+        origin = clamped(location)
+        knob = .zero
+    }
+
+    public func touchMoved(id: TouchID, at location: Vec2) {
+        guard id == activeTouch, let origin else { return }
+        var offset = location - origin
+        let distance = offset.length
+        if distance > radius { offset *= radius / distance }
+        knob = offset
+    }
+
+    public func touchEnded(id: TouchID) {
+        guard id == activeTouch else { return }
+        releaseAll()
+    }
+
+    public func releaseAll() {
+        activeTouch = nil
+        origin = nil
+        knob = .zero
+    }
+
+    public func input(for player: PlayerID, at tick: Tick) -> CarInput {
+        guard origin != nil, knob.length > deadzone else { return .coast }
+        // The thumb offset is a SCREEN-space vector, and the renderer draws
+        // the world with no y-flip, so a screen direction IS a world
+        // direction — the aimed heading is just the knob's angle. (Unlike
+        // the d-pad, `up` doesn't enter: you point at an absolute spot on
+        // screen, wherever you're seated.)
+        let desired = atan2(knob.y, knob.x)
+        let error = atan2(sin(desired - carHeading), cos(desired - carHeading))
+
+        // How committed the push is scales the pace (a light touch eases).
+        let commitment = min(1, (knob.length - deadzone) / (radius - deadzone))
+        if abs(error) > reverseThreshold {
+            // Target is behind: back toward it. Reversing mirrors the
+            // wheel, so steer toward the target's reflection behind us.
+            let back = atan2(sin(desired - carHeading + .pi), cos(desired - carHeading + .pi))
+            let steer = max(-1, min(1, back / fullSteerError))
+            return CarInput(steer: steer, throttle: -commitment)
+        }
+        let steer = max(-1, min(1, error / fullSteerError))
+        // Ease off the gas the more we have to turn, so tight aims tighten
+        // the line instead of understeering wide.
+        let throttle = commitment * (1 - 0.5 * min(1, abs(error) / reverseThreshold))
+        return CarInput(steer: steer, throttle: throttle)
+    }
+
+    /// Keep the whole stick inside the zone (mirrors the d-pad).
     private func clamped(_ p: Vec2) -> Vec2 {
         guard let bounds else { return p }
         let margin = radius + 18

@@ -180,7 +180,15 @@ public final class CouchGame: ObservableObject {
                     return .coast
                 }
                 let controls = rig.players[player.rawValue]
-                return controls.source(for: rig.scheme).input(for: player, at: race.tick)
+                let source = controls.source(for: rig.scheme)
+                // Heading-aware schemes (aim-to-drive) need where the car
+                // faces now to turn toward the pointed direction.
+                if let headingAware = source as? HeadingAwareControlSource,
+                    let car = race.cars.first(where: { $0.id == player })
+                {
+                    headingAware.setCarHeading(car.state.heading)
+                }
+                return source.input(for: player, at: race.tick)
             }
             return fleet.input(for: player, in: race)
         }
