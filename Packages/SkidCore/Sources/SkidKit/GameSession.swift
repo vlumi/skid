@@ -27,7 +27,13 @@ public final class GameSession: ObservableObject {
     /// The PB ghost running alongside, if any (time trial).
     public let ghost: GhostPlayback?
     /// Frozen: the sim doesn't advance and the clock doesn't accumulate.
-    public var paused = false
+    /// Published (unlike per-frame state) so chrome like edge-gesture
+    /// deferral can react — it only flips on explicit user action.
+    @Published public var paused = false
+    /// Published once when the race reaches .finished — chrome outside the
+    /// per-frame redraw (edge-gesture deferral) keys off this. Set via a
+    /// hop off the render pass, never mid-view-update.
+    @Published public private(set) var raceOver = false
     private let inputFor: (PlayerID, Race) -> CarInput
 
     private var lastTime: TimeInterval?
@@ -83,6 +89,11 @@ public final class GameSession: ObservableObject {
         }
         if ticks == Self.maxTicksPerFrame {
             accumulator = 0
+        }
+        if !raceOver, race.phase == .finished {
+            Task { @MainActor [weak self] in
+                self?.raceOver = true
+            }
         }
     }
 }
