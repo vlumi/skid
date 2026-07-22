@@ -78,6 +78,22 @@ final class LayerTests: XCTestCase {
         XCTAssertTrue(race.cars[0].state.isAirborne)
     }
 
+    func testRampCannotBeEnteredSideways() {
+        // Drive straight at the side of the Overpass approach ramp: the
+        // retaining wall bounces the car; it never reaches the ramp lane.
+        var race = Race(track: TrackLibrary.overpass(), players: [PlayerID(0)])
+        let approachMid = (Vec2(950, 190) + Vec2(905, 293)) * 0.5
+        let side = (Vec2(905, 293) - Vec2(950, 190)).normalized.perpendicular
+        race.cars[0].state.position = approachMid + side * 220
+        race.cars[0].state.heading = atan2(-side.y, -side.x)  // aimed at the ramp
+        for _ in 0..<(3 * Race.tickRate) {
+            race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
+        }
+        let toRamp = race.cars[0].state.position.distance(to: approachMid)
+        XCTAssertGreaterThan(toRamp, 40, "car pushed through the ramp's retaining wall")
+        XCTAssertEqual(race.cars[0].state.layer, 0)
+    }
+
     func testOverpassBridgeGeometry() {
         let track = TrackLibrary.overpass()
         XCTAssertFalse(track.elevatedSegments.isEmpty)

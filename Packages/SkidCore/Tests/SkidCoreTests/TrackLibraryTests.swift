@@ -19,7 +19,7 @@ final class TrackLibraryTests: XCTestCase {
         for track in TrackLibrary.all {
             XCTAssertGreaterThanOrEqual(track.gates.count, 3, track.id)
             XCTAssertEqual(track.startSlots.count, 4, track.id)
-            XCTAssertEqual(track.walls.count, 4, track.id)
+            XCTAssertGreaterThanOrEqual(track.walls.count, 4, track.id)
             for gate in track.gates {
                 XCTAssertGreaterThan(
                     gate.forward.lengthSquared, 0, "\(track.id): gates must be directional")

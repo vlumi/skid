@@ -162,6 +162,10 @@ enum TrackRenderer {
 
     private static func drawRibbon(track: Track, layer: Int, into context: inout GraphicsContext) {
         let path = ribbonPath(track, layer: layer)
+        // Ground loops close on themselves, so round caps never show; the
+        // bridge deck is an open span and must end FLUSH where the ramp
+        // wedges meet it — butt caps, or a half-circle bulges over the ramp.
+        let cap: CGLineCap = layer > 0 ? .butt : .round
         if layer > 0 {
             // The bridge floats: a soft drop shadow under its whole span.
             var shadow = context
@@ -169,13 +173,12 @@ enum TrackRenderer {
             shadow.stroke(
                 path,
                 with: .color(.black.opacity(0.25)),
-                style: StrokeStyle(
-                    lineWidth: track.width + 18, lineCap: .round, lineJoin: .round)
+                style: StrokeStyle(lineWidth: track.width + 18, lineCap: cap, lineJoin: .round)
             )
         }
         // Striped kerb: a white band just wider than the asphalt, with red
         // dashes on top, then the asphalt covers all but the protruding edge.
-        let kerbStyle = StrokeStyle(lineWidth: track.width + 16, lineCap: .round, lineJoin: .round)
+        let kerbStyle = StrokeStyle(lineWidth: track.width + 16, lineCap: cap, lineJoin: .round)
         context.stroke(path, with: .color(kerbWhite), style: kerbStyle)
         context.stroke(
             path,
@@ -186,22 +189,8 @@ enum TrackRenderer {
         context.stroke(
             path,
             with: .color(layer > 0 ? Color(white: 0.68) : asphalt),
-            style: StrokeStyle(lineWidth: track.width, lineCap: .round, lineJoin: .round)
+            style: StrokeStyle(lineWidth: track.width, lineCap: cap, lineJoin: .round)
         )
-    }
-
-    /// Ramp transition lines: yellow-striped bands across the road.
-    private static func drawRampMarkers(track: Track, into context: inout GraphicsContext) {
-        for ramp in track.ramps {
-            var path = Path()
-            path.move(to: CGPoint(x: ramp.a.x, y: ramp.a.y))
-            path.addLine(to: CGPoint(x: ramp.b.x, y: ramp.b.y))
-            context.stroke(
-                path,
-                with: .color(Color(red: 0.95, green: 0.8, blue: 0.15).opacity(0.85)),
-                style: StrokeStyle(lineWidth: 9, lineCap: .butt, dash: [14, 10])
-            )
-        }
     }
 
     private static func drawPatches(track: Track, into context: inout GraphicsContext) {
@@ -372,6 +361,67 @@ extension TrackRenderer {
             }
             for chunk in chunkList {
                 context.stroke(chunk.path, with: .color(color), style: style)
+            }
+        }
+    }
+
+    /// Sloped bridge approaches: a wedge that widens toward the deck and
+    /// shades from road-gray to deck-gray, with up-slope chevrons — the
+    /// road visibly climbs; the car never warps.
+    static func drawRampMarkers(track: Track, into context: inout GraphicsContext) {
+        for index in track.rampSegments.sorted() {
+            let count = track.centerline.count
+            let a = track.centerline[index]
+            let b = track.centerline[(index + 1) % count]
+            // The end that meets the deck is the one whose neighboring
+            // segment is elevated.
+            let previous = (index + count - 1) % count
+            let deckFirst = track.segmentLayer(previous) == 1
+            let ground = deckFirst ? b : a
+            let deck = deckFirst ? a : b
+            let up = (deck - ground).normalized
+            let side = up.perpendicular
+            let groundHalf = side * (track.width / 2)
+            let deckHalf = side * (track.width / 2 + 8)
+
+            var wedge = Path()
+            wedge.move(to: CGPoint(x: (ground - groundHalf).x, y: (ground - groundHalf).y))
+            wedge.addLine(to: CGPoint(x: (deck - deckHalf).x, y: (deck - deckHalf).y))
+            wedge.addLine(to: CGPoint(x: (deck + deckHalf).x, y: (deck + deckHalf).y))
+            wedge.addLine(to: CGPoint(x: (ground + groundHalf).x, y: (ground + groundHalf).y))
+            wedge.closeSubpath()
+            context.fill(
+                wedge,
+                with: .linearGradient(
+                    Gradient(colors: [asphalt, Color(white: 0.68)]),
+                    startPoint: CGPoint(x: ground.x, y: ground.y),
+                    endPoint: CGPoint(x: deck.x, y: deck.y)
+                )
+            )
+            // White edges so the slope reads against both road and grass.
+            for sign in [-1.0, 1.0] {
+                var edge = Path()
+                let g = ground + groundHalf * sign
+                let d = deck + deckHalf * sign
+                edge.move(to: CGPoint(x: g.x, y: g.y))
+                edge.addLine(to: CGPoint(x: d.x, y: d.y))
+                context.stroke(edge, with: .color(kerbWhite), lineWidth: 5)
+            }
+            // Chevrons pointing up the slope.
+            let length = ground.distance(to: deck)
+            for t in [0.3, 0.55, 0.8] {
+                let base = ground + up * (length * t)
+                let tip = base + up * 16
+                let wing = side * (track.width * 0.28)
+                var chevron = Path()
+                chevron.move(to: CGPoint(x: (base - wing).x, y: (base - wing).y))
+                chevron.addLine(to: CGPoint(x: tip.x, y: tip.y))
+                chevron.addLine(to: CGPoint(x: (base + wing).x, y: (base + wing).y))
+                context.stroke(
+                    chevron,
+                    with: .color(.white.opacity(0.55)),
+                    style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
+                )
             }
         }
     }
