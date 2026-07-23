@@ -15,13 +15,16 @@ struct TuningPanel: View {
                     section(Text("Aim", bundle: .module))
                     slider(
                         Text("Flip rate", bundle: .module), value: $settings.aimTurnRate,
-                        range: 3...16, step: 0.5, format: "%.1f")
+                        range: 0...16, step: 0.5, format: "%.1f")
                     slider(
                         Text("Speed boost", bundle: .module), value: $settings.aimFlipBoost,
                         range: 0...16, step: 0.5, format: "%.1f")
                     slider(
                         Text("Drift keep", bundle: .module), value: $settings.driftRetention,
                         range: 0...1, step: 0.05, format: "%.2f")
+                    slider(
+                        Text("Grip", bundle: .module), value: $settings.gripScale,
+                        range: 0.2...2, step: 0.05, format: "%.2f")
                     slider(
                         Text("Reverse under", bundle: .module),
                         value: $settings.aimReverseBelowSpeed,
@@ -44,6 +47,9 @@ struct TuningPanel: View {
                     slider(
                         Text("Turn rate", bundle: .module), value: $settings.turnRate,
                         range: 2...6, step: 0.1, format: "%.1f")
+                    slider(
+                        Text("Flip", bundle: .module), value: $settings.steerFlipBoost,
+                        range: 0...12, step: 0.5, format: "%.1f")
 
                     section(Text("Pace", bundle: .module))
                     slider(

@@ -21,6 +21,19 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The d-pad drifts too now.** Hold a direction at speed and the body
+  flips into the corner like the aim scheme does — no delicate countersteer
+  to hold a slide. A light thumb still places the car precisely (the assist
+  scales with how far you push), so analog fine control is intact; it's the
+  full-lock holds (and the keyboard later) that get the drift. Tune it with
+  the new "Flip" dial in the pause menu. The flip now stays gentle at low
+  speed and only really bites once you're moving (for aim mode too), so
+  slow manoeuvring isn't twitchy.
+- **A "Grip" dial** for the drift's weight: turn it down and the car's
+  motion lags where it's pointing longer — a heavier, slidier feel — up and
+  it snaps to the nose. Plus the aim "Flip rate" now dials all the way to 0
+  for the light-touch end.
+
 ### build 4 — 2026-07-23
 
 - **Aim-to-drive now drifts like it means it.** Point off your nose at
