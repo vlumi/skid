@@ -9,7 +9,13 @@ import SwiftUI
 public final class PlayerControls {
     public let player: PlayerID
     public var colorIndex: Int
+    /// The full band box — reaches the physical screen edge, so the tinted
+    /// fill + outline bleed past the safe area. Drives chrome + touch routing.
     public private(set) var zone = CGRect.zero
+    /// The band's content region, clamped inside the safe area. The floating
+    /// stick lives here and the lap/time chip sits on its map-side edge, so
+    /// nothing the player must see or reach hides under the notch / home bar.
+    public private(set) var content = CGRect.zero
     public private(set) var up = Vec2(0, -1)
 
     /// Pro: the direct steer/throttle d-pad (with flip-assist).
@@ -29,12 +35,15 @@ public final class PlayerControls {
         }
     }
 
-    public func setZone(_ rect: CGRect, up: Vec2) {
+    public func setZone(_ rect: CGRect, content: CGRect, up: Vec2) {
         zone = rect
+        self.content = content
         self.up = up
-        pro.bounds = rect
+        // The stick clamps to the content rect (inside the safe area), not the
+        // full box — so full deflection is always reachable, never off-screen.
+        pro.bounds = content
         pro.up = up
-        casual.bounds = rect
+        casual.bounds = content
     }
 
     public func releaseAll() {
@@ -54,6 +63,7 @@ public enum ZoneCorner: CaseIterable, Sendable {
     case topRight
 
     var isTopRow: Bool { self == .topLeft || self == .topRight }
+    var isLeft: Bool { self == .topLeft || self == .bottomLeft }
 
     func rect(in size: CGSize) -> CGRect {
         let w = size.width / 2
@@ -95,6 +105,8 @@ public final class CouchRig: ObservableObject {
 
     private var touchOwner: [TouchID: Int] = [:]
     private var lastSize: CGSize = .zero
+    private var lastMapRect: CGRect = .zero
+    private var lastInsets = EdgeInsets()
 
     public init(
         colorIndices: [Int], scheme: ControlScheme = .casual,
@@ -107,40 +119,83 @@ public final class CouchRig: ObservableObject {
         self.seating = seating
     }
 
-    public func layout(size: CGSize) {
-        guard size != lastSize else { return }
+    /// Lay out control zones as **bands in the grass beside the map**, so
+    /// the track (and everyone's fingers off it) stays clear. Each player's
+    /// band sits "below the map from their point of view": the bottom gap
+    /// for near-side players (up), the top gap for players across the table
+    /// (down, rotated). `mapRect` is where the track sits on screen.
+    public func layout(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets = EdgeInsets()) {
+        guard size != lastSize || mapRect != lastMapRect || safeInsets != lastInsets else { return }
         lastSize = size
-        let up = Vec2(0, -1)
-        let down = Vec2(0, 1)
+        lastMapRect = mapRect
+        lastInsets = safeInsets
         let w = size.width
-        let h = size.height
-        let rects: [(CGRect, Vec2)]
+
+        // Band that fills the bottom gap (near players) or top gap (far),
+        // optionally just the left or right half for a same-side pair.
+        // Returns the full box (to the physical edge) AND its content rect
+        // (clamped inside the safe area): only the box bleeds past the notch.
+        func band(top: Bool, half: Half) -> Band {
+            // Fill the WHOLE gap between the screen edge and the map — max
+            // touch area (the empty space between was wasted). The band runs
+            // flush to the map edge; the seam pause sits on that boundary.
+            let y = top ? 0 : mapRect.maxY
+            let height = top ? mapRect.minY : size.height - mapRect.maxY
+            let x: CGFloat
+            let width: CGFloat
+            switch half {
+            case .full: x = 0; width = w
+            case .left: x = 0; width = w / 2
+            case .right: x = w / 2; width = w / 2
+            }
+            let box = CGRect(x: x, y: y, width: width, height: height)
+            // The content rect pulls the box's edges in by the safe insets on
+            // the sides that touch the physical screen edge (never the map-side
+            // edge — that's already clear of any inset).
+            let content = CGRect(
+                x: box.minX + (x <= 0 ? safeInsets.leading : 0),
+                y: box.minY + (top ? safeInsets.top : 0),
+                width: box.width
+                    - (x <= 0 ? safeInsets.leading : 0)
+                    - (x + width >= w ? safeInsets.trailing : 0),
+                height: box.height - (top ? safeInsets.top : safeInsets.bottom))
+            return Band(box: box, content: content, up: top ? down : up)
+        }
+
+        let bands: [Band]
         switch players.count {
         case 1:
-            rects = [(CGRect(x: 0, y: 0, width: w, height: h), up)]
+            bands = [band(top: false, half: .full)]
         case 2 where seating.faceToFace:
-            rects = [
-                (CGRect(x: 0, y: h / 2, width: w, height: h / 2), up),
-                (CGRect(x: 0, y: 0, width: w, height: h / 2), down),
-            ]
+            bands = [band(top: false, half: .full), band(top: true, half: .full)]
         case 2:
-            rects = [
-                (CGRect(x: 0, y: 0, width: w / 2, height: h), up),
-                (CGRect(x: w / 2, y: 0, width: w / 2, height: h), up),
-            ]
+            bands = [band(top: false, half: .left), band(top: false, half: .right)]
         case 3:
             let corners = ZoneCorner.allCases.filter { $0 != seating.openCorner }
-            rects = corners.map { corner in
-                (corner.rect(in: size), corner.isTopRow ? down : up)
+            bands = corners.map { corner in
+                band(top: corner.isTopRow, half: corner.isLeft ? .left : .right)
             }
         default:
-            rects = ZoneCorner.allCases.map { corner in
-                (corner.rect(in: size), corner.isTopRow ? down : up)
+            bands = ZoneCorner.allCases.map { corner in
+                band(top: corner.isTopRow, half: corner.isLeft ? .left : .right)
             }
         }
-        for (index, player) in players.enumerated() where index < rects.count {
-            player.setZone(rects[index].0, up: rects[index].1)
+        for (index, player) in players.enumerated() where index < bands.count {
+            player.setZone(bands[index].box, content: bands[index].content, up: bands[index].up)
         }
+    }
+
+    private let up = Vec2(0, -1)
+    private let down = Vec2(0, 1)
+
+    private enum Half { case full, left, right }
+
+    /// One player's band: the full box (to the physical edge, so its fill
+    /// bleeds past the notch) and the content rect (inside the safe area).
+    private struct Band {
+        var box: CGRect
+        var content: CGRect
+        var up: Vec2
     }
 
     public func touchBegan(id: TouchID, at location: Vec2) {

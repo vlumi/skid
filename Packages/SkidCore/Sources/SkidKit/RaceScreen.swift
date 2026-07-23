@@ -9,7 +9,26 @@ struct RaceScreen: View {
     @ObservedObject var rig: CouchRig
 
     var body: some View {
+        // The GeometryReader must NOT ignore the safe area, or its
+        // `safeAreaInsets` read as zero — the layout needs the real insets
+        // (notch, Dynamic Island, home indicator) to reserve control room.
+        // Only the world Canvas ignores them, so the grass still draws
+        // full-bleed under the notch.
         GeometryReader { geo in
+            // The GeometryReader respects the safe area, so `geo.size` is the
+            // safe-area size and `geo.safeAreaInsets` are the real insets. But
+            // every layer below ignores the safe area (grass full-bleed, band
+            // boxes to the physical edge), so we work in FULL-SCREEN coords:
+            // reconstruct the physical size and pass the insets down. One
+            // coordinate space for the Canvas, the input surface, and the HUD —
+            // so nothing is shifted by the notch.
+            let insets = geo.safeAreaInsets
+            let fullSize = CGSize(
+                width: geo.size.width + insets.leading + insets.trailing,
+                height: geo.size.height + insets.top + insets.bottom)
+            let mapRect = TrackRenderer.fittedMapRect(
+                trackSize: session.race.track.size, in: fullSize,
+                safeInsets: insets)
             TimelineView(.animation) { timeline in
                 // Step the sim on the main actor, then hand the Canvas
                 // plain value copies — its renderer closure is not
@@ -17,18 +36,18 @@ struct RaceScreen: View {
                 // idiom; a bare `_ =` isn't a valid builder statement.)
                 // swiftlint:disable:next redundant_discardable_let
                 let _ = step(
-                    size: geo.size,
+                    size: fullSize, mapRect: mapRect, safeInsets: insets,
                     time: timeline.date.timeIntervalSinceReferenceDate
                 )
                 let race = session.race
                 let colors = game.carColors
                 let scene = WorldScene(
                     race: race, marks: session.marks, gateSpans: session.gateSpans,
-                    colors: colors, ghosts: session.ghost?.cars ?? []
+                    colors: colors, mapRect: mapRect, ghosts: session.ghost?.cars ?? []
                 )
                 let pads = padOverlays()
                 let aims = aimOverlays()
-                let zones = zoneChrome()
+                let zones = zoneChrome(safeInsets: insets)
                 ZStack {
                     Canvas { context, size in
                         var world = context
@@ -44,15 +63,12 @@ struct RaceScreen: View {
                         }
                     }
                     InputSurface(rig: rig)
-                    RaceHUD(race: race, colors: colors, rig: rig, size: geo.size)
+                    RaceHUD(race: race, colors: colors, rig: rig, size: fullSize)
 
                     // Meta controls live OUT of everyone's way: one small
-                    // pause toggle parked on genuine infield/grass (never on
-                    // the racing line, which the old fixed screen-center did
-                    // on tracks whose ribbon runs through the middle) — never
-                    // a Reset under someone's racing thumb.
+                    // pause toggle on the seam below the map.
                     if race.phase != .finished, !session.paused {
-                        pauseButton(at: pausePoint(track: race.track, screen: geo.size))
+                        pauseButton(at: CGPoint(x: mapRect.midX, y: mapRect.maxY))
                     }
                     if session.paused {
                         PauseMenu(
@@ -62,23 +78,10 @@ struct RaceScreen: View {
                         ResultsCard(game: game, race: race, colors: colors)
                     }
                 }
+                .ignoresSafeArea()
             }
         }
-        .ignoresSafeArea()
         .defersEdgeSwipes(!session.paused && !session.raceOver)
-    }
-
-    /// The pause button's screen point: the track's authored pit, mapped
-    /// through the same aspect-fit transform the renderer uses
-    /// (`TrackRenderer.draw`), so the button always sits on the same infield
-    /// spot per track instead of a fixed screen center that can fall on road.
-    private func pausePoint(track: Track, screen: CGSize) -> CGPoint {
-        let scale = min(screen.width / track.size.x, screen.height / track.size.y)
-        let offset = CGSize(
-            width: (screen.width - track.size.x * scale) / 2,
-            height: (screen.height - track.size.y * scale) / 2)
-        return CGPoint(
-            x: offset.width + track.pit.x * scale, y: offset.height + track.pit.y * scale)
     }
 
     private func pauseButton(at point: CGPoint) -> some View {
@@ -94,8 +97,8 @@ struct RaceScreen: View {
         .position(point)
     }
 
-    private func step(size: CGSize, time: TimeInterval) {
-        rig.layout(size: CGRect(origin: .zero, size: size).size)
+    private func step(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets, time: TimeInterval) {
+        rig.layout(size: size, mapRect: mapRect, safeInsets: safeInsets)
         game.applyControlTuning()
         session.advance(to: time)
         game.noteProgress()
@@ -132,13 +135,13 @@ struct RaceScreen: View {
     }
 
     /// Zone outlines + corner tabs, only when the screen is shared.
-    private func zoneChrome() -> [ZoneChrome] {
-        guard rig.players.count > 1 else { return [] }
-        return rig.players.map { controls in
+    private func zoneChrome(safeInsets: EdgeInsets) -> [ZoneChrome] {
+        rig.players.map { controls in
             ZoneChrome(
                 rect: controls.zone,
                 up: controls.up,
-                color: CouchGame.palette[controls.colorIndex]
+                color: CouchGame.palette[controls.colorIndex],
+                safeInsets: safeInsets
             )
         }
     }
@@ -235,6 +238,9 @@ struct ZoneChrome {
     var rect: CGRect
     var up: Vec2
     var color: Color
+    /// Screen safe-area insets, so the color tab can dodge the notch / home
+    /// indicator even though the band itself is drawn full-bleed.
+    var safeInsets: EdgeInsets
 }
 
 /// Zone-aware HUD: each player's chip sits in their own zone's home corner,
@@ -253,12 +259,11 @@ struct RaceHUD: View {
     var body: some View {
         ZStack {
             countdown
-            if rig.players.count == 1 {
-                soloBlock
-            } else {
-                ForEach(Array(rig.players.enumerated()), id: \.offset) { index, controls in
-                    playerChip(index: index, controls: controls)
-                }
+            // Every layout — including 1P — shows one chip per player in
+            // their own control band (1P is the face-to-face layout with a
+            // single near player).
+            ForEach(Array(rig.players.enumerated()), id: \.offset) { index, controls in
+                playerChip(index: index, controls: controls)
             }
         }
         .allowsHitTesting(false)
@@ -296,48 +301,30 @@ struct RaceHUD: View {
             .shadow(radius: 4)
     }
 
-    /// Solo: the classic corner block, every car listed.
-    private var soloBlock: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let laps = race.config.laps {
-                ForEach(Array(race.cars.enumerated()), id: \.offset) { index, car in
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(index < colors.count ? colors[index] : .white)
-                            .frame(width: 12, height: 12)
-                        chipLine(car: car, laps: laps)
-                    }
-                }
-                Text(verbatim: formatTicks(race.raceTicks))
-                    .font(.headline.monospacedDigit())
-                    .padding(.top, 2)
-            } else if let car = race.cars.first {
-                timeTrialLines(car: car)
-            }
-        }
-        .foregroundStyle(.white)
-        .shadow(radius: 2)
-        .padding(.leading, 16)
-        .padding(.top, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    /// Shared screens: one chip per player, in their zone's home corner,
-    /// facing them.
+    /// One chip per player, along the MAP-SIDE (inner) edge
+    /// of their control band — the clear spot: away from the screen-top notch
+    /// and safe-area, and away from where the thumb rests the stick (mid/outer
+    /// band). Reads as "just outside the track", rotated to face the player.
     @ViewBuilder private func playerChip(index: Int, controls: PlayerControls) -> some View {
         if race.cars.indices.contains(index) {
             let car = race.cars[index]
             let flipped = controls.up.y > 0
-            let zone = controls.zone
-            let inset: CGFloat = 46
-            let x = flipped ? zone.maxX - inset - 20 : zone.minX + inset + 20
-            let y = flipped ? zone.minY + 24 : zone.maxY - 24
+            // Placed within the CONTENT rect (inside the safe area), never the
+            // full box — so the chip clears the notch / home indicator.
+            let zone = controls.content
+            // Map-side edge: the band's bottom for a flipped (top) band, its
+            // top for a near (bottom) band — both the edge nearest the map.
+            let x = zone.midX
+            let y = flipped ? zone.maxY - 18 : zone.minY + 18
             HStack(spacing: 6) {
                 Circle()
                     .fill(index < colors.count ? colors[index] : .white)
                     .frame(width: 11, height: 11)
                 if let laps = race.config.laps {
                     chipLine(car: car, laps: laps)
+                } else {
+                    // Time trial: current lap clock + best (was the solo block).
+                    HStack(spacing: 6) { timeTrialLines(car: car) }
                 }
             }
             .foregroundStyle(.white)
