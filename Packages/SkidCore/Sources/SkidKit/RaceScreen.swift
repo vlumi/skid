@@ -326,9 +326,13 @@ struct RaceHUD: View {
             let flipped = controls.up.y > 0
             let zone = controls.zone
             // Outer edge = the screen edge the band hugs: top for a flipped
-            // (far-side) band, bottom for a near-side band.
-            let x = zone.midX
-            let y = flipped ? zone.minY + 18 : zone.maxY - 18
+            // (far-side) band, bottom for a near-side band. A full-width band
+            // shifts the chip off dead-centre so it clears the top notch /
+            // Dynamic Island (which straddles the screen middle); half-width
+            // bands are already off-centre, so they keep their midpoint.
+            let fullWidth = zone.width > size.width * 0.75
+            let x = fullWidth ? zone.minX + zone.width * 0.25 : zone.midX
+            let y = flipped ? zone.minY + 30 : zone.maxY - 30
             HStack(spacing: 6) {
                 Circle()
                     .fill(index < colors.count ? colors[index] : .white)
