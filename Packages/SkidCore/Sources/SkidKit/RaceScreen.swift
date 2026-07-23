@@ -9,7 +9,15 @@ struct RaceScreen: View {
     @ObservedObject var rig: CouchRig
 
     var body: some View {
+        // The GeometryReader must NOT ignore the safe area, or its
+        // `safeAreaInsets` read as zero — the layout needs the real insets
+        // (notch, Dynamic Island, home indicator) to reserve control room.
+        // Only the world Canvas ignores them, so the grass still draws
+        // full-bleed under the notch.
         GeometryReader { geo in
+            let mapRect = TrackRenderer.fittedMapRect(
+                trackSize: session.race.track.size, in: geo.size,
+                safeInsets: geo.safeAreaInsets)
             TimelineView(.animation) { timeline in
                 // Step the sim on the main actor, then hand the Canvas
                 // plain value copies — its renderer closure is not
@@ -17,14 +25,14 @@ struct RaceScreen: View {
                 // idiom; a bare `_ =` isn't a valid builder statement.)
                 // swiftlint:disable:next redundant_discardable_let
                 let _ = step(
-                    size: geo.size,
+                    size: geo.size, mapRect: mapRect,
                     time: timeline.date.timeIntervalSinceReferenceDate
                 )
                 let race = session.race
                 let colors = game.carColors
                 let scene = WorldScene(
                     race: race, marks: session.marks, gateSpans: session.gateSpans,
-                    colors: colors, ghosts: session.ghost?.cars ?? []
+                    colors: colors, mapRect: mapRect, ghosts: session.ghost?.cars ?? []
                 )
                 let pads = padOverlays()
                 let aims = aimOverlays()
@@ -43,16 +51,15 @@ struct RaceScreen: View {
                             OverlayRenderer.drawAim(aim, into: &context)
                         }
                     }
+                    .ignoresSafeArea()
                     InputSurface(rig: rig)
+                        .ignoresSafeArea()
                     RaceHUD(race: race, colors: colors, rig: rig, size: geo.size)
 
                     // Meta controls live OUT of everyone's way: one small
-                    // pause toggle parked on genuine infield/grass (never on
-                    // the racing line, which the old fixed screen-center did
-                    // on tracks whose ribbon runs through the middle) — never
-                    // a Reset under someone's racing thumb.
+                    // pause toggle on the seam below the map.
                     if race.phase != .finished, !session.paused {
-                        pauseButton(at: pausePoint(track: race.track, screen: geo.size))
+                        pauseButton(at: CGPoint(x: mapRect.midX, y: mapRect.maxY))
                     }
                     if session.paused {
                         PauseMenu(
@@ -64,16 +71,7 @@ struct RaceScreen: View {
                 }
             }
         }
-        .ignoresSafeArea()
         .defersEdgeSwipes(!session.paused && !session.raceOver)
-    }
-
-    /// The shared pause button's screen point: the seam between the map and
-    /// the near-side control band — the map rect's bottom-centre. Off the
-    /// track, out of every thumb's way; not tapped much (one shared button).
-    private func pausePoint(track: Track, screen: CGSize) -> CGPoint {
-        let map = TrackRenderer.fittedMapRect(trackSize: track.size, in: screen)
-        return CGPoint(x: map.midX, y: map.maxY)
     }
 
     private func pauseButton(at point: CGPoint) -> some View {
@@ -89,8 +87,7 @@ struct RaceScreen: View {
         .position(point)
     }
 
-    private func step(size: CGSize, time: TimeInterval) {
-        let mapRect = TrackRenderer.fittedMapRect(trackSize: session.race.track.size, in: size)
+    private func step(size: CGSize, mapRect: CGRect, time: TimeInterval) {
         rig.layout(size: size, mapRect: mapRect)
         game.applyControlTuning()
         session.advance(to: time)
