@@ -8,6 +8,10 @@ struct WorldScene {
     var marks: MarkStore
     var gateSpans: [(a: Vec2, b: Vec2)?]
     var colors: [Color]
+    /// Where the map is placed on screen (the allocator's result). The
+    /// bands + pause key off the same rect, so the map is drawn exactly
+    /// where the layout expects it.
+    var mapRect: CGRect
     /// PB-ghost cars to draw translucently (time trial), if any.
     var ghosts: [CarState] = []
 }
@@ -15,18 +19,40 @@ struct WorldScene {
 /// Draws the whole world procedurally into a `Canvas` context — grass,
 /// kerbed asphalt ribbon, start line, marks, cars. No image assets anywhere.
 enum TrackRenderer {
-    /// Where the track actually sits on a `screen`: the aspect-fit
-    /// rectangle, centred, letterboxed. The one primitive for mapping the
-    /// world onto the screen — the renderer, the pause button, and the
-    /// control-band layout all key off it. Tracks are wider than tall, so
-    /// on a portrait phone this is a horizontal ribbon through the middle
-    /// with grass bands above and below.
-    static func fittedMapRect(trackSize: Vec2, in screen: CGSize) -> CGRect {
-        let scale = min(screen.width / trackSize.x, screen.height / trackSize.y)
+    /// Where the track sits on screen — the one primitive the renderer, the
+    /// pause button, and the control-band layout all key off.
+    ///
+    /// Allocation rule: **controls get a guaranteed minimum first, the map
+    /// fills what's left, and any space the map's aspect can't use goes back
+    /// to the controls** (so bands are never below `minBand`, the map is as
+    /// big as it can be in the leftover, and there's never dead grass between
+    /// map and bands). Works off the **safe-area** usable rect, so the notch
+    /// and home indicator never eat into the reserved minimum. The grass is
+    /// still drawn full-bleed; only this positioning respects the insets.
+    static func fittedMapRect(
+        trackSize: Vec2, in screen: CGSize, safeInsets: EdgeInsets = EdgeInsets(),
+        minBand: CGFloat = 150
+    ) -> CGRect {
+        // Usable region: the screen minus the safe-area insets.
+        let usable = CGRect(
+            x: safeInsets.leading, y: safeInsets.top,
+            width: screen.width - safeInsets.leading - safeInsets.trailing,
+            height: screen.height - safeInsets.top - safeInsets.bottom)
+        // Tracks are wide, so on portrait the bands are top/bottom and the
+        // map is height-constrained by the leftover between them; on a wide
+        // (landscape) usable area the map may instead be width-constrained.
+        // Reserve minBand on the two sides the bands occupy, fit the map in
+        // the remaining box, then centre it — the surplus falls to the bands.
+        let portrait = usable.height >= usable.width
+        let box =
+            portrait
+            ? CGSize(width: usable.width, height: max(1, usable.height - 2 * minBand))
+            : CGSize(width: max(1, usable.width - 2 * minBand), height: usable.height)
+        let scale = min(box.width / trackSize.x, box.height / trackSize.y)
         let fitted = CGSize(width: trackSize.x * scale, height: trackSize.y * scale)
         return CGRect(
-            x: (screen.width - fitted.width) / 2,
-            y: (screen.height - fitted.height) / 2,
+            x: usable.minX + (usable.width - fitted.width) / 2,
+            y: usable.minY + (usable.height - fitted.height) / 2,
             width: fitted.width, height: fitted.height)
     }
 
@@ -50,8 +76,10 @@ enum TrackRenderer {
         let gateSpans = scene.gateSpans
         let colors = scene.colors
         let track = race.track
-        let mapRect = fittedMapRect(trackSize: track.size, in: size)
+        let mapRect = scene.mapRect
         let scale = mapRect.width / track.size.x
+        // Grass fills the whole surface (full-bleed, under the safe areas);
+        // the map is drawn at the allocated rect the bands leave clear.
         context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(grass))
         context.translateBy(x: mapRect.minX, y: mapRect.minY)
         context.scaleBy(x: scale, y: scale)

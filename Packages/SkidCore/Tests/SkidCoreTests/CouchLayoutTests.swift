@@ -1,4 +1,5 @@
 import CoreGraphics
+import SwiftUI
 import XCTest
 
 @testable import SkidCore
@@ -24,11 +25,33 @@ final class CouchLayoutTests: XCTestCase {
         XCTAssertGreaterThan(screen.height - map.maxY, 250)  // and bottom
     }
 
-    func testFittedMapRectLandscapeIsHeightBound() {
+    func testFittedMapRectLandscapeReservesSideBands() {
+        // Landscape (wide usable area) → bands go on the sides, so the map
+        // fits within the width minus 2×minBand, not the full width.
         let screen = CGSize(width: 852, height: 393)
         let map = TrackRenderer.fittedMapRect(trackSize: trackSize, in: screen)
-        XCTAssertEqual(map.height, 393, accuracy: 0.5)  // full height (height-bound)
-        XCTAssertLessThan(map.width, 852)  // side gaps instead
+        XCTAssertLessThanOrEqual(map.width, 852 - 2 * 150 + 0.5)  // side bands reserved
+        XCTAssertEqual(map.midX, 852 / 2, accuracy: 1e-6)  // centred
+    }
+
+    func testMinBandIsReservedAndMapAspectCapped() {
+        // Portrait: the map never eats the reserved band minimum, and it
+        // keeps its aspect (never stretched to fill the leftover).
+        let screen = CGSize(width: 393, height: 852)
+        let map = TrackRenderer.fittedMapRect(trackSize: trackSize, in: screen, minBand: 150)
+        XCTAssertGreaterThanOrEqual(map.minY, 150 - 0.5)  // top band ≥ min
+        XCTAssertGreaterThanOrEqual(screen.height - map.maxY, 150 - 0.5)  // bottom ≥ min
+        XCTAssertEqual(map.width / map.height, 1.6, accuracy: 1e-6)  // aspect kept
+    }
+
+    func testSafeInsetsCarveOutTheNotch() {
+        // With a top notch inset, the usable area starts below it, so the
+        // top band (and thus the map) never rides under the notch.
+        let screen = CGSize(width: 393, height: 852)
+        let insets = EdgeInsets(top: 59, leading: 0, bottom: 34, trailing: 0)
+        let map = TrackRenderer.fittedMapRect(trackSize: trackSize, in: screen, safeInsets: insets)
+        // Top band sits below the notch: map top ≥ notch + minBand.
+        XCTAssertGreaterThanOrEqual(map.minY, 59 + 150 - 0.5)
     }
 
     // MARK: - band layout
