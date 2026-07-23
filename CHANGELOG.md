@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 5 — 2026-07-23
+
 - **The grid's shuffled every race.** Who starts on pole is random now, so
   no one's stuck with the same start over and over. Still fully
   deterministic under the hood (replays and ghosts are unaffected).
