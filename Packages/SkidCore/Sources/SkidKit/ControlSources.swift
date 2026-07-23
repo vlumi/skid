@@ -32,11 +32,11 @@ public enum ControlScheme: CaseIterable, Sendable {
 }
 
 /// A touch scheme that steers toward a pointed direction needs to know
-/// where the car is currently facing (world heading, radians). The routing
-/// layer sets this each tick, before `input(for:at:)`, for schemes that
-/// adopt it; touch-only schemes ignore it.
+/// where the car is currently facing (world heading, radians) and how fast
+/// it's going (the flip-vs-reverse decision). The routing layer sets this
+/// each tick, before `input(for:at:)`; touch-only schemes ignore it.
 public protocol HeadingAwareControlSource: TouchDrivenControlSource {
-    func setCarHeading(_ heading: Double)
+    func setCar(heading: Double, speed: Double)
 }
 
 /// Deadzone + travel + optional response curve + step quantization shared
@@ -136,10 +136,11 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
 }
 
 /// Aim-to-drive: a floating stick like the d-pad, but the thumb's ANGLE is
-/// the direction you want to go — the car turns toward it at a natural rate
-/// and drives there, backing up when the target sits behind it. No gas/
-/// brake to juggle: push where you want to be. Needs the car's heading, so
-/// it's a `HeadingAwareControlSource`.
+/// the direction you want to go — the sim flips the car's body toward it
+/// (speed-scaled) and the drift carries the speed there. Backing up happens
+/// only at low speed, where there's no inertia to flip with. No gas/brake
+/// to juggle: push where you want to be. Needs the car's heading + speed,
+/// so it's a `HeadingAwareControlSource`.
 public final class AimControlSource: HeadingAwareControlSource {
     /// Displacement (points) at which the aim is at full commitment (full
     /// throttle when roughly ahead). Short, like the d-pad.
@@ -147,14 +148,18 @@ public final class AimControlSource: HeadingAwareControlSource {
     /// Thumb offsets shorter than this (points) don't aim — a resting or
     /// barely-nudged thumb coasts rather than snapping to a direction.
     public var deadzone: Double = 10
-    /// How sharply steer ramps with the heading error: full lock is
-    /// commanded once the target is this many radians off the nose. Small
-    /// errors get proportionally gentle steer, so the car settles instead
-    /// of sawing across the aim.
+    /// Steer ramp for the REVERSE manoeuvre: full lock once the target is
+    /// this many radians off the tail.
     public var fullSteerError = Double.pi / 3
-    /// Past this much error (radians) the target is "behind": reverse
-    /// toward it instead of looping all the way around.
+    /// Past this much error (radians) the target counts as "behind".
     public var reverseThreshold = Double.pi * 2 / 3
+    /// Below this speed (units/s) a behind-target reverses toward it; at
+    /// speed the body flips instead — reversing is a parking-lot move.
+    public var reverseBelowSpeed = 90.0
+    /// How much the gas eases off as the aim swings away from the nose,
+    /// 0…1 of the commitment at a full 180°. Low: flips want throttle held
+    /// through the drift.
+    public var throttleEase = 0.25
     /// The player's control zone; the stick is clamped to stay inside.
     public var bounds: CGRect?
 
@@ -165,10 +170,14 @@ public final class AimControlSource: HeadingAwareControlSource {
 
     private var activeTouch: TouchID?
     private var carHeading = 0.0
+    private var carSpeed = 0.0
 
     public init() {}
 
-    public func setCarHeading(_ heading: Double) { carHeading = heading }
+    public func setCar(heading: Double, speed: Double) {
+        carHeading = heading
+        carSpeed = speed
+    }
 
     public func touchBegan(id: TouchID, at location: Vec2) {
         guard activeTouch == nil else { return }
@@ -208,18 +217,18 @@ public final class AimControlSource: HeadingAwareControlSource {
 
         // How committed the push is scales the pace (a light touch eases).
         let commitment = min(1, (knob.length - deadzone) / (radius - deadzone))
-        if abs(error) > reverseThreshold {
-            // Target is behind: back toward it. Reversing mirrors the
-            // wheel, so steer toward the target's reflection behind us.
+        if abs(error) > reverseThreshold, carSpeed < reverseBelowSpeed {
+            // Target behind and too slow to flip: back toward it. Reversing
+            // mirrors the wheel, so steer toward the target's reflection.
             let back = atan2(sin(desired - carHeading + .pi), cos(desired - carHeading + .pi))
             let steer = max(-1, min(1, back / fullSteerError))
             return CarInput(steer: steer, throttle: -commitment)
         }
-        let steer = max(-1, min(1, error / fullSteerError))
-        // Ease off the gas the more we have to turn, so tight aims tighten
-        // the line instead of understeering wide.
-        let throttle = commitment * (1 - 0.5 * min(1, abs(error) / reverseThreshold))
-        return CarInput(steer: steer, throttle: throttle)
+        // Hand the aim to the sim — the body-flip lives in the physics.
+        // The gas eases a touch as the aim swings away from the nose, but
+        // stays largely on: the flip wants throttle held through the drift.
+        let throttle = commitment * (1 - throttleEase * min(1, abs(error) / .pi))
+        return CarInput(throttle: throttle, aim: desired)
     }
 
     /// Keep the whole stick inside the zone (mirrors the d-pad).

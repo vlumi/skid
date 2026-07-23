@@ -4,25 +4,26 @@ import XCTest
 @testable import SkidCore
 @testable import SkidKit
 
-/// The aim-to-drive scheme: the thumb points a world direction, the car
-/// steers toward it and reverses when it's behind. These pin the sign
-/// conventions (screen ↔ world) and the reverse threshold.
+/// The aim-to-drive scheme: the thumb points a world direction and the
+/// scheme hands it to the sim as an `aim` command (the body-flip lives in
+/// the physics). Reversing is a low-speed manoeuvre only. These pin the
+/// sign conventions (screen ↔ world) and the flip-vs-reverse gate.
 @MainActor
 final class AimControlTests: XCTestCase {
     /// A stick touched at the origin, thumb pushed to `offset`, car facing
-    /// `heading`. The thumb offset is a screen vector and the aimed heading
-    /// is its angle directly (world = screen, no y-flip).
-    private func aim(offset: Vec2, heading: Double) -> AimControlSource {
+    /// `heading` at `speed`. The thumb offset is a screen vector and the
+    /// aimed heading is its angle directly (world = screen, no y-flip).
+    private func aim(offset: Vec2, heading: Double, speed: Double) -> AimControlSource {
         let source = AimControlSource()
         source.bounds = CGRect(x: 0, y: 0, width: 1000, height: 1000)
-        source.setCarHeading(heading)
+        source.setCar(heading: heading, speed: speed)
         source.touchBegan(id: 1, at: Vec2(500, 500))
         source.touchMoved(id: 1, at: Vec2(500, 500) + offset)
         return source
     }
 
-    private func input(offset: Vec2, heading: Double) -> CarInput {
-        aim(offset: offset, heading: heading).input(for: PlayerID(0), at: 0)
+    private func input(offset: Vec2, heading: Double, speed: Double = 300) -> CarInput {
+        aim(offset: offset, heading: heading, speed: speed).input(for: PlayerID(0), at: 0)
     }
 
     func testNoTouchCoasts() {
@@ -35,48 +36,50 @@ final class AimControlTests: XCTestCase {
         XCTAssertEqual(input(offset: Vec2(5, 0), heading: 0), .coast)
     }
 
-    func testAimingWhereYouAlreadyFaceGoesStraight() {
+    func testForwardPathEmitsTheAim() {
         // Car faces world +x (heading 0); push the thumb screen-right,
-        // which is world +x too (no y-flip). Dead ahead → full gas, no steer.
+        // which is world +x too (no y-flip). Dead ahead → aim 0, full gas,
+        // the steer channel untouched.
         let result = input(offset: Vec2(60, 0), heading: 0)
+        XCTAssertEqual(result.aim ?? 99, 0, accuracy: 1e-9)
         XCTAssertEqual(result.steer, 0, accuracy: 1e-9)
         XCTAssertGreaterThan(result.throttle, 0.9)
     }
 
-    func testAimingRightOfHeadingSteersRight() {
-        // Facing +x, aim down-screen (world +y). In math coords that's a
-        // positive turn → steer right (positive), forward.
+    func testAimIsTheThumbAngle() {
+        // Screen-down (0, +1) = world +y = heading π/2; up-screen = −π/2.
+        XCTAssertEqual(input(offset: Vec2(0, 60), heading: 0).aim ?? 99, .pi / 2, accuracy: 1e-9)
+        XCTAssertEqual(
+            input(offset: Vec2(0, -60), heading: 0).aim ?? 99, -.pi / 2, accuracy: 1e-9)
+    }
+
+    func testHardAimEasesTheGasButKeepsDriving() {
+        // A 90° aim keeps most of the throttle — flips want gas held on.
         let result = input(offset: Vec2(0, 60), heading: 0)
-        XCTAssertGreaterThan(result.steer, 0.5)
-        XCTAssertGreaterThan(result.throttle, 0)
+        XCTAssertGreaterThan(result.throttle, 0.7)
     }
 
-    func testAimingLeftOfHeadingSteersLeft() {
-        // Facing +x, aim up-screen (world −y) → negative turn → steer left.
-        let result = input(offset: Vec2(0, -60), heading: 0)
-        XCTAssertLessThan(result.steer, -0.5)
-        XCTAssertGreaterThan(result.throttle, 0)
+    func testAimingBehindAtSpeedFlips() {
+        // Facing +x at speed, aim world −x (180° off): the body flips —
+        // the aim goes through, no reverse.
+        let result = input(offset: Vec2(-60, 0), heading: 0, speed: 300)
+        XCTAssertEqual(abs(result.aim ?? 0), .pi, accuracy: 1e-9)
+        XCTAssertGreaterThanOrEqual(result.throttle, 0)
     }
 
-    func testAimingBehindReverses() {
-        // Facing +x, aim screen-left (world −x): 180° off → reverse.
-        let result = input(offset: Vec2(-60, 0), heading: 0)
+    func testAimingBehindWhenSlowReverses() {
+        // Same aim, but crawling: no inertia to flip with → back toward it.
+        let result = input(offset: Vec2(-60, 0), heading: 0, speed: 20)
+        XCTAssertNil(result.aim)
         XCTAssertLessThan(result.throttle, 0)
-    }
-
-    func testJustInsideThresholdStillDrivesForward() {
-        // ~90° off (aim straight down while facing +x) is within the ~120°
-        // reverse threshold → still forward, hard steer.
-        let result = input(offset: Vec2(0, 60), heading: 0)
-        XCTAssertGreaterThan(result.throttle, 0)
     }
 
     func testAimIsAbsoluteScreenDirectionRegardlessOfSeating() {
         // Aim points at an absolute screen spot, wherever the player sits:
-        // pushing screen-down (0, +1) aims at world +y. A car already
-        // facing world +y (heading π/2) is dead ahead → straight, full gas.
+        // pushing screen-down aims world +y; a car already facing +y is
+        // dead ahead — aim matches, full gas.
         let result = input(offset: Vec2(0, 60), heading: .pi / 2)
-        XCTAssertEqual(result.steer, 0, accuracy: 1e-6)
+        XCTAssertEqual(result.aim ?? 99, .pi / 2, accuracy: 1e-6)
         XCTAssertGreaterThan(result.throttle, 0.9)
     }
 }
