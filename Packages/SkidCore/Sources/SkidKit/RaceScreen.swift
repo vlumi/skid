@@ -318,21 +318,19 @@ struct RaceHUD: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// Shared screens: one chip per player, along the OUTER (screen) edge of
-    /// their control band — clear of the map and the thumb — facing them.
+    /// Shared screens: one chip per player, along the MAP-SIDE (inner) edge
+    /// of their control band — the clear spot: away from the screen-top notch
+    /// and safe-area, and away from where the thumb rests the stick (mid/outer
+    /// band). Reads as "just outside the track", rotated to face the player.
     @ViewBuilder private func playerChip(index: Int, controls: PlayerControls) -> some View {
         if race.cars.indices.contains(index) {
             let car = race.cars[index]
             let flipped = controls.up.y > 0
             let zone = controls.zone
-            // Outer edge = the screen edge the band hugs: top for a flipped
-            // (far-side) band, bottom for a near-side band. A full-width band
-            // shifts the chip off dead-centre so it clears the top notch /
-            // Dynamic Island (which straddles the screen middle); half-width
-            // bands are already off-centre, so they keep their midpoint.
-            let fullWidth = zone.width > size.width * 0.75
-            let x = fullWidth ? zone.minX + zone.width * 0.25 : zone.midX
-            let y = flipped ? zone.minY + 30 : zone.maxY - 30
+            // Map-side edge: the band's bottom for a flipped (top) band, its
+            // top for a near (bottom) band — both the edge nearest the map.
+            let x = zone.midX
+            let y = flipped ? zone.maxY - 18 : zone.minY + 18
             HStack(spacing: 6) {
                 Circle()
                     .fill(index < colors.count ? colors[index] : .white)
