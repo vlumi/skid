@@ -9,25 +9,52 @@ struct TuningPanel: View {
     let close: () -> Void
 
     var body: some View {
-        VStack(spacing: 14) {
-            slider(
-                Text("Dead zone", bundle: .module), value: $settings.dpadDeadzone,
-                range: 2...24, step: 1, format: "%.0f")
-            slider(
-                Text("Travel", bundle: .module), value: $settings.dpadTravel,
-                range: 32...80, step: 2, format: "%.0f")
-            stepsRow
-            slider(
-                Text("Curve", bundle: .module), value: $settings.dpadExpo,
-                range: 1.0...2.5, step: 0.1, format: "%.1f")
-            VStack(spacing: 2) {
-                slider(
-                    Text("Pace", bundle: .module), value: $settings.pace,
-                    range: 0.6...1.0, step: 0.05, format: "%.2f")
-                Text("Pace applies on Reset", bundle: .module)
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.6))
+        VStack(spacing: 12) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    section(Text("Aim", bundle: .module))
+                    slider(
+                        Text("Flip rate", bundle: .module), value: $settings.aimTurnRate,
+                        range: 3...16, step: 0.5, format: "%.1f")
+                    slider(
+                        Text("Speed boost", bundle: .module), value: $settings.aimFlipBoost,
+                        range: 0...16, step: 0.5, format: "%.1f")
+                    slider(
+                        Text("Drift keep", bundle: .module), value: $settings.driftRetention,
+                        range: 0...1, step: 0.05, format: "%.2f")
+                    slider(
+                        Text("Reverse under", bundle: .module),
+                        value: $settings.aimReverseBelowSpeed,
+                        range: 30...150, step: 5, format: "%.0f")
+                    slider(
+                        Text("Gas ease", bundle: .module), value: $settings.aimThrottleEase,
+                        range: 0...1, step: 0.05, format: "%.2f")
+
+                    section(Text("D-pad", bundle: .module))
+                    slider(
+                        Text("Dead zone", bundle: .module), value: $settings.dpadDeadzone,
+                        range: 2...24, step: 1, format: "%.0f")
+                    slider(
+                        Text("Travel", bundle: .module), value: $settings.dpadTravel,
+                        range: 32...80, step: 2, format: "%.0f")
+                    stepsRow
+                    slider(
+                        Text("Curve", bundle: .module), value: $settings.dpadExpo,
+                        range: 1.0...2.5, step: 0.1, format: "%.1f")
+                    slider(
+                        Text("Turn rate", bundle: .module), value: $settings.turnRate,
+                        range: 2...6, step: 0.1, format: "%.1f")
+
+                    section(Text("Pace", bundle: .module))
+                    slider(
+                        Text("Pace", bundle: .module), value: $settings.pace,
+                        range: 0.6...1.0, step: 0.05, format: "%.2f")
+                }
             }
+            .frame(maxHeight: 460)
+            Text("Physics dials apply on Reset; hiscores need stock", bundle: .module)
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.6))
             Button(action: close) {
                 Text("Back", bundle: .module).pillStyle()
             }
@@ -36,6 +63,14 @@ struct TuningPanel: View {
         .frame(maxWidth: 340)
         .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 18))
         .foregroundStyle(.white)
+    }
+
+    private func section(_ label: Text) -> some View {
+        label
+            .font(.caption.bold())
+            .textCase(.uppercase)
+            .foregroundStyle(.white.opacity(0.5))
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Steps per axis: full analog or 1–3 quantized notches.
