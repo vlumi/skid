@@ -282,7 +282,7 @@ public struct Race: Equatable, Sendable {
         // (driftRetention, energy-true: at 1 a drift redirects momentum
         // without scrubbing it, and never manufactures any) — the arcade
         // rule that makes flicking the body into a corner carry its speed.
-        let kept = lateral * max(0, 1 - surface.grip * dt)
+        let kept = lateral * max(0, 1 - surface.grip * tuning.gripScale * dt)
         let redirected = tuning.driftRetention * (lateral.lengthSquared - kept.lengthSquared)
         if redirected > 0 {
             let sense: Double = forwardSpeed < 0 ? -1 : 1
@@ -313,6 +313,12 @@ public struct Race: Equatable, Sendable {
         let effectiveness = min(1, abs(speedAlongHeading) / tuning.steerFullSpeed)
         let maxStep = tuning.steerRate * dt
 
+        // The body-flip's speed scaling, CURVED (squared): near-nothing at
+        // low speed so slow manoeuvring stays gentle, unchanged flat-out.
+        // Both the aim and steer flips share it. A linear ramp gave too much
+        // flip while crawling.
+        let flipScale = pow(min(1, car.velocity.length / tuning.maxSpeed), 2)
+
         if let aim = input.aim {
             // The body chases the pointed heading directly — the flip. Base
             // rate needs rolling speed (a parked car can't spin in place);
@@ -320,9 +326,7 @@ public struct Race: Equatable, Sendable {
             // cars wrench around almost instantly, slow ones ease over.
             car.steerActuator += max(-maxStep, min(maxStep, -car.steerActuator))
             let error = atan2(sin(aim - car.heading), cos(aim - car.heading))
-            let yawRate =
-                tuning.aimTurnRate * effectiveness
-                + tuning.aimFlipBoost * min(1, car.velocity.length / tuning.maxSpeed)
+            let yawRate = tuning.aimTurnRate * effectiveness + tuning.aimFlipBoost * flipScale
             let maxYaw = yawRate * dt
             car.heading += max(-maxYaw, min(maxYaw, error))
             return
@@ -337,6 +341,14 @@ public struct Race: Equatable, Sendable {
         car.steerActuator += max(-maxStep, min(maxStep, delta))
         let direction: Double = speedAlongHeading < 0 ? -1 : 1
         car.heading += car.steerActuator * tuning.turnRate * effectiveness * direction * dt
+
+        // Flip assist: at speed, holding a direction rotates the body toward
+        // it beyond the wheel — so the drift model carries you into a slide
+        // without countersteer (what makes the d-pad, and the digital
+        // keyboard that reuses it, drift). Scales with speed (parking stays
+        // a plain wheel) and the analog steer amount (a light thumb still
+        // places the car precisely).
+        car.heading += car.steerActuator * tuning.steerFlipBoost * flipScale * direction * dt
     }
 
     /// Returns the hardest into-wall speed absorbed (0 if no contact).
