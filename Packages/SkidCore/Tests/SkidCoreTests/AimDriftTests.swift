@@ -166,6 +166,20 @@ final class AimDriftTests: XCTestCase {
         XCTAssertLessThan(car.velocity.x, -50)  // travelling the aimed way
     }
 
+    // MARK: - Grip (the inertia knob)
+
+    func testLowerGripMakesTheSlideLinger() {
+        // Same flick; lower gripScale = the sideways slip survives longer, so
+        // the car's MOTION lags the nose (heavier, driftier "inertia").
+        func slipAfterFlick(gripScale: Double) -> Double {
+            var r = race(tuning: CarTuning(gripScale: gripScale))
+            advance(&r, ticks: 180, input: CarInput(throttle: 1))
+            advance(&r, ticks: 20, input: CarInput(aim: .pi / 2))
+            return r.cars[0].state.slipSpeed
+        }
+        XCTAssertGreaterThan(slipAfterFlick(gripScale: 0.4), slipAfterFlick(gripScale: 1) * 1.3)
+    }
+
     // MARK: - Determinism + recording compatibility
 
     func testAimInputsStayDeterministic() {

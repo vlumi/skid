@@ -29,6 +29,10 @@ ships (see [AGENTS.md](AGENTS.md)).
   the new "Flip" dial in the pause menu. The flip now stays gentle at low
   speed and only really bites once you're moving (for aim mode too), so
   slow manoeuvring isn't twitchy.
+- **A "Grip" dial** for the drift's weight: turn it down and the car's
+  motion lags where it's pointing longer — a heavier, slidier feel — up and
+  it snaps to the nose. Plus the aim "Flip rate" now dials all the way to 0
+  for the light-touch end.
 
 ### build 4 — 2026-07-23
 
