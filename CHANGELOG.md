@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 4 — 2026-07-23
+
 - **Aim-to-drive now drifts like it means it.** Point off your nose at
   speed and the car's **body flips toward the aim almost instantly** — the
   faster you're going, the harder it whips around (handbrake inertia) —
