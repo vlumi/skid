@@ -56,6 +56,17 @@ final class CouchLayoutTests: XCTestCase {
         }
     }
 
+    func testBandsFillTheGapFlushToTheMap() {
+        // Bands stretch the whole gap (screen edge → map edge), no wasted
+        // space — a band touches either the screen edge and the map edge.
+        for zone in zones(rig(4)) {
+            let flush =
+                (abs(zone.minY) < 0.5 && abs(zone.maxY - map.minY) < 0.5)  // top band
+                || (abs(zone.maxY - screen.height) < 0.5 && abs(zone.minY - map.maxY) < 0.5)
+            XCTAssertTrue(flush, "band \(zone) doesn't fill its gap flush to the map")
+        }
+    }
+
     func testOnePlayerBandBelowMap() {
         let zone = zones(rig(1))[0]
         XCTAssertGreaterThanOrEqual(zone.minY, map.maxY - 0.5)  // below the map

@@ -123,11 +123,11 @@ public final class CouchRig: ObservableObject {
         // Band that fills the bottom gap (near players) or top gap (far),
         // optionally just the left or right half for a same-side pair.
         func band(top: Bool, half: Half) -> (CGRect, Vec2) {
-            let gapTop = top ? 0 : mapRect.maxY
-            let gapHeight = top ? mapRect.minY : size.height - mapRect.maxY
-            let height = min(gapHeight, Self.maxBandHeight)
-            // Sit against the screen edge (the player's near side).
-            let y = top ? gapTop : gapTop + (gapHeight - height)
+            // Fill the WHOLE gap between the screen edge and the map — max
+            // touch area (the empty space between was wasted). The band runs
+            // flush to the map edge; the seam pause sits on that boundary.
+            let y = top ? 0 : mapRect.maxY
+            let height = top ? mapRect.minY : size.height - mapRect.maxY
             let x: CGFloat
             let width: CGFloat
             switch half {
@@ -163,9 +163,6 @@ public final class CouchRig: ObservableObject {
 
     private let up = Vec2(0, -1)
     private let down = Vec2(0, 1)
-    /// Cap the band so a wide gap doesn't make a needlessly tall control
-    /// strip; the floating stick needs ~132pt, this leaves comfortable room.
-    private static let maxBandHeight: CGFloat = 200
 
     private enum Half { case full, left, right }
 

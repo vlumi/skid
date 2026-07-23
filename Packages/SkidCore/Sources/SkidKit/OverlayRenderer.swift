@@ -4,15 +4,15 @@ import SwiftUI
 /// Screen-space chrome drawn over the world: control-zone outlines and the
 /// floating d-pads.
 enum OverlayRenderer {
-    /// A player's zone chrome on a shared screen: faint colored outline plus
-    /// a corner tab on the player's own edge (where their `up` points from).
+    /// A player's zone chrome on a shared screen: a soft fill of the
+    /// player's colour so whose-is-whose reads at a glance over the grass,
+    /// a stronger outline, plus a tab on the player's own edge (where their
+    /// `up` points from).
     static func drawZone(_ zone: ZoneChrome, into context: inout GraphicsContext) {
         let rect = zone.rect.insetBy(dx: 3, dy: 3)
-        context.stroke(
-            Path(roundedRect: rect, cornerRadius: 10),
-            with: .color(zone.color.opacity(0.28)),
-            lineWidth: 2
-        )
+        let shape = Path(roundedRect: rect, cornerRadius: 10)
+        context.fill(shape, with: .color(zone.color.opacity(0.15)))
+        context.stroke(shape, with: .color(zone.color.opacity(0.5)), lineWidth: 2)
         // Tab at the middle of the zone's "home" edge (opposite of up).
         let center = Vec2(rect.midX, rect.midY)
         let halfSpan = zone.up.y != 0 ? rect.height / 2 : rect.width / 2
