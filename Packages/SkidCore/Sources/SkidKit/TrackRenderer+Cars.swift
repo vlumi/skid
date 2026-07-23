@@ -119,18 +119,27 @@ extension TrackRenderer {
 
         let length = CarGeometry.length
         let width = CarGeometry.width
-        // A slim heading dart just ahead of the nose, in the car's colour, so
-        // where it's pointing reads at a glance even mid-drift (the nose can
-        // face well off the travel direction). Drawn first, under the car, so
-        // the body's rounded nose sits over its base. Distinct from the gate
-        // dots (those live on the track, in the same colour but round).
-        let noseTip = length / 2
-        var dart = Path()
-        dart.move(to: CGPoint(x: noseTip + 18, y: 0))
-        dart.addLine(to: CGPoint(x: noseTip + 2, y: -5))
-        dart.addLine(to: CGPoint(x: noseTip + 2, y: 5))
-        dart.closeSubpath()
-        car2D.fill(dart, with: .color(color.opacity(0.7)))
+        // A bold heading arrow floating WELL AHEAD of the car (not glued to
+        // the nose — the car's a tiny dot at full-track zoom, so a nose mark
+        // is invisible). It sits out in the open road ahead, in the car's
+        // colour, with a thin stem tying it back: reads the facing direction
+        // at a glance even mid-flip, where nose ≠ travel. Distinct from the
+        // round gate dots. Skipped for the translucent PB ghost.
+        if opacity > 0.5 {
+            let stemStart = length / 2 + 6
+            let arrowBase = stemStart + 30
+            let arrowTip = arrowBase + 20
+            var stem = Path()
+            stem.move(to: CGPoint(x: stemStart, y: 0))
+            stem.addLine(to: CGPoint(x: arrowBase, y: 0))
+            car2D.stroke(stem, with: .color(color.opacity(0.9)), lineWidth: 4)
+            var head = Path()
+            head.move(to: CGPoint(x: arrowTip, y: 0))
+            head.addLine(to: CGPoint(x: arrowBase, y: -11))
+            head.addLine(to: CGPoint(x: arrowBase, y: 11))
+            head.closeSubpath()
+            car2D.fill(head, with: .color(color.opacity(0.9)))
+        }
         // Tires first, so the body sits on top; open-wheel means they stick
         // out past the body sides.
         for offset in CarGeometry.tireOffsets {

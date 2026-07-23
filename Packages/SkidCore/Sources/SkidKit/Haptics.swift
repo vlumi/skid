@@ -55,10 +55,48 @@ public final class GameSettings: ObservableObject {
     /// curve is the default so small corrections stay small.
     @AppStorage("skid.dpad.expo") public var dpadExpo = 1.4
 
+    // Aim scheme feel (applied live, every frame).
+    /// Below this speed a behind-target reverses; at speed the body flips.
+    @AppStorage("skid.aim.reverseBelowSpeed") public var aimReverseBelowSpeed = 90.0
+    /// Gas ease-off toward a full-180 aim, 0…1 of the commitment.
+    @AppStorage("skid.aim.throttleEase") public var aimThrottleEase = 0.25
+
+    // Drift physics dials (applied on Reset, like pace — the sim is fixed
+    // for a race). Hiscores only record at the stock values.
+    /// Base yaw rate toward the aim, rad/s.
+    @AppStorage("skid.sim.aimTurnRate") public var aimTurnRate = 10.0
+    /// Extra aim yaw rate at full speed, rad/s (the handbrake inertia).
+    @AppStorage("skid.sim.aimFlipBoost") public var aimFlipBoost = 8.0
+    /// How much of a drift's bled speed is redirected along the nose, 0…1.
+    @AppStorage("skid.sim.driftRetention") public var driftRetention = 1.0
+    /// Wheel yaw rate at full steer (the classic schemes), rad/s.
+    @AppStorage("skid.sim.turnRate") public var turnRate = 3.4
+
     /// Game pace for learning: scales acceleration + speed caps (agility
     /// stays). Applies on the next race (Reset). Hiscores only record at
     /// full pace.
     @AppStorage("skid.pace") public var pace = 1.0
+
+    /// Whether the physics dials sit at their stock values — recordings
+    /// (hiscores, ghosts) replay with stock tuning, so only stock runs
+    /// count. Mirrors the full-pace rule.
+    public var isStockPhysics: Bool {
+        let stock = CarTuning()
+        return abs(aimTurnRate - stock.aimTurnRate) < 1e-9
+            && abs(aimFlipBoost - stock.aimFlipBoost) < 1e-9
+            && abs(driftRetention - stock.driftRetention) < 1e-9
+            && abs(turnRate - stock.turnRate) < 1e-9
+    }
+
+    /// The race tuning the dials describe (pace folded in).
+    public var carTuning: CarTuning {
+        CarTuning(
+            turnRate: turnRate,
+            aimTurnRate: aimTurnRate,
+            aimFlipBoost: aimFlipBoost,
+            driftRetention: driftRetention
+        ).scaled(pace: pace)
+    }
 
     public init() {}
 }

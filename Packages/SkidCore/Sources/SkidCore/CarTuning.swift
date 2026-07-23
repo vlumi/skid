@@ -20,6 +20,18 @@ public struct CarTuning: Equatable, Sendable, Codable {
     /// reached in ~1/steerRate seconds. Agility-neutral, so `scaled(pace:)`
     /// leaves it alone.
     public var steerRate: Double
+    /// Base yaw rate toward an `aim` command, rad/s — how eagerly the body
+    /// chases where you point. Deliberately far above `turnRate`: the aim
+    /// scheme's whole feel is the body answering the thumb.
+    public var aimTurnRate: Double
+    /// EXTRA aim yaw rate at full speed, rad/s, scaled by |v|/maxSpeed —
+    /// the handbrake inertia: the faster you go, the harder you can wrench
+    /// the body around. Slow cars flip gently.
+    public var aimFlipBoost: Double
+    /// How much of the speed a drift bleeds off gets redirected along the
+    /// nose instead of lost, 0…1. 1 = drifting costs nothing (arcade — flip,
+    /// slide, and carry the speed out); 0 = a slide scrubs speed.
+    public var driftRetention: Double
     /// Velocity kept along the wall normal after a bounce, 0…1.
     public var wallRestitution: Double
     /// Bounciness of car–car contact, 0…1.
@@ -35,6 +47,9 @@ public struct CarTuning: Equatable, Sendable, Codable {
         turnRate: Double = 3.4,
         steerFullSpeed: Double = 120,
         steerRate: Double = 9,
+        aimTurnRate: Double = 10,
+        aimFlipBoost: Double = 8,
+        driftRetention: Double = 1.0,
         wallRestitution: Double = 0.45,
         carRestitution: Double = 0.4,
         jumpTicksPerSpeed: Double = 0.055
@@ -46,6 +61,9 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.turnRate = turnRate
         self.steerFullSpeed = steerFullSpeed
         self.steerRate = steerRate
+        self.aimTurnRate = aimTurnRate
+        self.aimFlipBoost = aimFlipBoost
+        self.driftRetention = driftRetention
         self.wallRestitution = wallRestitution
         self.carRestitution = carRestitution
         self.jumpTicksPerSpeed = jumpTicksPerSpeed

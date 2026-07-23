@@ -21,6 +21,25 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Aim-to-drive now drifts like it means it.** Point off your nose at
+  speed and the car's **body flips toward the aim almost instantly** — the
+  faster you're going, the harder it whips around (handbrake inertia) —
+  while your momentum carries and catches up gradually. Stay a little
+  ahead of the corner and you hold a clean drift all the way around. And
+  drifting no longer costs speed: the slide **redirects** your momentum
+  along the nose instead of scrubbing it (it never adds any — top speed is
+  top speed). Reversing still works where it should: point behind you at
+  crawling speed to back up.
+- **A tuning playground for the drift**: flip rate, speed boost, drift
+  keep, reverse threshold, gas ease, and the classic schemes' turn rate —
+  all live dials in the pause menu's Tuning panel (physics dials apply on
+  Reset; hiscores only count on the stock setup, like Pace).
+- **The heading arrow moved out where you can see it** — a bold arrow
+  floating ahead of your car in your colour, instead of a tiny dart glued
+  to the nose of an already-tiny car.
+- Old personal bests and their ghosts were set under the old physics, so
+  they won't match the new feel — new bests await.
+
 ### build 3 — 2026-07-22
 
 - **Aim-to-drive**, a new control scheme in the switcher: a floating stick
