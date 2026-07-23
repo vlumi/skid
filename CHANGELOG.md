@@ -26,7 +26,9 @@ ships (see [AGENTS.md](AGENTS.md)).
   to hold a slide. A light thumb still places the car precisely (the assist
   scales with how far you push), so analog fine control is intact; it's the
   full-lock holds (and the keyboard later) that get the drift. Tune it with
-  the new "Flip" dial in the pause menu.
+  the new "Flip" dial in the pause menu. The flip now stays gentle at low
+  speed and only really bites once you're moving (for aim mode too), so
+  slow manoeuvring isn't twitchy.
 
 ### build 4 — 2026-07-23
 
