@@ -86,6 +86,27 @@ final class AimDriftTests: XCTestCase {
         XCTAssertEqual(r.cars[0].state.heading, 0, accuracy: 1e-9)
     }
 
+    func testFlipStaysGentleAtLowSpeed() {
+        // The speed scaling is CURVED (squared), so at ~half speed the flip
+        // is much less than half of full — slow manoeuvring stays gentle
+        // rather than twitchy. Measured on the aim flip's boost term.
+        func flipStep(atFractionOfTop fraction: Double) -> Double {
+            var r = race(tuning: CarTuning(aimTurnRate: 0))  // isolate the boost
+            // Build to roughly the target fraction of top speed.
+            let target = r.tuning.maxSpeed * fraction
+            while r.cars[0].state.velocity.length < target {
+                advance(&r, ticks: 1, input: CarInput(throttle: 1))
+            }
+            let before = r.cars[0].state.heading
+            advance(&r, ticks: 1, input: CarInput(throttle: 0, aim: .pi))
+            return r.cars[0].state.heading - before
+        }
+        let half = flipStep(atFractionOfTop: 0.5)
+        let full = flipStep(atFractionOfTop: 0.99)
+        // Linear would give half ≈ 0.5·full; squared gives ≈ 0.25·full.
+        XCTAssertLessThan(half, full * 0.35)
+    }
+
     func testFlipAuthorityGrowsWithSpeed() {
         // The same 3-tick flip turns the body further at high speed than at
         // low speed — the handbrake-inertia scaling.
