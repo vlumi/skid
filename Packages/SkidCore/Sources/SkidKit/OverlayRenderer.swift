@@ -13,10 +13,15 @@ enum OverlayRenderer {
         let shape = Path(roundedRect: rect, cornerRadius: 10)
         context.fill(shape, with: .color(zone.color.opacity(0.15)))
         context.stroke(shape, with: .color(zone.color.opacity(0.5)), lineWidth: 2)
-        // Tab at the middle of the zone's "home" edge (opposite of up).
+        // Tab at the middle of the zone's "home" edge (opposite of up),
+        // pulled inside the safe area so it never hides under the notch /
+        // Dynamic Island (top) or the home indicator (bottom).
         let center = Vec2(rect.midX, rect.midY)
         let halfSpan = zone.up.y != 0 ? rect.height / 2 : rect.width / 2
-        let edge = center - zone.up * (halfSpan - 8)
+        var edge = center - zone.up * (halfSpan - 8)
+        edge.y = min(
+            max(edge.y, zone.safeInsets.top + 10),
+            zone.rect.maxY - zone.safeInsets.bottom - 10)
         let tab = CGRect(x: edge.x - 22, y: edge.y - 5, width: 44, height: 10)
         context.fill(
             Path(roundedRect: tab, cornerRadius: 5), with: .color(zone.color.opacity(0.6)))
