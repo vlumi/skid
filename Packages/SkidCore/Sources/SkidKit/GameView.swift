@@ -107,7 +107,7 @@ public final class CouchGame: ObservableObject {
 
         let seating = SeatingConfig(faceToFace: faceToFace, openCorner: openCorner)
         let rig = CouchRig(
-            colorIndices: humanColors, scheme: rig?.scheme ?? .dpad, seating: seating)
+            colorIndices: humanColors, scheme: rig?.scheme ?? .casual, seating: seating)
         self.rig = rig
         aiFleet.drivers = Dictionary(
             uniqueKeysWithValues: (0..<ai).map {
@@ -214,12 +214,12 @@ public final class CouchGame: ObservableObject {
     public func applyControlTuning() {
         guard let rig else { return }
         for controls in rig.players {
-            controls.dpad.deadzone = settings.dpadDeadzone
-            controls.dpad.radius = settings.dpadTravel
-            controls.dpad.levels = settings.dpadSteps > 0 ? settings.dpadSteps : nil
-            controls.dpad.expo = settings.dpadExpo
-            controls.aim.reverseBelowSpeed = settings.aimReverseBelowSpeed
-            controls.aim.throttleEase = settings.aimThrottleEase
+            controls.pro.deadzone = settings.dpadDeadzone
+            controls.pro.radius = settings.dpadTravel
+            controls.pro.levels = settings.dpadSteps > 0 ? settings.dpadSteps : nil
+            controls.pro.expo = settings.dpadExpo
+            controls.casual.reverseBelowSpeed = settings.aimReverseBelowSpeed
+            controls.casual.throttleEase = settings.aimThrottleEase
         }
     }
 

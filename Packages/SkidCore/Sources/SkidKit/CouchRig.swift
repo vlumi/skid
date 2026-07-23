@@ -3,7 +3,7 @@ import Foundation
 import SkidCore
 import SwiftUI
 
-/// One player's control kit: an instance of every scheme, bound to that
+/// One player's control kit: the two schemes (Casual + Pro), bound to that
 /// player's zone (rect + `up` orientation) and color.
 @MainActor
 public final class PlayerControls {
@@ -12,12 +12,10 @@ public final class PlayerControls {
     public private(set) var zone = CGRect.zero
     public private(set) var up = Vec2(0, -1)
 
-    public let dpad = VirtualDPadControlSource()
-    public let aim = AimControlSource()
-    public let slide = TouchPadControlSource()
-    public let twoZone = TwoZoneControlSource()
-    public let oneTouch = OneTouchControlSource()
-    public let split = SplitControlSource()
+    /// Pro: the direct steer/throttle d-pad (with flip-assist).
+    public let pro = VirtualDPadControlSource()
+    /// Casual: aim-to-drive.
+    public let casual = AimControlSource()
 
     public init(player: PlayerID, colorIndex: Int) {
         self.player = player
@@ -26,26 +24,17 @@ public final class PlayerControls {
 
     public func source(for scheme: ControlScheme) -> TouchDrivenControlSource {
         switch scheme {
-        case .dpad: return dpad
-        case .aim: return aim
-        case .slide: return slide
-        case .twoZone: return twoZone
-        case .oneTouch: return oneTouch
-        case .split: return split
+        case .casual: return casual
+        case .pro: return pro
         }
     }
 
     public func setZone(_ rect: CGRect, up: Vec2) {
         zone = rect
         self.up = up
-        dpad.bounds = rect
-        dpad.up = up
-        aim.bounds = rect
-        slide.up = up
-        twoZone.bounds = rect
-        twoZone.up = up
-        split.bounds = rect
-        split.up = up
+        pro.bounds = rect
+        pro.up = up
+        casual.bounds = rect
     }
 
     public func releaseAll() {
@@ -95,12 +84,11 @@ public struct SeatingConfig: Equatable, Sendable {
 }
 
 /// The shared-screen control rig: per-player zones, and multitouch routing —
-/// a touch belongs to the zone it started in, for its whole life. The
-/// scheme is global (every player drives the same scheme) while the A/B is
-/// still running.
+/// a touch belongs to the zone it started in, for its whole life. The scheme
+/// is global — every player drives the same one (Casual or Pro).
 @MainActor
 public final class CouchRig: ObservableObject {
-    @Published public private(set) var scheme: ControlScheme = .dpad
+    @Published public private(set) var scheme: ControlScheme = .casual
 
     public private(set) var players: [PlayerControls]
     public let seating: SeatingConfig
@@ -109,7 +97,8 @@ public final class CouchRig: ObservableObject {
     private var lastSize: CGSize = .zero
 
     public init(
-        colorIndices: [Int], scheme: ControlScheme = .dpad, seating: SeatingConfig = SeatingConfig()
+        colorIndices: [Int], scheme: ControlScheme = .casual,
+        seating: SeatingConfig = SeatingConfig()
     ) {
         self.players = colorIndices.enumerated().map { index, colorIndex in
             PlayerControls(player: PlayerID(index), colorIndex: colorIndex)
@@ -184,12 +173,8 @@ public final class CouchRig: ObservableObject {
 
     public var schemeLabel: LocalizedStringKey {
         switch scheme {
-        case .dpad: return "D-pad"
-        case .aim: return "Aim"
-        case .slide: return "Slide"
-        case .twoZone: return "Two-zone"
-        case .oneTouch: return "One-touch"
-        case .split: return "Split"
+        case .casual: return "Casual"
+        case .pro: return "Pro"
         }
     }
 }

@@ -186,19 +186,28 @@ RNG seed + the per-tick input stream** — tiny to store. That enables:
 data cannot be retrofitted onto bests that weren't captured, even though the
 time-trial UI and ghost playback land later.
 
-## Control schemes to prototype (swap freely against the same sim)
+## Control schemes (two, swap freely against the same sim)
 
-The first milestone is A/B-ing these to find the fun; the game view has an
-in-run scheme switcher for on-device trials. Findings from the first device
-trial (bake into every scheme): steering must work **while coasting**;
-throttle wants steps, not binary — always-on gas suits physical buttons, not
-glass — but full analog has too much leeway for a thumb, so quantize
-(currently 3 steps per axis). The d-pad has felt most natural so far; all
-schemes stay in the switcher for a proper A/B down the road. The verdict
-runs on the **Tuning panel** (pause menu): dead zone, travel, steps
-(analog…3), response curve (expo — softer near center), and a learning
-**Pace** dial (scales accel/top speed, agility untouched; hiscores only
-record at full pace) — all persisted, d-pad dials applied live.
+The A/B is settled — down to **two** schemes, toggled by the in-run
+switcher:
+
+- **Casual** — aim-to-drive: a floating stick whose *angle* is where you
+  want to go; the sim flips the car's body toward it (speed-scaled) and the
+  drift carries the speed there. No countersteer, no separate gas/brake.
+- **Pro** — the direct steer/throttle d-pad (analog, with flip-assist so it
+  drifts too); the scheme the keyboard target reuses.
+
+Why only two: on glass, holding a drift by manual countersteer needs a
+precision touch can't give — so the accessible drift (Casual) and the
+direct-control drift (Pro) are the two that earn their place; slide,
+two-zone, one-touch, and split were cut. Settled feel rules: steering works
+**while coasting**; the body-flip is speed-gated (a parked car can't spin)
+and curved (gentle at low speed); a drift **redirects** momentum rather than
+scrubbing it (arcade — never manufactures speed). The **Tuning panel** (pause
+menu) exposes every live-tunable dial (Casual: flip rate/speed boost/reverse/
+gas ease; Pro: dead zone/travel/steps/curve/turn rate/flip; shared: drift
+keep, grip, **Pace**). Physics dials apply on Reset and hiscores only record
+on stock physics; the rest apply live.
 
 **Control zones.** "Pad appears where the thumb lands" alone doesn't scale
 past one player: each player owns a **zone** (screen region) and the control
