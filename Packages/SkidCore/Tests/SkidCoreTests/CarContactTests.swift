@@ -19,7 +19,11 @@ final class CarContactTests: XCTestCase {
             track: track, players: [PlayerID(0), PlayerID(1)],
             config: RaceConfig(carContact: contact)
         )
-        // Point car 1 back toward car 0.
+        // Pin the grid: the collision setup needs car 0 on the left and car 1
+        // on the right, regardless of the random start-slot shuffle. Point
+        // car 1 back toward car 0.
+        race.cars[0].state.position = Vec2(-100, 0)
+        race.cars[1].state.position = Vec2(100, 0)
         race.cars[1].state.heading = .pi
         return race
     }

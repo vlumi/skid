@@ -40,6 +40,31 @@ final class DeterminismTests: XCTestCase {
         XCTAssertNotEqual(a.cars[0].state.position, TrackLibrary.practiceLoop().startSlots[0])
     }
 
+    func testGridShuffleIsAValidPermutationAndSeedStable() {
+        let track = TrackLibrary.practiceLoop()
+        let players = [PlayerID(0), PlayerID(1), PlayerID(2), PlayerID(3)]
+        let slots = Set(track.startSlots.prefix(players.count))
+
+        // Every car lands on a distinct real start slot — a permutation, no
+        // two cars stacked, none off-grid.
+        let race = Race(track: track, players: players, seed: 3)
+        let placed = race.cars.map(\.state.position)
+        XCTAssertEqual(Set(placed).count, players.count, "two cars share a slot")
+        for position in placed { XCTAssertTrue(slots.contains(position), "car off-grid") }
+
+        // Same seed → same grid (replays/ghosts stay exact).
+        let again = Race(track: track, players: players, seed: 3)
+        XCTAssertEqual(placed, again.cars.map(\.state.position))
+    }
+
+    func testGridShufflePreservesCarIdentity() {
+        // The shuffle moves POSITIONS, not identities: cars[i] is still
+        // player i (so HUD chips + colours, keyed by index, stay correct).
+        let players = [PlayerID(0), PlayerID(1), PlayerID(2), PlayerID(3)]
+        let race = Race(track: TrackLibrary.practiceLoop(), players: players, seed: 9)
+        XCTAssertEqual(race.cars.map(\.id), players)
+    }
+
     func testMissingInputsCoast() {
         var race = Race(track: TrackLibrary.practiceLoop(), players: [PlayerID(0)])
         race.advance(inputs: [:])
