@@ -15,6 +15,21 @@ struct WorldScene {
 /// Draws the whole world procedurally into a `Canvas` context — grass,
 /// kerbed asphalt ribbon, start line, marks, cars. No image assets anywhere.
 enum TrackRenderer {
+    /// Where the track actually sits on a `screen`: the aspect-fit
+    /// rectangle, centred, letterboxed. The one primitive for mapping the
+    /// world onto the screen — the renderer, the pause button, and the
+    /// control-band layout all key off it. Tracks are wider than tall, so
+    /// on a portrait phone this is a horizontal ribbon through the middle
+    /// with grass bands above and below.
+    static func fittedMapRect(trackSize: Vec2, in screen: CGSize) -> CGRect {
+        let scale = min(screen.width / trackSize.x, screen.height / trackSize.y)
+        let fitted = CGSize(width: trackSize.x * scale, height: trackSize.y * scale)
+        return CGRect(
+            x: (screen.width - fitted.width) / 2,
+            y: (screen.height - fitted.height) / 2,
+            width: fitted.width, height: fitted.height)
+    }
+
     // The palette. Deliberately close to the classic top-down look.
     private static let grass = Color(red: 0.28, green: 0.55, blue: 0.23)
     private static let asphalt = Color(white: 0.62)
@@ -35,13 +50,10 @@ enum TrackRenderer {
         let gateSpans = scene.gateSpans
         let colors = scene.colors
         let track = race.track
-        let scale = min(size.width / track.size.x, size.height / track.size.y)
-        let offset = CGSize(
-            width: (size.width - track.size.x * scale) / 2,
-            height: (size.height - track.size.y * scale) / 2
-        )
+        let mapRect = fittedMapRect(trackSize: track.size, in: size)
+        let scale = mapRect.width / track.size.x
         context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(grass))
-        context.translateBy(x: offset.width, y: offset.height)
+        context.translateBy(x: mapRect.minX, y: mapRect.minY)
         context.scaleBy(x: scale, y: scale)
 
         func color(_ index: Int) -> Color {

@@ -68,17 +68,12 @@ struct RaceScreen: View {
         .defersEdgeSwipes(!session.paused && !session.raceOver)
     }
 
-    /// The pause button's screen point: the track's authored pit, mapped
-    /// through the same aspect-fit transform the renderer uses
-    /// (`TrackRenderer.draw`), so the button always sits on the same infield
-    /// spot per track instead of a fixed screen center that can fall on road.
+    /// The shared pause button's screen point: the seam between the map and
+    /// the near-side control band — the map rect's bottom-centre. Off the
+    /// track, out of every thumb's way; not tapped much (one shared button).
     private func pausePoint(track: Track, screen: CGSize) -> CGPoint {
-        let scale = min(screen.width / track.size.x, screen.height / track.size.y)
-        let offset = CGSize(
-            width: (screen.width - track.size.x * scale) / 2,
-            height: (screen.height - track.size.y * scale) / 2)
-        return CGPoint(
-            x: offset.width + track.pit.x * scale, y: offset.height + track.pit.y * scale)
+        let map = TrackRenderer.fittedMapRect(trackSize: track.size, in: screen)
+        return CGPoint(x: map.midX, y: map.maxY)
     }
 
     private func pauseButton(at point: CGPoint) -> some View {
@@ -95,7 +90,8 @@ struct RaceScreen: View {
     }
 
     private func step(size: CGSize, time: TimeInterval) {
-        rig.layout(size: CGRect(origin: .zero, size: size).size)
+        let mapRect = TrackRenderer.fittedMapRect(trackSize: session.race.track.size, in: size)
+        rig.layout(size: size, mapRect: mapRect)
         game.applyControlTuning()
         session.advance(to: time)
         game.noteProgress()
@@ -322,16 +318,17 @@ struct RaceHUD: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// Shared screens: one chip per player, in their zone's home corner,
-    /// facing them.
+    /// Shared screens: one chip per player, along the OUTER (screen) edge of
+    /// their control band — clear of the map and the thumb — facing them.
     @ViewBuilder private func playerChip(index: Int, controls: PlayerControls) -> some View {
         if race.cars.indices.contains(index) {
             let car = race.cars[index]
             let flipped = controls.up.y > 0
             let zone = controls.zone
-            let inset: CGFloat = 46
-            let x = flipped ? zone.maxX - inset - 20 : zone.minX + inset + 20
-            let y = flipped ? zone.minY + 24 : zone.maxY - 24
+            // Outer edge = the screen edge the band hugs: top for a flipped
+            // (far-side) band, bottom for a near-side band.
+            let x = zone.midX
+            let y = flipped ? zone.minY + 18 : zone.maxY - 18
             HStack(spacing: 6) {
                 Circle()
                     .fill(index < colors.count ? colors[index] : .white)
