@@ -58,7 +58,11 @@ public final class CouchGame: ObservableObject {
     private let sound = SoundEngine()
     private let haptics = Haptics()
     private var aiColorIndices: [Int] = []
-    private var seed: UInt64 = 1
+    /// Race seed, bumped before every race and recorded with each replay so
+    /// runs stay reproducible. Seeded from the clock ONCE at launch (view
+    /// layer only — the sim itself never touches wall-clock time) so grids
+    /// differ across app runs instead of repeating from 1 each session.
+    private var seed: UInt64 = UInt64(Date().timeIntervalSince1970.bitPattern)
     private var notedLapCount = 0
     private var notedFinish = false
 

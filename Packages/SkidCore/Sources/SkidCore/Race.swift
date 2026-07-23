@@ -96,11 +96,18 @@ public struct Race: Equatable, Sendable {
         self.config = config
         self.tuning = tuning
         self.tick = 0
-        self.rng = SeededRNG(seed: seed)
+        var rng = SeededRNG(seed: seed)
+        // Randomise the grid every race: shuffle which player takes which
+        // start slot, driven by the seeded RNG so replays and ghosts stay
+        // exact. Slot geometry (positions + heading) is untouched — only the
+        // player→slot assignment varies.
+        let order = Array(players.indices).shuffled(using: &rng)
+        self.rng = rng
         self.cars = players.enumerated().map { index, id in
+            let slotIndex = order[index]
             let slot =
-                index < track.startSlots.count
-                ? track.startSlots[index] : track.startSlots.last ?? Vec2.zero
+                slotIndex < track.startSlots.count
+                ? track.startSlots[slotIndex] : track.startSlots.last ?? Vec2.zero
             return Car(id: id, state: CarState(position: slot, heading: track.startHeading))
         }
     }
