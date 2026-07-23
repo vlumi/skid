@@ -12,7 +12,7 @@ struct TuningPanel: View {
         VStack(spacing: 12) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
-                    section(Text("Aim", bundle: .module))
+                    section(Text("Casual", bundle: .module))
                     slider(
                         Text("Flip rate", bundle: .module), value: $settings.aimTurnRate,
                         range: 0...16, step: 0.5, format: "%.1f")
@@ -33,7 +33,7 @@ struct TuningPanel: View {
                         Text("Gas ease", bundle: .module), value: $settings.aimThrottleEase,
                         range: 0...1, step: 0.05, format: "%.2f")
 
-                    section(Text("D-pad", bundle: .module))
+                    section(Text("Pro", bundle: .module))
                     slider(
                         Text("Dead zone", bundle: .module), value: $settings.dpadDeadzone,
                         range: 2...24, step: 1, format: "%.0f")
