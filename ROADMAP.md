@@ -3,10 +3,11 @@
 The implementation plan, in milestone order. Versions are indicative, not
 contractual, and this file is *expected to churn* — milestones get reshaped as
 prototyping answers questions. Everything before 1.0 is beta by definition
-(TestFlight from v0.1). As milestones ship, their detail moves to
-`CHANGELOG.md` and this file keeps only open work. Settled rules, conventions,
-and design decisions live in [AGENTS.md](AGENTS.md); this file is only *when*,
-not *why*.
+(TestFlight from v0.1). As milestones ship, they drop to the
+[README version history](README.md#version-history) (brief) and
+[CHANGELOG.md](CHANGELOG.md) (full), and this file keeps only open work.
+Settled rules, conventions, and design decisions live in
+[AGENTS.md](AGENTS.md); this file is only *when*, not *why*.
 
 Guiding order: **the drift is the game.** Milestone one exists to answer "is
 the driving fun?" and nothing that doesn't serve that question lands before it
@@ -17,111 +18,60 @@ the sim, not bolted on.
 
 ---
 
-## v0.1.0 — One car, one track (is the drift fun?)
+Shipped milestones (v0.1–v0.5) are summarized in the
+[README version history](README.md#version-history); full detail is in
+[CHANGELOG.md](CHANGELOG.md). This file keeps only open work.
 
-The deterministic sim, the first control scheme, and just enough rendering to
-feel the driving. No race, no opponents, no menus.
+## v0.5.x — Control feel (in progress)
 
-**Scaffolding:**
+The scheme A/B has a verdict: **aim-to-drive is the winner** — on touch it's
+the only scheme that makes drifting accessible (manual countersteer needs
+precision glass can't give). The remaining work is making it *feel* right,
+then trimming the roster.
 
-- [x] XcodeGen `project.yml`: `SkidCore` package + `Sources/{iOS,Shared}`,
-      thin iOS app target, bundle id `fi.misaki.skid`; the sim and input
-      layers platform-agnostic so the later Mac target is drop-in
-- [x] CI: pinned SwiftLint + swift-format (both `--strict`), `swift test`
-      with coverage (view layer coverage-ignored), simulator build
-- [x] String Catalog in place; every user-facing string localized from the
-      first commit (English-only content)
+- [ ] **Aim-drift feel** — the big one. Aiming off-centre at speed should
+      snap the car BODY toward the aim near-instantly and let the velocity
+      correction come gradually (a real, holdable drift — see
+      `aim-drift-feel` notes): a speed-scaled body-flip, handbrake-like on
+      inertia but **no speed loss** (arcade). Turning currently too sluggish.
+      Expose every plausibly-tunable parameter as a live in-game dial.
+- [ ] Scheme roster cleanup: once aim-drift lands, decide which of the
+      manual schemes (d-pad/slide/two-zone/one-touch/split) stay vs. cut,
+      and set defaults.
 
-**`SkidCore` (where nearly all v0.1 work and tests live):**
+## v0.6.0 — Track editor & shareable tracks
 
-- [x] Fixed-timestep step function `advance(inputs:) -> newState`; seeded
-      RNG; bit-for-bit determinism tests (same inputs → same race)
-- [x] Hand-written arcade-drift car physics: heading, throttle along
-      heading, grip < 1 so lateral velocity carries the car wide — grip /
-      friction / turn-rate exposed as tunables
-- [x] Track model: asphalt ribbon + grass, `surface(at:) -> Surface` with
-      per-surface grip/drag modifiers; wall/kerb collision with bounce;
-      layer-aware data model per AGENTS.md (the first track stays flat)
-- [x] `ControlSource` protocol delivering car-relative `CarInput`
+Hand-authoring track geometry hit its quality ceiling; a **phone-first**
+editor with a small piece catalog is the answer, and its data becomes the
+sharing format. Design settled (see `track-editor-piece-model` notes);
+approach:
 
-**Input & rendering:**
+- [ ] **Piece model, headless first.** A track is an ordered ring of
+      quantized catalog pieces (straight/curve{45,90}/bridge/ramp…), snapped
+      **port-to-port** ("magnet", no real grid — a grid at most a cosmetic
+      guide). Validity = every port mated + the loop closes; loose ends =
+      unsaveable. Compiles to the runtime `Track`. Build + test as pure
+      logic before any UI, **alongside** the free-form `TrackDesign` path
+      (don't entangle it).
+- [ ] **Phone-first editor UI** on top: tap-a-piece, tap-a-port, thumb-
+      reachable palette, one-handed pan/zoom, no precision gestures. Must be
+      genuinely usable on a phone, not a big-screen-only afterthought (iPad
+      is an authoring convenience, not the design target).
+- [ ] **Shareable tracks** — a track is a short list of piece ids, so it
+      base64s into a reasonable URL.
+- [ ] Wire editor output into track selection / the game.
+- [ ] *Open, decide with the editor in hand:* whether built-ins migrate to
+      the piece model (replace) or stay free-form `TrackDesign` (layer) —
+      hinges on whether the catalog can rebuild Hairpin/Overpass well.
 
-- [x] **Arcade touch-pad** scheme implemented; at least one more scheme
-      stubbed so the swap seam is exercised
-- [x] Procedural render: track with striped kerbs, one open-wheel buggy
-      (body + four visible tires), fixed full-track camera
-- [x] Skid marks: per-tire trails from slip + surface, persistent for the
-      run — the feedback loop for tuning the drift
-
-**Exit criteria:** drive laps by thumb and honestly answer "is this fun?"
-Tuning notes recorded; go/no-go on the drift model (tight-grip fallback is
-the plan B).
-
-## v0.2.0 — Make it a race
-
-- [x] Lap counting via ordered checkpoints (no shortcuts), start grid +
-      countdown, finish + per-player race time
-- [x] Remaining hazards as sim surfaces: **mud**, **water**, **oil slicks**
-- [x] Marks extended: scuffed grass/mud trails; hazard-appropriate effects
-- [x] Minimal HUD: lap and timing per player, in the style of the classics
-- [x] Record every run as seed + input stream from the first lap-capable
-      build (a replay/ghost is just that, per AGENTS.md — can't be
-      retrofitted); playback lands later
-- [x] Control-scheme A/B: two-zone tap-steer implemented, one-touch stub
-      made real (the in-run switcher and virtual d-pad already landed with
-      v0.1 device feedback)
-
-## v0.3.0 — Couch multiplayer (the heart)
-
-- [x] Multitouch routing: one touch per player, 2–4 per-player control
-      zones that don't need to face the player
-- [x] Car–car collisions in the sim (deterministic, hand-written), behind
-      the per-race **contact / ghost** flag — ghost = pass-through,
-      pure-speed racing; contact = the derby flavour
-- [x] Per-player identity: body colours **picked by each player at race
-      start**, grid slots, results screen
-- [x] Split gas/steer two-thumb scheme (1–2 player layouts)
-
-## v0.4.0 — Solo play: AI drivers & time trial
-
-- [x] AI as just another `ControlSource`: racing line + steering toward it,
-      rubber-banding-free difficulty via the same tunables as the player
-- [x] Single-player vs. 1–3 AI; fill empty grid slots in multiplayer
-- [x] Deterministic AI (seeded) so races stay reproducible in tests
-- [x] **Time trial** mode + local hiscores per track (best lap, best race),
-      persisted (versioned store) along with their replays
-- [x] **Personal-best ghost**: translucent, non-interacting replay car to
-      race against
-
-## v0.5.0 — Content & polish
-
-- [x] A small track set in the classic style (chicanes, a hairpin, hazard
-      placement as track design); track picker (crossings arrive with the
-      two-layer item below)
-- [x] Two-layer tracks live: bridges as layered crossings (Overpass
-      figure-8), ramps switching layers, jumps (airborne = ballistic,
-      launching ramps ready for a jump track), bridge fall-off; occluded
-      cars stay visible (ghost bubble, per AGENTS.md)
-- [ ] Scheme A/B verdict: pick defaults, keep the winners, cut the losers
-- [x] Sound + haptics: engine pitch, slides, collisions (procedural, no
-      audio assets; toggles in setup/pause, persisted)
-- [x] Minimal menus/settings — only what a couch session needs (setup
-      screen + pause menu + sound/haptics toggles)
-- [ ] **Release lane** (pulled forward from v1.0): `make release` —
-      lock-step version/build bump, archive, TestFlight upload — plus
-      `RELEASING.md`; **v0.5 ends with a TestFlight build**
-- [ ] **App icon** (pulled forward from v1.0): generated from the game's
-      own drawing code (`make icon`) — a drift scene, no image assets
-      authored by hand
-
-## v0.6.0 — Mac & physical controls
+## v0.7.0 — Mac & physical controls
 
 - [ ] macOS target (Universal Purchase, same bundle id), sim untouched —
       only render/input capture differ
 - [ ] Keyboard scheme (arrows/WASD, 1–2 players) and GameController support
       as additional `ControlSource`s
 
-## v0.7.0 — Local-network multiplayer
+## v0.8.0 — Local-network multiplayer
 
 - [ ] Deterministic lockstep over **MultipeerConnectivity**: inputs-only
       sync, one peer as clock host, join/leave flow
@@ -145,21 +95,18 @@ the plan B).
       `PlayerControls` already owns an instance of every scheme; the
       selection would move from the shared `rig.scheme` to per-player, plus
       a setup UI.
-- [ ] Full replay viewer (watch/scrub any stored run — the data exists from
-      v0.2); shareable ghost files between devices
-- [ ] **Track editor** (pulled forward — hand-authoring geometry hit its
-      quality ceiling): visual editing of a track's nodes, gates, and
-      hazards. The `TrackDesign` data format it reads/writes already
-      ships; dev-tool first, spike decides how far it goes. Procedural
-      track variations remain a maybe.
 - [ ] **Map themes**: whole-map looks beyond grass (sand/desert, snow, …).
-      The track format already carries a `theme` field; the renderer
-      learns it when the first second theme lands.
+      The track format already carries a `theme` field; the renderer learns
+      it when the first non-grass theme lands.
 - [ ] **Selective kerb striping**: red/white stripes only lining chosen
       corners' outer edges, plain white edges elsewhere — a per-corner
       `kerb` flag already in the track format; renderer support pending.
+- [ ] Full replay viewer (watch/scrub any stored run — the data exists from
+      v0.2); shareable ghost files between devices
 - [ ] Full vertical loops — the crazy one; only if the two-layer jump model
       proves fun (and readable) in play
+- [ ] Procedural track variations (the editor's piece catalog could seed
+      these) — a maybe, not a commitment
 - [ ] Damage/pickup mischief (dropped oil, turbo) — only if the core race
       wants more chaos
 - [ ] Finnish/Japanese localization (String Catalog makes this
