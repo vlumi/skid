@@ -263,20 +263,7 @@ public struct Race: Equatable, Sendable {
             return collideWithWalls(car: &car)
         }
         let surface = track.surface(at: car.position, layer: car.layer)
-
-        // The wheel chases the thumb at a bounded rate instead of matching it
-        // instantly — a twitch no longer snaps the nose, but full lock is
-        // still reached in ~1/steerRate s, so the ceiling is unchanged.
-        let maxStep = tuning.steerRate * dt
-        let delta = input.steer - car.steerActuator
-        car.steerActuator += max(-maxStep, min(maxStep, delta))
-
-        // Steering: yaw follows the actuator, scaled up to full effect at
-        // steerFullSpeed; reversing mirrors the wheel like a real car.
-        let speedAlongHeading = car.velocity.dot(car.forward)
-        let effectiveness = min(1, abs(speedAlongHeading) / tuning.steerFullSpeed)
-        let direction: Double = speedAlongHeading < 0 ? -1 : 1
-        car.heading += car.steerActuator * tuning.turnRate * effectiveness * direction * dt
+        turn(car: &car, input: input, dt: dt)
 
         // Decompose the world-space velocity against the NEW heading: the
         // nose turned away from the momentum, so part of it is now lateral —
@@ -288,17 +275,68 @@ public struct Race: Equatable, Sendable {
         // Engine/brake along the heading, limited by surface traction.
         let accel = input.throttle >= 0 ? tuning.engineAccel : tuning.brakeAccel
         forwardSpeed += input.throttle * accel * surface.traction * dt
-        forwardSpeed = max(-tuning.reverseMaxSpeed, min(tuning.maxSpeed, forwardSpeed))
 
         // Grip bleeds the slide, but never all of it in one tick — what
-        // remains carries the car wide through the corner.
-        lateral *= max(0, 1 - surface.grip * dt)
+        // remains carries the car wide through the corner. The speed the
+        // bleed takes OUT of the slide is redirected along the nose
+        // (driftRetention, energy-true: at 1 a drift redirects momentum
+        // without scrubbing it, and never manufactures any) — the arcade
+        // rule that makes flicking the body into a corner carry its speed.
+        let kept = lateral * max(0, 1 - surface.grip * dt)
+        let redirected = tuning.driftRetention * (lateral.lengthSquared - kept.lengthSquared)
+        if redirected > 0 {
+            let sense: Double = forwardSpeed < 0 ? -1 : 1
+            forwardSpeed = sense * (forwardSpeed * forwardSpeed + redirected).squareRoot()
+        }
+        lateral = kept
+
+        forwardSpeed = max(-tuning.reverseMaxSpeed, min(tuning.maxSpeed, forwardSpeed))
         forwardSpeed *= max(0, 1 - surface.drag * dt)
 
         car.velocity = fwd * forwardSpeed + lateral
+        // Top speed caps the WHOLE velocity, not just the nose component —
+        // otherwise a held drift (slip + full throttle) creeps past the cap.
+        // A drift carries full speed; it never beats it.
+        let speed = car.velocity.length
+        if speed > tuning.maxSpeed {
+            car.velocity *= tuning.maxSpeed / speed
+        }
         car.position += car.velocity * dt
 
         return collideWithWalls(car: &car)
+    }
+
+    /// One tick of heading change: either the wheel (steer channel) or the
+    /// body-flip (aim channel).
+    private func turn(car: inout CarState, input: CarInput, dt: Double) {
+        let speedAlongHeading = car.velocity.dot(car.forward)
+        let effectiveness = min(1, abs(speedAlongHeading) / tuning.steerFullSpeed)
+        let maxStep = tuning.steerRate * dt
+
+        if let aim = input.aim {
+            // The body chases the pointed heading directly — the flip. Base
+            // rate needs rolling speed (a parked car can't spin in place);
+            // the boost grows with speed like a handbrake's inertia: fast
+            // cars wrench around almost instantly, slow ones ease over.
+            car.steerActuator += max(-maxStep, min(maxStep, -car.steerActuator))
+            let error = atan2(sin(aim - car.heading), cos(aim - car.heading))
+            let yawRate =
+                tuning.aimTurnRate * effectiveness
+                + tuning.aimFlipBoost * min(1, car.velocity.length / tuning.maxSpeed)
+            let maxYaw = yawRate * dt
+            car.heading += max(-maxYaw, min(maxYaw, error))
+            return
+        }
+
+        // The wheel chases the thumb at a bounded rate instead of matching
+        // it instantly — a twitch no longer snaps the nose, but full lock is
+        // still reached in ~1/steerRate s. Yaw follows the actuator, scaled
+        // up to full effect at steerFullSpeed; reversing mirrors the wheel
+        // like a real car.
+        let delta = input.steer - car.steerActuator
+        car.steerActuator += max(-maxStep, min(maxStep, delta))
+        let direction: Double = speedAlongHeading < 0 ? -1 : 1
+        car.heading += car.steerActuator * tuning.turnRate * effectiveness * direction * dt
     }
 
     /// Returns the hardest into-wall speed absorbed (0 if no contact).

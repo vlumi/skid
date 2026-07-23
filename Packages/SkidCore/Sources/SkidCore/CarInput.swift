@@ -13,18 +13,26 @@ public struct PlayerID: Hashable, Sendable, Codable, Comparable {
 /// Simulation tick counter at the fixed timestep.
 public typealias Tick = Int
 
-/// Car-RELATIVE input for one tick: steer + throttle, nothing
-/// screen-oriented. Every control scheme, AI, and network peer reduces to
-/// this — the sim never knows which produced it.
+/// One tick of driver input, nothing screen-oriented. Every control scheme,
+/// AI, and network peer reduces to this — the sim never knows which produced
+/// it. Two channels: car-relative steer (the wheel), or an absolute `aim`
+/// heading (point-where-you-go schemes); a tick uses one or the other.
 public struct CarInput: Equatable, Sendable, Codable {
     /// -1 (full left) … 1 (full right).
     public var steer: Double
     /// -1 (brake/reverse) … 1 (full gas). 0 coasts.
     public var throttle: Double
+    /// A world-heading command (radians): the direction the driver wants
+    /// the BODY to point. When set, the sim slews the heading toward it
+    /// (speed-scaled — the body-flip) and `steer` is ignored. nil for
+    /// steer-based schemes. Optional, so recordings from before the aim
+    /// channel decode unchanged.
+    public var aim: Double?
 
-    public init(steer: Double = 0, throttle: Double = 0) {
+    public init(steer: Double = 0, throttle: Double = 0, aim: Double? = nil) {
         self.steer = max(-1, min(1, steer))
         self.throttle = max(-1, min(1, throttle))
+        self.aim = aim
     }
 
     public static let coast = CarInput()

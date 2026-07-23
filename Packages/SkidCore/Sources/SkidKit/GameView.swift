@@ -182,11 +182,12 @@ public final class CouchGame: ObservableObject {
                 let controls = rig.players[player.rawValue]
                 let source = controls.source(for: rig.scheme)
                 // Heading-aware schemes (aim-to-drive) need where the car
-                // faces now to turn toward the pointed direction.
+                // faces and how fast it's going (flip vs. reverse).
                 if let headingAware = source as? HeadingAwareControlSource,
                     let car = race.cars.first(where: { $0.id == player })
                 {
-                    headingAware.setCarHeading(car.state.heading)
+                    headingAware.setCar(
+                        heading: car.state.heading, speed: car.state.velocity.length)
                 }
                 return source.input(for: player, at: race.tick)
             }
@@ -194,7 +195,7 @@ public final class CouchGame: ObservableObject {
         }
         let session = GameSession(
             track: track, players: players, config: config, seed: seed,
-            tuning: CarTuning().scaled(pace: settings.pace), ghost: ghost,
+            tuning: settings.carTuning, ghost: ghost,
             inputFor: inputFor)
         session.onTick = { [weak self] race in
             guard let self else { return }
@@ -208,8 +209,8 @@ public final class CouchGame: ObservableObject {
         return session
     }
 
-    /// Push the persisted d-pad tuning onto every player's pad — called
-    /// each frame, so panel changes apply live mid-race.
+    /// Push the persisted control tuning onto every player's schemes —
+    /// called each frame, so panel changes apply live mid-race.
     public func applyControlTuning() {
         guard let rig else { return }
         for controls in rig.players {
@@ -217,15 +218,20 @@ public final class CouchGame: ObservableObject {
             controls.dpad.radius = settings.dpadTravel
             controls.dpad.levels = settings.dpadSteps > 0 ? settings.dpadSteps : nil
             controls.dpad.expo = settings.dpadExpo
+            controls.aim.reverseBelowSpeed = settings.aimReverseBelowSpeed
+            controls.aim.throttleEase = settings.aimThrottleEase
         }
     }
 
     /// Called every frame by the race screen: fold the (single) human's
     /// results into the hiscores as they happen. Multi-human races don't
-    /// record — hiscores are personal. Slowed-pace runs never record:
-    /// bests are set at full speed only.
+    /// record — hiscores are personal. Slowed-pace or dialed-physics runs
+    /// never record: bests are set on the stock machine only (recordings
+    /// replay with stock tuning, so anything else would lie).
     public func noteProgress() {
-        guard let session, let rig, rig.players.count == 1, settings.pace > 0.999 else {
+        guard let session, let rig, rig.players.count == 1, settings.pace > 0.999,
+            settings.isStockPhysics
+        else {
             return
         }
         let trackID = session.race.track.id
