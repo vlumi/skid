@@ -55,6 +55,36 @@ func quantizedAxis(
     return (value < 0 ? -1 : 1) * scaled
 }
 
+/// A floating stick's new (origin, knob) after the finger moves. Within
+/// `radius` the origin holds and the knob follows. Drag PAST the rim and the
+/// origin trails the finger (staying `radius` behind), so the knob pins at
+/// full deflection AND pushing back the other way instantly un-maxes it —
+/// you can swing extreme-to-extreme without lifting, in a zone too narrow to
+/// reach full lock otherwise. The trailing origin re-clamps to `bounds` so
+/// the stick never wanders off the player's zone.
+func floatingStick(
+    origin: Vec2, finger: Vec2, radius: Double, bounds: CGRect?
+) -> (origin: Vec2, knob: Vec2) {
+    let offset = finger - origin
+    let distance = offset.length
+    guard distance > radius, distance > 0 else { return (origin, offset) }
+    let direction = offset * (1 / distance)
+    let draggedOrigin = clampStick(finger - direction * radius, radius: radius, bounds: bounds)
+    return (draggedOrigin, finger - draggedOrigin)
+}
+
+/// Keep a floating stick's origin far enough inside `bounds` that its whole
+/// travel circle stays in the zone (shared by touchBegan + drag re-center).
+func clampStick(_ p: Vec2, radius: Double, bounds: CGRect?) -> Vec2 {
+    guard let bounds else { return p }
+    let margin = radius + 18
+    let rect = bounds.insetBy(dx: margin, dy: margin)
+    guard rect.width > 0, rect.height > 0 else {
+        return Vec2(bounds.midX, bounds.midY)
+    }
+    return Vec2(min(max(p.x, rect.minX), rect.maxX), min(max(p.y, rect.minY), rect.maxY))
+}
+
 /// Virtual d-pad, the current default: a d-pad materializes where the thumb
 /// lands (clamped inside the player's zone); displacement toward `up` is
 /// throttle (pull back = brake/reverse), sideways is steer, diagonals
@@ -87,16 +117,14 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     public func touchBegan(id: TouchID, at location: Vec2) {
         guard activeTouch == nil else { return }
         activeTouch = id
-        origin = clamped(location)
+        origin = clampStick(location, radius: radius, bounds: bounds)
         knob = .zero
     }
 
     public func touchMoved(id: TouchID, at location: Vec2) {
         guard id == activeTouch, let origin else { return }
-        var offset = location - origin
-        let distance = offset.length
-        if distance > radius { offset *= radius / distance }
-        knob = offset
+        (self.origin, knob) = floatingStick(
+            origin: origin, finger: location, radius: radius, bounds: bounds)
     }
 
     public func touchEnded(id: TouchID) {
@@ -119,17 +147,6 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
             throttle: quantizedAxis(
                 knob.dot(up), deadzone: deadzone, travel: radius, levels: levels, expo: expo)
         )
-    }
-
-    /// Keep the whole pad (arrows included) inside the zone.
-    private func clamped(_ p: Vec2) -> Vec2 {
-        guard let bounds else { return p }
-        let margin = radius + 18
-        let rect = bounds.insetBy(dx: margin, dy: margin)
-        guard rect.width > 0, rect.height > 0 else {
-            return Vec2(bounds.midX, bounds.midY)
-        }
-        return Vec2(min(max(p.x, rect.minX), rect.maxX), min(max(p.y, rect.minY), rect.maxY))
     }
 }
 
@@ -180,16 +197,14 @@ public final class AimControlSource: HeadingAwareControlSource {
     public func touchBegan(id: TouchID, at location: Vec2) {
         guard activeTouch == nil else { return }
         activeTouch = id
-        origin = clamped(location)
+        origin = clampStick(location, radius: radius, bounds: bounds)
         knob = .zero
     }
 
     public func touchMoved(id: TouchID, at location: Vec2) {
         guard id == activeTouch, let origin else { return }
-        var offset = location - origin
-        let distance = offset.length
-        if distance > radius { offset *= radius / distance }
-        knob = offset
+        (self.origin, knob) = floatingStick(
+            origin: origin, finger: location, radius: radius, bounds: bounds)
     }
 
     public func touchEnded(id: TouchID) {
@@ -227,16 +242,5 @@ public final class AimControlSource: HeadingAwareControlSource {
         // stays largely on: the flip wants throttle held through the drift.
         let throttle = commitment * (1 - throttleEase * min(1, abs(error) / .pi))
         return CarInput(throttle: throttle, aim: desired)
-    }
-
-    /// Keep the whole stick inside the zone (mirrors the d-pad).
-    private func clamped(_ p: Vec2) -> Vec2 {
-        guard let bounds else { return p }
-        let margin = radius + 18
-        let rect = bounds.insetBy(dx: margin, dy: margin)
-        guard rect.width > 0, rect.height > 0 else {
-            return Vec2(bounds.midX, bounds.midY)
-        }
-        return Vec2(min(max(p.x, rect.minX), rect.maxX), min(max(p.y, rect.minY), rect.maxY))
     }
 }
