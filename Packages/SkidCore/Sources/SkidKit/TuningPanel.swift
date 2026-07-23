@@ -44,6 +44,9 @@ struct TuningPanel: View {
                     slider(
                         Text("Turn rate", bundle: .module), value: $settings.turnRate,
                         range: 2...6, step: 0.1, format: "%.1f")
+                    slider(
+                        Text("Flip", bundle: .module), value: $settings.steerFlipBoost,
+                        range: 0...12, step: 0.5, format: "%.1f")
 
                     section(Text("Pace", bundle: .module))
                     slider(

@@ -67,6 +67,8 @@ public final class GameSettings: ObservableObject {
     @AppStorage("skid.sim.aimTurnRate") public var aimTurnRate = 10.0
     /// Extra aim yaw rate at full speed, rad/s (the handbrake inertia).
     @AppStorage("skid.sim.aimFlipBoost") public var aimFlipBoost = 8.0
+    /// Steer-path flip assist at full speed, rad/s — the d-pad's drift.
+    @AppStorage("skid.sim.steerFlipBoost") public var steerFlipBoost = 5.0
     /// How much of a drift's bled speed is redirected along the nose, 0…1.
     @AppStorage("skid.sim.driftRetention") public var driftRetention = 1.0
     /// Wheel yaw rate at full steer (the classic schemes), rad/s.
@@ -84,6 +86,7 @@ public final class GameSettings: ObservableObject {
         let stock = CarTuning()
         return abs(aimTurnRate - stock.aimTurnRate) < 1e-9
             && abs(aimFlipBoost - stock.aimFlipBoost) < 1e-9
+            && abs(steerFlipBoost - stock.steerFlipBoost) < 1e-9
             && abs(driftRetention - stock.driftRetention) < 1e-9
             && abs(turnRate - stock.turnRate) < 1e-9
     }
@@ -94,6 +97,7 @@ public final class GameSettings: ObservableObject {
             turnRate: turnRate,
             aimTurnRate: aimTurnRate,
             aimFlipBoost: aimFlipBoost,
+            steerFlipBoost: steerFlipBoost,
             driftRetention: driftRetention
         ).scaled(pace: pace)
     }

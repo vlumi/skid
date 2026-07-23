@@ -337,6 +337,16 @@ public struct Race: Equatable, Sendable {
         car.steerActuator += max(-maxStep, min(maxStep, delta))
         let direction: Double = speedAlongHeading < 0 ? -1 : 1
         car.heading += car.steerActuator * tuning.turnRate * effectiveness * direction * dt
+
+        // Flip assist: at speed, holding a direction rotates the body toward
+        // it beyond the wheel — so the drift model carries you into a slide
+        // without countersteer (what makes the d-pad, and the digital
+        // keyboard that reuses it, drift). Scales with speed (parking stays
+        // a plain wheel) and the analog steer amount (a light thumb still
+        // places the car precisely).
+        car.heading +=
+            car.steerActuator * tuning.steerFlipBoost
+            * min(1, car.velocity.length / tuning.maxSpeed) * direction * dt
     }
 
     /// Returns the hardest into-wall speed absorbed (0 if no contact).

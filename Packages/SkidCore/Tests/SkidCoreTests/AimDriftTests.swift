@@ -37,10 +37,46 @@ final class AimDriftTests: XCTestCase {
         advance(&aimed, ticks: 10, input: CarInput(throttle: 1, aim: .pi / 2))
         XCTAssertEqual(aimed.cars[0].state.heading, .pi / 2, accuracy: 0.05)
 
+        // The steer path also flips now (flip-assist), but the aim commands
+        // the heading directly, so it reaches the target sooner.
         var steered = race()
         advance(&steered, ticks: 120, input: CarInput(throttle: 1))
         advance(&steered, ticks: 10, input: CarInput(steer: 1, throttle: 1))
-        XCTAssertLessThan(steered.cars[0].state.heading, .pi / 4)
+        XCTAssertLessThan(steered.cars[0].state.heading, aimed.cars[0].state.heading)
+    }
+
+    // MARK: - Steer-path flip assist
+
+    func testSteerFlipHelpsTheWheelDrift() {
+        // At speed, the same steer hold turns the body more with flip assist
+        // than without — that's what lets the d-pad drift.
+        func headingAfterSteer(flip: Double) -> Double {
+            var r = race(tuning: CarTuning(steerFlipBoost: flip))
+            advance(&r, ticks: 120, input: CarInput(throttle: 1))
+            advance(&r, ticks: 12, input: CarInput(steer: 1, throttle: 1))
+            return r.cars[0].state.heading
+        }
+        XCTAssertGreaterThan(headingAfterSteer(flip: 6), headingAfterSteer(flip: 0) * 1.2)
+    }
+
+    func testSteerFlipIsSpeedGated() {
+        // Parked, the flip assist adds nothing — no inertia to flip with, so
+        // the d-pad is still a plain wheel at a standstill.
+        var r = race(tuning: CarTuning(steerFlipBoost: 6))
+        advance(&r, ticks: 60, input: CarInput(steer: 1))
+        XCTAssertEqual(r.cars[0].state.heading, 0, accuracy: 1e-9)
+    }
+
+    func testSteerFlipScalesWithAnalogAmount() {
+        // A half-steer hold flips less than full — analog fine control is
+        // preserved (the boost rides the actuator, not a raw on/off).
+        func headingAfterSteer(_ steer: Double) -> Double {
+            var r = race(tuning: CarTuning(steerFlipBoost: 6))
+            advance(&r, ticks: 120, input: CarInput(throttle: 1))
+            advance(&r, ticks: 12, input: CarInput(steer: steer, throttle: 1))
+            return r.cars[0].state.heading
+        }
+        XCTAssertLessThan(headingAfterSteer(0.5), headingAfterSteer(1) * 0.85)
     }
 
     func testParkedCarCannotFlip() {
