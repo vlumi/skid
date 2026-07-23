@@ -102,30 +102,30 @@ struct RaceScreen: View {
         game.audioFrame()
     }
 
-    /// Every active floating d-pad, in its owner's color.
+    /// Every active floating d-pad (Pro scheme), in its owner's color.
     private func padOverlays() -> [DPadOverlay] {
-        guard rig.scheme == .dpad else { return [] }
+        guard rig.scheme == .pro else { return [] }
         return rig.players.compactMap { controls in
-            guard let origin = controls.dpad.origin else { return nil }
+            guard let origin = controls.pro.origin else { return nil }
             return DPadOverlay(
                 origin: origin,
-                up: controls.dpad.up,
-                radius: controls.dpad.radius,
-                input: controls.dpad.input(for: controls.player, at: session.race.tick),
+                up: controls.pro.up,
+                radius: controls.pro.radius,
+                input: controls.pro.input(for: controls.player, at: session.race.tick),
                 color: CouchGame.palette[controls.colorIndex]
             )
         }
     }
 
-    /// Every active floating aim stick, in its owner's color.
+    /// Every active floating aim stick (Casual scheme), in its owner's color.
     private func aimOverlays() -> [AimOverlay] {
-        guard rig.scheme == .aim else { return [] }
+        guard rig.scheme == .casual else { return [] }
         return rig.players.compactMap { controls in
-            guard let origin = controls.aim.origin else { return nil }
+            guard let origin = controls.casual.origin else { return nil }
             return AimOverlay(
                 origin: origin,
-                knob: controls.aim.knob,
-                radius: controls.aim.radius,
+                knob: controls.casual.knob,
+                radius: controls.casual.radius,
                 color: CouchGame.palette[controls.colorIndex]
             )
         }

@@ -38,7 +38,8 @@ Planned arc:
   assets.
 - **The same control scheme drives every mode** — single-player, local split,
   and networked all consume one input abstraction; a control scheme is just an
-  input source. Several schemes are prototyped and swappable.
+  input source. Two schemes: **Casual** (aim where you want to go, the game
+  handles the drift) and **Pro** (direct steer/throttle).
 - **iOS first, Mac prepared-for.** The simulation and input are
   platform-agnostic from day one; only rendering/input-capture differ, so a Mac
   build (fun for local-network play) is a later target, not a rewrite.
