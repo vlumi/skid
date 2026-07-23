@@ -57,19 +57,22 @@ mostly view-layer, no sim risk.
       player's lap times in their control band (a clear "done, here are your
       splits" state). Fixes players stopping early, unsure they'd finished.
       Lives in `RaceHUD.playerChip` / the band area.
-- [ ] **Per-player position in the band** — show each player's current race
-      position (1st/2nd/…) in a **map-side corner of their own band**, clear
-      of both the thumb (which rests mid/outer band, where the stick lands)
-      and the notch (content rect is safe-area-clamped), rotated for far
-      players. Same machinery as the lap/time chip + finish-splits — do them
-      together. *Open sub-question:* how position is computed live mid-race —
-      a deterministic rank off `Race` state (gates passed, then distance to
-      the next gate), continuous vs. per-gate updates, ties. This is the
-      per-player take on "live standings" and likely **removes the need** for
-      a separate shared top-area element.
+- [ ] **Per-player position, folded into the lap chip** — show each player's
+      current race position (P1/P2/…) **together with the lap info** in their
+      existing chip (e.g. "P2 · Lap 2/3"), which already rides the clear
+      map-side edge of the band — off the thumb (mid/outer, where the stick
+      lands) and out of the notch (safe-area-clamped), rotated for far
+      players. One combined chip, one place, reuses `RaceHUD.playerChip`; do
+      it with the finish-splits work. **Ranking:** deterministic off `Race`
+      state — laps, then gates passed this lap, then shortest distance to the
+      next gate (true on-track order). **Cadence:** recompute continuously but
+      **debounce** so near-ties don't flicker the number. This is the
+      per-player take on "live standings" and **removes the need** for a
+      separate shared top-area element.
 - [ ] *Spec gap — shared pause placement.* Pause sits at the map's
-      bottom-centre seam; on some seatings that's awkward. Revisit once the
-      standings element (above) settles, since both compete for the seam/top.
+      bottom-centre seam; on some seatings that's awkward. With position now
+      folded into each player's chip (above), the top area no longer competes
+      for it — but the seam placement per seating still wants a look.
 
 ## v0.6.0 — Track editor & shareable tracks
 
