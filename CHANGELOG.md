@@ -21,6 +21,10 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The stick follows your thumb to the edge.** Drag past the edge of the
+  control stick and it slides along with your finger instead of pinning —
+  so in a narrow control zone you can swing full-left to full-right without
+  lifting off. Works for both Casual (aim) and Pro (d-pad).
 - **Two control schemes, named.** The prototype roster is down to the two
   that earned it: **Casual** (aim where you want to go, the game handles the
   drift) and **Pro** (direct steer + throttle, now drifting too). Slide,
