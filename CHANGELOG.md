@@ -27,7 +27,8 @@ ships (see [AGENTS.md](AGENTS.md)).
   whole half/quadrant. The track sits clean in the middle: no more zone
   outlines or fingers covering the road, and lap/time chips ride the outer
   edge of each band, out of the notch. One shared pause sits on the seam
-  below the map.
+  below the map. The map and every control centre within the safe area on
+  notched phones — only the band's tinted box bleeds to the screen edge.
 - **The stick follows your thumb to the edge.** Drag past the edge of the
   control stick and it slides along with your finger instead of pinning —
   so in a narrow control zone you can swing full-left to full-right without

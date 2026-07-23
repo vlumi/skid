@@ -15,9 +15,20 @@ struct RaceScreen: View {
         // Only the world Canvas ignores them, so the grass still draws
         // full-bleed under the notch.
         GeometryReader { geo in
+            // The GeometryReader respects the safe area, so `geo.size` is the
+            // safe-area size and `geo.safeAreaInsets` are the real insets. But
+            // every layer below ignores the safe area (grass full-bleed, band
+            // boxes to the physical edge), so we work in FULL-SCREEN coords:
+            // reconstruct the physical size and pass the insets down. One
+            // coordinate space for the Canvas, the input surface, and the HUD —
+            // so nothing is shifted by the notch.
+            let insets = geo.safeAreaInsets
+            let fullSize = CGSize(
+                width: geo.size.width + insets.leading + insets.trailing,
+                height: geo.size.height + insets.top + insets.bottom)
             let mapRect = TrackRenderer.fittedMapRect(
-                trackSize: session.race.track.size, in: geo.size,
-                safeInsets: geo.safeAreaInsets)
+                trackSize: session.race.track.size, in: fullSize,
+                safeInsets: insets)
             TimelineView(.animation) { timeline in
                 // Step the sim on the main actor, then hand the Canvas
                 // plain value copies — its renderer closure is not
@@ -25,7 +36,7 @@ struct RaceScreen: View {
                 // idiom; a bare `_ =` isn't a valid builder statement.)
                 // swiftlint:disable:next redundant_discardable_let
                 let _ = step(
-                    size: geo.size, mapRect: mapRect,
+                    size: fullSize, mapRect: mapRect, safeInsets: insets,
                     time: timeline.date.timeIntervalSinceReferenceDate
                 )
                 let race = session.race
@@ -36,7 +47,7 @@ struct RaceScreen: View {
                 )
                 let pads = padOverlays()
                 let aims = aimOverlays()
-                let zones = zoneChrome(safeInsets: geo.safeAreaInsets)
+                let zones = zoneChrome(safeInsets: insets)
                 ZStack {
                     Canvas { context, size in
                         var world = context
@@ -51,10 +62,8 @@ struct RaceScreen: View {
                             OverlayRenderer.drawAim(aim, into: &context)
                         }
                     }
-                    .ignoresSafeArea()
                     InputSurface(rig: rig)
-                        .ignoresSafeArea()
-                    RaceHUD(race: race, colors: colors, rig: rig, size: geo.size)
+                    RaceHUD(race: race, colors: colors, rig: rig, size: fullSize)
 
                     // Meta controls live OUT of everyone's way: one small
                     // pause toggle on the seam below the map.
@@ -69,6 +78,7 @@ struct RaceScreen: View {
                         ResultsCard(game: game, race: race, colors: colors)
                     }
                 }
+                .ignoresSafeArea()
             }
         }
         .defersEdgeSwipes(!session.paused && !session.raceOver)
@@ -87,8 +97,8 @@ struct RaceScreen: View {
         .position(point)
     }
 
-    private func step(size: CGSize, mapRect: CGRect, time: TimeInterval) {
-        rig.layout(size: size, mapRect: mapRect)
+    private func step(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets, time: TimeInterval) {
+        rig.layout(size: size, mapRect: mapRect, safeInsets: safeInsets)
         game.applyControlTuning()
         session.advance(to: time)
         game.noteProgress()
@@ -299,7 +309,9 @@ struct RaceHUD: View {
         if race.cars.indices.contains(index) {
             let car = race.cars[index]
             let flipped = controls.up.y > 0
-            let zone = controls.zone
+            // Placed within the CONTENT rect (inside the safe area), never the
+            // full box — so the chip clears the notch / home indicator.
+            let zone = controls.content
             // Map-side edge: the band's bottom for a flipped (top) band, its
             // top for a near (bottom) band — both the edge nearest the map.
             let x = zone.midX
