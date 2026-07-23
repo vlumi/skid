@@ -21,6 +21,13 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The track's clear of your thumbs now.** On a shared screen each player's
+  controls live in a band in the grass beside the map — below the map from
+  their seat (rotated for players across the table) — instead of over the
+  whole half/quadrant. The track sits clean in the middle: no more zone
+  outlines or fingers covering the road, and lap/time chips ride the outer
+  edge of each band, out of the notch. One shared pause sits on the seam
+  below the map.
 - **The stick follows your thumb to the edge.** Drag past the edge of the
   control stick and it slides along with your finger instead of pinning —
   so in a narrow control zone you can swing full-left to full-right without

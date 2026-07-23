@@ -54,6 +54,7 @@ public enum ZoneCorner: CaseIterable, Sendable {
     case topRight
 
     var isTopRow: Bool { self == .topLeft || self == .topRight }
+    var isLeft: Bool { self == .topLeft || self == .bottomLeft }
 
     func rect(in size: CGSize) -> CGRect {
         let w = size.width / 2
@@ -95,6 +96,7 @@ public final class CouchRig: ObservableObject {
 
     private var touchOwner: [TouchID: Int] = [:]
     private var lastSize: CGSize = .zero
+    private var lastMapRect: CGRect = .zero
 
     public init(
         colorIndices: [Int], scheme: ControlScheme = .casual,
@@ -107,41 +109,65 @@ public final class CouchRig: ObservableObject {
         self.seating = seating
     }
 
-    public func layout(size: CGSize) {
-        guard size != lastSize else { return }
+    /// Lay out control zones as **bands in the grass beside the map**, so
+    /// the track (and everyone's fingers off it) stays clear. Each player's
+    /// band sits "below the map from their point of view": the bottom gap
+    /// for near-side players (up), the top gap for players across the table
+    /// (down, rotated). `mapRect` is where the track sits on screen.
+    public func layout(size: CGSize, mapRect: CGRect) {
+        guard size != lastSize || mapRect != lastMapRect else { return }
         lastSize = size
-        let up = Vec2(0, -1)
-        let down = Vec2(0, 1)
+        lastMapRect = mapRect
         let w = size.width
-        let h = size.height
+
+        // Band that fills the bottom gap (near players) or top gap (far),
+        // optionally just the left or right half for a same-side pair.
+        func band(top: Bool, half: Half) -> (CGRect, Vec2) {
+            let gapTop = top ? 0 : mapRect.maxY
+            let gapHeight = top ? mapRect.minY : size.height - mapRect.maxY
+            let height = min(gapHeight, Self.maxBandHeight)
+            // Sit against the screen edge (the player's near side).
+            let y = top ? gapTop : gapTop + (gapHeight - height)
+            let x: CGFloat
+            let width: CGFloat
+            switch half {
+            case .full: x = 0; width = w
+            case .left: x = 0; width = w / 2
+            case .right: x = w / 2; width = w / 2
+            }
+            return (CGRect(x: x, y: y, width: width, height: height), top ? down : up)
+        }
+
         let rects: [(CGRect, Vec2)]
         switch players.count {
         case 1:
-            rects = [(CGRect(x: 0, y: 0, width: w, height: h), up)]
+            rects = [band(top: false, half: .full)]
         case 2 where seating.faceToFace:
-            rects = [
-                (CGRect(x: 0, y: h / 2, width: w, height: h / 2), up),
-                (CGRect(x: 0, y: 0, width: w, height: h / 2), down),
-            ]
+            rects = [band(top: false, half: .full), band(top: true, half: .full)]
         case 2:
-            rects = [
-                (CGRect(x: 0, y: 0, width: w / 2, height: h), up),
-                (CGRect(x: w / 2, y: 0, width: w / 2, height: h), up),
-            ]
+            rects = [band(top: false, half: .left), band(top: false, half: .right)]
         case 3:
             let corners = ZoneCorner.allCases.filter { $0 != seating.openCorner }
             rects = corners.map { corner in
-                (corner.rect(in: size), corner.isTopRow ? down : up)
+                band(top: corner.isTopRow, half: corner.isLeft ? .left : .right)
             }
         default:
             rects = ZoneCorner.allCases.map { corner in
-                (corner.rect(in: size), corner.isTopRow ? down : up)
+                band(top: corner.isTopRow, half: corner.isLeft ? .left : .right)
             }
         }
         for (index, player) in players.enumerated() where index < rects.count {
             player.setZone(rects[index].0, up: rects[index].1)
         }
     }
+
+    private let up = Vec2(0, -1)
+    private let down = Vec2(0, 1)
+    /// Cap the band so a wide gap doesn't make a needlessly tall control
+    /// strip; the floating stick needs ~132pt, this leaves comfortable room.
+    private static let maxBandHeight: CGFloat = 200
+
+    private enum Half { case full, left, right }
 
     public func touchBegan(id: TouchID, at location: Vec2) {
         let point = CGPoint(x: location.x, y: location.y)
