@@ -39,6 +39,41 @@ then trimming the roster.
       manual schemes (d-pad/slide/two-zone/one-touch/split) stay vs. cut,
       and set defaults.
 
+### v0.5.x — Couch layout & readability polish
+
+The couch redesign (controls as bands beside a clear map) and the random
+starting grid have shipped; these are the follow-ups they surfaced. Small,
+mostly view-layer, no sim risk.
+
+- [ ] **Car readability, background-independent** — cars need to stand out on
+      any surface (map themes are coming, so no fixed palette can). Add an
+      **outline / drop-shadow / halo** per car in `draw(car:)`
+      (`TrackRenderer+Cars.swift`), not a palette retune. Yellow-on-grey is
+      the current worst case.
+- [ ] **Heading indicator → headlight cone** — replace the bold projected
+      arrow with a soft cone in the player's tint, projected ahead (same
+      `draw(car:)`). The arrow shouts now that the body-flip is calmer.
+- [ ] **Finish is unmistakable + splits in the band** — on finish, show the
+      player's lap times in their control band (a clear "done, here are your
+      splits" state). Fixes players stopping early, unsure they'd finished.
+      Lives in `RaceHUD.playerChip` / the band area.
+- [ ] **Per-player position, folded into the lap chip** — show each player's
+      current race position (P1/P2/…) **together with the lap info** in their
+      existing chip (e.g. "P2 · Lap 2/3"), which already rides the clear
+      map-side edge of the band — off the thumb (mid/outer, where the stick
+      lands) and out of the notch (safe-area-clamped), rotated for far
+      players. One combined chip, one place, reuses `RaceHUD.playerChip`; do
+      it with the finish-splits work. **Ranking:** deterministic off `Race`
+      state — laps, then gates passed this lap, then shortest distance to the
+      next gate (true on-track order). **Cadence:** recompute continuously but
+      **debounce** so near-ties don't flicker the number. This is the
+      per-player take on "live standings" and **removes the need** for a
+      separate shared top-area element.
+- [ ] *Spec gap — shared pause placement.* Pause sits at the map's
+      bottom-centre seam; on some seatings that's awkward. With position now
+      folded into each player's chip (above), the top area no longer competes
+      for it — but the seam placement per seating still wants a look.
+
 ## v0.6.0 — Track editor & shareable tracks
 
 Hand-authoring track geometry hit its quality ceiling; a **phone-first**
@@ -63,13 +98,46 @@ approach:
 - [ ] *Open, decide with the editor in hand:* whether built-ins migrate to
       the piece model (replace) or stay free-form `TrackDesign` (layer) —
       hinges on whether the catalog can rebuild Hairpin/Overpass well.
+- [ ] **Content convention: taller track aspect.** All maps get redrawn in
+      the editor; author them ~**1.2:1** (e.g. ~1600×1333) instead of today's
+      1.6:1, so the map is ~⅓ bigger on the smallest phone while still leaving
+      ≥132pt control bands. Engine is already aspect-agnostic (`fittedMapRect`
+      + the couch bands adapt) — this is purely an authoring choice, nothing
+      to build, but it belongs with the editor since that's where maps are made.
+- [ ] **Catalog beyond road pieces — decorations.** On-road arrows, trees,
+      buildings, walls (scenery + directional markers, not just track
+      segments). Placed in the editor.
+- [ ] **Gates at seams only.** A gate anchors to the boundary between two
+      pieces (a port), not mid-segment — fits the port-graph model and
+      simplifies gate anchoring vs. today's node+t scheme.
+- [ ] **Rougher hazard shapes + surface textures.** Water/oil/mud shouldn't
+      be perfect circles — rotatable, combinable blobs. Plus textures for most
+      surfaces eventually (grass, mud); asphalt stays plain grey. Rendering
+      polish, lands alongside the decorations catalog.
 
-## v0.7.0 — Mac & physical controls
+## v0.7.0 — Mac, physical controls & orientation
+
+Clusters the "big screen + orientation" work: Mac, iPad's larger canvas, and
+landscape all share the same layout/orientation machinery, and the `mapRect`
+indirection from the couch redesign keeps them localized.
 
 - [ ] macOS target (Universal Purchase, same bundle id), sim untouched —
       only render/input capture differ
 - [ ] Keyboard scheme (arrows/WASD, 1–2 players) and GameController support
       as additional `ControlSource`s
+- [ ] **Landscape mode (couch).** Turn the phone and the *whole game*
+      reorients 90° — map, HUD, and each player's control/steering frame —
+      but the touch **zones stay pinned to the same physical device regions**
+      (thumbs don't move; zones are device-space, not UI-space). Payoff: wide
+      tracks align with the long axis → bigger map. **Lock orientation during
+      a race** (settle it before the race, freeze it — a mid-drift flip is
+      chaos); unlock in menus.
+- [ ] **iPad & landscape map-sizing policy.** Grow `fittedMapRect` from pure
+      edge-to-edge fit into a policy: phone = fit-to-width (current); **iPad =
+      cap the map at a comfortable size and reserve *more* for controls** (big
+      screen ≠ giant map, map floats with margins); **landscape = bands dock
+      left/right** of the map (free space is on the sides), which needs
+      `CouchRig` side-band support (today it only does top/bottom).
 
 ## v0.8.0 — Local-network multiplayer
 
@@ -116,7 +184,10 @@ approach:
       (no server accounts). Open question: allow ad-hoc anonymous players,
       or track everyone from the start by the name they chose?
 - [ ] **Tournaments**: brackets/series across couch sessions, standings
-      per profile
+      per profile. *Would unlock* a **reverse-standings starting grid** (race
+      N grid = reverse of standings after N−1, worst on pole; ties broken by
+      the seeded RNG) — blocked today for lack of any persistent cross-race
+      standings layer.
 - [ ] **Career ladder** with cosmetic-only unlocks (liveries, effects) to
       show off when racing others — never performance
 - [ ] **Different vehicles** — maybe; only if they stay balance-neutral
