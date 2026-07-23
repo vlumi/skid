@@ -73,6 +73,9 @@ public final class GameSettings: ObservableObject {
     @AppStorage("skid.sim.driftRetention") public var driftRetention = 1.0
     /// Wheel yaw rate at full steer (the classic schemes), rad/s.
     @AppStorage("skid.sim.turnRate") public var turnRate = 3.4
+    /// Global grip multiplier — the "inertia": lower = more slide, the car's
+    /// motion lags the nose longer.
+    @AppStorage("skid.sim.gripScale") public var gripScale = 1.0
 
     /// Game pace for learning: scales acceleration + speed caps (agility
     /// stays). Applies on the next race (Reset). Hiscores only record at
@@ -89,6 +92,7 @@ public final class GameSettings: ObservableObject {
             && abs(steerFlipBoost - stock.steerFlipBoost) < 1e-9
             && abs(driftRetention - stock.driftRetention) < 1e-9
             && abs(turnRate - stock.turnRate) < 1e-9
+            && abs(gripScale - stock.gripScale) < 1e-9
     }
 
     /// The race tuning the dials describe (pace folded in).
@@ -98,7 +102,8 @@ public final class GameSettings: ObservableObject {
             aimTurnRate: aimTurnRate,
             aimFlipBoost: aimFlipBoost,
             steerFlipBoost: steerFlipBoost,
-            driftRetention: driftRetention
+            driftRetention: driftRetention,
+            gripScale: gripScale
         ).scaled(pace: pace)
     }
 

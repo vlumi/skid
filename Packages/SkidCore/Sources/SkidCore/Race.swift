@@ -282,7 +282,7 @@ public struct Race: Equatable, Sendable {
         // (driftRetention, energy-true: at 1 a drift redirects momentum
         // without scrubbing it, and never manufactures any) — the arcade
         // rule that makes flicking the body into a corner carry its speed.
-        let kept = lateral * max(0, 1 - surface.grip * dt)
+        let kept = lateral * max(0, 1 - surface.grip * tuning.gripScale * dt)
         let redirected = tuning.driftRetention * (lateral.lengthSquared - kept.lengthSquared)
         if redirected > 0 {
             let sense: Double = forwardSpeed < 0 ? -1 : 1

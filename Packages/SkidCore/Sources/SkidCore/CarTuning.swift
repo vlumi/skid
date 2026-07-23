@@ -38,6 +38,12 @@ public struct CarTuning: Equatable, Sendable, Codable {
     /// nose instead of lost, 0…1. 1 = drifting costs nothing (arcade — flip,
     /// slide, and carry the speed out); 0 = a slide scrubs speed.
     public var driftRetention: Double
+    /// Global multiplier on every surface's grip — the "inertia" knob. 1 =
+    /// stock; lower = the sideways slide lingers, so the car's MOTION lags
+    /// the nose longer (heavier, driftier); higher = motion snaps to the
+    /// heading faster. Scales all surfaces together, keeping their relative
+    /// feel.
+    public var gripScale: Double
     /// Velocity kept along the wall normal after a bounce, 0…1.
     public var wallRestitution: Double
     /// Bounciness of car–car contact, 0…1.
@@ -57,6 +63,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         aimFlipBoost: Double = 8,
         steerFlipBoost: Double = 5,
         driftRetention: Double = 1.0,
+        gripScale: Double = 1.0,
         wallRestitution: Double = 0.45,
         carRestitution: Double = 0.4,
         jumpTicksPerSpeed: Double = 0.055
@@ -72,6 +79,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.aimFlipBoost = aimFlipBoost
         self.steerFlipBoost = steerFlipBoost
         self.driftRetention = driftRetention
+        self.gripScale = gripScale
         self.wallRestitution = wallRestitution
         self.carRestitution = carRestitution
         self.jumpTicksPerSpeed = jumpTicksPerSpeed
