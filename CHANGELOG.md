@@ -21,6 +21,11 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Two control schemes, named.** The prototype roster is down to the two
+  that earned it: **Casual** (aim where you want to go, the game handles the
+  drift) and **Pro** (direct steer + throttle, now drifting too). Slide,
+  two-zone, one-touch, and split are gone — on a touchscreen they never
+  beat these two.
 - **The d-pad drifts too now.** Hold a direction at speed and the body
   flips into the corner like the aim scheme does — no delicate countersteer
   to hold a slide. A light thumb still places the car precisely (the assist
