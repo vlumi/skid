@@ -90,6 +90,31 @@ final class CouchLayoutTests: XCTestCase {
         }
     }
 
+    func testBandBoxBleedsToEdgeButContentStaysInsideSafeArea() {
+        // The tinted band box reaches the physical screen edge (only it may
+        // extend past the safe area); the CONTENT rect — where the stick and
+        // chip live — is pulled inside the notch / home-indicator insets.
+        let insets = EdgeInsets(top: 59, leading: 0, bottom: 34, trailing: 0)
+        let notched = TrackRenderer.fittedMapRect(
+            trackSize: trackSize, in: screen, safeInsets: insets)
+        // Face-to-face: a top band (bleeds under the notch) and a bottom band
+        // (bleeds under the home indicator).
+        let r = rig(2, seating: SeatingConfig(faceToFace: true))
+        r.layout(size: screen, mapRect: notched, safeInsets: insets)
+        let near = r.players[0]  // bottom band (up)
+        let far = r.players[1]  // top band (down)
+
+        // Boxes reach the physical edges.
+        XCTAssertEqual(near.zone.maxY, screen.height, accuracy: 0.5)
+        XCTAssertEqual(far.zone.minY, 0, accuracy: 0.5)
+        // Content is inset by the safe area on the physical-edge side only.
+        XCTAssertEqual(near.content.maxY, screen.height - 34, accuracy: 0.5)
+        XCTAssertEqual(far.content.minY, 59, accuracy: 0.5)
+        // Map-side edges are untouched (already clear of any inset).
+        XCTAssertEqual(near.content.minY, near.zone.minY, accuracy: 0.5)
+        XCTAssertEqual(far.content.maxY, far.zone.maxY, accuracy: 0.5)
+    }
+
     func testOnePlayerBandBelowMap() {
         let zone = zones(rig(1))[0]
         XCTAssertGreaterThanOrEqual(zone.minY, map.maxY - 0.5)  // below the map
