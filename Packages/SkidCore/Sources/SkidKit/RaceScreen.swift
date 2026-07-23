@@ -36,7 +36,7 @@ struct RaceScreen: View {
                 )
                 let pads = padOverlays()
                 let aims = aimOverlays()
-                let zones = zoneChrome()
+                let zones = zoneChrome(safeInsets: geo.safeAreaInsets)
                 ZStack {
                     Canvas { context, size in
                         var world = context
@@ -125,13 +125,13 @@ struct RaceScreen: View {
     }
 
     /// Zone outlines + corner tabs, only when the screen is shared.
-    private func zoneChrome() -> [ZoneChrome] {
-        guard rig.players.count > 1 else { return [] }
-        return rig.players.map { controls in
+    private func zoneChrome(safeInsets: EdgeInsets) -> [ZoneChrome] {
+        rig.players.map { controls in
             ZoneChrome(
                 rect: controls.zone,
                 up: controls.up,
-                color: CouchGame.palette[controls.colorIndex]
+                color: CouchGame.palette[controls.colorIndex],
+                safeInsets: safeInsets
             )
         }
     }
@@ -228,6 +228,9 @@ struct ZoneChrome {
     var rect: CGRect
     var up: Vec2
     var color: Color
+    /// Screen safe-area insets, so the color tab can dodge the notch / home
+    /// indicator even though the band itself is drawn full-bleed.
+    var safeInsets: EdgeInsets
 }
 
 /// Zone-aware HUD: each player's chip sits in their own zone's home corner,
@@ -246,12 +249,11 @@ struct RaceHUD: View {
     var body: some View {
         ZStack {
             countdown
-            if rig.players.count == 1 {
-                soloBlock
-            } else {
-                ForEach(Array(rig.players.enumerated()), id: \.offset) { index, controls in
-                    playerChip(index: index, controls: controls)
-                }
+            // Every layout — including 1P — shows one chip per player in
+            // their own control band (1P is the face-to-face layout with a
+            // single near player).
+            ForEach(Array(rig.players.enumerated()), id: \.offset) { index, controls in
+                playerChip(index: index, controls: controls)
             }
         }
         .allowsHitTesting(false)
@@ -289,33 +291,7 @@ struct RaceHUD: View {
             .shadow(radius: 4)
     }
 
-    /// Solo: the classic corner block, every car listed.
-    private var soloBlock: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let laps = race.config.laps {
-                ForEach(Array(race.cars.enumerated()), id: \.offset) { index, car in
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(index < colors.count ? colors[index] : .white)
-                            .frame(width: 12, height: 12)
-                        chipLine(car: car, laps: laps)
-                    }
-                }
-                Text(verbatim: formatTicks(race.raceTicks))
-                    .font(.headline.monospacedDigit())
-                    .padding(.top, 2)
-            } else if let car = race.cars.first {
-                timeTrialLines(car: car)
-            }
-        }
-        .foregroundStyle(.white)
-        .shadow(radius: 2)
-        .padding(.leading, 16)
-        .padding(.top, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    /// Shared screens: one chip per player, along the MAP-SIDE (inner) edge
+    /// One chip per player, along the MAP-SIDE (inner) edge
     /// of their control band — the clear spot: away from the screen-top notch
     /// and safe-area, and away from where the thumb rests the stick (mid/outer
     /// band). Reads as "just outside the track", rotated to face the player.
@@ -334,6 +310,9 @@ struct RaceHUD: View {
                     .frame(width: 11, height: 11)
                 if let laps = race.config.laps {
                     chipLine(car: car, laps: laps)
+                } else {
+                    // Time trial: current lap clock + best (was the solo block).
+                    HStack(spacing: 6) { timeTrialLines(car: car) }
                 }
             }
             .foregroundStyle(.white)
