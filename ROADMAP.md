@@ -57,11 +57,16 @@ mostly view-layer, no sim risk.
       player's lap times in their control band (a clear "done, here are your
       splits" state). Fixes players stopping early, unsure they'd finished.
       Lives in `RaceHUD.playerChip` / the band area.
-- [ ] *Spec gap — live standings in the freed top space.* The band redesign
-      frees screen area above the map; the intent is current standings /
-      positions there, but the exact element isn't designed. **Needs a spec**
-      (what it shows, per-seating placement, rotation for far players) before
-      it's actionable. Relates to the finish-splits item.
+- [ ] **Per-player position in the band** — show each player's current race
+      position (1st/2nd/…) in a **map-side corner of their own band**, clear
+      of both the thumb (which rests mid/outer band, where the stick lands)
+      and the notch (content rect is safe-area-clamped), rotated for far
+      players. Same machinery as the lap/time chip + finish-splits — do them
+      together. *Open sub-question:* how position is computed live mid-race —
+      a deterministic rank off `Race` state (gates passed, then distance to
+      the next gate), continuous vs. per-gate updates, ties. This is the
+      per-player take on "live standings" and likely **removes the need** for
+      a separate shared top-area element.
 - [ ] *Spec gap — shared pause placement.* Pause sits at the map's
       bottom-centre seam; on some seatings that's awkward. Revisit once the
       standings element (above) settles, since both compete for the seam/top.
