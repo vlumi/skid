@@ -54,7 +54,7 @@ final class CoordTests: XCTestCase {
         // the 8 unit steps must cancel to exactly zero (opposite pairs).
         var p = CoordPoint.zero
         for step in 0..<8 {
-            p = p + Heading(step).unitStep * 100
+            p += Heading(step).unitStep * 100
         }
         XCTAssertEqual(p, .zero)
     }
