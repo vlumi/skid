@@ -29,8 +29,8 @@ enum EditorRenderer {
 
         // Ground layer first, then the elevated deck on top of it (so a bridge
         // visibly crosses over the road beneath).
-        let ground = walk.placed.filter { $0.entryLayer == 0 }
-        let deck = walk.placed.filter { $0.entryLayer == 1 }
+        let ground = walk.placed.filter { $0.entryLayer <= 0 }
+        let deck = walk.placed.filter { $0.entryLayer >= 1 }
         strokeRibbon(ground, w: w, elevated: false, t: t, into: &context)
         if !deck.isEmpty {
             strokeRibbon(deck, w: w, elevated: true, t: t, into: &context)
@@ -143,8 +143,12 @@ enum EditorRenderer {
         var line = Path()
         line.move(to: a)
         line.addLine(to: b)
+        // Width + dash scale with the world (like the kerbs), so the line
+        // shrinks evenly on zoom-out instead of leaving fixed-size dashes.
+        let lineW = max(2, 7 * t.scale)
+        let dash = max(3, 9 * t.scale)
         context.stroke(
             line, with: .color(.white),
-            style: StrokeStyle(lineWidth: 6, dash: [7, 7]))
+            style: StrokeStyle(lineWidth: lineW, dash: [dash, dash]))
     }
 }
