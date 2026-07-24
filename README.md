@@ -52,11 +52,9 @@ Planned arc:
 High-level only — see [CHANGELOG.md](CHANGELOG.md) for the full detail and
 [ROADMAP.md](ROADMAP.md) for what's next. Skid Jam is in TestFlight beta.
 
-- **v0.5.0 — Content & polish.** A track set + picker; two-layer tracks
-  (Overpass figure-8, ramps, jumps, bridge fall-off, occlusion bubble);
-  procedural sound + haptics; setup/pause menus; a data-driven track format
-  (`TrackDesign` → compile → `Track`) with smoother corners; **aim-to-drive**
-  controls; the `make release` lane + `make icon`; first TestFlight builds.
+- **v0.5.0 — Content & polish.** A track set with two-layer circuits,
+  aim-to-drive controls, procedural sound + haptics, and the release lane —
+  the first TestFlight builds.
 - **v0.4.0 — Solo play.** AI opponents (no rubber-banding), time trial,
   per-track hiscores, and a personal-best ghost.
 - **v0.3.0 — Couch multiplayer.** 2–4 players on one device, per-player
