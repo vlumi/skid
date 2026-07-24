@@ -49,10 +49,15 @@ products and sums). Closure and port-mating are **exact integer equality** —
 no epsilon anywhere. Floats appear only at compile time, when poses are
 lowered to `Vec2` for the centerline.
 
-**Coordinates are never *stored*, anywhere** — not in the share code, and
-not in the editor's state either. The piece sequence is the single source of
-truth; every pose is *derived* by walking it from the origin. The exact type
-above is the arithmetic the walk uses, not data that persists.
+**Exactly one pose is stored: the origin** — piece 0's position and heading
+on the canvas. Every other coordinate is *derived* by walking the piece
+sequence from it; the exact type above is the arithmetic the walk uses, not
+data that persists. Storing the origin (instead of normalizing it away) is
+what lets the author **move and rotate the whole structure on the map** —
+one anchor edit, everything follows — which matters once decorations are
+placed around the track. The **canvas is a fixed constant of the format
+version** (the content-convention track size), so a shared code lands
+exactly where its author put it.
 
 ### The editing model — one chain, geometry always derived
 
@@ -74,6 +79,10 @@ safe and well-defined:
   a nearly-closed layout the last few degrees home.
 - **Delete from a closed ring** → the loop reopens into a chain with a loose
   end; it's simply unsaveable again until re-closed.
+- **Move / rotate the whole structure** → edit the *origin pose* (drag to
+  translate on a coarse snap grid, rotate in 45° steps). Nothing else
+  changes; the layout slides around the canvas as one rigid thing — how the
+  author makes room for decorations later.
 
 The editor should *preview* a pending mid-chain edit (ghost the swung tail
 before committing) so the pivot never surprises — a UI nicety, not a model
@@ -104,12 +113,19 @@ pieces (and whole new families) are added by appending ids.
 | 11–12 | hairpin 180° · L/R, radius 60 | the Hairpin rebuild |
 | 13 | ramp up (straight 300, layer +1, launches) | |
 | 14 | ramp down (straight 300, layer −1) | |
+| 15–17 | straight 150/300/600 **+ direction arrow** | decal variants |
 
 Deliberately small — a phone-browsable palette — but designed to grow:
 lengths/radii are plain integer parameters, so variants are new ids, not new
 machinery. Expected later families: chicanes, S-bends, wider/narrower roads,
-themed surface patches, decorations (which live *beside* the road and get
-their own encoding section, not catalog ids).
+themed surface patches, more decals.
+
+**Decals vs. decorations.** A *decal* is painted **on the road** and is part
+of the piece — same geometry, different look — so it's simply another
+catalog id (the direction-arrow straights above; later: painted kerb
+variants, surface markings). A *decoration* lives **beside the road** (trees,
+buildings, signs) with its own canvas placement, so decorations get their
+own encoding section later, not catalog ids.
 
 ## Start, grid, and gates
 
@@ -134,27 +150,29 @@ A layout is **saveable** iff, walking the ring:
    centerline points; different layers may cross freely).
 3. **Grid room** — last piece is a straight ≥ 300.
 4. **Gates** — 2–16 marked seams, seam 0 always included.
-5. **Size sanity** — ≤ 64 pieces (also the encoding cap), and the bounding
-   box within a sane maximum.
+5. **Fits the canvas** — the whole footprint (road width included) stays
+   inside the fixed canvas from the stored origin; and ≤ 64 pieces (also the
+   encoding cap).
 
 Anything else is an *editing* state, not an error — loose ends are simply
 unsaveable, never a crash.
 
 ## Compile
 
-`[PieceID] + gate seams → Track`, directly (no `TrackDesign` detour — the
-free-form path stays untouched alongside, per the earlier decision):
+`origin + [PieceID] + gate seams → Track`, directly (no `TrackDesign` detour
+— the free-form path stays untouched alongside, per the earlier decision):
 
-1. Walk the ring from the origin pose with exact coordinates.
+1. Walk the ring from the **stored origin pose** with exact coordinates.
 2. Emit the centerline: straights as segment endpoints, arcs sampled at the
    existing ≤ 6°/segment convention; lower to `Vec2` here.
 3. Mark layer-1 stretches as `elevatedSegments`; emit `Ramp`s at ramp-piece
    seams (up = launches).
 4. Emit `Gate`s at marked seams (cross-section of the road there), start
    slots via `startGrid`.
-5. **Auto-fit**: compute the bounding box, add a margin, center — that is the
-   track's `size`. The engine letterboxes any aspect; the ~1.2:1 taller-than-
-   wide guidance is an authoring convention for built-ins, not a rule.
+5. The track's `size` **is the fixed canvas** — the layout sits wherever the
+   author put it, leaving deliberate room for decorations. ("Center on
+   canvas" is an editor convenience that adjusts the origin, not a compile
+   step.)
 
 Built-ins migrate to this model **only if** the forcing-function rebuild
 proves the catalog expressive enough — decided with the editor in hand, per
@@ -163,9 +181,9 @@ the roadmap.
 ## Encoding & the URL/QR budget
 
 Share codes are **base64url** (no padding) of a small binary blob at
-`https://skid.misaki.fi/t/<code>`. The start pose is normalized away (piece 0
-begins at the origin heading east; compile auto-fits), so geometry costs
-nothing — **the code is essentially the piece list**.
+`https://skid.misaki.fi/t/<code>`. Geometry costs almost nothing — **the
+code is the piece list plus one anchor pose** (the origin, so the layout
+lands on the canvas exactly where its author placed it).
 
 Layout *(v1)*:
 
@@ -173,8 +191,9 @@ Layout *(v1)*:
 byte 0      format version (1)
 byte 1      CRC-8 of the rest (typo → "invalid code", not a garbage track)
 then TLV sections, each: 1 byte tag · 1 byte length · payload
-  tag 1  PIECES  payload = one byte per piece id      (required)
-  tag 2  GATES   payload = one byte per gate seam idx (required)
+  tag 1  PIECES  payload = one byte per piece id            (required)
+  tag 2  GATES   payload = one byte per gate seam idx       (required)
+  tag 3  ORIGIN  payload = x:u16 · y:u16 · heading:u8       (required)
 ```
 
 TLV keeps the format **expansion-proof**: future sections (hazards,
@@ -183,14 +202,14 @@ length; the version byte covers anything structural. Unknown piece ids in a
 *known* version = "made with a newer Skid Jam".
 
 **The running budget** (URL = 26 chars of `https://skid.misaki.fi/t/` + code;
-QR capacities at M error correction):
+QR byte capacities at M error correction):
 
 | track | bytes | code chars | URL chars | QR fits in |
 |---|---:|---:|---:|---|
-| small (12 pieces, 4 gates) | 22 | 30 | 56 | V3 (~61 B) |
-| typical (20 pieces, 6 gates) | 32 | 43 | 69 | V4 (~80 B) |
-| excessive (64 pieces, 16 gates) | 86 | 115 | 141 | V7 (~154 B) |
-| future: excessive + ~60 B of decorations | ~148 | ~198 | ~224 | V11 (~251 B) |
+| small (12 pieces, 4 gates) | 29 | 39 | 65 | V5 (84 B) |
+| typical (20 pieces, 6 gates) | 39 | 52 | 78 | V5 (84 B) |
+| excessive (64 pieces, 16 gates) | 93 | 124 | 150 | V8 (152 B) |
+| future: excessive + ~60 B of decorations | ~153 | ~204 | ~230 | V11 (251 B) |
 
 Even the worst case with a future decoration layer sits in a mid-size,
 easily scannable QR. **Keep this table honest as sections are added** — the
@@ -201,6 +220,8 @@ that, it must pack tighter (bitmask gates, 6-bit ids) before it ships.
 
 - The exact catalog numbers (lengths, radii, width) — tune on device once
   the editor renders them.
+- The **canvas constant** (ties to the ~1.2:1 taller-aspect convention;
+  likely ~1600×1333) — fixed per format version once chosen.
 - Whether 90°/180° convenience pieces earn their ids or compose from 45s.
 - Gate-span shape at seams on tight curves (cross-section may need a nudge).
 - Built-ins: migrate vs. stay free-form — after the rebuild experiment.
