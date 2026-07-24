@@ -9,6 +9,10 @@ enum EditorRenderer {
     private static let asphalt = Color(white: 0.62)
     private static let kerbWhite = Color(white: 0.95)
     private static let kerbRed = Color(red: 0.82, green: 0.16, blue: 0.14)
+    private static let grass = Color(red: 0.28, green: 0.55, blue: 0.23)
+    /// Bridge guardrail — a bold light blue so walls read unmistakably as
+    /// barriers, distinct from the grey road/kerb.
+    private static let bridgeRail = Color(red: 0.55, green: 0.78, blue: 0.95)
 
     /// Screen radius of a loose-end tap dot.
     static let endHitRadius: CGFloat = 26
@@ -52,18 +56,58 @@ enum EditorRenderer {
             drawStartLine(start, width: width, transform: t, into: &context)
         }
 
-        // Loose ends: tap dots, the selected one filled/brighter.
+        // Loose ends: an "unfinished" treatment — the road fades out into
+        // grass with a hazard-striped cap, rather than a solid rounded
+        // terminus, so it reads as "build here". The selected end is brighter.
         for (i, end) in walk.openEnds.enumerated() {
-            let c = t.screen(end.position.vec2)
-            let selected = i == selectedEnd
-            let r: CGFloat = selected ? 13 : 9
-            let dot = CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)
-            context.fill(
-                Path(ellipseIn: dot),
-                with: .color(selected ? .yellow : .white.opacity(0.9)))
-            context.stroke(
-                Path(ellipseIn: dot), with: .color(.black.opacity(0.6)), lineWidth: 2)
+            drawLooseEnd(end, width: width, selected: i == selectedEnd, t: t, into: &context)
         }
+    }
+
+    /// A loose (unbuilt) end: fade the last stretch of road toward grass and
+    /// stamp a hazard-striped bar across the opening, so it clearly needs
+    /// finishing — never a clean rounded cap that looks intentional.
+    private static func drawLooseEnd(
+        _ end: PiecePose, width: Double, selected: Bool, t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        let w = width * t.scale
+        let fwd = Vec2(angle: end.heading.radians)
+        let side = fwd.perpendicular
+        let tip = end.position.vec2
+        // Grass-colour fade over the last bit of road, covering the round cap
+        // overhang and blending the opening into the field.
+        let fadeLen = width * 0.55
+        let backCenter = tip - fwd * fadeLen
+        let hw = w / 2 + 8 * t.scale
+        func s(_ v: Vec2) -> CGPoint { let p = t.screen(v); return CGPoint(x: p.x, y: p.y) }
+        var fade = Path()
+        fade.move(to: s(backCenter - side * (Double(width) / 2)))
+        fade.addLine(to: s(tip - side * (Double(width) / 2)))
+        fade.addLine(to: s(tip + side * (Double(width) / 2)))
+        fade.addLine(to: s(backCenter + side * (Double(width) / 2)))
+        fade.closeSubpath()
+        context.fill(
+            fade,
+            with: .linearGradient(
+                Gradient(colors: [grass.opacity(0), grass]),
+                startPoint: t.screen(backCenter), endPoint: t.screen(tip)))
+
+        // Hazard-striped cap bar across the opening.
+        let capA = t.screen(tip - side * (Double(width) / 2))
+        let capB = t.screen(tip + side * (Double(width) / 2))
+        var cap = Path()
+        cap.move(to: capA)
+        cap.addLine(to: capB)
+        let dash = max(4, 10 * t.scale)
+        context.stroke(
+            cap, with: .color(selected ? .yellow : Color(red: 0.95, green: 0.75, blue: 0.1)),
+            style: StrokeStyle(
+                lineWidth: max(5, hw * 0.5), lineCap: .butt, dash: [dash, dash]))
+        context.stroke(
+            cap, with: .color(.black.opacity(0.55)),
+            style: StrokeStyle(
+                lineWidth: max(5, hw * 0.5), lineCap: .butt, dash: [dash, dash], dashPhase: dash))
     }
 
     /// Stroke a set of placed pieces as a ribbon. The elevated deck is lighter
@@ -94,15 +138,16 @@ enum EditorRenderer {
         }
 
         if elevated {
-            // Bridge: a raised deck with retaining WALLS (dark base + light
-            // cap) instead of the ground kerb — reads as walled, can't fall.
-            let wall = max(3, 9 * t.scale)
+            // Bridge: a raised deck with substantial light-blue GUARDRAILS —
+            // a dark backing so the rail edge reads, a bold blue rail, then the
+            // road inset, so the walls are unmistakable (can't fall off).
+            let wall = max(6, 16 * t.scale)
             context.stroke(
-                path, with: .color(.black.opacity(0.45)),
+                path, with: .color(.black.opacity(0.5)),
+                style: StrokeStyle(lineWidth: roadW + wall + 3, lineCap: .round, lineJoin: .round))
+            context.stroke(
+                path, with: .color(bridgeRail),
                 style: StrokeStyle(lineWidth: roadW + wall, lineCap: .round, lineJoin: .round))
-            context.stroke(
-                path, with: .color(Color(white: 0.85)),
-                style: StrokeStyle(lineWidth: roadW + wall - 4, lineCap: .round, lineJoin: .round))
             context.stroke(
                 path, with: .color(Color(white: 0.72)),
                 style: StrokeStyle(lineWidth: roadW, lineCap: .round, lineJoin: .round))
