@@ -65,10 +65,16 @@ struct RaceScreen: View {
                     InputSurface(rig: rig)
                     RaceHUD(race: race, colors: colors, rig: rig, size: fullSize)
 
-                    // Meta controls live OUT of everyone's way: one small
-                    // pause toggle on the seam below the map.
+                    // The map centre is meta-control space (no car races there,
+                    // and map-area touches are otherwise inert). A tap on it
+                    // starts the race off the ready gate, and after that opens
+                    // the pause menu — one learned "tap the map" gesture. Sized
+                    // to the map so it never steals a control-band touch.
                     if race.phase != .finished, !session.paused {
-                        pauseButton(at: CGPoint(x: mapRect.midX, y: mapRect.maxY))
+                        mapTapTarget(mapRect: mapRect)
+                    }
+                    if !session.started, race.phase != .finished {
+                        readyOverlay(at: CGPoint(x: mapRect.midX, y: mapRect.midY))
                     }
                     if session.paused {
                         PauseMenu(
@@ -84,17 +90,38 @@ struct RaceScreen: View {
         .defersEdgeSwipes(!session.paused && !session.raceOver)
     }
 
-    private func pauseButton(at point: CGPoint) -> some View {
-        Button {
-            session.paused = true
-        } label: {
-            Image(systemName: "pause.fill")
-                .font(.callout.bold())
-                .foregroundStyle(.white.opacity(0.85))
-                .frame(width: 40, height: 40)
-                .background(.black.opacity(0.3), in: Circle())
-        }
-        .position(point)
+    /// An invisible tap target over the map: it starts the race off the ready
+    /// gate (first tap), then opens the pause menu (later taps). Sized and
+    /// positioned to the map rect so it never overlaps a control band. Once
+    /// learned via the Play overlay, the same gesture pauses — no on-track
+    /// button needed.
+    private func mapTapTarget(mapRect: CGRect) -> some View {
+        Color.clear
+            .contentShape(Rectangle())
+            .frame(width: mapRect.width, height: mapRect.height)
+            .position(x: mapRect.midX, y: mapRect.midY)
+            .onTapGesture {
+                if !session.started {
+                    session.started = true
+                } else {
+                    session.paused = true
+                }
+            }
+    }
+
+    /// The ready gate: a big Play button on the map centre while the race is
+    /// frozen before the start, so everyone can get their thumbs in place.
+    /// Tapping the map (see `mapTapTarget`) starts the countdown; this is just
+    /// the visible affordance that also teaches the "tap the map" gesture.
+    private func readyOverlay(at point: CGPoint) -> some View {
+        Image(systemName: "play.fill")
+            .font(.system(size: 44))
+            .foregroundStyle(.white.opacity(0.9))
+            .frame(width: 96, height: 96)
+            .background(.black.opacity(0.45), in: Circle())
+            .shadow(radius: 6)
+            .position(point)
+            .allowsHitTesting(false)
     }
 
     private func step(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets, time: TimeInterval) {
