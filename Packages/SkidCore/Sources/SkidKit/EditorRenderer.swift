@@ -81,28 +81,48 @@ enum EditorRenderer {
                 for pt in pts.dropFirst() { path.addLine(to: pt) }
             }
         }
+        // The deck sits closer to the camera: wider than ground road, matching
+        // the ramp wedge's wider deck end (w/2 + 6 half → w + 12 full).
+        let roadW = elevated ? w + 12 : w
+
         if elevated {
             var shadow = context
-            shadow.translateBy(x: 5, y: 9)
+            shadow.translateBy(x: 6, y: 11)
             shadow.stroke(
-                path, with: .color(.black.opacity(0.3)),
-                style: StrokeStyle(lineWidth: w + 14, lineCap: .round, lineJoin: .round))
+                path, with: .color(.black.opacity(0.32)),
+                style: StrokeStyle(lineWidth: roadW + 16, lineCap: .round, lineJoin: .round))
         }
-        // Kerb band width and dash length scale WITH the world, so zooming out
-        // shrinks the stripes evenly instead of leaving fixed-size blobs that
-        // reflow. Clamp so they stay visible at extreme zoom.
+
+        if elevated {
+            // Bridge: a raised deck with retaining WALLS (dark base + light
+            // cap) instead of the ground kerb — reads as walled, can't fall.
+            let wall = max(3, 9 * t.scale)
+            context.stroke(
+                path, with: .color(.black.opacity(0.45)),
+                style: StrokeStyle(lineWidth: roadW + wall, lineCap: .round, lineJoin: .round))
+            context.stroke(
+                path, with: .color(Color(white: 0.85)),
+                style: StrokeStyle(lineWidth: roadW + wall - 4, lineCap: .round, lineJoin: .round))
+            context.stroke(
+                path, with: .color(Color(white: 0.72)),
+                style: StrokeStyle(lineWidth: roadW, lineCap: .round, lineJoin: .round))
+            return
+        }
+
+        // Ground road: striped red/white kerb, band + dash scaled to the world
+        // so zoom-out shrinks stripes evenly rather than leaving blobs.
         let band = max(2, 12 * t.scale)
         let dash = max(3, 24 * t.scale)
         context.stroke(
             path, with: .color(kerbWhite),
-            style: StrokeStyle(lineWidth: w + band, lineCap: .round, lineJoin: .round))
+            style: StrokeStyle(lineWidth: roadW + band, lineCap: .round, lineJoin: .round))
         context.stroke(
             path, with: .color(kerbRed),
             style: StrokeStyle(
-                lineWidth: w + band, lineCap: .butt, lineJoin: .round, dash: [dash, dash]))
+                lineWidth: roadW + band, lineCap: .butt, lineJoin: .round, dash: [dash, dash]))
         context.stroke(
-            path, with: .color(elevated ? Color(white: 0.72) : asphalt),
-            style: StrokeStyle(lineWidth: w, lineCap: .round, lineJoin: .round))
+            path, with: .color(asphalt),
+            style: StrokeStyle(lineWidth: roadW, lineCap: .round, lineJoin: .round))
     }
 
     /// A ramp piece drawn as a gradient slope wedge (ground → deck), with

@@ -51,10 +51,13 @@ extension TrackRenderer {
                 context.stroke(
                     Path(ellipseIn: bubble), with: .color(.white.opacity(0.85)), lineWidth: 2.5)
             }
-            // Bridge cars, and ramp climbers on their way up/down.
+            // Bridge cars, and ramp climbers on their way up/down: drawn a
+            // little larger — the deck is closer to the camera, same cue as the
+            // wider elevated ribbon (the same block renders differently on
+            // layer 1 than on layer 0).
             for (index, car) in race.cars.enumerated()
             where !car.state.isAirborne && (car.state.layer == 1 || onRamp(car)) {
-                draw(car: car.state, color: colorAt(index), into: &context)
+                draw(car: car.state, color: colorAt(index), scale: 1.12, into: &context)
             }
         }
 
