@@ -113,7 +113,7 @@ struct EditorView: View {
                         .foregroundStyle(.white.opacity(0.75))
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         ForEach(palette) { item in
                             Button {
                                 if item.id == PaletteItem.rampSentinel {
@@ -122,11 +122,13 @@ struct EditorView: View {
                                     game.editorAppend(item.id)
                                 }
                             } label: {
-                                Text(item.label, bundle: .module)
-                                    .font(.callout.bold())
-                                    .padding(.horizontal, 14).padding(.vertical, 10)
-                                    .background(.black.opacity(0.3), in: Capsule())
-                                    .foregroundStyle(.white)
+                                PieceIcon(id: item.id)
+                                    .frame(width: 56, height: 56)
+                                    .background(
+                                        .black.opacity(0.3),
+                                        in: RoundedRectangle(cornerRadius: 12)
+                                    )
+                                    .accessibilityLabel(Text(item.label, bundle: .module))
                             }
                         }
                     }
@@ -211,5 +213,80 @@ struct EditorView: View {
             width: view.width / 2 - cx * scale + pan.width,
             height: view.height / 2 - cy * scale + pan.height)
         return EditorRenderer.Transform(scale: scale, offset: offset)
+    }
+}
+
+/// A palette tile's icon: a small preview of the piece's shape (its centerline
+/// stroked as a stubby road), so the palette reads by shape not text. The
+/// ramp sentinel draws an up-chevron.
+private struct PieceIcon: View {
+    let id: PieceID
+
+    var body: some View {
+        Canvas { context, size in
+            let inset: CGFloat = 12
+            let box = CGRect(
+                x: inset, y: inset, width: size.width - 2 * inset,
+                height: size.height - 2 * inset)
+            if id == -1 {
+                drawRampChevron(in: box, into: &context)
+            } else {
+                drawPieceShape(in: box, into: &context)
+            }
+        }
+    }
+
+    /// Walk the piece once from a canonical entry, then fit its centerline into
+    /// the box and stroke it as a little road.
+    private func drawPieceShape(in box: CGRect, into context: inout GraphicsContext) {
+        guard let piece = PieceCatalog.piece(id) else { return }
+        let placed = PlacedPiece(
+            id: id, piece: piece, entry: .origin,
+            exits: piece.paths.map { $0.exit(from: .origin) }, entryLayer: 0, entrySeam: 0)
+        let pts = placed.piece.paths.indices.flatMap { placed.centerlineSamples(path: $0) }
+        guard pts.count >= 2 else { return }
+        let xs = pts.map(\.x)
+        let ys = pts.map(\.y)
+        let minX = xs.min()!, maxX = xs.max()!, minY = ys.min()!, maxY = ys.max()!
+        let w = max(1, maxX - minX)
+        let h = max(1, maxY - minY)
+        let scale = min(box.width / w, box.height / h) * 0.8
+        let cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
+        func screen(_ p: Vec2) -> CGPoint {
+            CGPoint(
+                x: box.midX + (p.x - cx) * scale,
+                y: box.midY + (p.y - cy) * scale)
+        }
+        var path = Path()
+        for k in placed.piece.paths.indices {
+            let seg = placed.centerlineSamples(path: k).map(screen)
+            guard let first = seg.first else { continue }
+            path.move(to: first)
+            for pt in seg.dropFirst() { path.addLine(to: pt) }
+        }
+        context.stroke(
+            path, with: .color(.white.opacity(0.5)),
+            style: StrokeStyle(lineWidth: 12, lineCap: .round, lineJoin: .round))
+        context.stroke(
+            path, with: .color(.white),
+            style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
+    }
+
+    private func drawRampChevron(in box: CGRect, into context: inout GraphicsContext) {
+        var chev = Path()
+        chev.move(to: CGPoint(x: box.minX, y: box.maxY))
+        chev.addLine(to: CGPoint(x: box.midX, y: box.minY))
+        chev.addLine(to: CGPoint(x: box.maxX, y: box.maxY))
+        context.stroke(
+            chev, with: .color(.yellow),
+            style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
+        var chev2 = Path()
+        let dy = box.height * 0.34
+        chev2.move(to: CGPoint(x: box.minX, y: box.maxY - dy))
+        chev2.addLine(to: CGPoint(x: box.midX, y: box.minY - dy + 4))
+        chev2.addLine(to: CGPoint(x: box.maxX, y: box.maxY - dy))
+        context.stroke(
+            chev2, with: .color(.yellow.opacity(0.6)),
+            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
     }
 }
