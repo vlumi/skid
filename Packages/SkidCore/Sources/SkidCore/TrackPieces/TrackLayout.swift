@@ -51,6 +51,33 @@ public struct PlacedPiece: Equatable, Sendable {
         self.entryLayer = entryLayer
         self.entrySeam = entrySeam
     }
+
+    /// World-space centerline samples for one of this piece's paths, arcs
+    /// densified to ~`degreesPerSample`. Shared by the compiler (building the
+    /// runtime centerline) and the editor (drawing a partial, not-yet-closed
+    /// layout) so both draw identical geometry. Includes both endpoints.
+    public func centerlineSamples(path pathIndex: Int = 0, degreesPerSample: Double = 6)
+        -> [Vec2]
+    {
+        guard pathIndex < piece.paths.count else { return [entry.position.vec2] }
+        switch piece.paths[pathIndex] {
+        case .straight:
+            return [entry.position.vec2, exits[pathIndex].position.vec2]
+        case .arc(let radius, let eighths, _):
+            let sweepDeg = Double(eighths) * 45
+            let steps = max(1, Int((sweepDeg / degreesPerSample).rounded(.up)))
+            let start = entry.position.vec2
+            let left = exits[pathIndex].heading.step == Heading(entry.heading.step + eighths).step
+            let toCentre = entry.heading.radians + (left ? .pi / 2 : -.pi / 2)
+            let centre = start + Vec2(angle: toCentre) * Double(radius)
+            let startAngle = atan2(start.y - centre.y, start.x - centre.x)
+            let sweep = (left ? 1.0 : -1.0) * Double(eighths) * .pi / 4
+            return (0...steps).map { k in
+                let a = startAngle + sweep * Double(k) / Double(steps)
+                return centre + Vec2(angle: a) * Double(radius)
+            }
+        }
+    }
 }
 
 /// The result of walking a layout: every piece placed in exact coordinates,

@@ -1,64 +1,74 @@
 import SkidCore
 import SwiftUI
 
-/// The track editor — **preview slice**: renders the current editor layout
-/// (compiled to a runtime `Track`) on a pan/zoomable canvas, using the same
-/// `TrackRenderer` the game draws with. Editing tools (append/select/delete,
-/// gates, save, test-drive) arrive in the next slice; this establishes the
-/// screen, the live compile→render path, and navigation in and out.
+/// The track editor — **editing slice**: build a track piece by piece. The
+/// partial layout renders live (open chains included) via `EditorRenderer`;
+/// tap a loose end to select it (the last one auto-selects), then tap a
+/// palette piece to extend it. Delete removes the last piece; Save is enabled
+/// once the layout closes into a valid track. (Test-drive lands with step 3.)
 struct EditorView: View {
     @ObservedObject var game: CouchGame
 
-    // View transform over the world (pan in points, zoom factor).
     @State private var zoom: CGFloat = 1
     @State private var pan: CGSize = .zero
-    // Committed transform at the start of the current gesture.
     @State private var baseZoom: CGFloat = 1
     @State private var basePan: CGSize = .zero
+    /// Index into the walk's `openEnds`; nil = none selected.
+    @State private var selectedEnd: Int?
+
+    private struct PaletteItem: Identifiable {
+        let id: PieceID
+        let label: LocalizedStringKey
+    }
+
+    /// The append palette (v1 core geometry the phone build needs first).
+    private let palette: [PaletteItem] = [
+        .init(id: 1, label: "Straight"),
+        .init(id: 7, label: "Left"),
+        .init(id: 8, label: "Right"),
+        .init(id: 9, label: "Left ›"),
+        .init(id: 10, label: "Right ›"),
+        .init(id: 13, label: "Ramp"),
+    ]
 
     var body: some View {
         GeometryReader { geo in
-            let track = game.editorTrack()
+            let layout = game.editorLayout ?? TrackLayout(pieces: [PieceCatalog.startPieceID])
+            let walk = layout.walk()
+            let transform = fitTransform(walk: walk, in: geo.size)
             ZStack {
                 Color(red: 0.28, green: 0.55, blue: 0.23).ignoresSafeArea()
 
-                if let track {
-                    canvas(track: track, size: geo.size)
-                } else {
-                    // Not yet saveable — the preview can't compile.
-                    Text("Track not complete", bundle: .module)
-                        .foregroundStyle(.white.opacity(0.7))
+                Canvas { context, _ in
+                    EditorRenderer.draw(
+                        walk: walk, width: Double(PieceCatalog.width),
+                        selectedEnd: effectiveSelection(walk),
+                        transform: transform, into: &context)
                 }
+                .ignoresSafeArea()
 
-                controls
+                topBar
+                paletteBar(walk: walk)
             }
             .contentShape(Rectangle())
+            .gesture(tapToSelect(walk: walk, transform: transform))
             .gesture(panZoom)
         }
         .statusBarHiddenIfAvailable()
     }
 
-    /// The world drawn with the game's renderer, fit to the view then scaled /
-    /// panned by the gesture transform.
-    private func canvas(track: Track, size: CGSize) -> some View {
-        // Frame the track's own footprint (not the whole empty canvas), so a
-        // small track fills the view. mapRect maps world→screen; place it so
-        // the track's bounding box is centred and contained.
-        let fit = fittedRect(for: track, in: size)
-        let scene = previewScene(track: track, mapRect: fit)
-        return Canvas { context, canvasSize in
-            var ctx = context
-            ctx.translateBy(x: pan.width, y: pan.height)
-            // Scale about the view centre so pinch feels centred.
-            ctx.translateBy(x: canvasSize.width / 2, y: canvasSize.height / 2)
-            ctx.scaleBy(x: zoom, y: zoom)
-            ctx.translateBy(x: -canvasSize.width / 2, y: -canvasSize.height / 2)
-            TrackRenderer.draw(scene: scene, into: &ctx, size: canvasSize)
-        }
-        .ignoresSafeArea()
+    // MARK: - Selection
+
+    /// The selected end, defaulting to the LAST loose end (the one you just
+    /// laid) so the common case needs no tap.
+    private func effectiveSelection(_ walk: WalkResult) -> Int? {
+        if let selectedEnd, walk.openEnds.indices.contains(selectedEnd) { return selectedEnd }
+        return walk.openEnds.isEmpty ? nil : walk.openEnds.count - 1
     }
 
-    @ViewBuilder private var controls: some View {
+    // MARK: - Bars
+
+    private var topBar: some View {
         VStack {
             HStack {
                 Button {
@@ -67,6 +77,11 @@ struct EditorView: View {
                     Text("Done", bundle: .module).pillStyle()
                 }
                 Spacer()
+                Button {
+                    game.editorReset()
+                } label: {
+                    Text("New", bundle: .module).pillStyle()
+                }
                 Button {
                     resetView()
                 } label: {
@@ -78,18 +93,75 @@ struct EditorView: View {
         }
     }
 
+    private func paletteBar(walk: WalkResult) -> some View {
+        VStack {
+            Spacer()
+            VStack(spacing: 10) {
+                // Save state / validity hint.
+                if game.editorIsSaveable() {
+                    Text("Track complete", bundle: .module)
+                        .font(.footnote.bold())
+                        .foregroundStyle(.white)
+                } else {
+                    Text("Extend the loose end to close the loop", bundle: .module)
+                        .font(.footnote)
+                        .foregroundStyle(.white.opacity(0.75))
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(palette) { item in
+                            Button {
+                                game.editorAppend(item.id)
+                            } label: {
+                                Text(item.label, bundle: .module)
+                                    .font(.callout.bold())
+                                    .padding(.horizontal, 14).padding(.vertical, 10)
+                                    .background(.black.opacity(0.3), in: Capsule())
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                Button(role: .destructive) {
+                    game.editorDeleteLast()
+                } label: {
+                    Text("Delete last", bundle: .module)
+                        .font(.callout.bold())
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background(.black.opacity(0.3), in: Capsule())
+                        .foregroundStyle(.white)
+                }
+            }
+            .padding(.bottom, 24)
+        }
+    }
+
     // MARK: - Gestures
+
+    private func tapToSelect(walk: WalkResult, transform: EditorRenderer.Transform) -> some Gesture
+    {
+        SpatialTapGesture().onEnded { value in
+            // Tap a loose end to select it; tap elsewhere clears the selection
+            // (falling back to auto-select-last).
+            selectedEnd = walk.openEnds.firstIndex { end in
+                let p = transform.screen(end.position.vec2)
+                return hypot(p.x - value.location.x, p.y - value.location.y)
+                    < EditorRenderer.endHitRadius
+            }
+        }
+    }
 
     private var panZoom: some Gesture {
         let drag = DragGesture()
-            .onChanged { value in
+            .onChanged {
                 pan = CGSize(
-                    width: basePan.width + value.translation.width,
-                    height: basePan.height + value.translation.height)
+                    width: basePan.width + $0.translation.width,
+                    height: basePan.height + $0.translation.height)
             }
             .onEnded { _ in basePan = pan }
         let pinch = MagnificationGesture()
-            .onChanged { scale in zoom = max(0.4, min(4, baseZoom * scale)) }
+            .onChanged { zoom = max(0.4, min(4, baseZoom * $0)) }
             .onEnded { _ in baseZoom = zoom }
         return SimultaneousGesture(drag, pinch)
     }
@@ -101,47 +173,34 @@ struct EditorView: View {
         basePan = .zero
     }
 
-    // MARK: - Preview scene
+    // MARK: - Fit
 
-    /// A car-less `WorldScene` for rendering a track without a race running.
-    private func previewScene(track: Track, mapRect: CGRect) -> WorldScene {
-        let race = Race(track: track, players: [])
-        let spans = track.gates.map { track.ribbonSpan(of: $0) }
-        return WorldScene(
-            race: race, marks: MarkStore(), gateSpans: spans, colors: [], mapRect: mapRect)
-    }
-
-    /// Frame the track's own footprint (its centerline bounding box + road
-    /// width) to fill the view with a margin, preserving aspect. Returns the
-    /// `mapRect` (where the full `track.size` box lands) that achieves it —
-    /// `TrackRenderer.draw` scales world→screen by `mapRect.width/size.x`.
-    private func fittedRect(for track: Track, in view: CGSize) -> CGRect {
-        let bounds = footprint(of: track)
-        let margin: CGFloat = 32
+    /// Build a world→screen transform that frames the layout's footprint in the
+    /// view, then applies the user's zoom/pan.
+    private func fitTransform(walk: WalkResult, in view: CGSize) -> EditorRenderer.Transform {
+        let pts = walk.placed.flatMap { placed in
+            placed.piece.paths.indices.flatMap { placed.centerlineSamples(path: $0) }
+        }
+        let half = Double(PieceCatalog.width) / 2
+        let xs = pts.map(\.x)
+        let ys = pts.map(\.y)
+        let minX = (xs.min() ?? 0) - half
+        let maxX = (xs.max() ?? 100) + half
+        let minY = (ys.min() ?? 0) - half
+        let maxY = (ys.max() ?? 100) + half
+        let w = max(1, maxX - minX)
+        let h = max(1, maxY - minY)
+        let margin: CGFloat = 40
         let box = CGSize(
             width: max(1, view.width - 2 * margin), height: max(1, view.height - 2 * margin))
-        let scale = min(box.width / bounds.width, box.height / bounds.height)
-        // mapRect is the full size box at this scale; offset so the footprint
-        // centres in the view.
-        let mapW = track.size.x * scale
-        let mapH = track.size.y * scale
-        let footScreenX = bounds.minX * scale
-        let footScreenY = bounds.minY * scale
-        let originX = (view.width - bounds.width * scale) / 2 - footScreenX
-        let originY = (view.height - bounds.height * scale) / 2 - footScreenY
-        return CGRect(x: originX, y: originY, width: mapW, height: mapH)
-    }
-
-    /// The track's drawn footprint: centerline bounding box padded by half the
-    /// road width.
-    private func footprint(of track: Track) -> CGRect {
-        let xs = track.centerline.map(\.x)
-        let ys = track.centerline.map(\.y)
-        let half = track.width / 2
-        let minX = (xs.min() ?? 0) - half
-        let maxX = (xs.max() ?? track.size.x) + half
-        let minY = (ys.min() ?? 0) - half
-        let maxY = (ys.max() ?? track.size.y) + half
-        return CGRect(x: minX, y: minY, width: max(1, maxX - minX), height: max(1, maxY - minY))
+        let baseScale = min(box.width / w, box.height / h)
+        let scale = baseScale * zoom
+        // Centre the footprint, then apply pan.
+        let cx = (minX + maxX) / 2
+        let cy = (minY + maxY) / 2
+        let offset = CGSize(
+            width: view.width / 2 - cx * scale + pan.width,
+            height: view.height / 2 - cy * scale + pan.height)
+        return EditorRenderer.Transform(scale: scale, offset: offset)
     }
 }
