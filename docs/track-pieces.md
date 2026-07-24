@@ -16,13 +16,15 @@ can't, players can't build anything interesting either.
 
 ### Ports and the ring
 
-A **piece** occupies road between two **ports**. A port is a pose: position,
-heading, and road width. Pieces carry their geometry in a local frame; placing
-a piece means setting its entry port onto the current pose, and its exit port
-becomes the next pose. A **track is an ordered list of piece ids** walked from
-an origin pose — every joint mates by construction (there are no loose
-intermediate ends to validate), and the ring **closes** when the walk's final
-pose equals its starting pose exactly.
+A **piece** occupies road between **ports**. A port is a pose: position,
+heading, and road width. Pieces carry their geometry in a local frame;
+placing a piece means setting its entry port onto the current pose, and its
+exit port becomes the next pose. Most pieces have two ports; **fork and join
+pieces have three** (see "Beyond the ring"), making the track in general a
+**directed port-graph** — but it is still stored as a **flat ordered list of
+piece ids** walked from an origin pose, with a small stack discipline
+resolving branches. The fork-free case is a plain ring that **closes** when
+the walk's final pose equals its starting pose exactly.
 
 - **Headings quantize to 8 directions** (45° steps), stored as an integer
   0–7. Diagonals are first-class, not grid-cell approximations.
@@ -62,10 +64,14 @@ exactly where its author put it.
 ### The editing model — one chain, geometry always derived
 
 Editing works like laying rollercoaster track: the start line goes down
-first, then the layout **extends piece by piece from the loose end**, in any
-of the 8 directions the catalog allows, until the end pose meets the start
-pose and the loop closes. The editor's state is the same ordered piece list
-the share code carries — never a set of placed objects.
+first, then the layout **extends piece by piece from a loose end**, in any
+of the 8 directions the catalog allows, until every end has met its match —
+the fork-free loop simply closes back onto the start line. Fork pieces mean
+there can be **several loose ends open at once** (held as a stack; see
+"Beyond the ring"); a loose end that lands exactly on an open inlet
+**auto-mates** — exact arithmetic makes "exactly" unambiguous. The editor's
+state is the same ordered piece list the share code carries — never a set of
+placed objects.
 
 Because position is derived, **fragments are unrepresentable** — a piece's
 location exists only through its predecessors. That makes mid-chain edits
@@ -97,6 +103,58 @@ return to 0. Same-layer overlap is invalid; **different-layer overlap is what
 makes a bridge** — that's the whole Overpass trick, and it falls out of the
 model for free.
 
+### Beyond the ring — forks, crossings, jumps
+
+The ring is the simplest valid track, not the only one. Three families
+extend it:
+
+**Forks and joins.** A fork piece has one entry and two exits (three shapes:
+straight + branch-L, straight + branch-R, symmetric L/R; sweeper-radius
+branches); a **join is the mirrored piece** — two entries, one exit —
+a separate id because pieces are directional (the walk *is* the driving
+direction). With forks the track is a directed graph and the sim gains
+genuine **route choice**. The flat piece list still serializes it: pieces
+extend the *current* loose end; a fork's branch exit is **pushed** as a
+pending end; when the current end auto-mates into an open inlet, the next
+pending end **pops** and continues. Decode is deterministic; no port
+references appear in the encoding. Geometry still derives entirely from the
+walk, and fragments stay unrepresentable — every branch hangs off the start
+piece. **Three-way forks are deliberately out**: two alternative routes at a
+time is the ceiling.
+
+**At-grade crossings (the bridgeless 8).** A + crossing is *not* a fork — no
+route choice happens there; the lap just drives through the same pavement
+twice. So it needs no multi-port piece: a **crossable straight** is an
+ordinary straight *allowed* to overlap exactly one other crossable straight
+when their midpoints coincide. At 90° the shared zone is one road-width, so
+the **150 length suffices**; at 45°/135° it stretches to ~width/sin 45° ≈
+170, so diagonal crossings need the **300 length**. The compiler clips the
+edge walls at the shared mouths; the ring stays a single closed loop.
+
+**Jumps with air.** The jump piece is a launch lip, a road **gap**, and a
+landing. Flight is speed-scaled (the existing launch model, minus the layer
+flip), so clearing the gap is *earned*: undershoot drops you onto whatever
+is beneath — grass by default, or **a crossing road laid under the gap**,
+which the overlap rules explicitly allow. No new fail state; landing short
+is slow, not game over.
+
+**Gates with routes.** Every possible lap route must cross the marked gates
+in the **same cyclic order** — so gates naturally live on trunk sections all
+routes share. Validation enumerates the routes (two per fork, so the count
+stays small under the 64-piece cap) and rejects ambiguous placement.
+
+**Staged implementation** — the format reserves everything now, the engine
+grows into it:
+
+- *Phase A — ring + crossings + jumps.* The runtime `Track` keeps its single
+  closed centerline (a crossing is the ring overlapping itself; a jump is a
+  road-less span). Compiler work: wall clipping at crossing mouths, the
+  no-flip launch.
+- *Phase B — forks.* The runtime `Track` learns multiple routes (a ribbon
+  graph), wall handling at fork mouths, and the AI learns to pick a branch.
+  The headless model handles the full graph from day one; the Phase-A
+  compiler simply rejects fork pieces as not-yet-supported.
+
 ## Catalog *(v1)*
 
 One byte per piece id; the id space is an **append-only registry** — ids are
@@ -114,6 +172,10 @@ pieces (and whole new families) are added by appending ids.
 | 13 | ramp up (straight 300, layer +1, launches) | |
 | 14 | ramp down (straight 300, layer −1) | |
 | 15 | **start grid** (straight 300, grid decal, start line at exit) | exactly one per track |
+| 16–17 | **crossable straight** 150 / 300 | at-grade crossings: 150 = 90° only, 300 = any angle |
+| 18–20 | **fork** · straight+L / straight+R / symmetric L·R | one entry, two exits; radius 160 |
+| 21–23 | **join** · mirrors of the forks | two entries, one exit |
+| 24 | **jump 300** (launch lip · gap · landing) | gap may be crossed beneath |
 | 128–130 | straight 150/300/600 **+ direction arrow** | decal variants, two-byte range |
 
 Deliberately small — a phone-browsable palette — but designed to grow:
@@ -121,12 +183,23 @@ lengths/radii are plain integer parameters, so variants are new ids, not new
 machinery. Expected later families: chicanes, S-bends, wider/narrower roads,
 themed surface patches, more decals.
 
-**Decals vs. decorations.** A *decal* is painted **on the road** and is part
-of the piece — same geometry, different look — so it's simply another
-catalog id (the direction-arrow straights above; later: painted kerb
-variants, surface markings). A *decoration* lives **beside the road** (trees,
-buildings, signs) with its own canvas placement, so decorations get their
-own encoding section later, not catalog ids.
+**Decals vs. decorations vs. hazards.** Three categories, split by *what
+they touch*:
+
+- A **decal** is painted **on the road**, is part of a piece, and **never
+  touches physics** — same geometry, different look, so it's simply another
+  catalog id (the direction-arrow straights above; later: painted kerbs,
+  surface markings).
+- A **decoration** lives **beside the road** (trees, buildings, signs),
+  visual only, freely placed — its own future encoding section, not catalog
+  ids.
+- A **hazard** (oil, water, mud) is a **surface patch: it changes physics**,
+  so it's neither of the above. It places freely like a decoration (baking
+  oil-slick variants into every piece × position would explode the id space
+  and still couldn't put the slick exactly at an apex) but from a small
+  catalog of rough, rotatable blob shapes at quantized positions — so the
+  sim stays deterministic. Its own future section, validated against the
+  road footprint.
 
 ## Start, grid, and gates
 
@@ -148,15 +221,22 @@ own encoding section later, not catalog ids.
 
 ## Validity
 
-A layout is **saveable** iff, walking the ring:
+A layout is **saveable** iff, walking the graph:
 
-1. **Closure** — final pose == origin pose (exact), and layer returns to 0.
+1. **Every port mated** — the fork-free ring closes back onto the origin
+   pose (exact); with forks, every loose outlet lands exactly on an open
+   inlet, and the **layer agrees at every mate** (returning to 0 at the
+   start line).
 2. **No same-layer overlap** — non-adjacent pieces on the same layer keep
    their footprints ≥ road-width apart (checked on deterministically sampled
-   centerline points; different layers may cross freely).
+   centerline points), with exactly two exceptions: a **crossable pair**
+   (midpoints coincident, angle legal for their length) and **a road through
+   a jump's gap**. Different layers may cross freely.
 3. **One start** — exactly one start-grid piece (the ring is stored cut at
    its exit; grid room is guaranteed by the piece itself).
-4. **Gates** — 2–16 marked seams, seam 0 always included.
+4. **Gates** — 2–16 marked seams, seam 0 always included; **every possible
+   lap route crosses them in the same cyclic order** (routes enumerate at
+   two per fork).
 5. **Fits the canvas** — the whole footprint (road width included) stays
    inside the fixed canvas from the stored origin; and ≤ 64 pieces (also the
    encoding cap).
@@ -169,7 +249,7 @@ unsaveable, never a crash.
 `origin + [PieceID] + gate seams → Track`, directly (no `TrackDesign` detour
 — the free-form path stays untouched alongside, per the earlier decision):
 
-1. Walk the ring from the **stored origin pose** with exact coordinates.
+1. Walk the graph from the **stored origin pose** with exact coordinates.
 2. Emit the centerline: straights as segment endpoints, arcs sampled at the
    existing ≤ 6°/segment convention; lower to `Vec2` here.
 3. Mark layer-1 stretches as `elevatedSegments`; emit `Ramp`s at ramp-piece
@@ -181,9 +261,13 @@ unsaveable, never a crash.
    canvas" is an editor convenience that adjusts the origin, not a compile
    step.)
 
-Built-ins migrate to this model **only if** the forcing-function rebuild
-proves the catalog expressive enough — decided with the editor in hand, per
-the roadmap.
+Compilation lands in the two phases from "Beyond the ring": **Phase A**
+compiles rings + crossings + jumps onto today's single-centerline `Track`
+(wall clipping at crossing mouths, no-flip launch); **Phase B** teaches
+`Track` multiple routes and the AI a branch choice before fork pieces
+compile. Built-ins migrate to this model **only if** the forcing-function
+rebuild proves the catalog expressive enough — decided with the editor in
+hand, per the roadmap.
 
 ## Encoding & the URL/QR budget
 
