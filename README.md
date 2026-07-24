@@ -1,5 +1,8 @@
 # Skid Jam
 
+[![CI](https://github.com/vlumi/skid/actions/workflows/ci.yml/badge.svg)](https://github.com/vlumi/skid/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/vlumi/skid/branch/main/graph/badge.svg)](https://codecov.io/gh/vlumi/skid)
+
 A top-down, drift-happy local-multiplayer racing game for Apple platforms — a
 modern heir to the keyboard-era couch racers of the DOS days, rebuilt around
 controls that actually work on a phone.
