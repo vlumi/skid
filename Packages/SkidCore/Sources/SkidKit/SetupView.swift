@@ -56,6 +56,12 @@ struct SetupView: View {
                         .background(.white.opacity(0.92), in: Capsule())
                         .foregroundStyle(.black)
                 }
+
+                Button {
+                    game.openEditor()
+                } label: {
+                    Text("Track editor", bundle: .module).pillStyle()
+                }
             }
         }
     }

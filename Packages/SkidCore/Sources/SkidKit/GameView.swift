@@ -23,7 +23,12 @@ public final class CouchGame: ObservableObject {
     public enum Phase {
         case setup
         case racing
+        case editing
     }
+
+    /// The track being built in the editor. A piece list, live-previewed and
+    /// compiled on save. Nil until the editor is opened.
+    @Published public var editorLayout: TrackLayout?
 
     public enum Mode: CaseIterable {
         case race
@@ -151,6 +156,25 @@ public final class CouchGame: ObservableObject {
         session = nil
         rig = nil
         sound.stop()
+    }
+
+    /// Open the track editor. For now it seeds a small sample layout so there
+    /// is something to preview; building from scratch arrives with the editing
+    /// tools.
+    public func openEditor() {
+        if editorLayout == nil {
+            editorLayout = TrackLayout(
+                pieces: [15, 7, 1, 7, 1, 7, 1, 7], gateSeams: [0, 2, 4, 6])
+        }
+        sound.stop()
+        phase = .editing
+    }
+
+    /// Compile the current editor layout to a runtime `Track` for preview /
+    /// test-drive. Nil if it isn't saveable yet.
+    public func editorTrack() -> Track? {
+        guard let editorLayout else { return nil }
+        return try? PieceCompiler.compile(editorLayout, id: "editor-preview")
     }
 
     /// Called every frame by the race screen: audio lifecycle follows the
@@ -295,6 +319,8 @@ public struct GameView: View {
                 if let session = game.session, let rig = game.rig {
                     RaceScreen(game: game, session: session, rig: rig)
                 }
+            case .editing:
+                EditorView(game: game)
             }
         }
         .statusBarHiddenIfAvailable()
