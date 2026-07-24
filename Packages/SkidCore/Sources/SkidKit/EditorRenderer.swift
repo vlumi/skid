@@ -27,18 +27,23 @@ enum EditorRenderer {
     ) {
         let w = width * t.scale
 
-        // Ground layer first, then the elevated deck on top of it (so a bridge
-        // visibly crosses over the road beneath).
-        let ground = walk.placed.filter { $0.entryLayer <= 0 }
-        let deck = walk.placed.filter { $0.entryLayer >= 1 }
+        // Draw in elevation order so a bridge visibly crosses over the road
+        // beneath it: ground road → ramp slopes → the raised deck on top.
+        // A ramp piece is the SLOPE connecting ground (layer 0) to deck
+        // (layer ≥ 1); it's not part of either flat ribbon.
+        let isRamp: (PlacedPiece) -> Bool = { $0.piece.layerDelta != 0 }
+        let ground = walk.placed.filter { $0.entryLayer <= 0 && !isRamp($0) }
+        let deck = walk.placed.filter { $0.entryLayer >= 1 && !isRamp($0) }
+
         strokeRibbon(ground, w: w, elevated: false, t: t, into: &context)
+        for placed in walk.placed where isRamp(placed) {
+            drawRampSlope(placed, width: width, w: w, transform: t, into: &context)
+        }
         if !deck.isEmpty {
             strokeRibbon(deck, w: w, elevated: true, t: t, into: &context)
         }
-
-        // Ramp/jump pieces get chevrons pointing in the drive direction, so a
-        // ramp reads as a slope, not plain road.
-        for placed in walk.placed where placed.piece.layerDelta != 0 || placed.piece.launches {
+        // Jumps (no layer change, but launch) still get chevrons on flat road.
+        for placed in walk.placed where placed.piece.launches && placed.piece.layerDelta == 0 {
             drawRampChevrons(placed, width: width, transform: t, into: &context)
         }
 
@@ -100,8 +105,78 @@ enum EditorRenderer {
             style: StrokeStyle(lineWidth: w, lineCap: .round, lineJoin: .round))
     }
 
-    /// Chevrons along a ramp/jump piece, pointing in the drive direction — a
-    /// clear "this climbs / launches" marker versus flat road.
+    /// A ramp piece drawn as a gradient slope wedge (ground → deck), with
+    /// white edges and drive-direction chevrons — the same visual language as
+    /// the game's ramps, so it reads as a climb/descent, not a floating pill.
+    private static func drawRampSlope(
+        _ placed: PlacedPiece, width: Double, w: Double, transform t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        // Ramp is a straight: entry→exit. Up-ramp climbs entry(ground)→exit(deck);
+        // down-ramp descends entry(deck)→exit(ground).
+        let up = placed.piece.layerDelta > 0
+        let groundWorld = up ? placed.entry.position.vec2 : placed.exits[0].position.vec2
+        let deckWorld = up ? placed.exits[0].position.vec2 : placed.entry.position.vec2
+        let gScreen = t.screen(groundWorld)
+        let dScreen = t.screen(deckWorld)
+        let gv = Vec2(gScreen.x, gScreen.y)
+        let dv = Vec2(dScreen.x, dScreen.y)
+        let axis = dv - gv
+        let len = axis.length
+        guard len > 0.5 else { return }
+        let dir = Vec2(axis.x / len, axis.y / len)
+        let side = dir.perpendicular
+        // Deck end a touch wider, like the game's wedge.
+        let gHalf = side * (w / 2)
+        let dHalf = side * (w / 2 + 6)
+        func pt(_ v: Vec2) -> CGPoint { CGPoint(x: v.x, y: v.y) }
+
+        var wedge = Path()
+        wedge.move(to: pt(gv - gHalf))
+        wedge.addLine(to: pt(dv - dHalf))
+        wedge.addLine(to: pt(dv + dHalf))
+        wedge.addLine(to: pt(gv + gHalf))
+        wedge.closeSubpath()
+        context.fill(
+            wedge,
+            with: .linearGradient(
+                Gradient(colors: [asphalt, Color(white: 0.72)]),
+                startPoint: pt(gv), endPoint: pt(dv)))
+        for sign in [-1.0, 1.0] {
+            var edge = Path()
+            edge.move(to: pt(gv + gHalf * sign))
+            edge.addLine(to: pt(dv + dHalf * sign))
+            context.stroke(edge, with: .color(kerbWhite), lineWidth: max(2, 4 * t.scale))
+        }
+        // Chevrons up the slope, pointing the drive direction (piece order).
+        let drive = (placed.exits[0].position.vec2 - placed.entry.position.vec2).normalized
+        drawSlopeChevrons(
+            ground: gv, deck: dv, drive: drive, wing: side * (w * 0.28), into: &context)
+    }
+
+    private static func drawSlopeChevrons(
+        ground: Vec2, deck: Vec2, drive: Vec2, wing: Vec2, into context: inout GraphicsContext
+    ) {
+        let axis = deck - ground
+        let len = axis.length
+        guard len > 0 else { return }
+        let up = Vec2(axis.x / len, axis.y / len)
+        let driveScreen = Vec2(drive.x, drive.y)
+        for frac in [0.3, 0.55, 0.8] {
+            let base = ground + up * (len * frac) - driveScreen * 6
+            let tip = base + driveScreen * 12
+            var chev = Path()
+            chev.move(to: CGPoint(x: (base - wing).x, y: (base - wing).y))
+            chev.addLine(to: CGPoint(x: tip.x, y: tip.y))
+            chev.addLine(to: CGPoint(x: (base + wing).x, y: (base + wing).y))
+            context.stroke(
+                chev, with: .color(.white.opacity(0.6)),
+                style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+        }
+    }
+
+    /// Chevrons along a jump piece (flat road, launches) — a "this launches"
+    /// marker versus plain road.
     private static func drawRampChevrons(
         _ placed: PlacedPiece, width: Double, transform t: Transform,
         into context: inout GraphicsContext
