@@ -264,12 +264,30 @@ private struct PieceIcon: View {
             path.move(to: first)
             for pt in seg.dropFirst() { path.addLine(to: pt) }
         }
-        context.stroke(
-            path, with: .color(.white.opacity(0.5)),
-            style: StrokeStyle(lineWidth: 12, lineCap: .round, lineJoin: .round))
-        context.stroke(
-            path, with: .color(.white),
-            style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
+        // Render like a real road tile: kerb band, red/white dashes, asphalt —
+        // a mini version of what the piece draws on the canvas, so the icon
+        // matches the actual piece. Elevated (ramp) uses the blue rail.
+        let roadW: CGFloat = 13
+        let elevated = placed.piece.layerDelta != 0
+        if elevated {
+            context.stroke(
+                path, with: .color(Color(red: 0.55, green: 0.78, blue: 0.95)),
+                style: StrokeStyle(lineWidth: roadW + 6, lineCap: .round, lineJoin: .round))
+            context.stroke(
+                path, with: .color(Color(white: 0.72)),
+                style: StrokeStyle(lineWidth: roadW, lineCap: .round, lineJoin: .round))
+        } else {
+            context.stroke(
+                path, with: .color(Color(white: 0.95)),
+                style: StrokeStyle(lineWidth: roadW + 5, lineCap: .round, lineJoin: .round))
+            context.stroke(
+                path, with: .color(Color(red: 0.82, green: 0.16, blue: 0.14)),
+                style: StrokeStyle(
+                    lineWidth: roadW + 5, lineCap: .butt, lineJoin: .round, dash: [5, 5]))
+            context.stroke(
+                path, with: .color(Color(white: 0.62)),
+                style: StrokeStyle(lineWidth: roadW, lineCap: .round, lineJoin: .round))
+        }
     }
 
     private func drawRampChevron(in box: CGRect, into context: inout GraphicsContext) {

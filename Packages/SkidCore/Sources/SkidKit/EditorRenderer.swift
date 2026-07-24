@@ -31,23 +31,21 @@ enum EditorRenderer {
     ) {
         let w = width * t.scale
 
-        // Draw in elevation order so a bridge visibly crosses over the road
-        // beneath it: ground road → ramp slopes → the raised deck on top.
-        // A ramp piece is the SLOPE connecting ground (layer 0) to deck
-        // (layer ≥ 1); it's not part of either flat ribbon.
-        let isRamp: (PlacedPiece) -> Bool = { $0.piece.layerDelta != 0 }
-        let ground = walk.placed.filter { $0.entryLayer <= 0 && !isRamp($0) }
-        let deck = walk.placed.filter { $0.entryLayer >= 1 && !isRamp($0) }
-
-        strokeRibbon(ground, w: w, elevated: false, t: t, into: &context)
-        for placed in walk.placed where isRamp(placed) {
-            drawRampSlope(placed, width: width, w: w, transform: t, into: &context)
+        // A piece is "elevated" if it's a ramp (the slope) or sits on the deck
+        // (layer ≥ 1). Consecutive pieces in the SAME band (ground vs elevated)
+        // are stroked as ONE continuous butt-capped path, so there are no
+        // half-circle caps at interior joints, and the guardrail runs unbroken
+        // ground→ramp→deck→ramp→ground across a bridge. Ground first, then the
+        // elevated run on top (so a bridge crosses over the road beneath).
+        let bands = elevationRuns(walk.placed)
+        for run in bands where !run.elevated {
+            strokeRun(run.pieces, w: w, elevated: false, t: t, into: &context)
         }
-        if !deck.isEmpty {
-            strokeRibbon(deck, w: w, elevated: true, t: t, into: &context)
+        for run in bands where run.elevated {
+            strokeRun(run.pieces, w: w, elevated: true, t: t, into: &context)
         }
-        // Jumps (no layer change, but launch) still get chevrons on flat road.
-        for placed in walk.placed where placed.piece.launches && placed.piece.layerDelta == 0 {
+        // Slope chevrons on ramp pieces (drawn over the elevated ribbon).
+        for placed in walk.placed where placed.piece.layerDelta != 0 || placed.piece.launches {
             drawRampChevrons(placed, width: width, transform: t, into: &context)
         }
 
@@ -56,12 +54,45 @@ enum EditorRenderer {
             drawStartLine(start, width: width, transform: t, into: &context)
         }
 
-        // Loose ends: an "unfinished" treatment — the road fades out into
-        // grass with a hazard-striped cap, rather than a solid rounded
-        // terminus, so it reads as "build here". The selected end is brighter.
-        for (i, end) in walk.openEnds.enumerated() {
+        // Loose (unbuilt) ends get a construction treatment. That's every
+        // walk openEnd, PLUS the back of the start piece whenever the loop
+        // isn't closed (it's the closure target, so the walk doesn't list it,
+        // but it's an open stub until something connects to it).
+        var looseEnds = walk.openEnds
+        if !walk.openEnds.isEmpty,
+            let start = walk.placed.first(where: {
+                $0.id == PieceCatalog.startPieceID
+            })
+        {
+            // The start's entry pose, facing OUT of the piece (back down the road).
+            looseEnds.append(
+                PiecePose(position: start.entry.position, heading: start.entry.heading.reversed))
+        }
+        for (i, end) in looseEnds.enumerated() {
             drawLooseEnd(end, width: width, selected: i == selectedEnd, t: t, into: &context)
         }
+    }
+
+    /// A maximal run of consecutive pieces sharing an elevation band.
+    private struct Run {
+        var pieces: [PlacedPiece]
+        var elevated: Bool
+    }
+
+    /// Split the placed pieces into consecutive same-band runs (ground vs
+    /// elevated), preserving walk order.
+    private static func elevationRuns(_ placed: [PlacedPiece]) -> [Run] {
+        func elevated(_ p: PlacedPiece) -> Bool { p.entryLayer >= 1 || p.piece.layerDelta != 0 }
+        var runs: [Run] = []
+        for p in placed {
+            if var last = runs.last, last.elevated == elevated(p) {
+                last.pieces.append(p)
+                runs[runs.count - 1] = last
+            } else {
+                runs.append(Run(pieces: [p], elevated: elevated(p)))
+            }
+        }
+        return runs
     }
 
     /// A loose (unbuilt) end: fade the last stretch of road toward grass and
@@ -110,9 +141,13 @@ enum EditorRenderer {
                 lineWidth: max(5, hw * 0.5), lineCap: .butt, dash: [dash, dash], dashPhase: dash))
     }
 
-    /// Stroke a set of placed pieces as a ribbon. The elevated deck is lighter
-    /// with a drop shadow so it reads as raised over the ground layer.
-    private static func strokeRibbon(
+    /// Stroke one continuous run of same-band pieces. BUTT caps: interior
+    /// joints within the run are flush (no half-circle overhang), and the
+    /// run's own ends are flat cuts — real loose ends get the construction
+    /// treatment on top; a run that meets another band (a ramp mouth) meets it
+    /// flush. Elevated runs (ramp + deck) carry a continuous light-blue
+    /// guardrail, so the wall runs unbroken ground→bridge→ground.
+    private static func strokeRun(
         _ placed: [PlacedPiece], w: Double, elevated: Bool, t: Transform,
         into context: inout GraphicsContext
     ) {
@@ -125,8 +160,7 @@ enum EditorRenderer {
                 for pt in pts.dropFirst() { path.addLine(to: pt) }
             }
         }
-        // The deck sits closer to the camera: wider than ground road, matching
-        // the ramp wedge's wider deck end (w/2 + 6 half → w + 12 full).
+        // The deck sits closer to the camera: wider than ground road.
         let roadW = elevated ? w + 12 : w
 
         if elevated {
@@ -134,114 +168,37 @@ enum EditorRenderer {
             shadow.translateBy(x: 6, y: 11)
             shadow.stroke(
                 path, with: .color(.black.opacity(0.32)),
-                style: StrokeStyle(lineWidth: roadW + 16, lineCap: .round, lineJoin: .round))
-        }
-
-        if elevated {
-            // Bridge: a raised deck with substantial light-blue GUARDRAILS —
-            // a dark backing so the rail edge reads, a bold blue rail, then the
-            // road inset, so the walls are unmistakable (can't fall off).
+                style: StrokeStyle(lineWidth: roadW + 16, lineCap: .butt, lineJoin: .round))
+            // Continuous light-blue guardrail: dark backing + bold blue rail.
             let wall = max(6, 16 * t.scale)
             context.stroke(
                 path, with: .color(.black.opacity(0.5)),
-                style: StrokeStyle(lineWidth: roadW + wall + 3, lineCap: .round, lineJoin: .round))
+                style: StrokeStyle(lineWidth: roadW + wall + 3, lineCap: .butt, lineJoin: .round))
             context.stroke(
                 path, with: .color(bridgeRail),
-                style: StrokeStyle(lineWidth: roadW + wall, lineCap: .round, lineJoin: .round))
+                style: StrokeStyle(lineWidth: roadW + wall, lineCap: .butt, lineJoin: .round))
             context.stroke(
                 path, with: .color(Color(white: 0.72)),
-                style: StrokeStyle(lineWidth: roadW, lineCap: .round, lineJoin: .round))
+                style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
             return
         }
 
-        // Ground road: striped red/white kerb, band + dash scaled to the world
-        // so zoom-out shrinks stripes evenly rather than leaving blobs.
+        // Ground road: striped red/white kerb, band + dash scaled to the world.
         let band = max(2, 12 * t.scale)
         let dash = max(3, 24 * t.scale)
         context.stroke(
             path, with: .color(kerbWhite),
-            style: StrokeStyle(lineWidth: roadW + band, lineCap: .round, lineJoin: .round))
+            style: StrokeStyle(lineWidth: roadW + band, lineCap: .butt, lineJoin: .round))
         context.stroke(
             path, with: .color(kerbRed),
             style: StrokeStyle(
                 lineWidth: roadW + band, lineCap: .butt, lineJoin: .round, dash: [dash, dash]))
         context.stroke(
             path, with: .color(asphalt),
-            style: StrokeStyle(lineWidth: roadW, lineCap: .round, lineJoin: .round))
+            style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
     }
 
-    /// A ramp piece drawn as a gradient slope wedge (ground → deck), with
-    /// white edges and drive-direction chevrons — the same visual language as
-    /// the game's ramps, so it reads as a climb/descent, not a floating pill.
-    private static func drawRampSlope(
-        _ placed: PlacedPiece, width: Double, w: Double, transform t: Transform,
-        into context: inout GraphicsContext
-    ) {
-        // Ramp is a straight: entry→exit. Up-ramp climbs entry(ground)→exit(deck);
-        // down-ramp descends entry(deck)→exit(ground).
-        let up = placed.piece.layerDelta > 0
-        let groundWorld = up ? placed.entry.position.vec2 : placed.exits[0].position.vec2
-        let deckWorld = up ? placed.exits[0].position.vec2 : placed.entry.position.vec2
-        let gScreen = t.screen(groundWorld)
-        let dScreen = t.screen(deckWorld)
-        let gv = Vec2(gScreen.x, gScreen.y)
-        let dv = Vec2(dScreen.x, dScreen.y)
-        let axis = dv - gv
-        let len = axis.length
-        guard len > 0.5 else { return }
-        let dir = Vec2(axis.x / len, axis.y / len)
-        let side = dir.perpendicular
-        // Deck end a touch wider, like the game's wedge.
-        let gHalf = side * (w / 2)
-        let dHalf = side * (w / 2 + 6)
-        func pt(_ v: Vec2) -> CGPoint { CGPoint(x: v.x, y: v.y) }
-
-        var wedge = Path()
-        wedge.move(to: pt(gv - gHalf))
-        wedge.addLine(to: pt(dv - dHalf))
-        wedge.addLine(to: pt(dv + dHalf))
-        wedge.addLine(to: pt(gv + gHalf))
-        wedge.closeSubpath()
-        context.fill(
-            wedge,
-            with: .linearGradient(
-                Gradient(colors: [asphalt, Color(white: 0.72)]),
-                startPoint: pt(gv), endPoint: pt(dv)))
-        for sign in [-1.0, 1.0] {
-            var edge = Path()
-            edge.move(to: pt(gv + gHalf * sign))
-            edge.addLine(to: pt(dv + dHalf * sign))
-            context.stroke(edge, with: .color(kerbWhite), lineWidth: max(2, 4 * t.scale))
-        }
-        // Chevrons up the slope, pointing the drive direction (piece order).
-        let drive = (placed.exits[0].position.vec2 - placed.entry.position.vec2).normalized
-        drawSlopeChevrons(
-            ground: gv, deck: dv, drive: drive, wing: side * (w * 0.28), into: &context)
-    }
-
-    private static func drawSlopeChevrons(
-        ground: Vec2, deck: Vec2, drive: Vec2, wing: Vec2, into context: inout GraphicsContext
-    ) {
-        let axis = deck - ground
-        let len = axis.length
-        guard len > 0 else { return }
-        let up = Vec2(axis.x / len, axis.y / len)
-        let driveScreen = Vec2(drive.x, drive.y)
-        for frac in [0.3, 0.55, 0.8] {
-            let base = ground + up * (len * frac) - driveScreen * 6
-            let tip = base + driveScreen * 12
-            var chev = Path()
-            chev.move(to: CGPoint(x: (base - wing).x, y: (base - wing).y))
-            chev.addLine(to: CGPoint(x: tip.x, y: tip.y))
-            chev.addLine(to: CGPoint(x: (base + wing).x, y: (base + wing).y))
-            context.stroke(
-                chev, with: .color(.white.opacity(0.6)),
-                style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-        }
-    }
-
-    /// Chevrons along a jump piece (flat road, launches) — a "this launches"
-    /// marker versus plain road.
+    /// Chevrons along a ramp/jump piece — a "this climbs / launches" marker.
     private static func drawRampChevrons(
         _ placed: PlacedPiece, width: Double, transform t: Transform,
         into context: inout GraphicsContext
