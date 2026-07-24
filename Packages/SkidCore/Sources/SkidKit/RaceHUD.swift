@@ -9,6 +9,10 @@ struct RaceHUD: View {
     let colors: [Color]
     @ObservedObject var rig: CouchRig
     let size: CGSize
+    /// The race has begun (ready gate cleared). Until then the countdown is
+    /// suppressed — the sim sits frozen at tick 0 (phase `.countdown`), which
+    /// would otherwise flash a "3" behind the Play button.
+    var started: Bool = true
 
     /// Debounced finishing position per car index (P1 = 1). Recomputed from
     /// `race.standings` each tick, but a change is only shown after it has
@@ -69,6 +73,7 @@ struct RaceHUD: View {
 
     @ViewBuilder private var countdown: some View {
         let label: Text? = {
+            guard started else { return nil }  // not until the ready gate clears
             if case .countdown(let remaining) = race.phase {
                 return Text(verbatim: "\((remaining + Race.tickRate - 1) / Race.tickRate)")
             }
