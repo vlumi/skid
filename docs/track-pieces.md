@@ -29,8 +29,9 @@ the walk's final pose equals its starting pose exactly.
 - **Headings quantize to 8 directions** (45° steps), stored as an integer
   0–7. Diagonals are first-class, not grid-cell approximations.
 - **Width is one global constant in v1** (120 units — the shipped tracks use
-  110–130), so all ports mate trivially. Per-track width can arrive later as
-  an encoding section without changing the model.
+  110–130), so all ports mate trivially. The decided evolution ("Road width —
+  grip vs. visual" below): per-port grip widths with legal sharp steps at
+  seams — ports still mate on pose alone, so it never changes the walk.
 - The walk direction **is** the driving direction.
 
 ### Exact coordinates — why and how
@@ -60,6 +61,73 @@ one anchor edit, everything follows — which matters once decorations are
 placed around the track. The **canvas is a fixed constant of the format
 version** (the content-convention track size), so a shared code lands
 exactly where its author put it.
+
+### The unit system — sizes that always mesh *(settled 2026-07-24)*
+
+Every length and radius in the catalog is an integer multiple of one **base
+unit U = the road width = 120**. Integer dimensions are automatically exact
+on the `(a + b·√2)/2` lattice, so the unit system is purely about *meshing*:
+whatever the author builds, mismatches are whole units, never stray
+fractions.
+
+- **Straights: 120 / 240 / 480** — a doubling family.
+- **Curve radii (to road center): tight 120 · medium 240 · sweep 480** — the
+  same 1:2:4 doubling. The tight curve's inner edge sweeps at 60: a real
+  arc, not a pivot point. Each radius gets 45° and 90° pieces (L/R);
+  180° hairpins for tight and medium.
+- **Ramps, start grid, jump: 240.** Crossable straights: **120** (90°
+  crossings) and **240** (any angle). Fork branches: radius 240.
+
+Radii measure to the **centerline**; the ribbon's ±60 hangs outside it
+everywhere — a full tight circle spans 360 = 3U outer, and a U-turn's outer
+span is `2r + W`, always an odd multiple of U. Footprints stay U-quantized
+because W = U.
+
+**What the grid guarantees.** In the axis-aligned world (straights, 90°s,
+hairpins, jogs) every port lands on a U-grid: two loose ends that should
+meet are off by whole-U steps, always fixable with straights and detours.
+Diagonals extend the same guarantee in a second currency: every reachable
+position is `(a + b√2)/2` with *both* components in whole U — a gap is
+always "j U axis + k U diagonal", never a hair. The catch: axis straights
+only repay the rational part; **√2-debt is repaid only by diagonal travel**.
+The pairing rules that keep a build solvent:
+
+- two same-radius 45s in succession = a 90 (debt-free);
+- an S-chicane closes against its mirror S;
+- a diagonal run closes against an equal run on the opposite diagonal.
+
+Symmetric layouts do this bookkeeping automatically — the classic
+**figure-8 with diagonal roads** (two mirrored lobes crossing at 90° on
+diagonal headings) composes and closes exactly. The editor enforces
+exactness at mate time regardless (integer equality); the planned **gap
+readout** on a selected loose end reports the two components separately —
+"2U east + 1U NE" — so the author sees what kind of fix a gap needs before
+hunting for it.
+
+**Bridging the radii.** Two S families fall out of the system:
+
+- **S-chicane** (45L+45R as one piece, per radius): lateral shift
+  `r(2−√2)` ≈ 70 / 141 / 281 — the flow piece; off-grid, pairs to close.
+- **Lane jog** (90+90 compound, arcs `r_a` + `r_b`): lateral shift = advance
+  = `r_a + r_b` — fully grid-clean. A 2×tight jog (240) re-lines a sweep
+  corner as a medium; a tight+medium jog (360) re-lines a sweep as a tight.
+  The one hole — a 120 jog (medium↔tight) — has **no** clean single piece
+  (it would need r = 60 arcs, below the tight minimum) and is absorbed with
+  a detour instead; deliberate, not an oversight.
+
+### Road width — grip vs. visual *(decided; lands after the size pass)*
+
+Width splits into two properties. **Grip width** is the asphalt the car
+grips — physics, collision, and what the elevation factor scales. It is
+**per-port** (entry/exit), equal on every v1 piece (120). A future taper
+piece may carry entry ≠ exit (width lerps along the piece, exactly like
+height across a ramp), but tapers are optional sugar: **sharp width steps at
+a seam are legal** — ports mate on pose alone, and the surface test takes
+the wider ribbon at a joint so there is never a grip gap. **Visual width**
+adds the kerb band *outboard* of the grip edge: the kerb is paint, not
+surface — it never eats asphalt, counts as asphalt if touched (no slowdown,
+no barrier), and grass begins only past it. Deck guard rails are the
+opposite: real barriers, never decals.
 
 ### The editing model — one chain, geometry always derived
 
@@ -94,14 +162,25 @@ The editor should *preview* a pending mid-chain edit (ghost the swung tail
 before committing) so the pivot never surprises — a UI nicety, not a model
 concern. Undo/redo is trivially a list-operation history.
 
-### Layers, ramps, bridges
+### Height, ramps, bridges
 
-Pieces don't carry an absolute layer. The walk tracks a **current layer**
-(0 or 1): a *ramp-up* piece raises it, a *ramp-down* lowers it, and every
-ordinary piece in between simply *is* elevated. Closure requires the layer to
-return to 0. Same-layer overlap is invalid; **different-layer overlap is what
-makes a bridge** — that's the whole Overpass trick, and it falls out of the
-model for free.
+Pieces don't carry an absolute elevation. Elevation is one continuous
+**height** scalar (0 = ground, 1 = deck): a ramp piece carries a height
+delta (±1), the walk threads entry/exit heights through the chain, and
+height rises across a ramp with **smoothstep** easing. There is no stored
+integer layer — where the runtime needs one it is *derived* from height.
+Closure requires height 0 back at the start line. Same-height overlap is
+invalid; **different-height overlap is what makes a bridge** — the whole
+Overpass trick falls out of the model for free.
+
+Everything visual is `f(height)` — road width, car scale, ramp wedge,
+shadow, z-order — through one live-tunable factor (`Elevation.deckScale`,
+slider in Tuning; default 1.2). **True geometry never scales with height**:
+centerline radii, lengths, and port poses are identical on deck and ground —
+the deck widening is pure rendering — which is exactly what keeps deck and
+ground pieces mating on the same lattice. The same primitive extends to
+jumps (height rises and falls with nothing beneath) and, someday, the
+vertical loop.
 
 ### Beyond the ring — forks, crossings, jumps
 
@@ -160,6 +239,12 @@ grows into it:
 One byte per piece id; the id space is an **append-only registry** — ids are
 never renumbered or reused, so old share-codes keep decoding forever. New
 pieces (and whole new families) are added by appending ids.
+
+> The table below is the **shipped v1 code**. The next catalog pass
+> renumbers every dimension onto the unit system above (straights
+> 120/240/480, radii 120/240/480, ramps/start/jump 240, crossings 120/240)
+> and adds the S-chicane, lane-jog, and medium-hairpin pieces — ids
+> reshuffle freely until the format's first public release.
 
 | id | piece | notes |
 |---:|---|---|
@@ -347,48 +432,16 @@ tightens. Not needed at current sizes.
 
 ## Open until wired up
 
-- **CONTINUOUS HEIGHT replaces integer layer (user 2026-07-24) — being built.**
-  Elevation is one continuous scalar `height` (0 = ground, 1 = deck), rising
-  across ramps with **smoothstep** easing; there is NO separate integer layer —
-  collision/overlap is derived (two spans collide only if their heights are
-  close; a bridge crossing is fine because heights differ). Everything visual
-  is `f(height)`: **road width**, **car scale**, wedge shape, shadow, z-order —
-  so the ramp widening + smooth car growth fall out of one formula instead of
-  special-casing. The height→scale factor is a LIVE-TUNABLE dial (default 1.2,
-  slider in Tuning, no code change to retune). This same primitive also solves
-  **jumps** (height rises then falls with nothing beneath — arc + air scale
-  from f(height)) and makes the **vertical loop** (roadmap) tractable. Layer-
-  delta on pieces becomes a height delta; the walk yields per-piece entry/exit
-  height + height(atFraction). Touches piece model, walk, validator, compiler,
-  both renderers.
-- **CATALOG COMMENSURABILITY — the big one (device 2026-07-24).** The v1
-  numbers don't compose lego-style across combinations: pieces should snap
-  together in *many* arrangements and close, but curve extents (tight r60 →
-  60 fwd + 60 lateral; sweep r160 → 160+160) share no common grid with the
-  straights (150/300/600), so "a straight + N shallow curves + a straight"
-  fails to realign, and even two ramps (2×300) don't tile with a 600 straight
-  as expected. Fix in the catalog pass: pick a **single grid unit** and make
-  every piece's forward AND lateral footprint an integer multiple of it —
-  straights = k·unit, and curve radii chosen so a 90° arc's fwd/lateral extent
-  is also k·unit (e.g. unit 150: radius 150 → 90° spans 150+150; a "shallow"
-  45° needs its endpoint offset to land on the grid too). Ramps/jumps must
-  share the same forward unit. This is the make-or-break for the whole
-  snap-together promise — do it deliberately, with the exact geometry, before
-  more content is authored.
-- The exact catalog numbers (lengths, radii, width) — tune on device once
-  the editor renders them. Known: the v1 **tight radius (60) == half the
-  width (120)**, so a tight curve's inner edge collapses to a pivot point
-  rather than a real arc — bump it (≈80–100) once the editor makes it visible
-  (and fold into the commensurability grid above).
-- **Curve edge styling as a decal** (see ROADMAP "per-edge road styling"):
-  the red/white striped kerb on a curve's *outer* edge vs. plain white on
-  straights/inners is renderer styling keyed off piece kind + curve side —
-  a decal-style variant, not new geometry.
+- **The catalog pass implementing the unit system** — renumber every
+  dimension (see "The unit system"), add S-chicanes, lane jogs, and the
+  medium hairpin, verify the 2×2 start grid still fits the 240 start piece,
+  and add the editor **gap readout** (report a loose end's offset to the
+  closure target as U-axis + U-diagonal components).
+- **The width pass** (after sizes; see "Road width — grip vs. visual"):
+  per-port grip widths, outboard kerb band, per-edge kerb styling (red/white
+  on curve outers vs. plain white on straights — renderer styling keyed off
+  piece kind + side, a decal, not geometry).
 - The **canvas constant** (ties to the ~1.2:1 taller-aspect convention;
   likely ~1600×1333) — fixed per format version once chosen.
-- Whether 90°/180° convenience pieces earn their ids or compose from 45s.
-- **S-curves wanted early** (user): add S-left / S-right ids (a curve one way
-  then back to the original heading, net lateral offset) in the next catalog
-  pass — common enough to deserve single pieces rather than hand-chaining.
 - Gate-span shape at seams on tight curves (cross-section may need a nudge).
 - Built-ins: migrate vs. stay free-form — after the rebuild experiment.
