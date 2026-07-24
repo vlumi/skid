@@ -253,16 +253,16 @@ struct ResultsCard: View {
                             .font(.title3.monospacedDigit())
                     }
                     if let best = car.progress.bestLapTicks {
-                        // The overall fastest lap of the race gets a gold star
-                        // and full weight; everyone else's best is muted.
+                        // The race's overall fastest lap gets a gold star; the
+                        // star sits in a fixed slot (invisible on other rows)
+                        // so every "Best" lines up, and the time weight stays
+                        // uniform — the star alone marks the winner.
                         HStack(spacing: 4) {
-                            if ownsFastest {
-                                Image(systemName: "star.fill").font(.caption2)
-                            }
+                            Image(systemName: "star.fill")
+                                .font(.caption2)
+                                .opacity(ownsFastest ? 1 : 0)
                             Text("Best \(formatTicks(best))", bundle: .module)
-                                .font(
-                                    .footnote.monospacedDigit()
-                                        .weight(ownsFastest ? .bold : .regular))
+                                .font(.footnote.monospacedDigit())
                         }
                         .foregroundStyle(ownsFastest ? Color.yellow : .white)
                         .opacity(ownsFastest ? 1 : 0.75)
