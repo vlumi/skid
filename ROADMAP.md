@@ -29,13 +29,14 @@ editor with a small piece catalog is the answer, and its data becomes the
 sharing format. Design settled — see [docs/track-pieces.md](docs/track-pieces.md);
 approach:
 
-- [ ] **Piece model, headless first.** A track is an ordered ring of
-      quantized catalog pieces (straight/curve{45,90}/bridge/ramp…), snapped
-      **port-to-port** ("magnet", no real grid — a grid at most a cosmetic
-      guide). Validity = every port mated + the loop closes; loose ends =
-      unsaveable. Compiles to the runtime `Track`. Build + test as pure
-      logic before any UI, **alongside** the free-form `TrackDesign` path
-      (don't entangle it).
+- [ ] **Piece model, headless first.** A track is a port-graph of quantized
+      catalog pieces (straights/curves/ramps/crossings/forks/jumps), snapped
+      **port-to-port** ("magnet", no real grid) and stored as a flat piece
+      list. Validity = every port mated; loose ends = unsaveable. Compiles to
+      the runtime `Track` — rings + crossings + jumps first (Phase A);
+      **forked routes need engine work** (multi-route `Track`, AI branch
+      choice) and compile in Phase B. Build + test as pure logic before any
+      UI, **alongside** the free-form `TrackDesign` path (don't entangle it).
 - [ ] **Phone-first editor UI** on top: tap-a-piece, tap-a-port, thumb-
       reachable palette, one-handed pan/zoom, no precision gestures. Must be
       genuinely usable on a phone, not a big-screen-only afterthought (iPad
