@@ -81,6 +81,22 @@ struct EditorView: View {
         return walk.openEnds[i].heading
     }
 
+    /// The height a newly-appended piece will enter at — the selected loose
+    /// end's exit height — so the palette icons preview the elevated look
+    /// (deck grey + blue rail) when building on the deck. The walk doesn't
+    /// carry heights on `openEnds`, so match the end pose back to the placed
+    /// piece whose exit it is.
+    private func appendHeight(_ walk: WalkResult) -> Double {
+        guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
+            return 0
+        }
+        let end = walk.openEnds[i]
+        for placed in walk.placed where placed.exits.contains(end) {
+            return placed.exitHeight
+        }
+        return 0
+    }
+
     // MARK: - Bars
 
     private var topBar: some View {
@@ -132,13 +148,16 @@ struct EditorView: View {
                                     game.editorAppend(item.id)
                                 }
                             } label: {
-                                PieceIcon(id: item.id, entryHeading: appendHeading(walk))
-                                    .frame(width: 56, height: 56)
-                                    .background(
-                                        .black.opacity(0.3),
-                                        in: RoundedRectangle(cornerRadius: 12)
-                                    )
-                                    .accessibilityLabel(Text(item.label, bundle: .module))
+                                PieceIcon(
+                                    id: item.id, entryHeading: appendHeading(walk),
+                                    entryHeight: appendHeight(walk)
+                                )
+                                .frame(width: 56, height: 56)
+                                .background(
+                                    .black.opacity(0.3),
+                                    in: RoundedRectangle(cornerRadius: 12)
+                                )
+                                .accessibilityLabel(Text(item.label, bundle: .module))
                             }
                         }
                     }
@@ -234,6 +253,9 @@ private struct PieceIcon: View {
     /// The heading the piece will enter at (the selected loose end) — the icon
     /// rotates to match, previewing exactly how the piece will land.
     var entryHeading: Heading = .east
+    /// The height the piece will enter at — so an icon previews the elevated
+    /// (deck) look when building on the bridge, matching what you'll get.
+    var entryHeight: Double = 0
 
     var body: some View {
         Canvas { context, size in
@@ -258,7 +280,7 @@ private struct PieceIcon: View {
         let entry = PiecePose(position: .zero, heading: entryHeading)
         let placed = PlacedPiece(
             id: id, piece: piece, entry: entry,
-            exits: piece.paths.map { $0.exit(from: entry) }, entryHeight: 0, entrySeam: 0)
+            exits: piece.paths.map { $0.exit(from: entry) }, entryHeight: entryHeight, entrySeam: 0)
         let pts = placed.piece.paths.indices.flatMap { placed.centerlineSamples(path: $0) }
         guard pts.count >= 2 else { return }
         // Shared reference scale so a tight curve reads tighter than a sweeper;
@@ -282,7 +304,8 @@ private struct PieceIcon: View {
         // a mini version of what the piece draws on the canvas, so the icon
         // matches the actual piece. Elevated (ramp) uses the blue rail.
         let roadW: CGFloat = 13
-        let elevated = placed.piece.heightDelta != 0
+        // Elevated look for ramps AND for flat pieces laid on the deck.
+        let elevated = placed.piece.heightDelta != 0 || placed.exitHeight > 0.5
         if elevated {
             context.stroke(
                 path, with: .color(Color(red: 0.55, green: 0.78, blue: 0.95)),
