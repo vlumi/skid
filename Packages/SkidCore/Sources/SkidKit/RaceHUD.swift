@@ -110,62 +110,90 @@ struct RaceHUD: View {
             // Placed within the CONTENT rect (inside the safe area), never the
             // full box — so the chip clears the notch / home indicator.
             let zone = controls.content
-            // Map-side edge: the band's bottom for a flipped (top) band, its
-            // top for a near (bottom) band — both the edge nearest the map.
-            let x = zone.midX
-            let y = flipped ? zone.maxY - 18 : zone.minY + 18
-            let content = VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(index < colors.count ? colors[index] : .white)
-                        .frame(width: 11, height: 11)
-                    if let laps = race.config.laps {
-                        chipLine(car: car, index: index, laps: laps)
-                    } else {
-                        // Time trial: current lap clock + best (was the solo block).
-                        HStack(spacing: 6) { timeTrialLines(car: car) }
-                    }
-                }
-                // On finish, the player's splits, so it's unmistakable they're
-                // done — and how each lap went.
-                if car.progress.finishedAt != nil, !car.progress.lapTimes.isEmpty {
-                    finishSplits(car: car)
-                }
-            }
+            let finished = car.progress.finishedAt != nil && race.config.laps != nil
+            let content =
+                finished
+                ? AnyView(finishCard(car: car, index: index))
+                : AnyView(racingChip(car: car, index: index))
+            // While racing the chip hugs the map-side edge (thumb rests
+            // mid/outer band, so keep status near the track). On finish it
+            // moves to the band's centre and becomes a proper card — plenty of
+            // room now that the race is over.
+            let y =
+                finished
+                ? zone.midY
+                : (flipped ? zone.maxY - 18 : zone.minY + 18)
             content
                 .foregroundStyle(.white)
                 .shadow(radius: 2)
                 .rotationEffect(flipped ? .degrees(180) : .zero)
-                .position(x: x, y: y)
+                .position(x: zone.midX, y: y)
         }
     }
 
-    @ViewBuilder private func chipLine(car: Car, index: Int, laps: Int) -> some View {
-        HStack(spacing: 5) {
-            if let place = shownPlace[index] {
-                Text(verbatim: "P\(place)")
-                    .font(.subheadline.monospacedDigit().bold())
-            }
-            if let finished = car.progress.finishedAt {
-                Text(verbatim: formatTicks(finished - race.config.countdownTicks))
-                    .font(.subheadline.monospacedDigit().bold())
-            } else {
-                Text("Lap \(min(car.progress.lap + 1, laps))/\(laps)", bundle: .module)
-                    .font(.subheadline.monospacedDigit())
-            }
-        }
-    }
-
-    /// The player's lap splits, shown in the band once they've finished — the
-    /// clear "you're done, here's how it went" state.
-    @ViewBuilder private func finishSplits(car: Car) -> some View {
+    /// The compact in-race chip: colour dot, live position, lap counter.
+    @ViewBuilder private func racingChip(car: Car, index: Int) -> some View {
         HStack(spacing: 6) {
+            Circle()
+                .fill(index < colors.count ? colors[index] : .white)
+                .frame(width: 11, height: 11)
+            if let laps = race.config.laps {
+                HStack(spacing: 5) {
+                    if let place = shownPlace[index] {
+                        Text(verbatim: "P\(place)")
+                            .font(.subheadline.monospacedDigit().bold())
+                    }
+                    Text("Lap \(min(car.progress.lap + 1, laps))/\(laps)", bundle: .module)
+                        .font(.subheadline.monospacedDigit())
+                }
+            } else {
+                // Time trial: current lap clock + best (was the solo block).
+                HStack(spacing: 6) { timeTrialLines(car: car) }
+            }
+        }
+    }
+
+    /// The finish state, centred in the band: a bold final position and total
+    /// time, splits laid out below with room to breathe — an unmistakable
+    /// "you're done, here's how it went".
+    @ViewBuilder private func finishCard(car: Car, index: Int) -> some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(index < colors.count ? colors[index] : .white)
+                    .frame(width: 16, height: 16)
+                if let place = shownPlace[index] {
+                    Text(verbatim: "P\(place)")
+                        .font(.system(size: 34, weight: .black, design: .rounded))
+                        .monospacedDigit()
+                }
+                if let finished = car.progress.finishedAt {
+                    Text(verbatim: formatTicks(finished - race.config.countdownTicks))
+                        .font(.title2.monospacedDigit().bold())
+                }
+            }
+            if !car.progress.lapTimes.isEmpty {
+                finishSplits(car: car)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// The player's lap splits, laid out as a labelled row so each lap reads
+    /// cleanly with space between them; the best lap stands out.
+    @ViewBuilder private func finishSplits(car: Car) -> some View {
+        HStack(alignment: .top, spacing: 16) {
             ForEach(Array(car.progress.lapTimes.enumerated()), id: \.offset) { lap, ticks in
-                Text(verbatim: formatTicks(ticks))
-                    .font(.caption2.monospacedDigit())
-                    .opacity(ticks == car.progress.bestLapTicks ? 1 : 0.7)
-                if lap < car.progress.lapTimes.count - 1 {
-                    Text(verbatim: "·").font(.caption2).opacity(0.4)
+                let isBest = ticks == car.progress.bestLapTicks
+                VStack(spacing: 1) {
+                    Text("Lap \(lap + 1)", bundle: .module)
+                        .font(.caption2)
+                        .opacity(0.55)
+                    Text(verbatim: formatTicks(ticks))
+                        .font(.footnote.monospacedDigit().weight(isBest ? .bold : .regular))
+                        .opacity(isBest ? 1 : 0.85)
                 }
             }
         }
