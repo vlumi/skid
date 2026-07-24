@@ -154,10 +154,13 @@ extension TrackRenderer {
         // would vanish. Background-independent, and carries onto map themes.
         let body = CGRect(x: -length / 2, y: -width / 4, width: length, height: width / 2)
         let bodyPath = Path(roundedRect: body, cornerRadius: width / 4)
-        // The glow: the dark rim drawn into a layer with a white shadow filter,
-        // so a soft light aura bleeds out around the whole silhouette.
+        // The glow: the dark rim drawn into a layer with TWO stacked white
+        // shadow filters, so a soft light aura bleeds out around the whole
+        // silhouette. Stacking compounds the light so it stays visible even at
+        // the tiny on-device car size (a single pass all but vanished).
         car2D.drawLayer { glow in
-            glow.addFilter(.shadow(color: .white.opacity(0.6), radius: 3))
+            glow.addFilter(.shadow(color: .white.opacity(0.9), radius: 4))
+            glow.addFilter(.shadow(color: .white.opacity(0.9), radius: 4))
             glow.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
         }
         car2D.fill(bodyPath, with: .color(color))
