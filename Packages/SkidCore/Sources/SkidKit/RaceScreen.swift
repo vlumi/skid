@@ -63,7 +63,9 @@ struct RaceScreen: View {
                         }
                     }
                     InputSurface(rig: rig)
-                    RaceHUD(race: race, colors: colors, rig: rig, size: fullSize)
+                    RaceHUD(
+                        race: race, colors: colors, rig: rig, size: fullSize,
+                        started: session.started)
 
                     // The map centre is meta-control space (no car races there,
                     // and map-area touches are otherwise inert). A tap on it
