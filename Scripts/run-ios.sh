@@ -79,8 +79,14 @@ xcodebuild -project Skid.xcodeproj -scheme Skid-iOS \
     exit 1
 }
 
-app="$derived/Build/Products/Debug-iphonesimulator/Skid.app"
-[ -d "$app" ] || { echo "error: built app not found at $app" >&2; exit 1; }
+# Find the built .app by glob rather than a hardcoded name — the product name
+# is "Skid Jam" (PRODUCT_NAME), and this survives future renames.
+products="$derived/Build/Products/Debug-iphonesimulator"
+app="$(find "$products" -maxdepth 1 -name '*.app' -print -quit 2>/dev/null)"
+[ -n "$app" ] && [ -d "$app" ] || {
+    echo "error: no built .app found in $products" >&2
+    exit 1
+}
 
 echo "Installing and launching $bundle_id"
 xcrun simctl install "$udid" "$app"
