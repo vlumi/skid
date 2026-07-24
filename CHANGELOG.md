@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Pro's pad stays put.** The direct steer/throttle pad now anchors where
+  your thumb first lands instead of trailing it — so gas / brake / left /
+  right keep fixed spots. Holding the gas no longer creeps the pad up the
+  screen. (The Casual aim stick still trails your thumb, which suits
+  constant re-aiming.)
+
 ### build 5 — 2026-07-23
 
 - **The grid's shuffled every race.** Who starts on pole is random now, so
