@@ -145,7 +145,7 @@ struct RaceHUD: View {
             if let laps = race.config.laps {
                 HStack(spacing: 5) {
                     if let place = shownPlace[index] {
-                        Text(verbatim: "P\(place)")
+                        Text(verbatim: ordinal(place))
                             .font(.subheadline.monospacedDigit().bold())
                     }
                     Text("Lap \(min(car.progress.lap + 1, laps))/\(laps)", bundle: .module)
@@ -169,7 +169,7 @@ struct RaceHUD: View {
                     .fill(index < colors.count ? colors[index] : .white)
                     .frame(width: 16, height: 16)
                 if let place = shownPlace[index] {
-                    Text(verbatim: "P\(place)")
+                    Text(verbatim: ordinal(place))
                         .font(.system(size: 34, weight: .black, design: .rounded))
                         .monospacedDigit()
                 }

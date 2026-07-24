@@ -223,7 +223,7 @@ struct SetupView: View {
                             game.schemes[slot] == .casual ? "Casual" : "Pro", bundle: .module
                         )
                         .font(.caption2.bold())
-                        .padding(.horizontal, 10)
+                        .frame(width: 64)  // fixed, so toggling doesn't shift the column
                         .padding(.vertical, 5)
                         .background(.black.opacity(0.25), in: Capsule())
                         .foregroundStyle(.white)
