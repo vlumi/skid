@@ -26,6 +26,9 @@ ships (see [AGENTS.md](AGENTS.md)).
   right keep fixed spots. Holding the gas no longer creeps the pad up the
   screen. (The Casual aim stick still trails your thumb, which suits
   constant re-aiming.)
+
+### build 5 — 2026-07-23
+
 - **The grid's shuffled every race.** Who starts on pole is random now, so
   no one's stuck with the same start over and over. Still fully
   deterministic under the hood (replays and ghosts are unaffected).
