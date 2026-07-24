@@ -119,26 +119,26 @@ extension TrackRenderer {
 
         let length = CarGeometry.length
         let width = CarGeometry.width
-        // A bold heading arrow floating WELL AHEAD of the car (not glued to
-        // the nose — the car's a tiny dot at full-track zoom, so a nose mark
-        // is invisible). It sits out in the open road ahead, in the car's
-        // colour, with a thin stem tying it back: reads the facing direction
-        // at a glance even mid-flip, where nose ≠ travel. Distinct from the
-        // round gate dots. Skipped for the translucent PB ghost.
+        // A headlight cone projected AHEAD of the nose, in the car's tint:
+        // a soft fan that fades out, reading the facing direction at a glance
+        // (even mid-flip, where nose ≠ travel) without shouting like the old
+        // bold arrow. Skipped for the translucent PB ghost.
         if opacity > 0.5 {
-            let stemStart = length / 2 + 6
-            let arrowBase = stemStart + 30
-            let arrowTip = arrowBase + 20
-            var stem = Path()
-            stem.move(to: CGPoint(x: stemStart, y: 0))
-            stem.addLine(to: CGPoint(x: arrowBase, y: 0))
-            car2D.stroke(stem, with: .color(color.opacity(0.9)), lineWidth: 4)
-            var head = Path()
-            head.move(to: CGPoint(x: arrowTip, y: 0))
-            head.addLine(to: CGPoint(x: arrowBase, y: -11))
-            head.addLine(to: CGPoint(x: arrowBase, y: 11))
-            head.closeSubpath()
-            car2D.fill(head, with: .color(color.opacity(0.9)))
+            let mouth = length / 2 + 2  // just off the nose
+            let reach = mouth + 46  // how far the beam throws
+            let spread = 20.0  // half-width of the beam at its far end
+            var cone = Path()
+            cone.move(to: CGPoint(x: mouth, y: -3))
+            cone.addLine(to: CGPoint(x: reach, y: -spread))
+            cone.addLine(to: CGPoint(x: reach, y: spread))
+            cone.addLine(to: CGPoint(x: mouth, y: 3))
+            cone.closeSubpath()
+            // Fade along the throw so it glows from the nose and dissolves.
+            car2D.fill(
+                cone,
+                with: .linearGradient(
+                    Gradient(colors: [color.opacity(0.55), color.opacity(0)]),
+                    startPoint: CGPoint(x: mouth, y: 0), endPoint: CGPoint(x: reach, y: 0)))
         }
         // Tires first, so the body sits on top; open-wheel means they stick
         // out past the body sides.
@@ -146,9 +146,17 @@ extension TrackRenderer {
             let tire = CGRect(x: offset.x - 4.5, y: offset.y - 3, width: 9, height: 6)
             car2D.fill(Path(roundedRect: tire, cornerRadius: 2), with: .color(rubber))
         }
-        // Narrow open-wheeler body: a capsule nose-to-tail.
+        // Narrow open-wheeler body: a capsule nose-to-tail. A soft dark halo
+        // sits under it and a thin dark rim around it so the car reads on ANY
+        // surface — grey asphalt, green grass, and the map themes to come —
+        // where no fixed tint (yellow especially) could contrast on its own.
         let body = CGRect(x: -length / 2, y: -width / 4, width: length, height: width / 2)
-        car2D.fill(Path(roundedRect: body, cornerRadius: width / 4), with: .color(color))
+        let bodyPath = Path(roundedRect: body, cornerRadius: width / 4)
+        let halo = Path(
+            roundedRect: body.insetBy(dx: -2.5, dy: -2.5), cornerRadius: width / 4 + 2.5)
+        car2D.fill(halo, with: .color(.black.opacity(0.28)))
+        car2D.fill(bodyPath, with: .color(color))
+        car2D.stroke(bodyPath, with: .color(.black.opacity(0.55)), lineWidth: 1.5)
         // Cockpit dot behind the midpoint.
         let cockpit = CGRect(x: -4, y: -3.2, width: 6.4, height: 6.4)
         car2D.fill(Path(ellipseIn: cockpit), with: .color(.black.opacity(0.65)))
