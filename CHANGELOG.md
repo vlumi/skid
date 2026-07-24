@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Everyone ready? Tap to go.** A race now opens frozen with a Play button
+  on the map — get all your thumbs in place, then tap the map to start the
+  countdown. No more scrambling because the race began before you were set.
+- **Tap the map to pause.** The pause button is gone; once the race is
+  running, a tap on the map opens the pause menu (the same map tap you used
+  to start). The track stays clear of any button, on every seating.
 - **Your position, right in your chip.** Each player's chip now shows their
   live race position (P1, P2, …) next to the lap counter, so you always know
   where you stand without a shared scoreboard. It settles briefly before

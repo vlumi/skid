@@ -146,6 +146,11 @@ indirection from the couch redesign keeps them localized.
 - [ ] Cross-device play (iPhone/iPad/Mac in one room), no server
 - [ ] Local network privacy strings + Bonjour service declarations
 - [ ] Stretch: scale beyond 4 players (lockstep makes it reachable)
+- [ ] **Decide pause semantics for networked play.** The couch map-tap pause
+      freezes one device; under lockstep that's a whole different problem
+      (whose tap freezes everyone? re-sync on resume?). Likely: no free pause
+      in a networked race (or a vote/host-only pause). Decide here, not in the
+      couch code.
 
 ## v1.0.0 — The store release
 
