@@ -44,7 +44,13 @@ enum EditorRenderer {
         for run in bands where run.elevated {
             strokeRun(run.pieces, w: w, elevated: true, t: t, into: &context)
         }
-        // Slope chevrons on ramp pieces (drawn over the elevated ribbon).
+        // Ramp pieces get a gradient shade (dark at the ground end → light at
+        // the deck end) over the deck-coloured road, so a ramp reads as a
+        // SLOPE distinct from the flat bridge — while the run's blue rail stays
+        // continuous. Plus climb/launch chevrons.
+        for placed in walk.placed where placed.piece.layerDelta != 0 {
+            shadeRampSlope(placed, w: w, transform: t, into: &context)
+        }
         for placed in walk.placed where placed.piece.layerDelta != 0 || placed.piece.launches {
             drawRampChevrons(placed, width: width, transform: t, into: &context)
         }
@@ -151,14 +157,20 @@ enum EditorRenderer {
         _ placed: [PlacedPiece], w: Double, elevated: Bool, t: Transform,
         into context: inout GraphicsContext
     ) {
+        // ONE connected polyline for the whole run — consecutive pieces share
+        // an endpoint, so we only `move` to the very first point and line
+        // through the rest. (Per-piece `move` would break the path into
+        // subpaths that butt caps leave GAPS between at each joint.)
         var path = Path()
+        var started = false
         for p in placed {
-            for k in p.piece.paths.indices {
-                let pts = p.centerlineSamples(path: k).map { t.screen($0) }
-                guard let first = pts.first else { continue }
-                path.move(to: first)
-                for pt in pts.dropFirst() { path.addLine(to: pt) }
+            let pts = p.centerlineSamples().map { t.screen($0) }
+            guard !pts.isEmpty else { continue }
+            if !started {
+                path.move(to: pts[0])
+                started = true
             }
+            for pt in pts.dropFirst() { path.addLine(to: pt) }
         }
         // The deck sits closer to the camera: wider than ground road.
         let roadW = elevated ? w + 12 : w
@@ -196,6 +208,35 @@ enum EditorRenderer {
         context.stroke(
             path, with: .color(asphalt),
             style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
+    }
+
+    /// A gradient shade over a ramp piece's road area — dark at the ground
+    /// end, light at the deck end — so the slope reads as a climb/descent
+    /// against the flat deck. Fills just the road width (inside the rails).
+    private static func shadeRampSlope(
+        _ placed: PlacedPiece, w: Double, transform t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        let up = placed.piece.layerDelta > 0
+        let groundW = up ? placed.entry.position.vec2 : placed.exits[0].position.vec2
+        let deckW = up ? placed.exits[0].position.vec2 : placed.entry.position.vec2
+        let g = Vec2(t.screen(groundW).x, t.screen(groundW).y)
+        let d = Vec2(t.screen(deckW).x, t.screen(deckW).y)
+        let axis = d - g
+        guard axis.length > 0.5 else { return }
+        let side = axis.normalized.perpendicular * ((w + 12) / 2)
+        func pt(_ v: Vec2) -> CGPoint { CGPoint(x: v.x, y: v.y) }
+        var quad = Path()
+        quad.move(to: pt(g - side))
+        quad.addLine(to: pt(d - side))
+        quad.addLine(to: pt(d + side))
+        quad.addLine(to: pt(g + side))
+        quad.closeSubpath()
+        context.fill(
+            quad,
+            with: .linearGradient(
+                Gradient(colors: [.black.opacity(0.28), .white.opacity(0.22)]),
+                startPoint: pt(g), endPoint: pt(d)))
     }
 
     /// Chevrons along a ramp/jump piece — a "this climbs / launches" marker.
