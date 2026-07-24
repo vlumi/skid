@@ -21,7 +21,7 @@ targets:
     info:
       path: Sources/iOS/Info.plist
       properties:
-        CFBundleDisplayName: Skid
+        CFBundleDisplayName: Skid Jam
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # No encryption → declare it so every TestFlight/App Store upload skips
@@ -42,8 +42,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fi.misaki.skid
         # User-visible app/bundle name; without this it'd be the target name
-        # "Skid-iOS".
-        PRODUCT_NAME: Skid
+        # "Skid-iOS". The Xcode project + targets keep the short "Skid" name;
+        # only the product the player sees is "Skid Jam".
+        PRODUCT_NAME: Skid Jam
         MARKETING_VERSION: "0.5.0"
         CURRENT_PROJECT_VERSION: "5"
         GENERATE_INFOPLIST_FILE: NO

@@ -1,12 +1,12 @@
-# Skid
+# Skid Jam
 
 A top-down, drift-happy local-multiplayer racing game for Apple platforms — a
 modern heir to the keyboard-era couch racers of the DOS days, rebuilt around
 controls that actually work on a phone.
 
-> **Status: prototyping.** "Skid" is a working repo name; the App Store name
-> will be chosen (and researched) later. The first goal is only to find out
-> whether the *driving* is fun — see [AGENTS.md](AGENTS.md).
+> **Status: prototyping.** "Skid" is the short repo/target name; the game
+> ships as **Skid Jam**. The first goal is only to find out whether the
+> *driving* is fun — see [AGENTS.md](AGENTS.md).
 
 ## The idea
 
@@ -50,7 +50,7 @@ Planned arc:
 ## Version history
 
 High-level only — see [CHANGELOG.md](CHANGELOG.md) for the full detail and
-[ROADMAP.md](ROADMAP.md) for what's next. Skid is in TestFlight beta.
+[ROADMAP.md](ROADMAP.md) for what's next. Skid Jam is in TestFlight beta.
 
 - **v0.5.0 — Content & polish.** A track set + picker; two-layer tracks
   (Overpass figure-8, ramps, jumps, bridge fall-off, occlusion bubble);
