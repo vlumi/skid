@@ -29,29 +29,21 @@ enum EditorRenderer {
         walk: WalkResult, width: Double, selectedEnd: Int?,
         transform t: Transform, into context: inout GraphicsContext
     ) {
-        let w = width * t.scale
-
-        // A piece is "elevated" if it's a ramp (the slope) or sits on the deck
-        // (layer ≥ 1). Consecutive pieces in the SAME band (ground vs elevated)
-        // are stroked as ONE continuous butt-capped path, so there are no
-        // half-circle caps at interior joints, and the guardrail runs unbroken
-        // ground→ramp→deck→ramp→ground across a bridge. Ground first, then the
-        // elevated run on top (so a bridge crosses over the road beneath).
-        let bands = elevationRuns(walk.placed)
-        for run in bands where !run.elevated {
-            strokeRun(run.pieces, w: w, elevated: false, t: t, into: &context)
+        // Every piece is a width-varying RIBBON POLYGON: half-width at each
+        // sample follows the height there (Elevation.scale), so a ramp widens
+        // as it climbs and the deck is naturally wider — one formula, no
+        // ground/deck/ramp special cases. Draw lowest height first so a bridge
+        // paints over the road beneath it; equal heights keep walk order.
+        let ordered = walk.placed.enumerated().sorted { a, b in
+            let ha = a.element.entryHeight + a.element.exitHeight
+            let hb = b.element.entryHeight + b.element.exitHeight
+            return ha != hb ? ha < hb : a.offset < b.offset
         }
-        for run in bands where run.elevated {
-            strokeRun(run.pieces, w: w, elevated: true, t: t, into: &context)
+        for (_, placed) in ordered {
+            drawPieceRibbon(placed, width: width, t: t, into: &context)
         }
-        // Ramp pieces get a gradient shade (dark at the ground end → light at
-        // the deck end) over the deck-coloured road, so a ramp reads as a
-        // SLOPE distinct from the flat bridge — while the run's blue rail stays
-        // continuous. Plus climb/launch chevrons.
-        for placed in walk.placed where placed.piece.layerDelta != 0 {
-            shadeRampSlope(placed, w: w, transform: t, into: &context)
-        }
-        for placed in walk.placed where placed.piece.layerDelta != 0 || placed.piece.launches {
+        // Launch/ramp chevrons on top.
+        for placed in walk.placed where placed.piece.heightDelta != 0 || placed.piece.launches {
             drawRampChevrons(placed, width: width, transform: t, into: &context)
         }
 
@@ -77,28 +69,6 @@ enum EditorRenderer {
         for (i, end) in looseEnds.enumerated() {
             drawLooseEnd(end, width: width, selected: i == selectedEnd, t: t, into: &context)
         }
-    }
-
-    /// A maximal run of consecutive pieces sharing an elevation band.
-    private struct Run {
-        var pieces: [PlacedPiece]
-        var elevated: Bool
-    }
-
-    /// Split the placed pieces into consecutive same-band runs (ground vs
-    /// elevated), preserving walk order.
-    private static func elevationRuns(_ placed: [PlacedPiece]) -> [Run] {
-        func elevated(_ p: PlacedPiece) -> Bool { p.entryLayer >= 1 || p.piece.layerDelta != 0 }
-        var runs: [Run] = []
-        for p in placed {
-            if var last = runs.last, last.elevated == elevated(p) {
-                last.pieces.append(p)
-                runs[runs.count - 1] = last
-            } else {
-                runs.append(Run(pieces: [p], elevated: elevated(p)))
-            }
-        }
-        return runs
     }
 
     /// A loose (unbuilt) end: fade the last stretch of road toward grass and
@@ -147,96 +117,94 @@ enum EditorRenderer {
                 lineWidth: max(5, hw * 0.5), lineCap: .butt, dash: [dash, dash], dashPhase: dash))
     }
 
-    /// Stroke one continuous run of same-band pieces. BUTT caps: interior
-    /// joints within the run are flush (no half-circle overhang), and the
-    /// run's own ends are flat cuts — real loose ends get the construction
-    /// treatment on top; a run that meets another band (a ramp mouth) meets it
-    /// flush. Elevated runs (ramp + deck) carry a continuous light-blue
-    /// guardrail, so the wall runs unbroken ground→bridge→ground.
-    private static func strokeRun(
-        _ placed: [PlacedPiece], w: Double, elevated: Bool, t: Transform,
+    /// Draw ONE piece as a width-varying ribbon: at each centerline sample the
+    /// half-width scales with the height there (`Elevation.scale`), so a ramp
+    /// is a true wedge (narrow at the ground, wide at the deck) and the deck is
+    /// wider than the ground — all from one height formula. An elevated stretch
+    /// gets a drop shadow + light-blue guardrail; the ground gets the red/white
+    /// kerb. Filled polygons (not stroked centerlines), so joints never gap.
+    private static func drawPieceRibbon(
+        _ placed: PlacedPiece, width: Double, t: Transform,
         into context: inout GraphicsContext
     ) {
-        // ONE connected polyline for the whole run — consecutive pieces share
-        // an endpoint, so we only `move` to the very first point and line
-        // through the rest. (Per-piece `move` would break the path into
-        // subpaths that butt caps leave GAPS between at each joint.)
-        var path = Path()
-        var started = false
-        for p in placed {
-            let pts = p.centerlineSamples().map { t.screen($0) }
-            guard !pts.isEmpty else { continue }
-            if !started {
-                path.move(to: pts[0])
-                started = true
+        let samples = placed.heightedSamples()
+        guard samples.count >= 2 else { return }
+
+        // Left/right edge points at each sample, offset by the height-scaled
+        // half-width along the local normal.
+        var left: [CGPoint] = []
+        var right: [CGPoint] = []
+        for (i, s) in samples.enumerated() {
+            let dir: Vec2
+            if i == 0 {
+                dir = (samples[1].point - s.point).normalized
+            } else if i == samples.count - 1 {
+                dir = (s.point - samples[i - 1].point).normalized
+            } else {
+                dir = (samples[i + 1].point - samples[i - 1].point).normalized
             }
-            for pt in pts.dropFirst() { path.addLine(to: pt) }
+            let half = width / 2 * Elevation.scale(atHeight: s.height)
+            let n = dir.perpendicular * half
+            left.append(t.screen(s.point + n))
+            right.append(t.screen(s.point - n))
         }
-        // The deck sits closer to the camera: wider than ground road.
-        let roadW = elevated ? w + 12 : w
+
+        // A closed polygon: down the left edge, back up the right.
+        var outline = Path()
+        outline.addLines(left + right.reversed())
+        outline.closeSubpath()
+
+        let elevated = placed.entryHeight > 0.5 || placed.exitHeight > 0.5
 
         if elevated {
+            // Drop shadow offset down-right.
             var shadow = context
             shadow.translateBy(x: 6, y: 11)
-            shadow.stroke(
-                path, with: .color(.black.opacity(0.32)),
-                style: StrokeStyle(lineWidth: roadW + 16, lineCap: .butt, lineJoin: .round))
-            // Continuous light-blue guardrail: dark backing + bold blue rail.
-            let wall = max(6, 16 * t.scale)
-            context.stroke(
-                path, with: .color(.black.opacity(0.5)),
-                style: StrokeStyle(lineWidth: roadW + wall + 3, lineCap: .butt, lineJoin: .round))
-            context.stroke(
-                path, with: .color(bridgeRail),
-                style: StrokeStyle(lineWidth: roadW + wall, lineCap: .butt, lineJoin: .round))
-            context.stroke(
-                path, with: .color(Color(white: 0.72)),
-                style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
-            return
+            shadow.fill(outline, with: .color(.black.opacity(0.3)))
         }
 
-        // Ground road: striped red/white kerb, band + dash scaled to the world.
+        // Kerb / guardrail: stroke the polygon outline.
         let band = max(2, 12 * t.scale)
-        let dash = max(3, 24 * t.scale)
-        context.stroke(
-            path, with: .color(kerbWhite),
-            style: StrokeStyle(lineWidth: roadW + band, lineCap: .butt, lineJoin: .round))
-        context.stroke(
-            path, with: .color(kerbRed),
-            style: StrokeStyle(
-                lineWidth: roadW + band, lineCap: .butt, lineJoin: .round, dash: [dash, dash]))
-        context.stroke(
-            path, with: .color(asphalt),
-            style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
+        if elevated {
+            context.stroke(
+                outline, with: .color(.black.opacity(0.5)),
+                style: StrokeStyle(lineWidth: band + 5, lineJoin: .round))
+            context.stroke(
+                outline, with: .color(bridgeRail),
+                style: StrokeStyle(lineWidth: band + 2, lineJoin: .round))
+        } else {
+            context.stroke(
+                outline, with: .color(kerbWhite),
+                style: StrokeStyle(lineWidth: band, lineJoin: .round))
+            context.stroke(
+                outline, with: .color(kerbRed),
+                style: StrokeStyle(lineWidth: band, lineJoin: .round, dash: [band * 2, band * 2]))
+        }
+
+        fillRoad(outline, placed: placed, samples: samples, t: t, into: &context)
     }
 
-    /// A gradient shade over a ramp piece's road area — dark at the ground
-    /// end, light at the deck end — so the slope reads as a climb/descent
-    /// against the flat deck. Fills just the road width (inside the rails).
-    private static func shadeRampSlope(
-        _ placed: PlacedPiece, w: Double, transform t: Transform,
+    private static let deckGrey = Color(white: 0.72)
+
+    /// Fill the road surface: flat pieces solid (deck lighter), a ramp shaded
+    /// dark(ground)→light(deck) so the slope reads.
+    private static func fillRoad(
+        _ outline: Path, placed: PlacedPiece,
+        samples: [(point: Vec2, height: Double)], t: Transform,
         into context: inout GraphicsContext
     ) {
-        let up = placed.piece.layerDelta > 0
-        let groundW = up ? placed.entry.position.vec2 : placed.exits[0].position.vec2
-        let deckW = up ? placed.exits[0].position.vec2 : placed.entry.position.vec2
-        let g = Vec2(t.screen(groundW).x, t.screen(groundW).y)
-        let d = Vec2(t.screen(deckW).x, t.screen(deckW).y)
-        let axis = d - g
-        guard axis.length > 0.5 else { return }
-        let side = axis.normalized.perpendicular * ((w + 12) / 2)
-        func pt(_ v: Vec2) -> CGPoint { CGPoint(x: v.x, y: v.y) }
-        var quad = Path()
-        quad.move(to: pt(g - side))
-        quad.addLine(to: pt(d - side))
-        quad.addLine(to: pt(d + side))
-        quad.addLine(to: pt(g + side))
-        quad.closeSubpath()
+        guard placed.piece.heightDelta != 0 else {
+            let elevated = placed.entryHeight > 0.5
+            context.fill(outline, with: .color(elevated ? deckGrey : asphalt))
+            return
+        }
+        let colors = placed.piece.heightDelta > 0 ? [asphalt, deckGrey] : [deckGrey, asphalt]
         context.fill(
-            quad,
+            outline,
             with: .linearGradient(
-                Gradient(colors: [.black.opacity(0.28), .white.opacity(0.22)]),
-                startPoint: pt(g), endPoint: pt(d)))
+                Gradient(colors: colors),
+                startPoint: t.screen(samples.first!.point), endPoint: t.screen(samples.last!.point))
+        )
     }
 
     /// Chevrons along a ramp/jump piece — a "this climbs / launches" marker.

@@ -347,6 +347,20 @@ tightens. Not needed at current sizes.
 
 ## Open until wired up
 
+- **CONTINUOUS HEIGHT replaces integer layer (user 2026-07-24) — being built.**
+  Elevation is one continuous scalar `height` (0 = ground, 1 = deck), rising
+  across ramps with **smoothstep** easing; there is NO separate integer layer —
+  collision/overlap is derived (two spans collide only if their heights are
+  close; a bridge crossing is fine because heights differ). Everything visual
+  is `f(height)`: **road width**, **car scale**, wedge shape, shadow, z-order —
+  so the ramp widening + smooth car growth fall out of one formula instead of
+  special-casing. The height→scale factor is a LIVE-TUNABLE dial (default 1.2,
+  slider in Tuning, no code change to retune). This same primitive also solves
+  **jumps** (height rises then falls with nothing beneath — arc + air scale
+  from f(height)) and makes the **vertical loop** (roadmap) tractable. Layer-
+  delta on pieces becomes a height delta; the walk yields per-piece entry/exit
+  height + height(atFraction). Touches piece model, walk, validator, compiler,
+  both renderers.
 - **CATALOG COMMENSURABILITY — the big one (device 2026-07-24).** The v1
   numbers don't compose lego-style across combinations: pieces should snap
   together in *many* arrangements and close, but curve extents (tight r60 →

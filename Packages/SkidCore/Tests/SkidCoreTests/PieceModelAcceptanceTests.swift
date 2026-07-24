@@ -65,11 +65,11 @@ final class PieceModelAcceptanceTests: XCTestCase {
             XCTAssertFalse(track.ramps.isEmpty, "ramps should be emitted")
             XCTAssertTrue(track.ramps.contains { $0.launches }, "ramp-up launches")
         } else {
-            // The mechanism (walk + layer tracking) is what's under test; if
-            // this particular shape doesn't close, assert the layer bookkeeping
-            // still ran: the ramp pieces changed the running layer mid-walk.
-            let layers = Set(walk.placed.map(\.entryLayer))
-            XCTAssertTrue(layers.contains(1), "ramp should raise the running layer to 1")
+            // The mechanism (walk + height tracking) is what's under test; if
+            // this particular shape doesn't close, assert the height bookkeeping
+            // still ran: a ramp raised the running height onto the deck.
+            let onDeck = walk.placed.contains { $0.entryHeight > 0.5 || $0.exitHeight > 0.5 }
+            XCTAssertTrue(onDeck, "ramp should raise the running height onto the deck")
         }
     }
 
