@@ -71,6 +71,16 @@ struct EditorView: View {
         return walk.openEnds.isEmpty ? nil : walk.openEnds.count - 1
     }
 
+    /// The heading a newly-appended piece will enter at — the selected loose
+    /// end's heading — so the palette icons render rotated to match where the
+    /// piece will actually land. Defaults to east.
+    private func appendHeading(_ walk: WalkResult) -> Heading {
+        guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
+            return .east
+        }
+        return walk.openEnds[i].heading
+    }
+
     // MARK: - Bars
 
     private var topBar: some View {
@@ -122,7 +132,7 @@ struct EditorView: View {
                                     game.editorAppend(item.id)
                                 }
                             } label: {
-                                PieceIcon(id: item.id)
+                                PieceIcon(id: item.id, entryHeading: appendHeading(walk))
                                     .frame(width: 56, height: 56)
                                     .background(
                                         .black.opacity(0.3),
@@ -221,6 +231,9 @@ struct EditorView: View {
 /// ramp sentinel draws an up-chevron.
 private struct PieceIcon: View {
     let id: PieceID
+    /// The heading the piece will enter at (the selected loose end) — the icon
+    /// rotates to match, previewing exactly how the piece will land.
+    var entryHeading: Heading = .east
 
     var body: some View {
         Canvas { context, size in
@@ -236,28 +249,27 @@ private struct PieceIcon: View {
         }
     }
 
-    /// Walk the piece once from a canonical entry, then fit its centerline into
-    /// the box and stroke it as a little road.
+    /// Walk the piece from an entry pose matching the selected loose end's
+    /// heading, then fit its centerline into the box. Rotating the whole icon
+    /// keeps left/right as honest mirrors (they rotate together) and previews
+    /// how the piece will actually land.
     private func drawPieceShape(in box: CGRect, into context: inout GraphicsContext) {
         guard let piece = PieceCatalog.piece(id) else { return }
+        let entry = PiecePose(position: .zero, heading: entryHeading)
         let placed = PlacedPiece(
-            id: id, piece: piece, entry: .origin,
-            exits: piece.paths.map { $0.exit(from: .origin) }, entryHeight: 0, entrySeam: 0)
+            id: id, piece: piece, entry: entry,
+            exits: piece.paths.map { $0.exit(from: entry) }, entryHeight: 0, entrySeam: 0)
         let pts = placed.piece.paths.indices.flatMap { placed.centerlineSamples(path: $0) }
         guard pts.count >= 2 else { return }
-        let xs = pts.map(\.x)
-        let ys = pts.map(\.y)
-        let minX = xs.min()!, maxX = xs.max()!, minY = ys.min()!, maxY = ys.max()!
-        // A SHARED reference scale (not per-piece auto-fit) so a tight curve
-        // reads tighter than a sweeper — the icons show relative size. The
-        // reference spans the largest piece's footprint (sweep-90 ≈ 320).
+        // Shared reference scale so a tight curve reads tighter than a sweeper;
+        // centre the piece's bounding box in the tile. Same y-down orientation
+        // as the canvas, so the icon matches how the piece lands.
         let reference: CGFloat = 340
         let scale = box.width / reference
-        let cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
+        let cx = (pts.map(\.x).min()! + pts.map(\.x).max()!) / 2
+        let cy = (pts.map(\.y).min()! + pts.map(\.y).max()!) / 2
         func screen(_ p: Vec2) -> CGPoint {
-            CGPoint(
-                x: box.midX + (p.x - cx) * scale,
-                y: box.midY + (p.y - cy) * scale)
+            CGPoint(x: box.midX + (p.x - cx) * scale, y: box.midY + (p.y - cy) * scale)
         }
         var path = Path()
         for k in placed.piece.paths.indices {
