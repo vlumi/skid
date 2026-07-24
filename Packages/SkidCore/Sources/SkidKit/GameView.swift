@@ -181,9 +181,8 @@ public final class CouchGame: ObservableObject {
             editorAppend(13)
             return
         }
-        // The loose end's layer = the last piece's entry layer + its delta.
-        let endLayer = last.entryLayer + last.piece.layerDelta
-        editorAppend(endLayer >= 1 ? 14 : 13)
+        // On the deck (height up) → ramp down; on the ground → ramp up.
+        editorAppend(last.exitHeight > 0.5 ? 14 : 13)
     }
 
     /// Remove the last piece (never the start piece — a track must keep one).

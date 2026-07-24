@@ -41,15 +41,16 @@ public enum PieceCompiler {
             appendSamples(of: placed, into: &centerline)
             let after = centerline.count - 1  // index of this piece's exit point
 
-            // Segments [before ..< after] belong to this piece. Mark elevated
-            // ones (the piece sits on layer 1 after any ramp delta counts at
-            // its exit, but a flat elevated piece has entryLayer == 1).
-            if placed.entryLayer == 1 && placed.piece.layerDelta == 0 {
+            // Segments [before ..< after] belong to this piece. A flat piece
+            // fully up on the deck (entry & exit both at height 1) is elevated
+            // in the runtime Track.
+            if placed.piece.heightDelta == 0 && placed.entryHeight > 0.5 {
                 for seg in before..<after { elevated.insert(seg) }
             }
 
-            // A ramp/jump piece emits a Ramp line at its entry seam.
-            if placed.piece.layerDelta != 0 || placed.piece.launches {
+            // A ramp/jump piece (changes height, or launches) emits a Ramp
+            // line at its entry seam.
+            if placed.piece.heightDelta != 0 || placed.piece.launches {
                 ramps.append(rampLine(at: placed))
             }
         }
@@ -98,8 +99,10 @@ public enum PieceCompiler {
         let pos = placed.entry.position.vec2
         let fwd = Vec2(angle: placed.entry.heading.radians)
         let side = fwd.perpendicular * (Double(PieceCatalog.width) / 2)
-        let from = placed.entryLayer
-        let to = from + placed.piece.layerDelta
+        // The runtime Track's Ramp still speaks discrete layers; derive them
+        // from the piece's entry/exit height.
+        let from = Int(placed.entryHeight.rounded())
+        let to = Int(placed.exitHeight.rounded())
         return Ramp(
             from: pos - side, to: pos + side, forward: fwd,
             fromLayer: from, toLayer: to, launches: placed.piece.launches)
@@ -113,10 +116,11 @@ public enum PieceCompiler {
         let layer: Int
         if seam == 0 {
             pose = placed[0].exits[0]
-            layer = placed[0].entryLayer + placed[0].piece.layerDelta
+            layer = Int(placed[0].exitHeight.rounded())
         } else {
-            pose = placed[seam % placed.count].entry
-            layer = placed[seam % placed.count].entryLayer
+            let p = placed[seam % placed.count]
+            pose = p.entry
+            layer = Int(p.entryHeight.rounded())
         }
         let pos = pose.position.vec2
         let fwd = Vec2(angle: pose.heading.radians)

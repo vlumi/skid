@@ -48,8 +48,8 @@ public enum PieceCatalog {
         add(Piece(id: 12, paths: [.arc(radius: tightRadius, eighths: 4, left: screenRight)]))
 
         // 13–14 ramps (straight 300, layer change; up launches)
-        add(Piece(id: 13, paths: [.straight(length: 300)], layerDelta: 1, launches: true))
-        add(Piece(id: 14, paths: [.straight(length: 300)], layerDelta: -1))
+        add(Piece(id: 13, paths: [.straight(length: 300)], heightDelta: 1, launches: true))
+        add(Piece(id: 14, paths: [.straight(length: 300)], heightDelta: -1))
 
         // 15 start grid (straight 300; the start/finish line is at its exit)
         add(Piece(id: 15, paths: [.straight(length: 300)]))

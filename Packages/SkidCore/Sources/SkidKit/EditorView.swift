@@ -242,7 +242,7 @@ private struct PieceIcon: View {
         guard let piece = PieceCatalog.piece(id) else { return }
         let placed = PlacedPiece(
             id: id, piece: piece, entry: .origin,
-            exits: piece.paths.map { $0.exit(from: .origin) }, entryLayer: 0, entrySeam: 0)
+            exits: piece.paths.map { $0.exit(from: .origin) }, entryHeight: 0, entrySeam: 0)
         let pts = placed.piece.paths.indices.flatMap { placed.centerlineSamples(path: $0) }
         guard pts.count >= 2 else { return }
         let xs = pts.map(\.x)
@@ -270,7 +270,7 @@ private struct PieceIcon: View {
         // a mini version of what the piece draws on the canvas, so the icon
         // matches the actual piece. Elevated (ramp) uses the blue rail.
         let roadW: CGFloat = 13
-        let elevated = placed.piece.layerDelta != 0
+        let elevated = placed.piece.heightDelta != 0
         if elevated {
             context.stroke(
                 path, with: .color(Color(red: 0.55, green: 0.78, blue: 0.95)),
