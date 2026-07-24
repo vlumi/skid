@@ -26,7 +26,7 @@ Shipped milestones (v0.1–v0.5) are summarized in the
 
 Hand-authoring track geometry hit its quality ceiling; a **phone-first**
 editor with a small piece catalog is the answer, and its data becomes the
-sharing format. Design settled (see `track-editor-piece-model` notes);
+sharing format. Design settled — see [docs/track-pieces.md](docs/track-pieces.md);
 approach:
 
 - [ ] **Piece model, headless first.** A track is an ordered ring of
@@ -41,7 +41,9 @@ approach:
       genuinely usable on a phone, not a big-screen-only afterthought (iPad
       is an authoring convenience, not the design target).
 - [ ] **Shareable tracks** — a track is a short list of piece ids, so it
-      base64s into a reasonable URL.
+      base64s into a short URL at `skid.misaki.fi/t/<code>`. Hard goal: **any
+      design fits in a scannable QR code** (budget table in the design doc —
+      keep it honest as encoding sections are added).
 - [ ] Wire editor output into track selection / the game.
 - [ ] *Open, decide with the editor in hand:* whether built-ins migrate to
       the piece model (replace) or stay free-form `TrackDesign` (layer) —
@@ -55,9 +57,9 @@ approach:
 - [ ] **Catalog beyond road pieces — decorations.** On-road arrows, trees,
       buildings, walls (scenery + directional markers, not just track
       segments). Placed in the editor.
-- [ ] **Gates at seams only.** A gate anchors to the boundary between two
-      pieces (a port), not mid-segment — fits the port-graph model and
-      simplifies gate anchoring vs. today's node+t scheme.
+- [ ] **Gates at seams only, editor-marked.** A gate anchors to the boundary
+      between two pieces (a port), not mid-segment; the author marks which
+      seams count (start/finish fixed at seam 0, up to 16 gates total).
 - [ ] **Rougher hazard shapes + surface textures.** Water/oil/mud shouldn't
       be perfect circles — rotatable, combinable blobs. Plus textures for most
       surfaces eventually (grass, mud); asphalt stays plain grey. Rendering
