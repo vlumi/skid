@@ -134,11 +134,10 @@ struct RaceScreen: View {
         game.audioFrame()
     }
 
-    /// Every active floating d-pad (Pro scheme), in its owner's color.
+    /// Every active floating d-pad (Pro players), in its owner's color.
     private func padOverlays() -> [DPadOverlay] {
-        guard rig.scheme == .pro else { return [] }
-        return rig.players.compactMap { controls in
-            guard let origin = controls.pro.origin else { return nil }
+        rig.players.compactMap { controls in
+            guard controls.scheme == .pro, let origin = controls.pro.origin else { return nil }
             return DPadOverlay(
                 origin: origin,
                 up: controls.pro.up,
@@ -149,11 +148,12 @@ struct RaceScreen: View {
         }
     }
 
-    /// Every active floating aim stick (Casual scheme), in its owner's color.
+    /// Every active floating aim stick (Casual players), in its owner's color.
     private func aimOverlays() -> [AimOverlay] {
-        guard rig.scheme == .casual else { return [] }
-        return rig.players.compactMap { controls in
-            guard let origin = controls.casual.origin else { return nil }
+        rig.players.compactMap { controls in
+            guard controls.scheme == .casual, let origin = controls.casual.origin else {
+                return nil
+            }
             return AimOverlay(
                 origin: origin,
                 knob: controls.casual.knob,
@@ -201,11 +201,6 @@ struct PauseMenu: View {
                 session.paused = false
             } label: {
                 Text("Resume", bundle: .module).pillStyle()
-            }
-            Button {
-                rig.cycleScheme()
-            } label: {
-                Text(rig.schemeLabel, bundle: .module).pillStyle()
             }
             HStack(spacing: 10) {
                 Button {

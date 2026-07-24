@@ -9,6 +9,9 @@ import SwiftUI
 public final class PlayerControls {
     public let player: PlayerID
     public var colorIndex: Int
+    /// This player's own control scheme (Casual/Pro) — each seat picks its own
+    /// in setup, so one couch can mix aim and d-pad players.
+    public var scheme: ControlScheme = .casual
     /// The full band box — reaches the physical screen edge, so the tinted
     /// fill + outline bleed past the safe area. Drives chrome + touch routing.
     public private(set) var zone = CGRect.zero
@@ -94,12 +97,10 @@ public struct SeatingConfig: Equatable, Sendable {
 }
 
 /// The shared-screen control rig: per-player zones, and multitouch routing —
-/// a touch belongs to the zone it started in, for its whole life. The scheme
-/// is global — every player drives the same one (Casual or Pro).
+/// a touch belongs to the zone it started in, for its whole life. Each player
+/// drives their own scheme (Casual or Pro), chosen in setup.
 @MainActor
 public final class CouchRig: ObservableObject {
-    @Published public private(set) var scheme: ControlScheme = .casual
-
     public private(set) var players: [PlayerControls]
     public let seating: SeatingConfig
 
@@ -109,13 +110,14 @@ public final class CouchRig: ObservableObject {
     private var lastInsets = EdgeInsets()
 
     public init(
-        colorIndices: [Int], scheme: ControlScheme = .casual,
+        colorIndices: [Int], schemes: [ControlScheme] = [],
         seating: SeatingConfig = SeatingConfig()
     ) {
         self.players = colorIndices.enumerated().map { index, colorIndex in
-            PlayerControls(player: PlayerID(index), colorIndex: colorIndex)
+            let controls = PlayerControls(player: PlayerID(index), colorIndex: colorIndex)
+            controls.scheme = index < schemes.count ? schemes[index] : .casual
+            return controls
         }
-        self.scheme = scheme
         self.seating = seating
     }
 
@@ -202,34 +204,19 @@ public final class CouchRig: ObservableObject {
         let point = CGPoint(x: location.x, y: location.y)
         guard let index = players.firstIndex(where: { $0.zone.contains(point) }) else { return }
         touchOwner[id] = index
-        players[index].source(for: scheme).touchBegan(id: id, at: location)
+        let player = players[index]
+        player.source(for: player.scheme).touchBegan(id: id, at: location)
     }
 
     public func touchMoved(id: TouchID, at location: Vec2) {
         guard let index = touchOwner[id] else { return }
-        players[index].source(for: scheme).touchMoved(id: id, at: location)
+        let player = players[index]
+        player.source(for: player.scheme).touchMoved(id: id, at: location)
     }
 
     public func touchEnded(id: TouchID) {
         guard let index = touchOwner.removeValue(forKey: id) else { return }
-        players[index].source(for: scheme).touchEnded(id: id)
-    }
-
-    /// Switch every player to the next scheme, releasing in-flight touches.
-    public func cycleScheme() {
-        for player in players {
-            player.releaseAll()
-        }
-        touchOwner.removeAll()
-        let all = ControlScheme.allCases
-        let index = all.firstIndex(of: scheme) ?? 0
-        scheme = all[(index + 1) % all.count]
-    }
-
-    public var schemeLabel: LocalizedStringKey {
-        switch scheme {
-        case .casual: return "Casual"
-        case .pro: return "Pro"
-        }
+        let player = players[index]
+        player.source(for: player.scheme).touchEnded(id: id)
     }
 }

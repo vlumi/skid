@@ -163,11 +163,10 @@ indirection from the couch redesign keeps them localized.
 
 ## Backlog (unversioned)
 
-- [ ] **Per-player control scheme**: let each player pick their own scheme
-      at setup, instead of the current one global scheme for everyone. Each
-      `PlayerControls` already owns an instance of every scheme; the
-      selection would move from the shared `rig.scheme` to per-player, plus
-      a setup UI.
+- [ ] **Pause-menu cleanup** (with per-player scheme change). The pause menu
+      wants a rethink; fold in a way to change each player's scheme mid-race
+      (setup-time per-player selection already shipped — this is the in-race
+      counterpart, deferred out of that PR on purpose).
 - [ ] **Map themes**: whole-map looks beyond grass (sand/desert, snow, …).
       The track format already carries a `theme` field; the renderer learns
       it when the first non-grass theme lands.
