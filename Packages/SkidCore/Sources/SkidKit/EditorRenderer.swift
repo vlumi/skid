@@ -25,26 +25,22 @@ enum EditorRenderer {
         walk: WalkResult, width: Double, selectedEnd: Int?,
         transform t: Transform, into context: inout GraphicsContext
     ) {
-        // Ribbon: stroke each placed piece's centerline, kerb then asphalt.
-        var path = Path()
-        for placed in walk.placed {
-            for k in placed.piece.paths.indices {
-                let pts = placed.centerlineSamples(path: k).map { t.screen($0) }
-                guard let first = pts.first else { continue }
-                path.move(to: first)
-                for pt in pts.dropFirst() { path.addLine(to: pt) }
-            }
-        }
         let w = width * t.scale
-        context.stroke(
-            path, with: .color(kerbWhite),
-            style: StrokeStyle(lineWidth: w + 12, lineCap: .round, lineJoin: .round))
-        context.stroke(
-            path, with: .color(kerbRed),
-            style: StrokeStyle(lineWidth: w + 12, lineCap: .butt, lineJoin: .round, dash: [18, 18]))
-        context.stroke(
-            path, with: .color(asphalt),
-            style: StrokeStyle(lineWidth: w, lineCap: .round, lineJoin: .round))
+
+        // Ground layer first, then the elevated deck on top of it (so a bridge
+        // visibly crosses over the road beneath).
+        let ground = walk.placed.filter { $0.entryLayer == 0 }
+        let deck = walk.placed.filter { $0.entryLayer == 1 }
+        strokeRibbon(ground, w: w, elevated: false, t: t, into: &context)
+        if !deck.isEmpty {
+            strokeRibbon(deck, w: w, elevated: true, t: t, into: &context)
+        }
+
+        // Ramp/jump pieces get chevrons pointing in the drive direction, so a
+        // ramp reads as a slope, not plain road.
+        for placed in walk.placed where placed.piece.layerDelta != 0 || placed.piece.launches {
+            drawRampChevrons(placed, width: width, transform: t, into: &context)
+        }
 
         // Start/finish line at the start piece's exit.
         if let start = walk.placed.first(where: { $0.id == PieceCatalog.startPieceID }) {
@@ -62,6 +58,76 @@ enum EditorRenderer {
                 with: .color(selected ? .yellow : .white.opacity(0.9)))
             context.stroke(
                 Path(ellipseIn: dot), with: .color(.black.opacity(0.6)), lineWidth: 2)
+        }
+    }
+
+    /// Stroke a set of placed pieces as a ribbon. The elevated deck is lighter
+    /// with a drop shadow so it reads as raised over the ground layer.
+    private static func strokeRibbon(
+        _ placed: [PlacedPiece], w: Double, elevated: Bool, t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        var path = Path()
+        for p in placed {
+            for k in p.piece.paths.indices {
+                let pts = p.centerlineSamples(path: k).map { t.screen($0) }
+                guard let first = pts.first else { continue }
+                path.move(to: first)
+                for pt in pts.dropFirst() { path.addLine(to: pt) }
+            }
+        }
+        if elevated {
+            var shadow = context
+            shadow.translateBy(x: 5, y: 9)
+            shadow.stroke(
+                path, with: .color(.black.opacity(0.3)),
+                style: StrokeStyle(lineWidth: w + 14, lineCap: .round, lineJoin: .round))
+        }
+        // Kerb band width and dash length scale WITH the world, so zooming out
+        // shrinks the stripes evenly instead of leaving fixed-size blobs that
+        // reflow. Clamp so they stay visible at extreme zoom.
+        let band = max(2, 12 * t.scale)
+        let dash = max(3, 24 * t.scale)
+        context.stroke(
+            path, with: .color(kerbWhite),
+            style: StrokeStyle(lineWidth: w + band, lineCap: .round, lineJoin: .round))
+        context.stroke(
+            path, with: .color(kerbRed),
+            style: StrokeStyle(
+                lineWidth: w + band, lineCap: .butt, lineJoin: .round, dash: [dash, dash]))
+        context.stroke(
+            path, with: .color(elevated ? Color(white: 0.72) : asphalt),
+            style: StrokeStyle(lineWidth: w, lineCap: .round, lineJoin: .round))
+    }
+
+    /// Chevrons along a ramp/jump piece, pointing in the drive direction — a
+    /// clear "this climbs / launches" marker versus flat road.
+    private static func drawRampChevrons(
+        _ placed: PlacedPiece, width: Double, transform t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        let pts = placed.centerlineSamples()
+        guard pts.count >= 2 else { return }
+        let color: Color = placed.piece.launches ? .yellow : .white
+        // A few chevrons spaced along the piece.
+        let count = 3
+        for c in 1...count {
+            let frac = Double(c) / Double(count + 1)
+            let idx = min(pts.count - 2, Int(frac * Double(pts.count - 1)))
+            let a = pts[idx]
+            let b = pts[idx + 1]
+            let fwd = (b - a).normalized
+            let side = fwd.perpendicular * (width * 0.32)
+            let tip = t.screen(a + fwd * (width * 0.28))
+            let l = t.screen(a - side)
+            let r = t.screen(a + side)
+            var chev = Path()
+            chev.move(to: l)
+            chev.addLine(to: tip)
+            chev.addLine(to: r)
+            context.stroke(
+                chev, with: .color(color.opacity(0.85)),
+                style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
         }
     }
 
