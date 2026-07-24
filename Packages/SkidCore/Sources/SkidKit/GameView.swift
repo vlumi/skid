@@ -86,6 +86,8 @@ public final class CouchGame: ObservableObject {
         }
         if arguments.contains("-skid-autostart") {
             startRace()
+            // Screenshots/tests want a running race, not the ready gate.
+            session?.started = true
         }
     }
 

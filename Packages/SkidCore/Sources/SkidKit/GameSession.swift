@@ -30,6 +30,11 @@ public final class GameSession: ObservableObject {
     /// Published (unlike per-frame state) so chrome like edge-gesture
     /// deferral can react — it only flips on explicit user action.
     @Published public var paused = false
+    /// The race waits on a ready gate: it opens frozen (everyone gets thumbs
+    /// in place) and only begins once a player taps to start. Freezing before
+    /// the countdown reuses the exact `paused` mechanism (clock stays
+    /// anchored), so the countdown then runs cleanly from tick 0.
+    @Published public var started = false
     /// Called after every sim tick with the fresh race — the event stream
     /// consumer seam (sound, haptics). Events from intermediate ticks in a
     /// frame are never skipped.
@@ -66,8 +71,9 @@ public final class GameSession: ObservableObject {
 
     /// Advance sim time to `time` (a `TimelineView` timestamp, seconds).
     public func advance(to time: TimeInterval) {
-        if paused {
-            // Keep the wall clock anchored so resuming doesn't owe ticks.
+        if paused || !started {
+            // Frozen (paused, or waiting on the ready gate): keep the wall
+            // clock anchored so starting/resuming doesn't owe a burst of ticks.
             lastTime = time
             return
         }
