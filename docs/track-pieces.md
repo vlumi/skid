@@ -348,9 +348,18 @@ tightens. Not needed at current sizes.
 ## Open until wired up
 
 - The exact catalog numbers (lengths, radii, width) — tune on device once
-  the editor renders them.
+  the editor renders them. Known: the v1 **tight radius (60) == half the
+  width (120)**, so a tight curve's inner edge collapses to a pivot point
+  rather than a real arc — bump it (≈80–100) once the editor makes it visible.
+- **Curve edge styling as a decal** (see ROADMAP "per-edge road styling"):
+  the red/white striped kerb on a curve's *outer* edge vs. plain white on
+  straights/inners is renderer styling keyed off piece kind + curve side —
+  a decal-style variant, not new geometry.
 - The **canvas constant** (ties to the ~1.2:1 taller-aspect convention;
   likely ~1600×1333) — fixed per format version once chosen.
 - Whether 90°/180° convenience pieces earn their ids or compose from 45s.
+- **S-curves wanted early** (user): add S-left / S-right ids (a curve one way
+  then back to the original heading, net lateral offset) in the next catalog
+  pass — common enough to deserve single pieces rather than hand-chaining.
 - Gate-span shape at seams on tight curves (cross-section may need a nudge).
 - Built-ins: migrate vs. stay free-form — after the rebuild experiment.

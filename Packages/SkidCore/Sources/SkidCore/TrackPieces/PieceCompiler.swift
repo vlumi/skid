@@ -86,33 +86,8 @@ public enum PieceCompiler {
 
     /// Append a piece's centerline points AFTER its entry (already present).
     private static func appendSamples(of placed: PlacedPiece, into line: inout [Vec2]) {
-        guard let segment = placed.piece.paths.first else { return }
-        switch segment {
-        case .straight:
-            line.append(placed.exits[0].position.vec2)
-        case .arc(let radius, let eighths, _):
-            let sweepDeg = Double(eighths) * 45
-            let steps = max(1, Int((sweepDeg / degreesPerSample).rounded(.up)))
-            let pts = arcPoints(
-                entry: placed.entry, exit: placed.exits[0],
-                radius: radius, eighths: eighths, steps: steps)
-            line.append(contentsOf: pts.dropFirst())  // entry already in `line`
-        }
-    }
-
-    private static func arcPoints(
-        entry: PiecePose, exit: PiecePose, radius: Int, eighths: Int, steps: Int
-    ) -> [Vec2] {
-        let start = entry.position.vec2
-        let left = exit.heading.step == Heading(entry.heading.step + eighths).step
-        let toCentre = entry.heading.radians + (left ? .pi / 2 : -.pi / 2)
-        let centre = start + Vec2(angle: toCentre) * Double(radius)
-        let startAngle = atan2(start.y - centre.y, start.x - centre.x)
-        let sweep = (left ? 1.0 : -1.0) * Double(eighths) * .pi / 4
-        return (0...steps).map { k in
-            let a = startAngle + sweep * Double(k) / Double(steps)
-            return centre + Vec2(angle: a) * Double(radius)
-        }
+        let pts = placed.centerlineSamples(degreesPerSample: degreesPerSample)
+        line.append(contentsOf: pts.dropFirst())  // entry already in `line`
     }
 
     // MARK: - Ramps & gates

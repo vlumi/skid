@@ -158,20 +158,45 @@ public final class CouchGame: ObservableObject {
         sound.stop()
     }
 
-    /// Open the track editor. For now it seeds a small sample layout so there
-    /// is something to preview; building from scratch arrives with the editing
-    /// tools.
+    /// Open the track editor. A new track starts with just the start-grid
+    /// piece — you build outward from its loose end.
     public func openEditor() {
         if editorLayout == nil {
             editorLayout = TrackLayout(
-                pieces: [15, 7, 1, 7, 1, 7, 1, 7], gateSeams: [0, 2, 4, 6])
+                pieces: [PieceCatalog.startPieceID], gateSeams: [0])
         }
         sound.stop()
         phase = .editing
     }
 
-    /// Compile the current editor layout to a runtime `Track` for preview /
-    /// test-drive. Nil if it isn't saveable yet.
+    /// Append a catalog piece to the end of the layout (extends the loose end).
+    public func editorAppend(_ id: PieceID) {
+        editorLayout?.pieces.append(id)
+    }
+
+    /// Remove the last piece (never the start piece — a track must keep one).
+    public func editorDeleteLast() {
+        guard var layout = editorLayout, layout.pieces.count > 1 else { return }
+        layout.pieces.removeLast()
+        // Drop any gate seam that no longer has a piece.
+        layout.gateSeams = layout.gateSeams.filter { $0 < layout.pieces.count }
+        editorLayout = layout
+    }
+
+    /// Start a fresh track (just the start piece).
+    public func editorReset() {
+        editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID], gateSeams: [0])
+    }
+
+    /// Whether the current layout is saveable (closed + valid).
+    public func editorIsSaveable() -> Bool {
+        guard let editorLayout else { return false }
+        return TrackValidator.validate(editorLayout).isSaveable
+    }
+
+    /// Compile the current editor layout to a runtime `Track` for preview.
+    /// Nil if it isn't saveable yet. (Test-driving it in a real race arrives
+    /// with step 3 — wiring editor tracks into the game.)
     public func editorTrack() -> Track? {
         guard let editorLayout else { return nil }
         return try? PieceCompiler.compile(editorLayout, id: "editor-preview")
