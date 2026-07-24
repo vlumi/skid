@@ -146,17 +146,19 @@ extension TrackRenderer {
             let tire = CGRect(x: offset.x - 4.5, y: offset.y - 3, width: 9, height: 6)
             car2D.fill(Path(roundedRect: tire, cornerRadius: 2), with: .color(rubber))
         }
-        // Narrow open-wheeler body: a capsule nose-to-tail. A soft dark halo
-        // sits under it and a thin dark rim around it so the car reads on ANY
-        // surface — grey asphalt, green grass, and the map themes to come —
-        // where no fixed tint (yellow especially) could contrast on its own.
+        // Narrow open-wheeler body: a capsule nose-to-tail. A TWO-TONE outline
+        // wraps it — a light ring just outside a dark ring — so one of the two
+        // always contrasts whatever's underneath: a dark car in the dark mud,
+        // or a light car on pale asphalt, both stay legible. Background-
+        // independent by construction (no fixed tint could do it alone), which
+        // is what carries the car onto the map themes to come.
         let body = CGRect(x: -length / 2, y: -width / 4, width: length, height: width / 2)
         let bodyPath = Path(roundedRect: body, cornerRadius: width / 4)
-        let halo = Path(
+        let lightRing = Path(
             roundedRect: body.insetBy(dx: -2.5, dy: -2.5), cornerRadius: width / 4 + 2.5)
-        car2D.fill(halo, with: .color(.black.opacity(0.28)))
+        car2D.stroke(lightRing, with: .color(.white.opacity(0.85)), lineWidth: 2)
         car2D.fill(bodyPath, with: .color(color))
-        car2D.stroke(bodyPath, with: .color(.black.opacity(0.55)), lineWidth: 1.5)
+        car2D.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 1.5)
         // Cockpit dot behind the midpoint.
         let cockpit = CGRect(x: -4, y: -3.2, width: 6.4, height: 6.4)
         car2D.fill(Path(ellipseIn: cockpit), with: .color(.black.opacity(0.65)))
