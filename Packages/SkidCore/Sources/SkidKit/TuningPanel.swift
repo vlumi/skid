@@ -55,6 +55,11 @@ struct TuningPanel: View {
                     slider(
                         Text("Pace", bundle: .module), value: $settings.pace,
                         range: 0.6...1.0, step: 0.05, format: "%.2f")
+
+                    section(Text("Elevation", bundle: .module))
+                    slider(
+                        Text("Deck scale", bundle: .module), value: $settings.deckScale,
+                        range: 1.0...1.6, step: 0.05, format: "%.2f")
                 }
             }
             .frame(maxHeight: 460)
@@ -69,6 +74,9 @@ struct TuningPanel: View {
         .frame(maxWidth: 340)
         .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 18))
         .foregroundStyle(.white)
+        // Push the elevation knob into the renderer's global as it's dragged,
+        // so the deck/car scale updates live.
+        .onChangeCompat(of: settings.deckScale) { _ in settings.applyRenderTuning() }
     }
 
     private func section(_ label: Text) -> some View {

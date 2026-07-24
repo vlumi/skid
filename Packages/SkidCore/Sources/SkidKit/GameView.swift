@@ -76,6 +76,9 @@ public final class CouchGame: ObservableObject {
 
     public init() {
         hiscores = hiscoreFile.load()
+        // Push persisted render knobs (elevation feel) into their globals
+        // before the first frame draws.
+        settings.applyRenderTuning()
         // Dev affordance for automated screenshots/tests: launch straight
         // into a race (`-skid-players N -skid-autostart`).
         let arguments = ProcessInfo.processInfo.arguments
@@ -158,20 +161,56 @@ public final class CouchGame: ObservableObject {
         sound.stop()
     }
 
-    /// Open the track editor. For now it seeds a small sample layout so there
-    /// is something to preview; building from scratch arrives with the editing
-    /// tools.
+    /// Open the track editor. A new track starts with just the start-grid
+    /// piece — you build outward from its loose end.
     public func openEditor() {
         if editorLayout == nil {
             editorLayout = TrackLayout(
-                pieces: [15, 7, 1, 7, 1, 7, 1, 7], gateSeams: [0, 2, 4, 6])
+                pieces: [PieceCatalog.startPieceID], gateSeams: [0])
         }
         sound.stop()
         phase = .editing
     }
 
-    /// Compile the current editor layout to a runtime `Track` for preview /
-    /// test-drive. Nil if it isn't saveable yet.
+    /// Append a catalog piece to the end of the layout (extends the loose end).
+    public func editorAppend(_ id: PieceID) {
+        editorLayout?.pieces.append(id)
+    }
+
+    /// Append the context-aware ramp: up (id 13) from the ground, down (id 14)
+    /// from the deck — with only two elevations the one button does both.
+    public func editorRamp() {
+        guard let layout = editorLayout, let last = layout.walk().placed.last else {
+            editorAppend(13)
+            return
+        }
+        // On the deck (height up) → ramp down; on the ground → ramp up.
+        editorAppend(last.exitHeight > 0.5 ? 14 : 13)
+    }
+
+    /// Remove the last piece (never the start piece — a track must keep one).
+    public func editorDeleteLast() {
+        guard var layout = editorLayout, layout.pieces.count > 1 else { return }
+        layout.pieces.removeLast()
+        // Drop any gate seam that no longer has a piece.
+        layout.gateSeams = layout.gateSeams.filter { $0 < layout.pieces.count }
+        editorLayout = layout
+    }
+
+    /// Start a fresh track (just the start piece).
+    public func editorReset() {
+        editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID], gateSeams: [0])
+    }
+
+    /// Whether the current layout is saveable (closed + valid).
+    public func editorIsSaveable() -> Bool {
+        guard let editorLayout else { return false }
+        return TrackValidator.validate(editorLayout).isSaveable
+    }
+
+    /// Compile the current editor layout to a runtime `Track` for preview.
+    /// Nil if it isn't saveable yet. (Test-driving it in a real race arrives
+    /// with step 3 — wiring editor tracks into the game.)
     public func editorTrack() -> Track? {
         guard let editorLayout else { return nil }
         return try? PieceCompiler.compile(editorLayout, id: "editor-preview")

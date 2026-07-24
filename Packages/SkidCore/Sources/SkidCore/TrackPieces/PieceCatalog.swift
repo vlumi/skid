@@ -25,25 +25,31 @@ public enum PieceCatalog {
         add(Piece(id: 1, paths: [.straight(length: 300)]))
         add(Piece(id: 2, paths: [.straight(length: 600)]))
 
+        // Curves: the model's `left` is a math-CCW turn, which renders CLOCKWISE
+        // on screen (y-down). So a piece the PLAYER calls "left" (screen-left =
+        // counter-clockwise on screen) is `left: false` here. `screenLeft`
+        // names it once so the catalog reads in player terms.
+        let screenLeft = false, screenRight = true
+
         // 3–6 curve 45° · L/R × tight/sweep
-        add(Piece(id: 3, paths: [.arc(radius: tightRadius, eighths: 1, left: true)]))
-        add(Piece(id: 4, paths: [.arc(radius: tightRadius, eighths: 1, left: false)]))
-        add(Piece(id: 5, paths: [.arc(radius: sweepRadius, eighths: 1, left: true)]))
-        add(Piece(id: 6, paths: [.arc(radius: sweepRadius, eighths: 1, left: false)]))
+        add(Piece(id: 3, paths: [.arc(radius: tightRadius, eighths: 1, left: screenLeft)]))
+        add(Piece(id: 4, paths: [.arc(radius: tightRadius, eighths: 1, left: screenRight)]))
+        add(Piece(id: 5, paths: [.arc(radius: sweepRadius, eighths: 1, left: screenLeft)]))
+        add(Piece(id: 6, paths: [.arc(radius: sweepRadius, eighths: 1, left: screenRight)]))
 
         // 7–10 curve 90° · L/R × tight/sweep
-        add(Piece(id: 7, paths: [.arc(radius: tightRadius, eighths: 2, left: true)]))
-        add(Piece(id: 8, paths: [.arc(radius: tightRadius, eighths: 2, left: false)]))
-        add(Piece(id: 9, paths: [.arc(radius: sweepRadius, eighths: 2, left: true)]))
-        add(Piece(id: 10, paths: [.arc(radius: sweepRadius, eighths: 2, left: false)]))
+        add(Piece(id: 7, paths: [.arc(radius: tightRadius, eighths: 2, left: screenLeft)]))
+        add(Piece(id: 8, paths: [.arc(radius: tightRadius, eighths: 2, left: screenRight)]))
+        add(Piece(id: 9, paths: [.arc(radius: sweepRadius, eighths: 2, left: screenLeft)]))
+        add(Piece(id: 10, paths: [.arc(radius: sweepRadius, eighths: 2, left: screenRight)]))
 
         // 11–12 hairpin 180° · L/R (tight)
-        add(Piece(id: 11, paths: [.arc(radius: tightRadius, eighths: 4, left: true)]))
-        add(Piece(id: 12, paths: [.arc(radius: tightRadius, eighths: 4, left: false)]))
+        add(Piece(id: 11, paths: [.arc(radius: tightRadius, eighths: 4, left: screenLeft)]))
+        add(Piece(id: 12, paths: [.arc(radius: tightRadius, eighths: 4, left: screenRight)]))
 
         // 13–14 ramps (straight 300, layer change; up launches)
-        add(Piece(id: 13, paths: [.straight(length: 300)], layerDelta: 1, launches: true))
-        add(Piece(id: 14, paths: [.straight(length: 300)], layerDelta: -1))
+        add(Piece(id: 13, paths: [.straight(length: 300)], heightDelta: 1, launches: true))
+        add(Piece(id: 14, paths: [.straight(length: 300)], heightDelta: -1))
 
         // 15 start grid (straight 300; the start/finish line is at its exit)
         add(Piece(id: 15, paths: [.straight(length: 300)]))

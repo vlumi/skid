@@ -127,9 +127,12 @@ indirection from the couch redesign keeps them localized.
 - [ ] **Map themes**: whole-map looks beyond grass (sand/desert, snow, …).
       The track format already carries a `theme` field; the renderer learns
       it when the first non-grass theme lands.
-- [ ] **Selective kerb striping**: red/white stripes only lining chosen
-      corners' outer edges, plain white edges elsewhere — a per-corner
-      `kerb` flag already in the track format; renderer support pending.
+- [ ] **Per-edge road styling**: the two road edges styled independently —
+      the classic red/white striped kerb on the **outer edge of curves**,
+      plain white on straights (and inner edges). In the piece model this is
+      renderer support keyed off piece kind/curve side (a decal-style variant,
+      not new geometry); the free-form format also has a per-corner `kerb`
+      flag. Pending renderer work.
 - [ ] Full replay viewer (watch/scrub any stored run — the data exists from
       v0.2); shareable ghost files between devices
 - [ ] Full vertical loops — the crazy one; only if the two-layer jump model

@@ -82,6 +82,20 @@ public final class GameSettings: ObservableObject {
     /// full pace.
     @AppStorage("skid.pace") public var pace = 1.0
 
+    /// How much bigger the road (and a car) gets at full deck height — the one
+    /// elevation feel knob, live-tunable so it can be dialed on device. The
+    /// renderers read `Elevation.deckScale`; call `applyRenderTuning()` after
+    /// changing this to push it there (@AppStorage can't observe reliably).
+    /// Purely visual.
+    @AppStorage("skid.elevation.deckScale") public var deckScale = 1.2
+
+    /// Push the live-tunable render knobs into their global sinks. Call at
+    /// startup (persisted value before the first frame) and whenever a knob
+    /// changes (the Tuning slider).
+    public func applyRenderTuning() {
+        Elevation.deckScale = deckScale
+    }
+
     /// Whether the physics dials sit at their stock values — recordings
     /// (hiscores, ghosts) replay with stock tuning, so only stock runs
     /// count. Mirrors the full-pace rule.

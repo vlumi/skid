@@ -347,10 +347,48 @@ tightens. Not needed at current sizes.
 
 ## Open until wired up
 
+- **CONTINUOUS HEIGHT replaces integer layer (user 2026-07-24) — being built.**
+  Elevation is one continuous scalar `height` (0 = ground, 1 = deck), rising
+  across ramps with **smoothstep** easing; there is NO separate integer layer —
+  collision/overlap is derived (two spans collide only if their heights are
+  close; a bridge crossing is fine because heights differ). Everything visual
+  is `f(height)`: **road width**, **car scale**, wedge shape, shadow, z-order —
+  so the ramp widening + smooth car growth fall out of one formula instead of
+  special-casing. The height→scale factor is a LIVE-TUNABLE dial (default 1.2,
+  slider in Tuning, no code change to retune). This same primitive also solves
+  **jumps** (height rises then falls with nothing beneath — arc + air scale
+  from f(height)) and makes the **vertical loop** (roadmap) tractable. Layer-
+  delta on pieces becomes a height delta; the walk yields per-piece entry/exit
+  height + height(atFraction). Touches piece model, walk, validator, compiler,
+  both renderers.
+- **CATALOG COMMENSURABILITY — the big one (device 2026-07-24).** The v1
+  numbers don't compose lego-style across combinations: pieces should snap
+  together in *many* arrangements and close, but curve extents (tight r60 →
+  60 fwd + 60 lateral; sweep r160 → 160+160) share no common grid with the
+  straights (150/300/600), so "a straight + N shallow curves + a straight"
+  fails to realign, and even two ramps (2×300) don't tile with a 600 straight
+  as expected. Fix in the catalog pass: pick a **single grid unit** and make
+  every piece's forward AND lateral footprint an integer multiple of it —
+  straights = k·unit, and curve radii chosen so a 90° arc's fwd/lateral extent
+  is also k·unit (e.g. unit 150: radius 150 → 90° spans 150+150; a "shallow"
+  45° needs its endpoint offset to land on the grid too). Ramps/jumps must
+  share the same forward unit. This is the make-or-break for the whole
+  snap-together promise — do it deliberately, with the exact geometry, before
+  more content is authored.
 - The exact catalog numbers (lengths, radii, width) — tune on device once
-  the editor renders them.
+  the editor renders them. Known: the v1 **tight radius (60) == half the
+  width (120)**, so a tight curve's inner edge collapses to a pivot point
+  rather than a real arc — bump it (≈80–100) once the editor makes it visible
+  (and fold into the commensurability grid above).
+- **Curve edge styling as a decal** (see ROADMAP "per-edge road styling"):
+  the red/white striped kerb on a curve's *outer* edge vs. plain white on
+  straights/inners is renderer styling keyed off piece kind + curve side —
+  a decal-style variant, not new geometry.
 - The **canvas constant** (ties to the ~1.2:1 taller-aspect convention;
   likely ~1600×1333) — fixed per format version once chosen.
 - Whether 90°/180° convenience pieces earn their ids or compose from 45s.
+- **S-curves wanted early** (user): add S-left / S-right ids (a curve one way
+  then back to the original heading, net lateral offset) in the next catalog
+  pass — common enough to deserve single pieces rather than hand-chaining.
 - Gate-span shape at seams on tight curves (cross-section may need a nudge).
 - Built-ins: migrate vs. stay free-form — after the rebuild experiment.
