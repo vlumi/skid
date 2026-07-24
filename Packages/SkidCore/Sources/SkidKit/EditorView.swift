@@ -248,9 +248,11 @@ private struct PieceIcon: View {
         let xs = pts.map(\.x)
         let ys = pts.map(\.y)
         let minX = xs.min()!, maxX = xs.max()!, minY = ys.min()!, maxY = ys.max()!
-        let w = max(1, maxX - minX)
-        let h = max(1, maxY - minY)
-        let scale = min(box.width / w, box.height / h) * 0.8
+        // A SHARED reference scale (not per-piece auto-fit) so a tight curve
+        // reads tighter than a sweeper — the icons show relative size. The
+        // reference spans the largest piece's footprint (sweep-90 ≈ 320).
+        let reference: CGFloat = 340
+        let scale = box.width / reference
         let cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
         func screen(_ p: Vec2) -> CGPoint {
             CGPoint(
@@ -272,21 +274,21 @@ private struct PieceIcon: View {
         if elevated {
             context.stroke(
                 path, with: .color(Color(red: 0.55, green: 0.78, blue: 0.95)),
-                style: StrokeStyle(lineWidth: roadW + 6, lineCap: .round, lineJoin: .round))
+                style: StrokeStyle(lineWidth: roadW + 6, lineCap: .butt, lineJoin: .round))
             context.stroke(
                 path, with: .color(Color(white: 0.72)),
-                style: StrokeStyle(lineWidth: roadW, lineCap: .round, lineJoin: .round))
+                style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
         } else {
             context.stroke(
                 path, with: .color(Color(white: 0.95)),
-                style: StrokeStyle(lineWidth: roadW + 5, lineCap: .round, lineJoin: .round))
+                style: StrokeStyle(lineWidth: roadW + 5, lineCap: .butt, lineJoin: .round))
             context.stroke(
                 path, with: .color(Color(red: 0.82, green: 0.16, blue: 0.14)),
                 style: StrokeStyle(
                     lineWidth: roadW + 5, lineCap: .butt, lineJoin: .round, dash: [5, 5]))
             context.stroke(
                 path, with: .color(Color(white: 0.62)),
-                style: StrokeStyle(lineWidth: roadW, lineCap: .round, lineJoin: .round))
+                style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
         }
     }
 
