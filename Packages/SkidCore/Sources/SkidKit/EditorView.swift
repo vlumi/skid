@@ -19,16 +19,21 @@ struct EditorView: View {
     private struct PaletteItem: Identifiable {
         let id: PieceID
         let label: LocalizedStringKey
+        /// A sentinel id meaning "the context-aware ramp" (up from ground,
+        /// down from the deck) — resolved to a real piece id on tap.
+        static let rampSentinel = -1
     }
 
     /// The append palette (v1 core geometry the phone build needs first).
+    /// "Ramp" is a single button: with only two elevations, it picks up from
+    /// the ground and down from the deck automatically (see `game.editorRamp`).
     private let palette: [PaletteItem] = [
         .init(id: 1, label: "Straight"),
         .init(id: 7, label: "Left"),
         .init(id: 8, label: "Right"),
         .init(id: 9, label: "Left ›"),
         .init(id: 10, label: "Right ›"),
-        .init(id: 13, label: "Ramp"),
+        .init(id: PaletteItem.rampSentinel, label: "Ramp"),
     ]
 
     var body: some View {
@@ -111,7 +116,11 @@ struct EditorView: View {
                     HStack(spacing: 8) {
                         ForEach(palette) { item in
                             Button {
-                                game.editorAppend(item.id)
+                                if item.id == PaletteItem.rampSentinel {
+                                    game.editorRamp()
+                                } else {
+                                    game.editorAppend(item.id)
+                                }
                             } label: {
                                 Text(item.label, bundle: .module)
                                     .font(.callout.bold())

@@ -174,6 +174,18 @@ public final class CouchGame: ObservableObject {
         editorLayout?.pieces.append(id)
     }
 
+    /// Append the context-aware ramp: up (id 13) from the ground, down (id 14)
+    /// from the deck — with only two elevations the one button does both.
+    public func editorRamp() {
+        guard let layout = editorLayout, let last = layout.walk().placed.last else {
+            editorAppend(13)
+            return
+        }
+        // The loose end's layer = the last piece's entry layer + its delta.
+        let endLayer = last.entryLayer + last.piece.layerDelta
+        editorAppend(endLayer >= 1 ? 14 : 13)
+    }
+
     /// Remove the last piece (never the start piece — a track must keep one).
     public func editorDeleteLast() {
         guard var layout = editorLayout, layout.pieces.count > 1 else { return }
