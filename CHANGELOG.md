@@ -21,6 +21,10 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Each player picks their own controls.** Casual (aim) or Pro (d-pad) is
+  now chosen per player in setup, under their colour — so one couch can mix
+  aim drivers and d-pad drivers. (The old global scheme toggle in the pause
+  menu is gone; set it before the race for now.)
 - **Everyone ready? Tap to go.** A race now opens frozen with a Play button
   on the map — get all your thumbs in place, then tap the map to start the
   countdown. No more scrambling because the race began before you were set.
@@ -28,7 +32,7 @@ ships (see [AGENTS.md](AGENTS.md)).
   running, a tap on the map opens the pause menu (the same map tap you used
   to start). The track stays clear of any button, on every seating.
 - **Your position, right in your chip.** Each player's chip now shows their
-  live race position (P1, P2, …) next to the lap counter, so you always know
+  live race position (1st, 2nd, …) next to the lap counter, so you always know
   where you stand without a shared scoreboard. It settles briefly before
   changing, so a photo-finish for a spot doesn't flicker the number.
 - **A clear finish, with your splits.** When you take the flag, your lap
@@ -107,7 +111,7 @@ ships (see [AGENTS.md](AGENTS.md)).
   resolution, and the previously sharp chicane and figure-eight joins
   flow instead of kinking — most visible on the Overpass's diagonals and
   the Hairpin's tip. Under the hood, every track is now *data* (a design
-  of corner nodes the game compiles), the groundwork for a track editor.
+    of corner nodes the game compiles), the groundwork for a track editor.
 - **Friendlier controls, same skill ceiling**: the wheel now eases toward
   your thumb instead of snapping, so a twitch no longer jerks the nose —
   full lock is still just as quick to reach. Analog steering with a gentle

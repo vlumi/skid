@@ -40,6 +40,9 @@ public final class CouchGame: ObservableObject {
     @Published public var aiCount = 0
     @Published public var aiDifficulty: AIDriver.Difficulty = .medium
     @Published public private(set) var colorIndices = [0, 1, 2, 3]
+    /// Each human player's control scheme, chosen in setup (Casual/Pro). One
+    /// entry per seat; only the first `playerCount` are used.
+    @Published public var schemes: [ControlScheme] = [.casual, .casual, .casual, .casual]
     @Published public var carContact = true
     /// The chosen circuit (a `Track.id` from `TrackLibrary.all`).
     @Published public var trackID = "practice-loop"
@@ -91,6 +94,12 @@ public final class CouchGame: ObservableObject {
         }
     }
 
+    /// Toggle one player's control scheme (Casual ↔ Pro).
+    public func toggleScheme(slot: Int) {
+        guard schemes.indices.contains(slot) else { return }
+        schemes[slot] = schemes[slot] == .casual ? .pro : .casual
+    }
+
     /// Cycle one player's color to the next not taken by anyone else.
     public func cycleColor(slot: Int) {
         guard colorIndices.indices.contains(slot) else { return }
@@ -113,7 +122,7 @@ public final class CouchGame: ObservableObject {
 
         let seating = SeatingConfig(faceToFace: faceToFace, openCorner: openCorner)
         let rig = CouchRig(
-            colorIndices: humanColors, scheme: rig?.scheme ?? .casual, seating: seating)
+            colorIndices: humanColors, schemes: Array(schemes.prefix(humans)), seating: seating)
         self.rig = rig
         aiFleet.drivers = Dictionary(
             uniqueKeysWithValues: (0..<ai).map {
@@ -186,7 +195,7 @@ public final class CouchGame: ObservableObject {
                     return .coast
                 }
                 let controls = rig.players[player.rawValue]
-                let source = controls.source(for: rig.scheme)
+                let source = controls.source(for: controls.scheme)
                 // Heading-aware schemes (aim-to-drive) need where the car
                 // faces and how fast it's going (flip vs. reverse).
                 if let headingAware = source as? HeadingAwareControlSource,

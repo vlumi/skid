@@ -199,20 +199,34 @@ struct SetupView: View {
     }
 
     @ViewBuilder private var colorRow: some View {
-        HStack(spacing: 18) {
+        HStack(alignment: .top, spacing: 18) {
             let humans = game.mode == .timeTrial ? 1 : game.playerCount
             ForEach(0..<humans, id: \.self) { slot in
-                Button {
-                    game.cycleColor(slot: slot)
-                } label: {
-                    VStack(spacing: 6) {
+                VStack(spacing: 6) {
+                    Button {
+                        game.cycleColor(slot: slot)
+                    } label: {
                         Circle()
                             .fill(CouchGame.palette[game.colorIndices[slot]])
                             .frame(width: 46, height: 46)
                             .overlay(Circle().stroke(.white.opacity(0.9), lineWidth: 2))
-                        Text("P\(slot + 1)", bundle: .module)
-                            .font(.caption.bold())
-                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                    Text("P\(slot + 1)", bundle: .module)
+                        .font(.caption.bold())
+                        .foregroundStyle(.white.opacity(0.85))
+                    // Each player picks their own scheme — one couch can mix
+                    // aim and d-pad drivers.
+                    Button {
+                        game.toggleScheme(slot: slot)
+                    } label: {
+                        Text(
+                            game.schemes[slot] == .casual ? "Casual" : "Pro", bundle: .module
+                        )
+                        .font(.caption2.bold())
+                        .frame(width: 64)  // fixed, so toggling doesn't shift the column
+                        .padding(.vertical, 5)
+                        .background(.black.opacity(0.25), in: Capsule())
+                        .foregroundStyle(.white)
                     }
                 }
             }
