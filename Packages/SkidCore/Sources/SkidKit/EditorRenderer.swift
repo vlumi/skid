@@ -115,6 +115,36 @@ enum EditorRenderer {
             cap, with: .color(.black.opacity(0.55)),
             style: StrokeStyle(
                 lineWidth: max(5, hw * 0.5), lineCap: .butt, dash: [dash, dash], dashPhase: dash))
+
+        // On the SELECTED end, a forward arrow showing where the next piece
+        // will attach — the "build here" cue.
+        if selected {
+            drawAppendArrow(tip: tip, fwd: fwd, width: width, t: t, into: &context)
+        }
+    }
+
+    /// A yellow forward arrow at the selected loose end, pointing where the
+    /// next piece will attach.
+    private static func drawAppendArrow(
+        tip: Vec2, fwd: Vec2, width: Double, t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        let a = width * 0.35  // reach in world units
+        let head = tip + fwd * a
+        let wing = fwd.perpendicular * (a * 0.5)
+        var arrow = Path()
+        arrow.move(to: t.screen(tip + fwd * (a * 0.5)))
+        arrow.addLine(to: t.screen(head))
+        var wings = Path()
+        wings.move(to: t.screen(head - fwd * (a * 0.4) + wing))
+        wings.addLine(to: t.screen(head))
+        wings.addLine(to: t.screen(head - fwd * (a * 0.4) - wing))
+        let lw = max(3, 5 * t.scale)
+        context.stroke(
+            arrow, with: .color(.yellow), style: StrokeStyle(lineWidth: lw, lineCap: .round))
+        context.stroke(
+            wings, with: .color(.yellow),
+            style: StrokeStyle(lineWidth: lw, lineCap: .round, lineJoin: .round))
     }
 
     /// Draw ONE piece as a width-varying ribbon: at each centerline sample the
@@ -130,10 +160,13 @@ enum EditorRenderer {
         let samples = placed.heightedSamples()
         guard samples.count >= 2 else { return }
 
-        // Left/right edge points at each sample, offset by the height-scaled
-        // half-width along the local normal.
-        var left: [CGPoint] = []
-        var right: [CGPoint] = []
+        // Centre + normal at each sample. Half-width scales with the height
+        // there, so a ramp widens as it climbs. Pieces meet edge-to-edge (no
+        // overlap): the end cuts are simply not stroked, so no kerb line shows
+        // across a joint and nothing is hidden under a neighbour.
+        var centre: [Vec2] = []
+        var normal: [Vec2] = []
+        var heights: [Double] = []
         for (i, s) in samples.enumerated() {
             let dir: Vec2
             if i == 0 {
@@ -144,44 +177,78 @@ enum EditorRenderer {
                 dir = (samples[i + 1].point - samples[i - 1].point).normalized
             }
             let half = width / 2 * Elevation.scale(atHeight: s.height)
-            let n = dir.perpendicular * half
-            left.append(t.screen(s.point + n))
-            right.append(t.screen(s.point - n))
+            centre.append(s.point)
+            normal.append(dir.perpendicular * half)
+            heights.append(s.height)
         }
 
-        // A closed polygon: down the left edge, back up the right.
+        let left = zip(centre, normal).map { t.screen($0 + $1) }
+        let right = zip(centre, normal).map { t.screen($0 - $1) }
         var outline = Path()
         outline.addLines(left + right.reversed())
         outline.closeSubpath()
 
         let elevated = placed.entryHeight > 0.5 || placed.exitHeight > 0.5
 
+        // Drop shadow — offset scales with the height at each point, so a ramp
+        // casts a growing shadow (near-zero at the ground end, full at the
+        // deck) instead of a flat height-1 slab.
         if elevated {
-            // Drop shadow offset down-right.
-            var shadow = context
-            shadow.translateBy(x: 6, y: 11)
-            shadow.fill(outline, with: .color(.black.opacity(0.3)))
+            var shLeft: [CGPoint] = []
+            var shRight: [CGPoint] = []
+            for i in centre.indices {
+                let off = CGSize(width: 6 * heights[i], height: 11 * heights[i])
+                shLeft.append(offset(t.screen(centre[i] + normal[i]), by: off))
+                shRight.append(offset(t.screen(centre[i] - normal[i]), by: off))
+            }
+            var shadow = Path()
+            shadow.addLines(shLeft + shRight.reversed())
+            shadow.closeSubpath()
+            context.fill(shadow, with: .color(.black.opacity(0.3)))
         }
 
-        // Kerb / guardrail: stroke the polygon outline.
+        // Fill first, THEN rails only along the two SIDE edges (never across
+        // the end cuts — that was the stray kerb line at joints).
+        fillRoad(outline, placed: placed, samples: samples, t: t, into: &context)
+        strokeSideRails(left: left, right: right, elevated: elevated, t: t, into: &context)
+    }
+
+    /// The two side edges (left, right) as open polylines — the kerb (ground)
+    /// or guardrail (deck). NOT a closed loop, so the piece's entry/exit cuts
+    /// carry no line and adjacent pieces' rails join seamlessly.
+    private static func strokeSideRails(
+        left: [CGPoint], right: [CGPoint], elevated: Bool, t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        var edges = Path()
+        if let a = left.first {
+            edges.move(to: a); left.dropFirst().forEach { edges.addLine(to: $0) }
+        }
+        if let b = right.first {
+            edges.move(to: b)
+            right.dropFirst().forEach { edges.addLine(to: $0) }
+        }
         let band = max(2, 12 * t.scale)
         if elevated {
             context.stroke(
-                outline, with: .color(.black.opacity(0.5)),
-                style: StrokeStyle(lineWidth: band + 5, lineJoin: .round))
+                edges, with: .color(.black.opacity(0.5)),
+                style: StrokeStyle(lineWidth: band + 5, lineCap: .round, lineJoin: .round))
             context.stroke(
-                outline, with: .color(bridgeRail),
-                style: StrokeStyle(lineWidth: band + 2, lineJoin: .round))
+                edges, with: .color(bridgeRail),
+                style: StrokeStyle(lineWidth: band + 2, lineCap: .round, lineJoin: .round))
         } else {
             context.stroke(
-                outline, with: .color(kerbWhite),
-                style: StrokeStyle(lineWidth: band, lineJoin: .round))
+                edges, with: .color(kerbWhite),
+                style: StrokeStyle(lineWidth: band, lineCap: .round, lineJoin: .round))
             context.stroke(
-                outline, with: .color(kerbRed),
-                style: StrokeStyle(lineWidth: band, lineJoin: .round, dash: [band * 2, band * 2]))
+                edges, with: .color(kerbRed),
+                style: StrokeStyle(
+                    lineWidth: band, lineCap: .butt, lineJoin: .round, dash: [band * 2, band * 2]))
         }
+    }
 
-        fillRoad(outline, placed: placed, samples: samples, t: t, into: &context)
+    private static func offset(_ p: CGPoint, by s: CGSize) -> CGPoint {
+        CGPoint(x: p.x + s.width, y: p.y + s.height)
     }
 
     private static let deckGrey = Color(white: 0.72)
