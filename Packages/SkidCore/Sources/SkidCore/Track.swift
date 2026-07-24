@@ -266,6 +266,37 @@ public struct Track: Equatable, Sendable, Codable {
         return false
     }
 
+    /// Continuous **visual height** (0 = ground, 1 = deck) at `p` for a car on
+    /// `layer` — for scaling the car smoothly as it climbs, matching how the
+    /// road widens. On a flat segment it's just the layer; on a ramp approach
+    /// it interpolates by how far along the ramp the car is (progress measured
+    /// along the nearest ramp segment, in the climb direction). Render-only:
+    /// the physics layer is still the discrete `layer`.
+    public func visualHeight(at p: Vec2, layer: Int) -> Double {
+        // Find the nearest ramp segment (if any) the car is actually on.
+        var best: (i: Int, d: Double)?
+        for i in rampSegments {
+            let a = centerline[i]
+            let b = centerline[(i + 1) % centerline.count]
+            let d = p.distance(toSegment: a, b)
+            guard d <= width / 2 + 10 else { continue }
+            if best == nil || d < best!.d { best = (i, d) }
+        }
+        guard let ramp = best else { return Double(layer) }
+        // Progress 0…1 along that segment. The ramp's endpoints connect the
+        // ground (0) and deck (1); climb direction is toward the deck end.
+        let a = centerline[ramp.i]
+        let b = centerline[(ramp.i + 1) % centerline.count]
+        let length = (b - a).length
+        let t =
+            length > 0 ? max(0, min(1, (p.closestPoint(onSegment: a, b) - a).length / length)) : 0
+        // Which end is the deck? The adjacent segment that's elevated marks it.
+        let nextElevated = elevatedSegments.contains((ramp.i + 1) % centerline.count)
+        let climb = nextElevated ? t : 1 - t
+        // Smoothstep, matching the editor's ramp easing.
+        return climb * climb * (3 - 2 * climb)
+    }
+
     /// The portion of a gate that lies on the asphalt ribbon — where a
     /// checkpoint line paints on the road. The gate itself is wider (it
     /// spans the whole corridor); this is only its visible part. nil if the
