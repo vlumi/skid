@@ -1,6 +1,6 @@
 # Releasing
 
-How Skid versions, builds, and ships. Mechanical steps only. The lane mirrors
+How Skid Jam versions, builds, and ships. Mechanical steps only. The lane mirrors
 its sibling project's — iOS-only for now, with the macOS scope reserved for
 when a Mac target lands.
 

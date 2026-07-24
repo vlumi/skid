@@ -12,9 +12,11 @@ struct SetupView: View {
             Color(red: 0.28, green: 0.55, blue: 0.23).ignoresSafeArea()
             VStack(spacing: 24) {
                 VStack(spacing: 6) {
-                    Text(verbatim: "SKID")
-                        .font(.system(size: 56, weight: .black, design: .rounded))
+                    Text(verbatim: "SKID JAM")
+                        .font(.system(size: 52, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
                         .shadow(radius: 3)
                     hiscoreLine
                 }
