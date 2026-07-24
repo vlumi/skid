@@ -119,3 +119,11 @@ public func formatTicks(_ ticks: Tick) -> String {
     let hundredths = totalHundredths % 100
     return String(format: "%d:%02d.%02d", minutes, seconds, hundredths)
 }
+
+/// Race position as a locale-aware ordinal ("1st", "2nd", …) — distinct from
+/// the "P1/P2" that identifies a *player*, so the two never read alike.
+public func ordinal(_ place: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .ordinal
+    return formatter.string(from: NSNumber(value: place)) ?? "\(place)"
+}
