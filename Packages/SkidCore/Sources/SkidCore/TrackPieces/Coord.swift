@@ -73,6 +73,8 @@ public struct CoordPoint: Equatable, Hashable, Sendable, Codable {
         CoordPoint(x: p.x - q.x, y: p.y - q.y)
     }
 
+    public static func += (p: inout CoordPoint, q: CoordPoint) { p = p + q }
+
     /// Scale both axes by an integer — stays exact.
     public static func * (p: CoordPoint, n: Int) -> CoordPoint {
         CoordPoint(x: p.x * n, y: p.y * n)

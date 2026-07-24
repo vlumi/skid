@@ -82,9 +82,11 @@ extension Piece.Segment {
         // Radial centre→entry is the opposite of centre-direction; it sweeps
         // in the turn direction by `eighths`.
         let radialToEntry = toCentre.reversed
-        let radialToExit = left ? radialToEntry.turnedLeft(eighths) : radialToEntry.turnedRight(eighths)
+        let radialToExit =
+            left ? radialToEntry.turnedLeft(eighths) : radialToEntry.turnedRight(eighths)
         let exitPos = centre + radialToExit.unitStep * radius
-        let exitHeading = left ? entry.heading.turnedLeft(eighths) : entry.heading.turnedRight(eighths)
+        let exitHeading =
+            left ? entry.heading.turnedLeft(eighths) : entry.heading.turnedRight(eighths)
         return PiecePose(position: exitPos, heading: exitHeading)
     }
 }
