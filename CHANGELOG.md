@@ -17,9 +17,25 @@ script can promote it with a one-line edit. A user-facing PR writes its own
 bullet here; the `## vX.Y.Z` marketing heading is hand-set when a milestone
 ships (see [AGENTS.md](AGENTS.md)).
 
-## v0.5.0
+## v0.6.0
 
 ### Unreleased (next build)
+
+- **Build your own tracks.** A new track editor lets you lay a course piece by
+  piece from the start line — straights, curves, hairpins, and a ramp that
+  knows whether to climb or descend — extending from a loose end until the loop
+  closes back on itself. The layout renders live as you build, with a "build
+  here" arrow on the end you're extending and construction stripes on any end
+  still open. (Test-driving and sharing your creations come next.)
+- **A ground-up track look, driven by height.** Elevation is now one smooth
+  scale from ground to bridge deck: ramps taper as a true wedge (narrow at the
+  bottom, wide at the top), the deck and the cars on it grow with height instead
+  of popping between levels, and a car swells smoothly as it climbs. One
+  "Deck scale" dial in the Tuning panel tunes the whole elevated look at once.
+  Bridges paint cleanly over the road beneath, ramps read as a climb with a
+  grade-marking chevron, and the road pieces join without gaps.
+
+## v0.5.0
 
 ### build 6 — 2026-07-24
 
