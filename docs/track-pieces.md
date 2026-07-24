@@ -239,6 +239,28 @@ easily scannable QR. **Keep this table honest as sections are added** — the
 goal is that *any* design fits a QR code; if a future section threatens
 that, it must pack tighter (bitmask gates, 6-bit ids) before it ships.
 
+### Why a custom binary format (and not JSON + deflate)
+
+Considered and measured: minimal compact JSON for the typical track is
+~125 B (~193-char URL); deflating it lands around ~95 B (~153 chars) because
+**deflate can't amortize its overhead on payloads this small** — roughly
+1.7–2× the binary TLV at every size, and the gap is exactly the headroom the
+future decoration section needs. Two quieter reasons seal it:
+
+- **Canonical bytes.** The TLV has one encoding per track, byte-identical
+  everywhere — which matters the moment a code is used as an identity
+  (dedup, per-track hiscores). JSON has key-order/whitespace ambiguity, and
+  deflate output varies across library versions. (The same reasoning already
+  canonicalizes the built-ins' `TrackDesign` JSON.)
+- **A ~100-line parser** with CRC-8 up front beats running untrusted input
+  through a decompressor before validation; and the human-readable job is
+  already covered by the `TrackDesign` JSON where humans actually author.
+
+**Future headroom lever**, before any format surgery: QR *alphanumeric mode*
+packs ~45% more characters per version than byte mode — a base32-uppercase
+code (with an uppercased share path) would exploit it if the budget ever
+tightens. Not needed at current sizes.
+
 ## Open until wired up
 
 - The exact catalog numbers (lengths, radii, width) — tune on device once
