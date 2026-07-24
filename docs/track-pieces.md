@@ -49,6 +49,36 @@ products and sums). Closure and port-mating are **exact integer equality** —
 no epsilon anywhere. Floats appear only at compile time, when poses are
 lowered to `Vec2` for the centerline.
 
+**Coordinates are never *stored*, anywhere** — not in the share code, and
+not in the editor's state either. The piece sequence is the single source of
+truth; every pose is *derived* by walking it from the origin. The exact type
+above is the arithmetic the walk uses, not data that persists.
+
+### The editing model — one chain, geometry always derived
+
+Editing works like laying rollercoaster track: the start line goes down
+first, then the layout **extends piece by piece from the loose end**, in any
+of the 8 directions the catalog allows, until the end pose meets the start
+pose and the loop closes. The editor's state is the same ordered piece list
+the share code carries — never a set of placed objects.
+
+Because position is derived, **fragments are unrepresentable** — a piece's
+location exists only through its predecessors. That makes mid-chain edits
+safe and well-defined:
+
+- **Delete a middle piece** → it leaves the sequence and the tail re-derives
+  from that point (visually, everything downstream *swings* into its new
+  pose). Always exactly one chain; never two stranded halves.
+- **Insert or replace in the middle** → same rule. Swapping a left-hander
+  for a right-hander pivots the whole tail — which is exactly how you steer
+  a nearly-closed layout the last few degrees home.
+- **Delete from a closed ring** → the loop reopens into a chain with a loose
+  end; it's simply unsaveable again until re-closed.
+
+The editor should *preview* a pending mid-chain edit (ghost the swung tail
+before committing) so the pivot never surprises — a UI nicety, not a model
+concern. Undo/redo is trivially a list-operation history.
+
 ### Layers, ramps, bridges
 
 Pieces don't carry an absolute layer. The walk tracks a **current layer**
