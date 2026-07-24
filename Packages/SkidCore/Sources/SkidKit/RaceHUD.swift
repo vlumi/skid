@@ -153,11 +153,12 @@ struct RaceHUD: View {
         }
     }
 
-    /// The finish state, centred in the band: a bold final position and total
-    /// time, splits laid out below with room to breathe — an unmistakable
-    /// "you're done, here's how it went".
+    /// The finish state, centred in the band: a bold final position, then the
+    /// lap splits and a summed total in one aligned "label … time" column —
+    /// an unmistakable "you're done, here's how it went". Kept narrow so it
+    /// fits a quarter-screen band on the smallest phones.
     @ViewBuilder private func finishCard(car: Car, index: Int) -> some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Circle()
                     .fill(index < colors.count ? colors[index] : .white)
@@ -167,56 +168,49 @@ struct RaceHUD: View {
                         .font(.system(size: 34, weight: .black, design: .rounded))
                         .monospacedDigit()
                 }
-                if let finished = car.progress.finishedAt {
-                    Text(verbatim: formatTicks(finished - race.config.countdownTicks))
-                        .font(.title2.monospacedDigit().bold())
-                }
             }
-            if !car.progress.lapTimes.isEmpty {
-                finishSplits(car: car)
-            }
+            splitColumn(car: car)
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 14))
     }
 
-    /// Rows per split column before flowing into a second column — keeps a
-    /// long race's splits from running off the bottom of the band.
-    private static let splitsPerColumn = 5
-
-    /// The player's lap splits as vertical "Lap N … time" rows so they align
-    /// and fit the narrow band (a horizontal row overflowed on an SE). Flows
-    /// into extra columns for longer races; the best lap stands out.
-    @ViewBuilder private func finishSplits(car: Car) -> some View {
-        let laps = Array(car.progress.lapTimes.enumerated())
-        let columns = stride(from: 0, to: laps.count, by: Self.splitsPerColumn).map {
-            Array(laps[$0..<min($0 + Self.splitsPerColumn, laps.count)])
-        }
-        HStack(alignment: .top, spacing: 18) {
-            ForEach(Array(columns.enumerated()), id: \.offset) { _, column in
-                VStack(spacing: 3) {
-                    ForEach(column, id: \.offset) { lap, ticks in
-                        splitRow(lap: lap, ticks: ticks, best: ticks == car.progress.bestLapTicks)
-                    }
-                }
+    /// One aligned column: a "Lap N … time" row per lap (best lap emphasised),
+    /// a divider, then a "Total … time" row so the total reads as the sum. The
+    /// times right-align and never wrap; the whole column stays narrow.
+    @ViewBuilder private func splitColumn(car: Car) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(Array(car.progress.lapTimes.enumerated()), id: \.offset) { lap, ticks in
+                splitRow(
+                    Text("Lap \(lap + 1)", bundle: .module), ticks: ticks,
+                    emphasised: ticks == car.progress.bestLapTicks)
+            }
+            if let finished = car.progress.finishedAt, !car.progress.lapTimes.isEmpty {
+                Divider().overlay(.white.opacity(0.3))
+                splitRow(
+                    Text("Total", bundle: .module),
+                    ticks: finished - race.config.countdownTicks, emphasised: true)
             }
         }
+        .frame(width: 116)
     }
 
-    /// One split row: lap label on the left, time right-aligned so a column of
-    /// them lines up. The best lap is bold and full-opacity.
-    private func splitRow(lap: Int, ticks: Tick, best: Bool) -> some View {
+    /// One "label … time" row: label left, time right-aligned so a column of
+    /// them lines up. Emphasised rows (best lap, total) are bold. The time is
+    /// pinned to one line so it never wraps in the narrow band.
+    private func splitRow(_ label: Text, ticks: Tick, emphasised: Bool) -> some View {
         HStack(spacing: 8) {
-            Text("Lap \(lap + 1)", bundle: .module)
+            label
                 .font(.caption2)
-                .opacity(0.55)
+                .opacity(0.6)
             Spacer(minLength: 6)
             Text(verbatim: formatTicks(ticks))
-                .font(.footnote.monospacedDigit().weight(best ? .bold : .regular))
-                .opacity(best ? 1 : 0.85)
+                .font(.footnote.monospacedDigit().weight(emphasised ? .bold : .regular))
+                .opacity(emphasised ? 1 : 0.85)
+                .lineLimit(1)
+                .fixedSize()
         }
-        .frame(width: 96)
     }
 
     @ViewBuilder private func timeTrialLines(car: Car) -> some View {
@@ -238,12 +232,16 @@ struct ResultsCard: View {
     let colors: [Color]
 
     var body: some View {
-        let standings = race.cars.enumerated().sorted { a, b in
-            (a.element.progress.finishedAt ?? .max) < (b.element.progress.finishedAt ?? .max)
-        }
+        // Rank by the same deterministic standings the in-race chip uses, and
+        // find the race's overall fastest lap so it can be called out.
+        let order = race.standings
+        let fastestLap = race.cars.compactMap(\.progress.bestLapTicks).min()
         VStack(spacing: 14) {
-            ForEach(Array(standings.enumerated()), id: \.offset) { place, entry in
-                let (carIndex, car) = entry
+            ForEach(Array(order.enumerated()), id: \.offset) { place, carIndex in
+                let car = race.cars[carIndex]
+                let ownsFastest =
+                    car.progress.bestLapTicks != nil
+                    && car.progress.bestLapTicks == fastestLap
                 HStack(spacing: 10) {
                     Text(verbatim: "\(place + 1).")
                         .font(.title3.monospacedDigit().bold())
@@ -255,9 +253,19 @@ struct ResultsCard: View {
                             .font(.title3.monospacedDigit())
                     }
                     if let best = car.progress.bestLapTicks {
-                        Text("Best \(formatTicks(best))", bundle: .module)
-                            .font(.footnote.monospacedDigit())
-                            .opacity(0.75)
+                        // The overall fastest lap of the race gets a gold star
+                        // and full weight; everyone else's best is muted.
+                        HStack(spacing: 4) {
+                            if ownsFastest {
+                                Image(systemName: "star.fill").font(.caption2)
+                            }
+                            Text("Best \(formatTicks(best))", bundle: .module)
+                                .font(
+                                    .footnote.monospacedDigit()
+                                        .weight(ownsFastest ? .bold : .regular))
+                        }
+                        .foregroundStyle(ownsFastest ? Color.yellow : .white)
+                        .opacity(ownsFastest ? 1 : 0.75)
                     }
                 }
             }
