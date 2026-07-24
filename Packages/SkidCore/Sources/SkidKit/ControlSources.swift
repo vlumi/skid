@@ -86,9 +86,13 @@ func clampStick(_ p: Vec2, radius: Double, bounds: CGRect?) -> Vec2 {
 }
 
 /// Virtual d-pad, the current default: a d-pad materializes where the thumb
-/// lands (clamped inside the player's zone); displacement toward `up` is
-/// throttle (pull back = brake/reverse), sideways is steer, diagonals
-/// blend. Per-axis output quantized into `levels` steps with short travel.
+/// lands (clamped inside the player's zone) and STAYS THERE — gas / brake /
+/// left / right keep fixed screen positions for the touch's whole life.
+/// Displacement toward `up` is throttle (pull back = brake/reverse), sideways
+/// is steer, diagonals blend. Per-axis output quantized into `levels` steps
+/// with short travel. (Unlike Casual's aim stick, the origin does NOT trail
+/// the thumb: with gas usually held and brake rarely, a trailing origin would
+/// creep upward and never return.)
 public final class VirtualDPadControlSource: TouchDrivenControlSource {
     /// Displacement (points) for full deflection. Short on purpose.
     public var radius: Double = 48
@@ -123,8 +127,14 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
 
     public func touchMoved(id: TouchID, at location: Vec2) {
         guard id == activeTouch, let origin else { return }
-        (self.origin, knob) = floatingStick(
-            origin: origin, finger: location, radius: radius, bounds: bounds)
+        // The d-pad's origin STAYS PUT where the thumb first landed — gas /
+        // brake / left / right keep fixed screen positions. (Casual's stick
+        // trails the thumb, which suits constant re-aiming; here it'd creep:
+        // holding gas without braking would drag the pad ever upward.) The
+        // knob just clamps to the rim.
+        let offset = location - origin
+        let distance = offset.length
+        knob = distance > radius ? offset * (radius / distance) : offset
     }
 
     public func touchEnded(id: TouchID) {
