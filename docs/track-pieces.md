@@ -114,6 +114,7 @@ pieces (and whole new families) are added by appending ids.
 | 13 | ramp up (straight 300, layer +1, launches) | |
 | 14 | ramp down (straight 300, layer −1) | |
 | 15–17 | straight 150/300/600 **+ direction arrow** | decal variants |
+| 18 | **start grid** (straight 300, grid decal, start line at exit) | exactly one per track |
 
 Deliberately small — a phone-browsable palette — but designed to grow:
 lengths/radii are plain integer parameters, so variants are new ids, not new
@@ -129,11 +130,16 @@ own encoding section later, not catalog ids.
 
 ## Start, grid, and gates
 
-- **Seam 0** (the joint before piece 0) is the start/finish line, always.
-- The **start grid** auto-places behind it using the existing
-  `TrackCompiler.startGrid` logic; validity requires the *last* piece in the
-  ring to be a straight ≥ 300 (grid depth is ~220 for four cars plus car
-  length).
+- The **start-grid piece** (id 18) carries the whole start: a straight long
+  enough for the four-car grid (~220 of depth plus car length), the grid
+  markings as its decal, and the **start/finish line at its exit port**.
+  Every track contains **exactly one**; it's the first thing the editor
+  places and the one piece that can't be deleted (the layout moves via the
+  origin instead).
+- The ring is **stored cut at the start line**: the start piece is the last
+  element, so **seam 0** (the joint before piece 0) is the start/finish, and
+  the **stored origin is literally the start line's pose**. Start slots
+  compile via the existing `TrackCompiler.startGrid` logic, anchored there.
 - **Checkpoint gates are editor-marked seams** — the author picks which
   joints count, up to **16 gates** (including start/finish). A seam is a port
   boundary, so a gate's span is simply the road cross-section there; no
@@ -148,7 +154,8 @@ A layout is **saveable** iff, walking the ring:
 2. **No same-layer overlap** — non-adjacent pieces on the same layer keep
    their footprints ≥ road-width apart (checked on deterministically sampled
    centerline points; different layers may cross freely).
-3. **Grid room** — last piece is a straight ≥ 300.
+3. **One start** — exactly one start-grid piece (the ring is stored cut at
+   its exit; grid room is guaranteed by the piece itself).
 4. **Gates** — 2–16 marked seams, seam 0 always included.
 5. **Fits the canvas** — the whole footprint (road width included) stays
    inside the fixed canvas from the stored origin; and ≤ 64 pieces (also the
@@ -191,15 +198,23 @@ Layout *(v1)*:
 byte 0      format version (1)
 byte 1      CRC-8 of the rest (typo → "invalid code", not a garbage track)
 then TLV sections, each: 1 byte tag · 1 byte length · payload
-  tag 1  PIECES  payload = one byte per piece id            (required)
+  tag 1  PIECES  payload = varint piece ids, in ring order  (required)
   tag 2  GATES   payload = one byte per gate seam idx       (required)
-  tag 3  ORIGIN  payload = x:u16 · y:u16 · heading:u8       (required)
+  tag 3  ORIGIN  payload = x:u16 · y:u16 · heading:u8       (required;
+                 the start line's pose on the canvas)
+  tag 4  THEME   payload = u8: 0 normal · 1 snow · 2 sand   (optional,
+                 default normal — anticipated now, rendered later)
 ```
 
+**Piece ids are varints**: ids 0–127 encode as one byte; a set high bit
+means a two-byte id (`((b0 & 0x7F) << 8) | b1`, 15-bit space, ~32k ids). The
+whole v1 catalog — and a long way beyond — stays one byte per piece, but
+decal and texture variants can multiply for years without a version bump.
+
 TLV keeps the format **expansion-proof**: future sections (hazards,
-decorations, theme, per-track width) are new tags that old decoders skip by
-length; the version byte covers anything structural. Unknown piece ids in a
-*known* version = "made with a newer Skid Jam".
+decorations, per-track width) are new tags that old decoders skip by length;
+the version byte covers anything structural. Unknown piece ids in a *known*
+version = "made with a newer Skid Jam".
 
 **The running budget** (URL = 26 chars of `https://skid.misaki.fi/t/` + code;
 QR byte capacities at M error correction):
@@ -207,9 +222,9 @@ QR byte capacities at M error correction):
 | track | bytes | code chars | URL chars | QR fits in |
 |---|---:|---:|---:|---|
 | small (12 pieces, 4 gates) | 29 | 39 | 65 | V5 (84 B) |
-| typical (20 pieces, 6 gates) | 39 | 52 | 78 | V5 (84 B) |
-| excessive (64 pieces, 16 gates) | 93 | 124 | 150 | V8 (152 B) |
-| future: excessive + ~60 B of decorations | ~153 | ~204 | ~230 | V11 (251 B) |
+| typical (20 pieces, 6 gates, themed) | 42 | 56 | 82 | V5 (84 B) |
+| excessive (64 pieces, 16 gates, themed) | 96 | 128 | 154 | V9 (180 B) |
+| future: excessive + ~60 B of decorations | ~156 | ~208 | ~234 | V11 (251 B) |
 
 Even the worst case with a future decoration layer sits in a mid-size,
 easily scannable QR. **Keep this table honest as sections are added** — the
