@@ -76,6 +76,9 @@ public final class CouchGame: ObservableObject {
 
     public init() {
         hiscores = hiscoreFile.load()
+        // Push persisted render knobs (elevation feel) into their globals
+        // before the first frame draws.
+        settings.applyRenderTuning()
         // Dev affordance for automated screenshots/tests: launch straight
         // into a race (`-skid-players N -skid-autostart`).
         let arguments = ProcessInfo.processInfo.arguments
