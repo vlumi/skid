@@ -51,10 +51,16 @@ extension TrackRenderer {
                 context.stroke(
                     Path(ellipseIn: bubble), with: .color(.white.opacity(0.85)), lineWidth: 2.5)
             }
-            // Bridge cars, and ramp climbers on their way up/down.
+            // Bridge cars, and ramp climbers on their way up/down: scaled
+            // SMOOTHLY by the continuous height at their position (the same
+            // Elevation.scale factor the road width uses), so a car grows as it
+            // climbs and reads as elevated on the deck — no discrete pop.
             for (index, car) in race.cars.enumerated()
             where !car.state.isAirborne && (car.state.layer == 1 || onRamp(car)) {
-                draw(car: car.state, color: colorAt(index), into: &context)
+                let h = track.visualHeight(at: car.state.position, layer: car.state.layer)
+                draw(
+                    car: car.state, color: colorAt(index),
+                    scale: Elevation.scale(atHeight: h), into: &context)
             }
         }
 

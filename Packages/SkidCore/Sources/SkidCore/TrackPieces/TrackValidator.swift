@@ -100,7 +100,8 @@ public enum TrackValidator {
                 // (first & last) that share the start seam — they touch legally.
                 if j == i + 1 { continue }
                 if i == 0 && j == n - 1 { continue }
-                if placed[i].entryLayer != placed[j].entryLayer { continue }
+                // Different heights can't collide — that's a bridge crossing.
+                if abs(placed[i].entryHeight - placed[j].entryHeight) > 0.5 { continue }
                 if legallyCrossing(placed[i], placed[j]) { continue }
                 if tooClose(samples[i], samples[j], minGap: minGap) { return true }
             }

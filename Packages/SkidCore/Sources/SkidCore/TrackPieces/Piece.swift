@@ -38,19 +38,22 @@ public struct Piece: Equatable, Sendable {
     public var kind: Kind
     /// The path(s) from entry to exit — one per exit (two for a fork).
     public var paths: [Segment]
-    /// Layer change applied crossing this piece (+1 ramp up, −1 down, 0 flat).
-    public var layerDelta: Int
+    /// Continuous **height** change across this piece (ground = 0, deck = 1):
+    /// a ramp-up is +1, ramp-down −1, everything flat 0. There is no discrete
+    /// layer — collision and rendering both derive from height. Height rises
+    /// with smoothstep easing across the piece (see `PlacedPiece.height`).
+    public var heightDelta: Double
     /// A launching ramp / jump throws the car into flight.
     public var launches: Bool
 
     public init(
         id: PieceID, kind: Kind = .road, paths: [Segment],
-        layerDelta: Int = 0, launches: Bool = false
+        heightDelta: Double = 0, launches: Bool = false
     ) {
         self.id = id
         self.kind = kind
         self.paths = paths
-        self.layerDelta = layerDelta
+        self.heightDelta = heightDelta
         self.launches = launches
     }
 }
