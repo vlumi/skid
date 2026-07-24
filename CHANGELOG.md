@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 6 — 2026-07-24
+
 - **Each player picks their own controls.** Casual (aim) or Pro (d-pad) is
   now chosen per player in setup, under their colour — so one couch can mix
   aim drivers and d-pad drivers. (The old global scheme toggle in the pause
