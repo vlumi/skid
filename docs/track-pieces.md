@@ -347,10 +347,25 @@ tightens. Not needed at current sizes.
 
 ## Open until wired up
 
+- **CATALOG COMMENSURABILITY — the big one (device 2026-07-24).** The v1
+  numbers don't compose lego-style across combinations: pieces should snap
+  together in *many* arrangements and close, but curve extents (tight r60 →
+  60 fwd + 60 lateral; sweep r160 → 160+160) share no common grid with the
+  straights (150/300/600), so "a straight + N shallow curves + a straight"
+  fails to realign, and even two ramps (2×300) don't tile with a 600 straight
+  as expected. Fix in the catalog pass: pick a **single grid unit** and make
+  every piece's forward AND lateral footprint an integer multiple of it —
+  straights = k·unit, and curve radii chosen so a 90° arc's fwd/lateral extent
+  is also k·unit (e.g. unit 150: radius 150 → 90° spans 150+150; a "shallow"
+  45° needs its endpoint offset to land on the grid too). Ramps/jumps must
+  share the same forward unit. This is the make-or-break for the whole
+  snap-together promise — do it deliberately, with the exact geometry, before
+  more content is authored.
 - The exact catalog numbers (lengths, radii, width) — tune on device once
   the editor renders them. Known: the v1 **tight radius (60) == half the
   width (120)**, so a tight curve's inner edge collapses to a pivot point
-  rather than a real arc — bump it (≈80–100) once the editor makes it visible.
+  rather than a real arc — bump it (≈80–100) once the editor makes it visible
+  (and fold into the commensurability grid above).
 - **Curve edge styling as a decal** (see ROADMAP "per-edge road styling"):
   the red/white striped kerb on a curve's *outer* edge vs. plain white on
   straights/inners is renderer styling keyed off piece kind + curve side —
