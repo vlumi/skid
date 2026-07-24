@@ -158,7 +158,7 @@ struct RaceHUD: View {
     /// an unmistakable "you're done, here's how it went". Kept narrow so it
     /// fits a quarter-screen band on the smallest phones.
     @ViewBuilder private func finishCard(car: Car, index: Int) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 8) {
             HStack(spacing: 10) {
                 Circle()
                     .fill(index < colors.count ? colors[index] : .white)
@@ -176,38 +176,43 @@ struct RaceHUD: View {
         .background(.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 14))
     }
 
-    /// One aligned column: a "Lap N … time" row per lap (best lap emphasised),
-    /// a divider, then a "Total … time" row so the total reads as the sum. The
-    /// times right-align and never wrap; the whole column stays narrow.
+    /// One aligned column: a "★ Lap N … time" row per lap (the best lap gets
+    /// the star, in a fixed slot so all rows line up), a divider, then a
+    /// "Total … time" row so the total reads as the sum. Times right-align,
+    /// never wrap, and all share one weight; the whole column stays narrow.
     @ViewBuilder private func splitColumn(car: Car) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(spacing: 3) {
             ForEach(Array(car.progress.lapTimes.enumerated()), id: \.offset) { lap, ticks in
                 splitRow(
                     Text("Lap \(lap + 1)", bundle: .module), ticks: ticks,
-                    emphasised: ticks == car.progress.bestLapTicks)
+                    best: ticks == car.progress.bestLapTicks)
             }
             if let finished = car.progress.finishedAt, !car.progress.lapTimes.isEmpty {
                 Divider().overlay(.white.opacity(0.3))
                 splitRow(
                     Text("Total", bundle: .module),
-                    ticks: finished - race.config.countdownTicks, emphasised: true)
+                    ticks: finished - race.config.countdownTicks, best: false)
             }
         }
-        .frame(width: 116)
+        .frame(width: 124)
     }
 
-    /// One "label … time" row: label left, time right-aligned so a column of
-    /// them lines up. Emphasised rows (best lap, total) are bold. The time is
-    /// pinned to one line so it never wraps in the narrow band.
-    private func splitRow(_ label: Text, ticks: Tick, emphasised: Bool) -> some View {
-        HStack(spacing: 8) {
+    /// One "★ label … time" row: a fixed star slot (gold on the best lap,
+    /// invisible otherwise, so every row lines up), the label, then the
+    /// right-aligned time. Uniform weight; the time never wraps.
+    private func splitRow(_ label: Text, ticks: Tick, best: Bool) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "star.fill")
+                .font(.system(size: 8))
+                .foregroundStyle(.yellow)
+                .opacity(best ? 1 : 0)
             label
                 .font(.caption2)
                 .opacity(0.6)
             Spacer(minLength: 6)
             Text(verbatim: formatTicks(ticks))
-                .font(.footnote.monospacedDigit().weight(emphasised ? .bold : .regular))
-                .opacity(emphasised ? 1 : 0.85)
+                .font(.footnote.monospacedDigit())
+                .opacity(0.9)
                 .lineLimit(1)
                 .fixedSize()
         }
