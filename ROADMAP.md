@@ -22,58 +22,6 @@ Shipped milestones (v0.1–v0.5) are summarized in the
 [README version history](README.md#version-history); full detail is in
 [CHANGELOG.md](CHANGELOG.md). This file keeps only open work.
 
-## v0.5.x — Control feel (in progress)
-
-The scheme A/B has a verdict: **aim-to-drive is the winner** — on touch it's
-the only scheme that makes drifting accessible (manual countersteer needs
-precision glass can't give). The remaining work is making it *feel* right,
-then trimming the roster.
-
-- [ ] **Aim-drift feel** — the big one. Aiming off-centre at speed should
-      snap the car BODY toward the aim near-instantly and let the velocity
-      correction come gradually (a real, holdable drift — see
-      `aim-drift-feel` notes): a speed-scaled body-flip, handbrake-like on
-      inertia but **no speed loss** (arcade). Turning currently too sluggish.
-      Expose every plausibly-tunable parameter as a live in-game dial.
-- [ ] Scheme roster cleanup: once aim-drift lands, decide which of the
-      manual schemes (d-pad/slide/two-zone/one-touch/split) stay vs. cut,
-      and set defaults.
-
-### v0.5.x — Couch layout & readability polish
-
-The couch redesign (controls as bands beside a clear map) and the random
-starting grid have shipped; these are the follow-ups they surfaced. Small,
-mostly view-layer, no sim risk.
-
-- [ ] **Car readability, background-independent** — cars need to stand out on
-      any surface (map themes are coming, so no fixed palette can). Add an
-      **outline / drop-shadow / halo** per car in `draw(car:)`
-      (`TrackRenderer+Cars.swift`), not a palette retune. Yellow-on-grey is
-      the current worst case.
-- [ ] **Heading indicator → headlight cone** — replace the bold projected
-      arrow with a soft cone in the player's tint, projected ahead (same
-      `draw(car:)`). The arrow shouts now that the body-flip is calmer.
-- [ ] **Finish is unmistakable + splits in the band** — on finish, show the
-      player's lap times in their control band (a clear "done, here are your
-      splits" state). Fixes players stopping early, unsure they'd finished.
-      Lives in `RaceHUD.playerChip` / the band area.
-- [ ] **Per-player position, folded into the lap chip** — show each player's
-      current race position (P1/P2/…) **together with the lap info** in their
-      existing chip (e.g. "P2 · Lap 2/3"), which already rides the clear
-      map-side edge of the band — off the thumb (mid/outer, where the stick
-      lands) and out of the notch (safe-area-clamped), rotated for far
-      players. One combined chip, one place, reuses `RaceHUD.playerChip`; do
-      it with the finish-splits work. **Ranking:** deterministic off `Race`
-      state — laps, then gates passed this lap, then shortest distance to the
-      next gate (true on-track order). **Cadence:** recompute continuously but
-      **debounce** so near-ties don't flicker the number. This is the
-      per-player take on "live standings" and **removes the need** for a
-      separate shared top-area element.
-- [ ] *Spec gap — shared pause placement.* Pause sits at the map's
-      bottom-centre seam; on some seatings that's awkward. With position now
-      folded into each player's chip (above), the top area no longer competes
-      for it — but the seam placement per seating still wants a look.
-
 ## v0.6.0 — Track editor & shareable tracks
 
 Hand-authoring track geometry hit its quality ceiling; a **phone-first**
@@ -154,8 +102,14 @@ indirection from the couch redesign keeps them localized.
 
 ## v1.0.0 — The store release
 
-- [ ] App name decided (with search); icon polish pass (light/dark/tinted
-      variants — the base icon ships with v0.5)
+- [ ] **Final polish & balancing pass.** With all content and controls
+      settled, do the tuning that only makes sense at the end: **bake the
+      final control-feel dials** (the aim-drift model + defaults shipped in
+      v0.5; the live dials let this wait), **balance** the tracks / AI /
+      difficulty, and sweep the remaining rough edges. This is why the
+      control-feel tune was deferred here.
+- [ ] Icon polish pass (light/dark/tinted variants — the base icon ships with
+      v0.5). App name is settled: **Skid Jam**.
 - [ ] One ASC record (Universal Purchase), listing text + screenshots,
       privacy questionnaire (nothing collected)
 - [ ] Submit, await review, release (release lane already live since
