@@ -125,6 +125,44 @@ public struct Race: Equatable, Sendable {
     /// Ticks of racing so far (excludes the countdown).
     public var raceTicks: Tick { max(0, tick - config.countdownTicks) }
 
+    /// How far a car is around the course, as a monotonic score: gates
+    /// crossed so far, plus a within-gate fraction (0…1) toward the next gate
+    /// so cars between the same two gates still order by who's closer. Used
+    /// only to rank live positions — never fed back into the sim.
+    public func raceProgress(of car: Car) -> Double {
+        let gateCount = track.gates.count
+        guard gateCount > 0 else { return 0 }
+        let crossed = car.progress.lap * gateCount + car.progress.nextGate
+        let next = track.gates[car.progress.nextGate % gateCount]
+        let mid = (next.a + next.b) * 0.5
+        // Fraction toward the next gate: closer = larger, capped to [0,1) so
+        // it can never bump the crossed-gate count.
+        let span = max(1, track.centerlineLength / Double(gateCount))
+        let toward = max(0, 1 - car.state.position.distance(to: mid) / span)
+        return Double(crossed) + min(0.999, toward)
+    }
+
+    /// Car indices ranked best-first for live standings (P1 = index 0 of the
+    /// result). Finished cars lead, ordered by finish time; the rest by how
+    /// far around they are, then distance to the next gate. Deterministic off
+    /// sim state; ties break by car index so the order is stable. Meaningful
+    /// only in a lap race (time trial has no field to rank).
+    public var standings: [Int] {
+        cars.indices.sorted { lhs, rhs in
+            let a = cars[lhs]
+            let b = cars[rhs]
+            switch (a.progress.finishedAt, b.progress.finishedAt) {
+            case (let fa?, let fb?): return fa != fb ? fa < fb : lhs < rhs
+            case (_?, nil): return true
+            case (nil, _?): return false
+            case (nil, nil):
+                let pa = raceProgress(of: a)
+                let pb = raceProgress(of: b)
+                return pa != pb ? pa > pb : lhs < rhs
+            }
+        }
+    }
+
     /// Advance one tick. Missing inputs coast; cars held in the countdown
     /// and rolling out after their flag always coast.
     public mutating func advance(inputs: [PlayerID: CarInput]) {

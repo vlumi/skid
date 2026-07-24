@@ -21,6 +21,13 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Your position, right in your chip.** Each player's chip now shows their
+  live race position (P1, P2, …) next to the lap counter, so you always know
+  where you stand without a shared scoreboard. It settles briefly before
+  changing, so a photo-finish for a spot doesn't flicker the number.
+- **A clear finish, with your splits.** When you take the flag, your lap
+  times appear right in your control band — an unmistakable "you're done,
+  here's how it went" instead of guessing whether the race is over.
 - **Pro's pad stays put.** The direct steer/throttle pad now anchors where
   your thumb first lands instead of trailing it — so gas / brake / left /
   right keep fixed spots. Holding the gas no longer creeps the pad up the
