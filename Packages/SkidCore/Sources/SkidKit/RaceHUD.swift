@@ -181,22 +181,42 @@ struct RaceHUD: View {
         .background(.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 14))
     }
 
-    /// The player's lap splits, laid out as a labelled row so each lap reads
-    /// cleanly with space between them; the best lap stands out.
+    /// Rows per split column before flowing into a second column — keeps a
+    /// long race's splits from running off the bottom of the band.
+    private static let splitsPerColumn = 5
+
+    /// The player's lap splits as vertical "Lap N … time" rows so they align
+    /// and fit the narrow band (a horizontal row overflowed on an SE). Flows
+    /// into extra columns for longer races; the best lap stands out.
     @ViewBuilder private func finishSplits(car: Car) -> some View {
-        HStack(alignment: .top, spacing: 16) {
-            ForEach(Array(car.progress.lapTimes.enumerated()), id: \.offset) { lap, ticks in
-                let isBest = ticks == car.progress.bestLapTicks
-                VStack(spacing: 1) {
-                    Text("Lap \(lap + 1)", bundle: .module)
-                        .font(.caption2)
-                        .opacity(0.55)
-                    Text(verbatim: formatTicks(ticks))
-                        .font(.footnote.monospacedDigit().weight(isBest ? .bold : .regular))
-                        .opacity(isBest ? 1 : 0.85)
+        let laps = Array(car.progress.lapTimes.enumerated())
+        let columns = stride(from: 0, to: laps.count, by: Self.splitsPerColumn).map {
+            Array(laps[$0..<min($0 + Self.splitsPerColumn, laps.count)])
+        }
+        HStack(alignment: .top, spacing: 18) {
+            ForEach(Array(columns.enumerated()), id: \.offset) { _, column in
+                VStack(spacing: 3) {
+                    ForEach(column, id: \.offset) { lap, ticks in
+                        splitRow(lap: lap, ticks: ticks, best: ticks == car.progress.bestLapTicks)
+                    }
                 }
             }
         }
+    }
+
+    /// One split row: lap label on the left, time right-aligned so a column of
+    /// them lines up. The best lap is bold and full-opacity.
+    private func splitRow(lap: Int, ticks: Tick, best: Bool) -> some View {
+        HStack(spacing: 8) {
+            Text("Lap \(lap + 1)", bundle: .module)
+                .font(.caption2)
+                .opacity(0.55)
+            Spacer(minLength: 6)
+            Text(verbatim: formatTicks(ticks))
+                .font(.footnote.monospacedDigit().weight(best ? .bold : .regular))
+                .opacity(best ? 1 : 0.85)
+        }
+        .frame(width: 96)
     }
 
     @ViewBuilder private func timeTrialLines(car: Car) -> some View {
