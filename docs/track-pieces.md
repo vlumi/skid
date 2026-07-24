@@ -113,8 +113,8 @@ pieces (and whole new families) are added by appending ids.
 | 11–12 | hairpin 180° · L/R, radius 60 | the Hairpin rebuild |
 | 13 | ramp up (straight 300, layer +1, launches) | |
 | 14 | ramp down (straight 300, layer −1) | |
-| 15–17 | straight 150/300/600 **+ direction arrow** | decal variants |
-| 18 | **start grid** (straight 300, grid decal, start line at exit) | exactly one per track |
+| 15 | **start grid** (straight 300, grid decal, start line at exit) | exactly one per track |
+| 128–130 | straight 150/300/600 **+ direction arrow** | decal variants, two-byte range |
 
 Deliberately small — a phone-browsable palette — but designed to grow:
 lengths/radii are plain integer parameters, so variants are new ids, not new
@@ -207,9 +207,17 @@ then TLV sections, each: 1 byte tag · 1 byte length · payload
 ```
 
 **Piece ids are varints**: ids 0–127 encode as one byte; a set high bit
-means a two-byte id (`((b0 & 0x7F) << 8) | b1`, 15-bit space, ~32k ids). The
-whole v1 catalog — and a long way beyond — stays one byte per piece, but
-decal and texture variants can multiply for years without a version bump.
+means a two-byte id (`((b0 & 0x7F) << 8) | b1`, 15-bit space, ~32k ids).
+
+**Allocation policy**: the scarce one-byte range is reserved for **core
+geometry** (straights, curves, ramps, the start piece); **decals and other
+variants live in the two-byte range from the start** — so the compact range
+never needs a hard "which 128 matter most" call, and variant families can
+multiply for years without a version bump. A decal piece costs one extra
+byte in a code; a typical track carries a handful. The registry becomes
+truly append-only **at the format's first public release** — until then,
+reshuffling ids (breaking compatibility) is allowed while the editor takes
+shape.
 
 TLV keeps the format **expansion-proof**: future sections (hazards,
 decorations, per-track width) are new tags that old decoders skip by length;
@@ -222,9 +230,9 @@ QR byte capacities at M error correction):
 | track | bytes | code chars | URL chars | QR fits in |
 |---|---:|---:|---:|---|
 | small (12 pieces, 4 gates) | 29 | 39 | 65 | V5 (84 B) |
-| typical (20 pieces, 6 gates, themed) | 42 | 56 | 82 | V5 (84 B) |
-| excessive (64 pieces, 16 gates, themed) | 96 | 128 | 154 | V9 (180 B) |
-| future: excessive + ~60 B of decorations | ~156 | ~208 | ~234 | V11 (251 B) |
+| typical (20 pieces, 4 of them decals, 6 gates, themed) | 46 | 62 | 88 | V6 (106 B) |
+| excessive (64 pieces, 8 decals, 16 gates, themed) | 104 | 139 | 165 | V9 (180 B) |
+| future: excessive + ~60 B of decorations | ~164 | ~219 | ~245 | V11 (251 B) |
 
 Even the worst case with a future decoration layer sits in a mid-size,
 easily scannable QR. **Keep this table honest as sections are added** — the
