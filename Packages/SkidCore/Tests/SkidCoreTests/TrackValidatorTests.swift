@@ -62,6 +62,18 @@ final class TrackValidatorTests: XCTestCase {
         XCTAssertEqual(v.problems, [.walk(.unknownPiece(999))])
     }
 
+    /// Two ribbons overlap once their centerlines are closer than a full road
+    /// width (half from each side) — not half a width, which used to let a lap
+    /// sit half on top of another and still validate.
+    func testOverlapThresholdIsAFullRoadWidth() {
+        // A tight ring that laps back over itself must be rejected.
+        let ring: [PieceID] =
+            [Pieces.startGrid] + Array(repeating: Pieces.curve90TightLeft, count: 8)
+        let v = TrackValidator.validate(TrackLayout(pieces: ring, gateSeams: [0, 2]))
+        XCTAssertFalse(v.isSaveable)
+        XCTAssertTrue(v.problems.contains(.overlap), "a doubled-back lap is an overlap")
+    }
+
     func testSelfOverlapReported() {
         // A degenerate loop folding back on itself: start + hairpin + hairpin
         // returns along the same corridor, colliding on the same layer.

@@ -88,7 +88,12 @@ public enum TrackValidator {
     /// stays outside this). Legal crossable pairs and jump-gap unders are
     /// exempt.
     private static func hasIllegalOverlap(_ placed: [PlacedPiece]) -> Bool {
-        let minGap = Double(PieceCatalog.width) * 0.5
+        // Two ribbons touch when their centerlines are a FULL width apart (half
+        // from each side) and overlap below that — so the threshold is the road
+        // width, not half of it. (It was half, which let a lap sit half-on-top
+        // of another and still validate.) A hair under, so ribbons that merely
+        // graze aren't rejected.
+        let minGap = Double(PieceCatalog.width) * 0.95
         // Sampled points + layer per piece (first path only; forks sample the
         // trunk — branch overlap gets full treatment in Phase B).
         let samples = placed.map { samplePoints($0) }

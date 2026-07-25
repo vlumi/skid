@@ -207,6 +207,140 @@ final class PieceGeometryTests: XCTestCase {
         XCTAssertTrue(gap.needsDiagonalTravel)
     }
 
+    /// The remedy is the actionable half of the readout: which *edit* closes a
+    /// gap. A pure axis gap wants straights; a stranded √2 debt can't be fixed
+    /// by adding length at all.
+    func testRemedyClassifiesWhatKindOfEditIsNeeded() {
+        // The start piece alone: the origin is 2U BEHIND the end, so the loop
+        // has overshot — adding pieces can't help, a run must shorten.
+        let axis = TrackLayout(pieces: [PieceCatalog.ID.startGrid])
+        let axisEnd = axis.walk().openEnds[0]
+        XCTAssertEqual(
+            axis.closureGap(from: axisEnd).remedy(facing: axisEnd.heading), .tooLong)
+
+        // Heading still off: one 45 leaves the end facing a diagonal.
+        let turned = TrackLayout(pieces: [
+            PieceCatalog.ID.startGrid, PieceCatalog.ID.curve45MediumLeft,
+        ])
+        let turnedEnd = turned.walk().openEnds[0]
+        XCTAssertEqual(
+            turned.closureGap(from: turnedEnd).remedy(facing: turnedEnd.heading),
+            .turn(eighths: 1))
+
+        // A closed loop needs nothing.
+        let closed = TrackLayout(pieces: [
+            PieceCatalog.ID.startGrid, PieceCatalog.ID.curve90TightLeft, PieceCatalog.ID.straight,
+            PieceCatalog.ID.curve90TightLeft, PieceCatalog.ID.straight,
+            PieceCatalog.ID.curve90TightLeft, PieceCatalog.ID.straight,
+            PieceCatalog.ID.curve90TightLeft,
+        ])
+        let end = closed.walk().placed.last!.exits[0]
+        XCTAssertEqual(closed.closureGap(from: end).remedy(facing: end.heading), .closed)
+    }
+
+    /// TWO same-handed 45s can never cancel their √2 debt, no matter how the
+    /// straights are sized — the loop is unclosable by length alone, and the
+    /// remedy must say "balance the diagonals" rather than "add a 45".
+    /// (Regression for a real build: 45R · 90 · 90 · 90 · 45R turns a full 360°
+    /// yet cannot close.)
+    func testTwoSameHandedFortyFivesCannotCloseByLengthAlone() {
+        func loop(straightsPerLeg: Int) -> TrackLayout {
+            var pieces: [PieceID] = [PieceCatalog.ID.startGrid, PieceCatalog.ID.curve45TightRight]
+            for _ in 0..<3 {
+                pieces += Array(
+                    repeating: PieceCatalog.ID.straight, count: straightsPerLeg)
+                pieces.append(PieceCatalog.ID.curve90SweepRight)
+            }
+            pieces += Array(repeating: PieceCatalog.ID.straight, count: straightsPerLeg)
+            pieces.append(PieceCatalog.ID.curve45TightRight)
+            return TrackLayout(pieces: pieces)
+        }
+        for legs in 0...4 {
+            let layout = loop(straightsPerLeg: legs)
+            let gap = layout.closureGap(from: layout.walk().openEnds[0])
+            XCTAssertEqual(gap.headingEighths, 0, "the turns total 360°, so the heading closes")
+            XCTAssertEqual(
+                gap.remedy(facing: layout.walk().openEnds[0].heading), .balanceDiagonals,
+                "with \(legs) straights per leg the √2 debt still can't be paid by length")
+        }
+    }
+
+    /// Eight same-handed 45s DO cancel — an octagon closes, and it stays closed
+    /// with unequal sides as long as opposite sides match. This is the shape to
+    /// reach for when a two-45 cut-corner loop won't close.
+    func testOctagonClosesEvenWithOppositeSidesUnequal() {
+        func octagon(legs: [Int]) -> TrackLayout {
+            var pieces: [PieceID] = [PieceCatalog.ID.startGrid]
+            for count in legs {
+                pieces.append(PieceCatalog.ID.curve45TightRight)
+                pieces += Array(repeating: PieceCatalog.ID.straight, count: count)
+            }
+            return TrackLayout(pieces: pieces)
+        }
+        // Regular, and a stretched long/short/long/short octagon.
+        for legs in [[1, 1, 1, 1, 1, 1, 1, 1], [4, 1, 2, 1, 4, 1, 2, 1]] {
+            XCTAssertTrue(
+                octagon(legs: legs).walk().openEnds.isEmpty,
+                "octagon with legs \(legs) should close")
+        }
+    }
+
+    /// The suggester answers "what closes this?" concretely: any run it returns
+    /// must actually close the loop, exactly. That's the property worth testing
+    /// — not which pieces it picks.
+    func testSuggestedClosingRunActuallyCloses() {
+        // A three-quarter square: one turn and a straight short of home.
+        let open: [PieceID] = [
+            PieceCatalog.ID.startGrid, PieceCatalog.ID.curve90TightLeft, PieceCatalog.ID.straight,
+            PieceCatalog.ID.curve90TightLeft, PieceCatalog.ID.straight,
+            PieceCatalog.ID.curve90TightLeft, PieceCatalog.ID.straight,
+        ]
+        let layout = TrackLayout(pieces: open)
+        let end = layout.walk().openEnds[0]
+        guard let run = layout.closingRun(from: end, maxPieces: 3), !run.isEmpty else {
+            return XCTFail("a run should exist within 3 pieces")
+        }
+        let closed = TrackLayout(pieces: open + run)
+        XCTAssertTrue(
+            closed.walk().openEnds.isEmpty,
+            "the suggested run \(run) must close the loop exactly")
+    }
+
+    /// A suggested run must never route the road through pavement that's
+    /// already there — "suggestable" has to mean "buildable", or the button
+    /// produces tracks the validator would reject.
+    func testSuggestedRunNeverCrossesExistingPavement() {
+        // A long snake doubling back on itself: plenty of nearby pavement for a
+        // careless search to cut through.
+        let snake: [PieceID] = [
+            PieceCatalog.ID.startGrid, PieceCatalog.ID.longStraight,
+            PieceCatalog.ID.hairpinMediumLeft, PieceCatalog.ID.longStraight,
+            PieceCatalog.ID.hairpinMediumRight, PieceCatalog.ID.longStraight,
+        ]
+        let layout = TrackLayout(pieces: snake)
+        guard let end = layout.walk().openEnds.first else { return }
+        if let run = layout.closingRun(from: end, maxPieces: 3), !run.isEmpty {
+            let closed = TrackLayout(pieces: snake + run, gateSeams: [0, 2])
+            let problems = TrackValidator.validate(closed).problems
+            XCTAssertFalse(
+                problems.contains(.overlap),
+                "suggested run \(run) put the road through existing pavement")
+        }
+    }
+
+    /// When no run can close a gap, the suggester says so rather than offering
+    /// something that doesn't work — the two-same-handed-45 loop has no fix.
+    func testSuggesterReturnsNilWhenNoShortRunCloses() {
+        var pieces: [PieceID] = [PieceCatalog.ID.startGrid, PieceCatalog.ID.curve45TightRight]
+        for _ in 0..<3 {
+            pieces += [PieceCatalog.ID.straight, PieceCatalog.ID.curve90SweepRight]
+        }
+        pieces += [PieceCatalog.ID.straight, PieceCatalog.ID.curve45TightRight]
+        let layout = TrackLayout(pieces: pieces)
+        let end = layout.walk().openEnds[0]
+        XCTAssertNil(layout.closingRun(from: end, maxPieces: 3))
+    }
+
     /// The 2×2 starting grid has to fit on the start piece behind the line —
     /// the one place a shortened piece length could silently push cars off the
     /// ribbon, so it's asserted rather than assumed.
