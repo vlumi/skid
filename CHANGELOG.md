@@ -36,26 +36,21 @@ ships (see [AGENTS.md](AGENTS.md)).
   Every track in the game, built-in or your own, is now the same kind of thing,
   so a built-in can be opened in the editor and reshaped. (Surface hazards like
   the old oil patches will return as a piece you can place.)
-- **Bridges you can actually drive.** Elevation is one continuous height from
-  ground to deck: the car climbs the ramp, rides the deck, and comes back down
-  in one smooth motion, growing as it rises. Driving under a bridge keeps you
-  under it, cars on the deck and the road below pass cleanly, and a bridge is
-  fenced along both edges. Ramps are for driving up — if you want to be launched,
-  that's the jump piece.
-- **The editor and the race look the same, because they are the same.** The
-  race view now draws the track with the editor's renderer, off the same pieces —
-  so kerbs, guard rails, ramp shading and markings are identical whether you're
-  building a track or driving it, and there's no second renderer to drift out of
-  step. Bridge rails sit exactly on the road edge now, all the way down to the
-  foot of the ramp.
-- **A debug overlay for the dev loop.** Tuning → Debug → "Show sim overlay"
-  draws what the simulation believes on top of what you see: the centerline
-  colored by height (green at ground, red at deck), every wall with its height,
-  and each car's height, surface and on-road state. Elevation bugs are almost
-  always the drawing and the physics disagreeing, and this makes which one is
-  wrong obvious at a glance.
-- **You can't drive off the map any more.** Every track is bounded, so a spin
-  at the edge no longer sends you out of the playfield.
+- **Bridges you can drive.** Elevation is one continuous height from ground to
+  deck: the car climbs the ramp, rides the deck, and comes back down in one
+  smooth motion, growing as it rises. A bridge crosses over its own road, so
+  cars on the deck and underneath it pass each other, and both edges are fenced.
+  Ramps are for driving up — for being launched, there's the jump piece.
+- **The editor and the race look the same, because they are the same.** The race
+  view draws the track with the editor's renderer, off the same pieces, so kerbs,
+  guard rails, ramp shading and markings match exactly between building a track
+  and driving it.
+- **A debug overlay.** Tuning → Debug → "Show sim overlay" draws what the
+  simulation believes on top of what you see: the centerline colored by height
+  (green at ground, red at deck), every wall with its height, and each car's
+  height, surface and on-road state.
+- **Tracks are bounded.** A spin at the edge of the map stops at the boundary
+  instead of carrying you out of the playfield.
 - **Painted edges and racing kerbs.** Every road now carries a thin white edge
   line, and corners earn red/white kerbs where a real circuit puts them: at the
   apex you cut, on the outside of a corner exit where you run wide under power,
@@ -76,9 +71,7 @@ ships (see [AGENTS.md](AGENTS.md)).
   of popping between levels, and a car swells smoothly as it climbs. One
   "Deck scale" dial in the Tuning panel tunes the whole elevated look at once.
   Bridges paint cleanly over the road beneath, and a ramp reads as a climb from
-  the grade-marking chevrons up its middle. A bridge you build in the editor
-  drives as one too: the car climbs the ramp and takes the deck rather than
-  switching height at the foot of the slope.
+  the grade-marking chevrons up its middle.
 
 ## v0.5.0
 
