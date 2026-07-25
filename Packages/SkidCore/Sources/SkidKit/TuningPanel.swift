@@ -56,6 +56,14 @@ struct TuningPanel: View {
                         Text("Pace", bundle: .module), value: $settings.pace,
                         range: 0.6...1.0, step: 0.05, format: "%.2f")
 
+                    section(Text("Debug", bundle: .module))
+                    Toggle(isOn: $settings.debugOverlay) {
+                        Text("Show sim overlay", bundle: .module)
+                            .font(.footnote).foregroundColor(.white)
+                    }
+                    .tint(.orange)
+                    .padding(.horizontal, 4)
+
                     section(Text("Elevation", bundle: .module))
                     slider(
                         Text("Deck scale", bundle: .module), value: $settings.deckScale,

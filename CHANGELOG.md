@@ -22,35 +22,39 @@ ships (see [AGENTS.md](AGENTS.md)).
 ### Unreleased (next build)
 
 - **Build your own tracks.** A new track editor lets you lay a course piece by
-  piece from the start line — straights, curves, hairpins, and a ramp that
-  knows whether to climb or descend — extending from a loose end until the loop
-  closes back on itself. The layout renders live as you build, with a "build
-  here" arrow on the end you're extending and construction stripes on any end
-  still open. Tap a joint to mark a checkpoint, and when the loop closes you can
-  race it — there's a "My track" slot that keeps your design between sessions.
-  Copy puts a share code on the clipboard and Paste loads one back, so a track
-  can be kept or passed on until there's a proper track library.
-- **Painted edges and racing kerbs.** Every road now carries a thin white edge
-  line, and corners earn red/white kerbs where a real circuit puts them: at the
-  apex you cut, on the outside of a corner exit where you run wide under power,
-  and on both sides of a chicane. The kerbs are worked out from the corners of
-  the whole layout rather than piece by piece, so one continuous kerb can run
-  across several pieces with an even stripe rhythm. All of it sits outboard of
-  the road, so nothing narrows the surface you actually drive on.
-- **See the build limit, and turn your track.** The editor draws the size limit
-  as a dashed boundary around your layout, with the edges turning red on
-  whichever axis has run out of room, so you can see why a piece won't fit. A
-  Rotate button turns the whole track 45° at a time, which reshapes its
-  footprint — a diagonal course is long and thin one way, square the other — and
-  can bring an oversized layout back within the limit. Fit, Center, and Rotate
-  are compact icons in the top bar.
-- **A ground-up track look, driven by height.** Elevation is now one smooth
-  scale from ground to bridge deck: ramps taper as a true wedge (narrow at the
-  bottom, wide at the top), the deck and the cars on it grow with height instead
-  of popping between levels, and a car swells smoothly as it climbs. One
-  "Deck scale" dial in the Tuning panel tunes the whole elevated look at once.
-  Bridges paint cleanly over the road beneath, and a ramp reads as a climb from
-  the grade-marking chevrons up its middle.
+  piece from the start line — straights, curves, hairpins, and ramps — extending
+  from a loose end until the loop closes back on itself. The layout renders live
+  as you build, with a "build here" arrow on the end you're extending and
+  construction stripes on any end still open. Tap a joint to mark a checkpoint,
+  and when the loop closes you can race it. A "My track" slot keeps your design
+  between sessions, and Copy/Paste moves a track around as a short share code.
+  The editor shows the size limit as a dashed boundary, and a Rotate button turns
+  the whole track 45° at a time to reshape its footprint.
+- **Every track is built from the same pieces, including the built-in ones.**
+  Small track, Big oval, and Eight replace the four hand-authored circuits, and
+  they're made of exactly what the editor gives you — so a built-in can be
+  opened, reshaped and raced like your own. What you build is also literally what
+  you drive: the editor and the race draw from the same pieces with the same
+  renderer, so kerbs, rails, markings and shading match. (Surface hazards like
+  the old oil patches will return as a piece you can place.)
+- **Roads that look like roads.** Every road carries a thin white edge line, and
+  corners earn red/white kerbs where a real circuit puts them: at the apex you
+  cut, on the outside of a corner exit where you run wide under power, and on
+  both sides of a chicane. Kerbs are worked out from the whole layout's corners
+  rather than piece by piece, so one continuous kerb runs across several pieces
+  with an even stripe rhythm — and all of it sits outboard, so nothing narrows
+  the road you actually drive on.
+- **Bridges you can drive.** Elevation is one continuous height from ground to
+  deck: the car climbs a ramp, rides the deck, and comes back down in one smooth
+  motion, widening the road and growing the car as it rises. A bridge crosses
+  over its own road, so cars above and below pass each other cleanly, and the
+  deck and its ramps are fenced. Ramps are for driving up — for being launched,
+  there's the jump piece. One "Deck scale" dial in the Tuning panel tunes the
+  whole elevated look at once.
+- **A debug overlay.** Tuning → Debug → "Show sim overlay" draws what the
+  simulation believes on top of what you see: the centerline colored by height
+  (green at ground, red at deck), every wall with its height, and each car's
+  height, surface and on-road state.
 
 ## v0.5.0
 

@@ -100,7 +100,7 @@ final class RaceStructureTests: XCTestCase {
     }
 
     func testRecordingReplaysBitForBit() {
-        let track = TrackLibrary.practiceLoop()
+        let track = TrackLibrary.testRing()
         let players = [PlayerID(0), PlayerID(1)]
         let config = RaceConfig(laps: 2, countdownTicks: 30)
         var race = Race(track: track, players: players, seed: 99, config: config)
@@ -118,16 +118,27 @@ final class RaceStructureTests: XCTestCase {
         XCTAssertEqual(replayed, race)
     }
 
-    func testGatesCoverTheWholeCorridor() {
-        let track = TrackLibrary.practiceLoop()
-        let rightGate = track.gates[0]
-        // Running wide over the grass, close to the wall: still counts.
-        XCTAssertTrue(rightGate.crossedForward(movingFrom: Vec2(1560, 520), to: Vec2(1560, 480)))
-        // On the ribbon, obviously.
-        XCTAssertTrue(rightGate.crossedForward(movingFrom: Vec2(1360, 520), to: Vec2(1360, 480)))
-        // But a gross cut deep through the infield misses it — circling the
-        // middle can't lap.
-        XCTAssertFalse(rightGate.crossedForward(movingFrom: Vec2(1100, 520), to: Vec2(1100, 480)))
+    func testGatesCoverTheWholeCorridor() throws {
+        let track = TrackLibrary.testRing()
+        let gate = try XCTUnwrap(track.gates.first)
+        // Derive the geometry from the gate itself: crossing anywhere along its
+        // span counts (including out on the grass beyond the asphalt), and a
+        // parallel move far outside it does not.
+        // Cross ALONG the gate's driving direction: `crossedForward` requires
+        // both an intersection and positive motion along `forward`.
+        let across =
+            gate.forward.lengthSquared > 0
+            ? gate.forward.normalized : (gate.b - gate.a).normalized.perpendicular
+        for fraction in [0.05, 0.5, 0.95] {
+            let point = gate.a + (gate.b - gate.a) * fraction
+            XCTAssertTrue(
+                gate.crossedForward(movingFrom: point - across * 20, to: point + across * 20),
+                "crossing the gate at \(fraction) of its span should count")
+        }
+        // Well beyond the gate's end: a gross cut through the infield misses it.
+        let beyond = gate.a - (gate.b - gate.a) * 0.5
+        XCTAssertFalse(
+            gate.crossedForward(movingFrom: beyond - across * 20, to: beyond + across * 20))
         // Every gate spans far more than the ribbon.
         for gate in track.gates {
             XCTAssertGreaterThan((gate.b - gate.a).length, track.width * 2)
@@ -135,7 +146,7 @@ final class RaceStructureTests: XCTestCase {
     }
 
     func testRibbonSpansPaintOnTheRoad() {
-        let track = TrackLibrary.practiceLoop()
+        let track = TrackLibrary.testRing()
         for gate in track.gates {
             let span = track.ribbonSpan(of: gate)
             XCTAssertNotNil(span)
@@ -151,9 +162,13 @@ final class RaceStructureTests: XCTestCase {
         }
     }
 
-    func testPracticeLoopHazardPatches() {
-        let track = TrackLibrary.practiceLoop()
-        XCTAssertEqual(track.patches.count, 3)
+    /// Surface patches (mud, oil) still work — the built-ins carry none today,
+    /// so this exercises the mechanism on a track with a patch added.
+    func testHazardPatches() throws {
+        var track = TrackLibrary.testRing()
+        let onRoad = try XCTUnwrap(track.centerline.first)
+        track.patches = [SurfacePatch(center: onRoad, radius: 60, surface: .oil)]
+        XCTAssertEqual(track.patches.count, 1)
         for patch in track.patches {
             XCTAssertEqual(track.surface(at: patch.center), patch.surface)
             // Every hazard touches the ribbon (it threatens the racing line).

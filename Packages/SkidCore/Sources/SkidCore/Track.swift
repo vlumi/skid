@@ -1,17 +1,32 @@
 import Foundation
 
-/// A solid barrier segment cars bounce off. Lives on a layer: cars on a
-/// different layer pass it freely (bridges/tunnels later).
+/// A solid barrier segment cars bounce off. Sits at a **height**: a car at a
+/// very different height passes it freely, so a deck rail never blocks the road
+/// underneath the bridge.
 public struct Wall: Equatable, Sendable, Codable {
+    /// What this barrier *is*, so the renderer can tell a visible structure from
+    /// an invisible limit. Physics treats them identically.
+    public enum Kind: String, Equatable, Sendable, Codable {
+        /// A guard rail along a bridge deck or ramp — drawn as a blue barrier.
+        case rail
+        /// The map boundary. Enforced, never drawn: a painted rectangle around
+        /// the whole playfield would look like scenery that isn't there.
+        case boundary
+    }
+
     public var a: Vec2
     public var b: Vec2
-    public var layer: Int
+    /// 0 = ground, 1 = deck. A boundary fence spans every height (see `kind`).
+    public var height: Double
+    public var kind: Kind
 
-    public init(from a: Vec2, to b: Vec2, layer: Int = 0) {
+    public init(from a: Vec2, to b: Vec2, height: Double = 0, kind: Kind = .rail) {
         self.a = a
         self.b = b
-        self.layer = layer
+        self.height = height
+        self.kind = kind
     }
+
 }
 
 /// An ordered checkpoint gate across the ribbon — a lap counts only when
@@ -23,13 +38,15 @@ public struct Gate: Equatable, Sendable, Codable {
     /// the movement has a positive component along it. `.zero` accepts both
     /// directions (undirected gate).
     public var forward: Vec2
-    public var layer: Int
+    /// The height the gate sits at, so a deck checkpoint isn't crossed by a car
+    /// passing underneath it.
+    public var height: Double
 
-    public init(from a: Vec2, to b: Vec2, forward: Vec2 = .zero, layer: Int = 0) {
+    public init(from a: Vec2, to b: Vec2, forward: Vec2 = .zero, height: Double = 0) {
         self.a = a
         self.b = b
         self.forward = forward
-        self.layer = layer
+        self.height = height
     }
 
     /// Whether a movement from `start` to `end` crosses this gate
@@ -51,28 +68,22 @@ public struct Gate: Equatable, Sendable, Codable {
     }
 }
 
-/// A layer transition line across the ribbon: crossing it along `forward`
-/// takes the car from `fromLayer` to `toLayer` (driving back down crosses
-/// it backward). With `launches`, the forward crossing throws the car —
-/// a jump ramp: brief ballistic flight scaled by speed.
+/// A **jump take-off line**: crossing it along `forward` throws the car into a
+/// brief ballistic flight scaled by its speed.
+///
+/// This used to be a layer-transition line, carrying the car between a
+/// `fromLayer` and a `toLayer`. Ordinary climbs need no line at all now — the
+/// slope is in `Track.heights`, and the car simply follows the road it is on —
+/// so all that remains is the launch, which genuinely is an event at a place.
 public struct Ramp: Equatable, Sendable, Codable {
     public var a: Vec2
     public var b: Vec2
     public var forward: Vec2
-    public var fromLayer: Int
-    public var toLayer: Int
-    public var launches: Bool
 
-    public init(
-        from a: Vec2, to b: Vec2, forward: Vec2, fromLayer: Int = 0, toLayer: Int = 1,
-        launches: Bool = false
-    ) {
+    public init(from a: Vec2, to b: Vec2, forward: Vec2) {
         self.a = a
         self.b = b
         self.forward = forward
-        self.fromLayer = fromLayer
-        self.toLayer = toLayer
-        self.launches = launches
     }
 
     /// -1 = crossed backward, +1 = crossed forward, 0 = not crossed.
@@ -89,20 +100,22 @@ public struct SurfacePatch: Equatable, Sendable, Codable {
     public var center: Vec2
     public var radius: Double
     public var surface: Surface
-    public var layer: Int
+    /// The height this patch lies at — oil on the deck doesn't affect the road
+    /// below.
+    public var height: Double
 
-    public init(center: Vec2, radius: Double, surface: Surface, layer: Int = 0) {
+    public init(center: Vec2, radius: Double, surface: Surface, height: Double = 0) {
         self.center = center
         self.radius = radius
         self.surface = surface
-        self.layer = layer
+        self.height = height
     }
 }
 
 /// The static track: a closed centerline ribbon of asphalt in a field of
 /// grass, plus walls, checkpoint gates, patches, and grid slots. Everything
-/// carries a layer so crossings never require a data-model refactor; v0.1
-/// content stays flat on layer 0.
+/// carries a height, so bridges and (later) tunnels need no data-model
+/// refactor; a flat track is all zeros.
 public struct Track: Equatable, Sendable, Codable {
     /// Stable identity for persistence (hiscores key). "" for ad-hoc
     /// test tracks.
@@ -111,19 +124,45 @@ public struct Track: Equatable, Sendable, Codable {
     public var centerline: [Vec2]
     /// Full width of the asphalt ribbon.
     public var width: Double
-    /// Centerline segment indexes on the elevated layer (1) — bridges.
-    /// Everything else is ground (0).
-    public var elevatedSegments: Set<Int>
-    /// Ground-layer segments that render as sloped approaches (gradient
-    /// wedges climbing to the deck). Purely visual — the car is on the
-    /// ground layer until it crosses the ramp line at the deck's edge.
-    public var rampSegments: Set<Int>
-    /// Layer transition lines (bridge approaches, jump ramps).
+    /// **Height per centerline point**, 0 = ground, 1 = bridge deck, varying
+    /// continuously across a ramp — the single source of truth for elevation.
+    ///
+    /// This replaced a pair of discrete layer sets (`elevatedSegments` +
+    /// `rampSegments`) and a per-car integer `layer`. The discrete model had to
+    /// flip a car between layers at a line, which produced a family of bugs that
+    /// were awkward to patch and impossible to fully close: the car popping as it
+    /// crossed, the road vanishing from under it mid-transition, and a car
+    /// driving under a bridge coming out on top of the ramp. With a height per
+    /// point, "which surface am I on" is a comparison instead of a state
+    /// machine, and the editor's continuous look is exactly what the sim uses.
+    ///
+    /// Parallel to `centerline`; a track with no elevation is all zeros.
+    public var heights: [Double]
+    /// Jump take-off lines. A plain ramp needs no line at all now — the climb is
+    /// in `heights` — but a launch still needs a moment where the car leaves the
+    /// road ballistically.
     public var ramps: [Ramp]
     public var walls: [Wall]
     /// Ordered checkpoint gates; the last one is the start/finish line.
     public var gates: [Gate]
     public var patches: [SurfacePatch]
+    /// The piece layout this track was compiled from.
+    ///
+    /// Kept so the race view can draw the track with **the editor's renderer**,
+    /// off the same placed pieces the editor draws — which is the only way the
+    /// two can be identical rather than merely similar. Two independent
+    /// renderers over two different inputs drifted apart in kerbs, rails and
+    /// ramp markings, and every fix had to be made twice.
+    public var layout: TrackLayout?
+    /// How far the compiled geometry was moved from where walking `layout`
+    /// puts it, so anything drawn from the layout can be shifted to match.
+    ///
+    /// Compiling re-frames a track onto its own footprint (see
+    /// `PieceCompiler.framed`), and that offset isn't a whole number of units, so
+    /// it can't be folded back into the layout's exact integer origin. Drawing
+    /// the raw walk therefore put the track visibly off from where it physically
+    /// was — right shape, wrong place.
+    public var layoutOffset: Vec2
     /// Grid slots in start order (pole first), with the heading cars face.
     public var startSlots: [Vec2]
     public var startHeading: Double
@@ -139,12 +178,13 @@ public struct Track: Equatable, Sendable, Codable {
         id: String = "",
         centerline: [Vec2],
         width: Double,
-        elevatedSegments: Set<Int> = [],
-        rampSegments: Set<Int> = [],
+        heights: [Double]? = nil,
         ramps: [Ramp] = [],
         walls: [Wall] = [],
         gates: [Gate] = [],
         patches: [SurfacePatch] = [],
+        layout: TrackLayout? = nil,
+        layoutOffset: Vec2 = .zero,
         startSlots: [Vec2] = [],
         startHeading: Double = 0,
         size: Vec2,
@@ -153,29 +193,101 @@ public struct Track: Equatable, Sendable, Codable {
         self.id = id
         self.centerline = centerline
         self.width = width
-        self.elevatedSegments = elevatedSegments
-        self.rampSegments = rampSegments
+        // A flat track needs no height data at all, so `nil` means all-ground.
+        self.heights = heights ?? Array(repeating: 0, count: centerline.count)
         self.ramps = ramps
         self.walls = walls
         self.gates = gates
         self.patches = patches
+        self.layout = layout
+        self.layoutOffset = layoutOffset
         self.startSlots = startSlots
         self.startHeading = startHeading
         self.size = size
         self.pit = pit ?? size * 0.5
     }
 
-    /// Which layer a centerline segment lives on.
-    public func segmentLayer(_ index: Int) -> Int {
-        elevatedSegments.contains(index) ? 1 : 0
+    /// The gap between one level and the next. Ground is 0 and the bridge deck is
+    /// 1, so a level is one unit tall; everything below is derived from this rather
+    /// than picked.
+    public static let levelHeight = 1.0
+
+    /// A hair, for comparing two heights that should be equal. Float noise only —
+    /// nothing physical.
+    ///
+    /// This replaced a 0.35 "tolerance" I invented and then justified after the
+    /// fact. It was doing four unrelated jobs at once and was far too generous for
+    /// most of them, which caused a run of bugs: a car at height 0 counted as
+    /// standing on a ramp 0.22 above it, and a wall at 0.8 blocked a car at 1.15.
+    /// Each job now names the scale it actually needs — this one, `surfaceTolerance`
+    /// for standing on a road, `reachTolerance` where a car's own size matters, and
+    /// no tolerance at all for a wall's top edge.
+    public static let heightEpsilon = 0.001
+
+    /// How far apart two things can be in height and still interact physically —
+    /// roughly a car's own vertical presence.
+    ///
+    /// Needed where the question isn't "same level?" but "close enough to touch or
+    /// count": two cars colliding, or a car crossing a checkpoint gate. A car
+    /// part-way up a ramp must still be able to cross a gate near the top of it,
+    /// and must not phase through a car on the deck beside it, so this can't shrink
+    /// to an epsilon. A fifth of a level keeps ground and deck firmly distinct.
+    public static let reachTolerance = levelHeight / 5
+
+    /// How closely a car's height must match a stretch of road to be standing
+    /// **on** it. Much tighter than `heightTolerance`, and deliberately so.
+    ///
+    /// Derived from the sim: a climbing car's height moves at most
+    /// `Race.maxHeightChangePerTick` per tick, so a car genuinely driving a slope
+    /// is always within about one tick's climb of it. A shade over that keeps hold
+    /// of the road under the car and nothing else.
+    ///
+    /// These were the same number, and that single fact produced a family of
+    /// bugs. At 0.35 a car at height 0 counted as standing on a ramp that was
+    /// already 0.22 above it — measured as "asphalt / on road" from 50 units away
+    /// while the car was in fact underneath the slope. It got asphalt grip there,
+    /// and could then take the ramp's height and ride up onto the bridge from the
+    /// grass. Being *on* a surface is a much stricter question than being *at* a
+    /// level, so it gets its own, tighter answer: a shade over one tick's climb,
+    /// so a car driving a ramp keeps hold of it and nothing else does.
+    public static let surfaceTolerance = 0.12  // ≈1.5 ticks of climb
+
+    /// The height of a centerline point (0 = ground, 1 = deck).
+    public func height(ofPoint index: Int) -> Double {
+        guard heights.indices.contains(index) else { return 0 }
+        return heights[index]
     }
 
-    /// Distance from `p` to the centerline loop — optionally only the
-    /// segments of one layer (per-layer ribbon lookups).
-    public func distanceToCenterline(_ p: Vec2, layer: Int? = nil) -> Double {
+    /// The height of a segment: the mean of its two endpoints, so a ramp segment
+    /// reports the middle of its own climb.
+    public func height(ofSegment index: Int) -> Double {
+        guard !centerline.isEmpty else { return 0 }
+        let next = (index + 1) % centerline.count
+        return (height(ofPoint: index) + height(ofPoint: next)) / 2
+    }
+
+    /// Whether a segment is drivable by a car at `height`.
+    ///
+    /// This is the whole of the old layer system, reduced to a comparison. A ramp
+    /// needs no special case: its own height runs continuously from 0 to 1, so a
+    /// car climbing it matches the part it is on and no other. That is what makes
+    /// "drive under the bridge and pop out on top of the ramp" impossible rather
+    /// than merely guarded against — the car under the bridge is at height 0, the
+    /// deck above it is at 1, and no comparison can confuse them.
+    public func segment(
+        _ index: Int, isAt height: Double, tolerance: Double = Self.surfaceTolerance
+    ) -> Bool {
+        abs(self.height(ofSegment: index) - height) <= tolerance
+    }
+
+    /// Distance from `p` to the centerline loop — optionally only the road at
+    /// roughly `height`, so a bridge and the road beneath it stay distinct.
+    public func distanceToCenterline(
+        _ p: Vec2, height: Double? = nil, heightTolerance: Double = Self.surfaceTolerance
+    ) -> Double {
         var best = Double.greatestFiniteMagnitude
         for i in centerline.indices {
-            if let layer, segmentLayer(i) != layer { continue }
+            if let height, !segment(i, isAt: height, tolerance: heightTolerance) { continue }
             let a = centerline[i]
             let b = centerline[(i + 1) % centerline.count]
             best = min(best, p.distance(toSegment: a, b))
@@ -184,10 +296,10 @@ public struct Track: Equatable, Sendable, Codable {
     }
 
     /// The closest point on the centerline loop to `p`, as (segment index,
-    /// parameter along it). `preferLayer` breaks the tie where two layers
-    /// overlap in 2D (a bridge crossing): anchor to the car's own layer.
+    /// parameter along it). `preferHeight` breaks the tie where two stretches of
+    /// road overlap in 2D (a bridge crossing): anchor to the car's own height.
     public func closestCenterlinePoint(
-        to p: Vec2, preferLayer: Int? = nil
+        to p: Vec2, preferHeight: Double? = nil
     ) -> (segment: Int, t: Double) {
         var best = (segment: 0, t: 0.0)
         var bestScore = Double.greatestFiniteMagnitude
@@ -196,8 +308,8 @@ public struct Track: Equatable, Sendable, Codable {
             let b = centerline[(i + 1) % centerline.count]
             let closest = p.closestPoint(onSegment: a, b)
             var score = p.distance(to: closest)
-            if let preferLayer, segmentLayer(i) != preferLayer {
-                score += width  // other-layer segments lose ties decisively
+            if let preferHeight, !segment(i, isAt: preferHeight) {
+                score += width  // road at another height loses ties decisively
             }
             if score < bestScore {
                 bestScore = score
@@ -222,16 +334,16 @@ public struct Track: Equatable, Sendable, Codable {
     /// from the point nearest `p` — the AI's lookahead target. Distances
     /// beyond a full loop wrap; zero-length segments (arc/straight joints
     /// share endpoints) are skipped. Degenerate loops (no length at all)
-    /// return their first point. `preferLayer` anchors the start to the
-    /// car's own layer where a bridge overlaps the road below; the walk
-    /// itself flows over every layer (ramps carry the car up and down).
+    /// return their first point. `preferHeight` anchors the start to the car's
+    /// own height where a bridge overlaps the road below; the walk itself flows
+    /// over every height (a ramp carries the car up and down).
     public func pointAlongCenterline(
-        from p: Vec2, distance: Double, preferLayer: Int? = nil
+        from p: Vec2, distance: Double, preferHeight: Double? = nil
     ) -> Vec2 {
         guard !centerline.isEmpty else { return p }
         let perimeter = centerlineLength
         guard perimeter > 0 else { return centerline[0] }
-        var (segment, t) = closestCenterlinePoint(to: p, preferLayer: preferLayer)
+        var (segment, t) = closestCenterlinePoint(to: p, preferHeight: preferHeight)
         var remaining = distance.truncatingRemainder(dividingBy: perimeter)
         for _ in 0..<(centerline.count * 2 + 2) {
             let a = centerline[segment]
@@ -252,49 +364,52 @@ public struct Track: Equatable, Sendable, Codable {
         return centerline[segment]
     }
 
-    /// Whether `p` lies on a sloped ramp approach. Rendering cares: a car
-    /// climbing a ramp is between layers — it draws above the deck (no
-    /// popping under the bridge edge) and never gets an occlusion bubble.
-    public func isOnRamp(_ p: Vec2) -> Bool {
-        for i in rampSegments {
-            let a = centerline[i]
-            let b = centerline[(i + 1) % centerline.count]
-            if p.distance(toSegment: a, b) <= width / 2 + 10 {
+    /// Whether the road at `p` is sloped rather than level — a ramp. Used for
+    /// rendering (a climbing car draws above the deck so its nose never slides
+    /// under the bridge edge) and for the never-invisible bubble rule.
+    ///
+    /// Derived from `heights` rather than a stored set: a segment is sloped when
+    /// its two ends sit at different heights.
+    /// `height` is the car's own height, and it matters: without it this answers
+    /// "is there sloped road near this spot", which is true for a car sitting on
+    /// the grass beside a ramp and for one on the road passing *under* one. The
+    /// renderer used that to decide a car was on a ramp and drew it up on the
+    /// bridge while the sim had it on the grass at height 0 — visible in the debug
+    /// overlay as a car reading "h 0.00 / grass / off road" while drawn on the deck.
+    public func isOnRamp(_ p: Vec2, height: Double? = nil, near tolerance: Double = 10) -> Bool {
+        for i in centerline.indices {
+            let next = (i + 1) % centerline.count
+            let low = self.height(ofPoint: i)
+            let high = self.height(ofPoint: next)
+            guard abs(low - high) > 0.001 else { continue }
+            guard p.distance(toSegment: centerline[i], centerline[next]) <= width / 2 + tolerance
+            else { continue }
+            // The car must be at roughly the height of THIS piece of slope.
+            guard let height else { return true }
+            let span = min(low, high)...max(low, high)
+            if height >= span.lowerBound - Self.surfaceTolerance,
+                height <= span.upperBound + Self.surfaceTolerance
+            {
                 return true
             }
         }
         return false
     }
 
-    /// Continuous **visual height** (0 = ground, 1 = deck) at `p` for a car on
-    /// `layer` — for scaling the car smoothly as it climbs, matching how the
-    /// road widens. On a flat segment it's just the layer; on a ramp approach
-    /// it interpolates by how far along the ramp the car is (progress measured
-    /// along the nearest ramp segment, in the climb direction). Render-only:
-    /// the physics layer is still the discrete `layer`.
-    public func visualHeight(at p: Vec2, layer: Int) -> Double {
-        // Find the nearest ramp segment (if any) the car is actually on.
-        var best: (i: Int, d: Double)?
-        for i in rampSegments {
-            let a = centerline[i]
-            let b = centerline[(i + 1) % centerline.count]
-            let d = p.distance(toSegment: a, b)
-            guard d <= width / 2 + 10 else { continue }
-            if best == nil || d < best!.d { best = (i, d) }
-        }
-        guard let ramp = best else { return Double(layer) }
-        // Progress 0…1 along that segment. The ramp's endpoints connect the
-        // ground (0) and deck (1); climb direction is toward the deck end.
-        let a = centerline[ramp.i]
-        let b = centerline[(ramp.i + 1) % centerline.count]
-        let length = (b - a).length
-        let t =
-            length > 0 ? max(0, min(1, (p.closestPoint(onSegment: a, b) - a).length / length)) : 0
-        // Which end is the deck? The adjacent segment that's elevated marks it.
-        let nextElevated = elevatedSegments.contains((ramp.i + 1) % centerline.count)
-        let climb = nextElevated ? t : 1 - t
-        // Smoothstep, matching the editor's ramp easing.
-        return climb * climb * (3 - 2 * climb)
+    /// The road's **height** at `p` (0 = ground, 1 = deck), interpolated along
+    /// whichever stretch of road the point sits on.
+    ///
+    /// `preferHeight` disambiguates a bridge crossing, where two stretches share
+    /// the same 2D position — pass the car's own height and it stays on its own
+    /// road. This is now a plain interpolation of stored data; it used to
+    /// reconstruct the climb by guessing which end of a ramp was the deck.
+    public func height(at p: Vec2, preferHeight: Double? = nil) -> Double {
+        guard !centerline.isEmpty else { return 0 }
+        let (segment, t) = closestCenterlinePoint(to: p, preferHeight: preferHeight)
+        let next = (segment + 1) % centerline.count
+        let from = height(ofPoint: segment)
+        let to = height(ofPoint: next)
+        return from + (to - from) * t
     }
 
     /// The portion of a gate that lies on the asphalt ribbon — where a
@@ -316,14 +431,14 @@ public struct Track: Equatable, Sendable, Codable {
         return (gate.a + dir * first, gate.a + dir * last)
     }
 
-    /// What the car at `p` on `layer` is driving on. Patches win over the
-    /// ribbon; everything beyond that layer's ribbon is grass.
-    public func surface(at p: Vec2, layer: Int = 0) -> Surface {
-        for patch in patches where patch.layer == layer {
+    /// What a car at `p` and `height` is driving on. Patches win over the
+    /// ribbon; everything beyond the road at that height is grass.
+    public func surface(at p: Vec2, height: Double = 0) -> Surface {
+        for patch in patches where abs(patch.height - height) <= Self.surfaceTolerance {
             if p.distance(to: patch.center) <= patch.radius {
                 return patch.surface
             }
         }
-        return distanceToCenterline(p, layer: layer) <= width / 2 ? .asphalt : .grass
+        return distanceToCenterline(p, height: height) <= width / 2 ? .asphalt : .grass
     }
 }

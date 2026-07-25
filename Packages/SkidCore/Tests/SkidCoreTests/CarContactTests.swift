@@ -7,11 +7,11 @@ final class CarContactTests: XCTestCase {
     /// `elevatedLine` marks the forward segment as a bridge (the closing
     /// segment keeps the same line on the ground), so a layer-1 car has
     /// road to stand on instead of falling off.
-    private func headOn(contact: Bool, elevatedLine: Bool = false) -> Race {
+    private func headOn(contact: Bool, elevated: Bool = false) -> Race {
         let track = Track(
             centerline: [Vec2(-10000, 0), Vec2(10000, 0)],
             width: 800,
-            elevatedSegments: elevatedLine ? [0] : [],
+            heights: elevated ? [1, 1] : nil,
             startSlots: [Vec2(-100, 0), Vec2(100, 0)],
             size: Vec2(20000, 4000)
         )
@@ -78,8 +78,8 @@ final class CarContactTests: XCTestCase {
     }
 
     func testDifferentLayersNeverCollide() {
-        var race = headOn(contact: true, elevatedLine: true)
-        race.cars[1].state.layer = 1
+        var race = headOn(contact: true, elevated: true)
+        race.cars[1].state.height = 1
         converge(&race, ticks: 240)
         XCTAssertGreaterThan(race.cars[0].state.position.x, race.cars[1].state.position.x)
     }

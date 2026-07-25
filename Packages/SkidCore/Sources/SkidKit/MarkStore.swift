@@ -62,9 +62,9 @@ public struct MarkStore {
     public mutating func record(car: Car, on track: Track, tick: Tick) {
         guard tick % Self.recordEvery == 0 else { return }
         let state = car.state
-        // Marks live on the ground layer only: nothing prints from the
-        // bridge (it would draw under it) or from mid-air.
-        guard state.layer == 0, !state.isAirborne else {
+        // Marks live on the ground only: nothing prints from the bridge (it would
+        // draw under it) or from mid-air.
+        guard state.height <= 0.5, !state.isAirborne else {
             lastTirePositions[car.id] = nil
             return
         }
@@ -74,7 +74,7 @@ public struct MarkStore {
             return
         }
 
-        let surface = track.surface(at: state.position, layer: state.layer)
+        let surface = track.surface(at: state.position, height: state.height)
         let slip = state.slipSpeed
         let speed = state.velocity.length
 

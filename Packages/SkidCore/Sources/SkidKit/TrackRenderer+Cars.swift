@@ -17,14 +17,26 @@ extension TrackRenderer {
         for ghost in scene.ghosts where !ghost.isAirborne {
             draw(car: ghost, color: .white, opacity: 0.38, into: &context)
         }
-        // A car on a ramp slope is transitioning between layers: it draws
-        // ABOVE the deck (else its nose slides under the bridge edge and
-        // the car "warps" on top when the layer flips mid-car).
+        // A car climbing a ramp draws ABOVE the deck, so its nose never slides
+        // under the bridge edge on the way up.
+        //
+        // It must be ON the ramp, not merely near one: asking only "is there
+        // sloped road at this spot" was true for a car on the grass beside a ramp
+        // and for one on the road passing under the bridge, so those were promoted
+        // into the elevated pass and drawn up on the deck. The debug overlay caught
+        // it — a car reading "h 0.00 / grass / off road 101" drawn on the bridge.
+        //
+        // Being on the ramp means: at the ramp's height AND on its asphalt.
         func onRamp(_ car: Car) -> Bool {
-            !track.rampSegments.isEmpty && track.isOnRamp(car.state.position)
+            let state = car.state
+            guard track.isOnRamp(state.position, height: state.height) else { return false }
+            return track.distanceToCenterline(state.position, height: state.height)
+                <= track.width / 2
         }
+        // "On the ground" is now a height comparison, not a layer test.
+        func onGround(_ car: Car) -> Bool { car.state.height <= 0.5 }
         for (index, car) in race.cars.enumerated()
-        where car.state.layer == 0 && !car.state.isAirborne && !onRamp(car) {
+        where onGround(car) && !car.state.isAirborne && !onRamp(car) {
             draw(
                 car: car.state, color: colorAt(index),
                 opacity: translucent.contains(index) ? 0.55 : 1,
@@ -32,35 +44,39 @@ extension TrackRenderer {
             )
         }
 
-        if !track.elevatedSegments.isEmpty {
-            drawRibbon(track: track, layer: 1, into: &context)
-            drawDeckRails(track: track, into: &context)
-            drawGates(gateChrome, layerFilter: 1, into: &context)
+        if track.heights.contains(where: { $0 > 0.5 }) {
+            // NOW the bridge, on top of the ground cars just drawn — that
+            // ordering is what hides a car driving underneath it. Same shared
+            // renderer as the editor, just the upper height band.
+            if let layout = track.layout {
+                EditorRenderer.drawTrack(
+                    walk: layout.walk(), width: track.width, gateSeams: layout.gateSeams,
+                    transform: track.layoutTransform, heightRange: 0.5...2, into: &context)
+            } else {
+                drawRibbon(track: track, elevated: true, into: &context)
+            }
+            drawGates(gateChrome, elevated: true, into: &context)
+            //
             // Never-invisible rule: a ground car hidden under the bridge
             // shows through as a bubble in its color. Ramp climbers are
             // fully visible on their slope — no bubble.
             for (index, car) in race.cars.enumerated()
-            where car.state.layer == 0 && !onRamp(car)
-                && track.distanceToCenterline(car.state.position, layer: 1)
+            where onGround(car) && !onRamp(car)
+                && track.distanceToCenterline(car.state.position, height: 1)
                     < track.width / 2 + 8
             {
-                let p = car.state.position
-                let bubble = CGRect(x: p.x - 15, y: p.y - 15, width: 30, height: 30)
-                context.fill(
-                    Path(ellipseIn: bubble), with: .color(colorAt(index).opacity(0.55)))
-                context.stroke(
-                    Path(ellipseIn: bubble), with: .color(.white.opacity(0.85)), lineWidth: 2.5)
+                drawBubble(at: car.state.position, color: colorAt(index), into: &context)
             }
             // Bridge cars, and ramp climbers on their way up/down: scaled
             // SMOOTHLY by the continuous height at their position (the same
             // Elevation.scale factor the road width uses), so a car grows as it
             // climbs and reads as elevated on the deck — no discrete pop.
             for (index, car) in race.cars.enumerated()
-            where !car.state.isAirborne && (car.state.layer == 1 || onRamp(car)) {
-                let h = track.visualHeight(at: car.state.position, layer: car.state.layer)
+            where !car.state.isAirborne && (!onGround(car) || onRamp(car)) {
+                // The car's own height IS the scale now — no reconstruction.
                 draw(
                     car: car.state, color: colorAt(index),
-                    scale: Elevation.scale(atHeight: h), into: &context)
+                    scale: Elevation.scale(atHeight: car.state.height), into: &context)
             }
         }
 
@@ -70,6 +86,17 @@ extension TrackRenderer {
                 car: car.state, color: colorAt(index), scale: 1.22, shadow: true,
                 into: &context)
         }
+    }
+
+    /// A car hidden under the bridge, shown through it in its own color, so no
+    /// player is ever invisible.
+    private static func drawBubble(
+        at position: Vec2, color: Color, into context: inout GraphicsContext
+    ) {
+        let bubble = CGRect(x: position.x - 15, y: position.y - 15, width: 30, height: 30)
+        context.fill(Path(ellipseIn: bubble), with: .color(color.opacity(0.55)))
+        context.stroke(
+            Path(ellipseIn: bubble), with: .color(.white.opacity(0.85)), lineWidth: 2.5)
     }
 
     /// Ghost mode: overlapping pass-through cars go translucent so pileups
@@ -88,23 +115,6 @@ extension TrackRenderer {
             }
         }
         return translucent
-    }
-
-    /// Retaining rails along the bridge deck (the layer-1 walls). Drawn as a
-    /// raised barrier — a dark base plus a lighter cap — so the edge that
-    /// catches a wide car up top reads clearly against the deck.
-    private static func drawDeckRails(track: Track, into context: inout GraphicsContext) {
-        for wall in track.walls where wall.layer == 1 {
-            var rail = Path()
-            rail.move(to: CGPoint(x: wall.a.x, y: wall.a.y))
-            rail.addLine(to: CGPoint(x: wall.b.x, y: wall.b.y))
-            context.stroke(
-                rail, with: .color(.black.opacity(0.4)),
-                style: StrokeStyle(lineWidth: 8, lineCap: .round))
-            context.stroke(
-                rail, with: .color(Color(white: 0.85)),
-                style: StrokeStyle(lineWidth: 4, lineCap: .round))
-        }
     }
 
     private static func draw(

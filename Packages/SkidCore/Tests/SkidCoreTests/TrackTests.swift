@@ -3,26 +3,27 @@ import XCTest
 @testable import SkidCore
 
 final class TrackTests: XCTestCase {
-    func testPracticeLoopSurfaces() {
-        let track = TrackLibrary.practiceLoop()
-        // On the bottom straight: asphalt.
-        XCTAssertEqual(track.surface(at: Vec2(800, 800)), .asphalt)
-        // Dead center of the world is inside the loop: grass.
-        XCTAssertEqual(track.surface(at: Vec2(800, 560)), .grass)
-        // Far corner of the world: grass.
-        XCTAssertEqual(track.surface(at: Vec2(40, 40)), .grass)
+    /// Asphalt on the road, grass off it. Points are taken FROM the track rather
+    /// than hardcoded, so this survives the built-ins changing shape.
+    func testSurfaceIsAsphaltOnTheRoadAndGrassOffIt() throws {
+        let track = TrackLibrary.testRing()
+        let onRoad = try XCTUnwrap(track.centerline.first)
+        XCTAssertEqual(track.surface(at: onRoad), .asphalt)
+        // Well off the road: grass. The frame's corner is always outside.
+        XCTAssertEqual(track.surface(at: Vec2(1, 1)), .grass)
     }
 
-    func testPatchesWinOverRibbon() {
-        var track = TrackLibrary.practiceLoop()
-        track.patches = [SurfacePatch(center: Vec2(800, 800), radius: 40, surface: .oil)]
-        XCTAssertEqual(track.surface(at: Vec2(800, 800)), .oil)
-        XCTAssertEqual(track.surface(at: Vec2(800, 800), layer: 1), .grass)
-        XCTAssertEqual(track.surface(at: Vec2(950, 800)), .asphalt)
+    func testPatchesWinOverRibbon() throws {
+        var track = TrackLibrary.testRing()
+        let onRoad = try XCTUnwrap(track.centerline.first)
+        track.patches = [SurfacePatch(center: onRoad, radius: 40, surface: .oil)]
+        XCTAssertEqual(track.surface(at: onRoad), .oil)
+        // A patch on the ground doesn't apply to a car up at deck height.
+        XCTAssertEqual(track.surface(at: onRoad, height: 1), .grass)
     }
 
     func testStartSlotsAreOnAsphaltFacingTheStartGate() {
-        let track = TrackLibrary.practiceLoop()
+        let track = TrackLibrary.testRing()
         XCTAssertEqual(track.startSlots.count, 4)
         for slot in track.startSlots {
             XCTAssertEqual(track.surface(at: slot), .asphalt, "grid slot \(slot) off the ribbon")
@@ -44,8 +45,8 @@ final class TrackTests: XCTestCase {
     }
 
     func testGatesSpanTheRibbon() {
-        let track = TrackLibrary.practiceLoop()
-        XCTAssertEqual(track.gates.count, 4)
+        let track = TrackLibrary.testRing()
+        XCTAssertGreaterThanOrEqual(track.gates.count, 2, "a lap needs at least two gates")
         for gate in track.gates {
             // Both gate endpoints reach past the asphalt edge.
             XCTAssertEqual(track.surface(at: gate.a), .grass)
@@ -56,9 +57,10 @@ final class TrackTests: XCTestCase {
         }
     }
 
-    func testWallsAreOnTheCarLayer() {
-        let track = TrackLibrary.practiceLoop()
-        XCTAssertEqual(track.walls.count, 4)
-        XCTAssertTrue(track.walls.allSatisfy { $0.layer == 0 })
+    /// A flat built-in is fenced and nothing else — no deck rails to be found.
+    func testFlatTrackHasOnlyTheBoundaryFence() {
+        let track = TrackLibrary.testRing()
+        XCTAssertEqual(track.walls.count, 4, "one fence, four sides")
+        XCTAssertTrue(track.walls.allSatisfy { $0.kind == .boundary })
     }
 }

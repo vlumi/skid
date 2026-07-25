@@ -20,8 +20,16 @@ public struct CarState: Equatable, Sendable, Codable {
     public var velocity: Vec2
     /// Radians; 0 = +x, counterclockwise in math coords.
     public var heading: Double
-    /// Which height layer the car is on.
-    public var layer: Int
+    /// How high the car is: 0 = ground, 1 = bridge deck, in between while on a
+    /// ramp.
+    ///
+    /// Continuous, and **followed from the road** rather than switched at a line.
+    /// The old discrete `layer: Int` had to be flipped when the car crossed a
+    /// ramp's transition line, and every bug around bridges came from that: the
+    /// pop as it flipped, the road vanishing mid-transition, and a car under the
+    /// bridge emerging on top of the ramp. Deriving it from the road each tick
+    /// makes those states unreachable rather than guarded.
+    public var height: Double
     /// Ticks of flight remaining; while > 0 the car is ballistic — no
     /// steering, no throttle, no grip, no surface drag.
     public var airborneTicks: Int
@@ -33,13 +41,13 @@ public struct CarState: Equatable, Sendable, Codable {
     public var steerActuator: Double
 
     public init(
-        position: Vec2, velocity: Vec2 = .zero, heading: Double = 0, layer: Int = 0,
+        position: Vec2, velocity: Vec2 = .zero, heading: Double = 0, height: Double = 0,
         airborneTicks: Int = 0, steerActuator: Double = 0
     ) {
         self.position = position
         self.velocity = velocity
         self.heading = heading
-        self.layer = layer
+        self.height = height
         self.airborneTicks = airborneTicks
         self.steerActuator = steerActuator
     }
