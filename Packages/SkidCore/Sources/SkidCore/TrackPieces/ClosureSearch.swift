@@ -27,7 +27,7 @@ struct ClosureSearch {
     /// END of the existing chain are legitimately adjacent to the run (it starts
     /// at one and finishes at the other), so they're excluded — otherwise every
     /// candidate is rejected for touching its own neighbours.
-    private let existing: [Vec2]
+    private let existing: [(point: Vec2, height: Double)]
     private let clearanceSquared: Double
     /// The furthest a single piece can carry the road, for pruning runs that can
     /// no longer reach home.
@@ -37,14 +37,22 @@ struct ClosureSearch {
         self.layout = layout
         self.goal = goal
         self.maxPieces = maxPieces
+        let placed = layout.walk().placed
+        // Ramps are offered only when the road is currently ELEVATED — it then
+        // has to come down before the ring can close, and a ramp is the only
+        // piece that does that. On the ground they'd just build a bridge to
+        // nowhere, so they stay out.
+        let elevated = (placed.last?.exitHeight ?? 0) > 0.5
         candidates =
             PieceCatalog.all
             .filter { $0.key != PieceCatalog.startPieceID && $0.value.kind == .road }
-            .filter { $0.value.heightDelta == 0 && !$0.value.launches }
+            .filter { elevated ? $0.value.heightDelta <= 0 : $0.value.heightDelta == 0 }
+            .filter { !$0.value.launches }
             .map { (id: $0.key, piece: $0.value) }
             .sorted { (Self.cost($0.piece), $0.id) < (Self.cost($1.piece), $1.id) }
-        let placed = layout.walk().placed
-        existing = placed.dropFirst().dropLast(1).flatMap { TrackValidator.samplePoints($0) }
+        existing = placed.dropFirst().dropLast(1).flatMap { piece in
+            TrackValidator.samplePoints(piece).map { (point: $0, height: piece.entryHeight) }
+        }
         let clearance = Double(PieceCatalog.width) * 0.95
         clearanceSquared = clearance * clearance
         reach = candidates.reduce(0) { longest, entry in
@@ -64,63 +72,98 @@ struct ClosureSearch {
         }
     }
 
-    /// One partial run under consideration.
+    /// One partial run under consideration. Height is part of the state: a pose
+    /// alone can't tell "on the deck" from "on the ground", and the ring only
+    /// closes when BOTH match the target (the walk enforces the same rule when
+    /// mating, so a run that ignored height would be offered and then refused).
     private struct Step {
         var pose: PiecePose
+        var height: Double
         var run: [PieceID]
         var cost: Int
     }
 
-    func run(from end: PiecePose) -> [PieceID]? {
-        guard end != goal else { return [] }
-        var frontier = [Step(pose: end, run: [], cost: 0)]
-        var seen: Set<PiecePose> = [end]
+    /// Poses are compared with height, so `seen` can't collapse a deck pose onto
+    /// the ground pose below it.
+    private struct Visited: Hashable {
+        var pose: PiecePose
+        var heightStep: Int
+    }
+
+    /// Why a search came back empty — so the editor can distinguish "there is
+    /// no way to close this" from "it needs more pieces than I looked for".
+    enum Outcome: Equatable {
+        case found([PieceID])
+        /// Ran out of depth with live options remaining: a longer run may exist.
+        case needsMorePieces(searched: Int)
+        /// The frontier died out entirely — no run of any length closes from
+        /// here (every continuation crosses pavement or leads away).
+        case impossible
+    }
+
+    func search(from end: PiecePose, height: Double = 0) -> Outcome {
+        if end == goal, abs(height) < 0.001 { return .found([]) }
+        var frontier = [Step(pose: end, height: height, run: [], cost: 0)]
+        var seen: Set<Visited> = [Visited(pose: end, heightStep: Int(height.rounded()))]
         for depth in 0..<maxPieces {
             var next: [Step] = []
             var best: Step?
             for step in frontier {
                 extend(step, into: &next, best: &best, seen: &seen, remaining: maxPieces - depth)
             }
-            if let best, confirmed(best.run) { return best.run }
+            if let best, confirmed(best.run) { return .found(best.run) }
+            if next.isEmpty { return .impossible }
             frontier = next
         }
-        return nil
+        return .needsMorePieces(searched: maxPieces)
     }
 
     /// Try every candidate piece on `step`, recording goal hits in `best` and
     /// keeping viable continuations in `next`.
     private func extend(
-        _ step: Step, into next: inout [Step], best: inout Step?, seen: inout Set<PiecePose>,
+        _ step: Step, into next: inout [Step], best: inout Step?, seen: inout Set<Visited>,
         remaining: Int
     ) {
         for (id, piece) in candidates {
             let pose = piece.paths[0].exit(from: step.pose)
+            let height = step.height + piece.heightDelta
+            // Height must stay in range — nothing climbs above the deck or digs
+            // below the ground, and it has to be back at 0 to close.
+            guard height >= -0.001, height <= 1.001 else { continue }
             let candidate = Step(
-                pose: pose, run: step.run + [id], cost: step.cost + Self.cost(piece))
+                pose: pose, height: height, run: step.run + [id],
+                cost: step.cost + Self.cost(piece))
             let placed = PlacedPiece(
-                id: id, piece: piece, entry: step.pose, exits: [pose], entryHeight: 0,
-                entrySeam: 0)
-            guard staysClear(placed) else { continue }
-            if pose == goal {
+                id: id, piece: piece, entry: step.pose, exits: [pose],
+                entryHeight: step.height, entrySeam: 0)
+            // Only pavement at the SAME height can be in the way — that's what
+            // makes a bridge legal.
+            guard staysClear(placed, at: height) else { continue }
+            if pose == goal && abs(height) < 0.001 {
                 // Keep looking at this depth for a gentler run of the same
                 // length — the first hit isn't always the tidiest.
                 if best.map({ candidate.cost < $0.cost }) ?? true { best = candidate }
                 continue
             }
-            guard !seen.contains(pose) else { continue }
+            let visited = Visited(pose: pose, heightStep: Int(height.rounded()))
+            guard !seen.contains(visited) else { continue }
             // Prune what can no longer get home: if the goal is further than the
             // remaining pieces could carry the road, nothing downstream closes.
             guard (goal.position.vec2 - pose.position.vec2).length <= reach * Double(remaining)
             else { continue }
-            seen.insert(pose)
+            seen.insert(visited)
             next.append(candidate)
         }
     }
 
-    /// Does a piece placed here stay clear of pavement already laid?
-    private func staysClear(_ placed: PlacedPiece) -> Bool {
+    /// Does a piece placed here stay clear of pavement already laid *at the same
+    /// height*? Different heights pass freely — that's a bridge.
+    private func staysClear(_ placed: PlacedPiece, at height: Double) -> Bool {
         for point in placed.centerlineSamples(degreesPerSample: 45) {
-            for other in existing where (point - other).lengthSquared < clearanceSquared {
+            for other in existing
+            where abs(other.height - height) < 0.5
+                && (point - other.point).lengthSquared < clearanceSquared
+            {
                 return false
             }
         }
@@ -128,20 +171,56 @@ struct ClosureSearch {
     }
 
     /// The local clearance test is an approximation, so the winning run goes
-    /// through the real validator before it's offered.
+    /// through the real validator before it's offered. Height must come home
+    /// too: a run that closes the ring while still on the deck isn't a closure.
     private func confirmed(_ run: [PieceID]) -> Bool {
         var candidate = layout
         candidate.pieces += run
-        return !TrackValidator.validate(candidate).problems.contains(.overlap)
+        let problems = TrackValidator.validate(candidate).problems
+        if problems.contains(.overlap) { return false }
+        return !problems.contains {
+            if case .unclosedHeight = $0 { return true } else { return false }
+        }
     }
 }
 
+/// Why a closing search came back without an answer — so the editor can say
+/// "needs more than N pieces" instead of staying silent.
+public enum ClosureOutcome: Equatable, Sendable {
+    case found([PieceID])
+    /// Ran out of search depth with options still live: a longer run may exist.
+    case needsMorePieces(searched: Int)
+    /// No run of any length closes from here — every continuation either crosses
+    /// pavement already laid or leads away for good.
+    case impossible
+}
+
 extension TrackLayout {
-    /// The shortest run of pieces that closes this layout from `end`, or nil if
-    /// none exists within `maxPieces`. See `ClosureSearch`.
+    /// The shortest run of pieces that closes this layout from `end`. See
+    /// `ClosureSearch`.
+    public func closingOutcome(
+        from end: PiecePose, to target: PiecePose? = nil, maxPieces: Int = 4
+    ) -> ClosureOutcome {
+        let search = ClosureSearch(layout: self, goal: target ?? origin, maxPieces: maxPieces)
+        // The run starts at whatever height the loose end sits at — an elevated
+        // end has to descend before the ring can close.
+        let walked = walk()
+        let height =
+            walked.placed.first { $0.exits.contains(end) }?.exitHeight
+            ?? walked.placed.last?.exitHeight ?? 0
+        switch search.search(from: end, height: height) {
+        case .found(let run): return .found(run)
+        case .needsMorePieces(let searched): return .needsMorePieces(searched: searched)
+        case .impossible: return .impossible
+        }
+    }
+
+    /// The closing run if one was found within `maxPieces`, else nil.
     public func closingRun(
         from end: PiecePose, to target: PiecePose? = nil, maxPieces: Int = 4
     ) -> [PieceID]? {
-        ClosureSearch(layout: self, goal: target ?? origin, maxPieces: maxPieces).run(from: end)
+        guard case .found(let run) = closingOutcome(from: end, to: target, maxPieces: maxPieces)
+        else { return nil }
+        return run
     }
 }

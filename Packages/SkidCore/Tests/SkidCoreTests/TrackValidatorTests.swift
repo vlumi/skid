@@ -74,6 +74,42 @@ final class TrackValidatorTests: XCTestCase {
         XCTAssertTrue(v.problems.contains(.overlap), "a doubled-back lap is an overlap")
     }
 
+    /// A ring must come back to ground level before it closes: a loop that
+    /// climbs a ramp and never descends would meet itself at two heights.
+    func testClosingWhileElevatedIsReported() {
+        // The walk itself refuses to mate mismatched heights, so this asserts
+        // the validator's own guard on the height a finished ring ends at.
+        let elevated: [PieceID] = [
+            Pieces.startGrid, Pieces.rampUp, Pieces.curve90TightLeft, Pieces.straight,
+            Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
+            Pieces.straight, Pieces.curve90TightLeft,
+        ]
+        let walk = TrackLayout(pieces: elevated).walk()
+        // Either it can't close at all (the walk's height-aware mate refuses),
+        // or if it did close the validator flags the height — never saveable.
+        let v = TrackValidator.validate(TrackLayout(pieces: elevated, gateSeams: [0, 2]))
+        XCTAssertFalse(v.isSaveable)
+        if walk.openEnds.isEmpty {
+            XCTAssertTrue(
+                v.problems.contains {
+                    if case .unclosedHeight = $0 { return true } else { return false }
+                },
+                "a ring closed on the deck must report unclosedHeight")
+        }
+    }
+
+    /// Mid-build, standing on the deck is normal — the height rule must only
+    /// apply to a CLOSED ring, or it would nag through every bridge.
+    func testElevatedOpenChainIsNotAHeightProblem() {
+        let onDeck: [PieceID] = [Pieces.startGrid, Pieces.rampUp, Pieces.straight]
+        let v = TrackValidator.validate(TrackLayout(pieces: onDeck, gateSeams: [0, 1]))
+        XCTAssertFalse(
+            v.problems.contains {
+                if case .unclosedHeight = $0 { return true } else { return false }
+            },
+            "an open chain on the deck is a normal editing state")
+    }
+
     func testSelfOverlapReported() {
         // A degenerate loop folding back on itself: start + hairpin + hairpin
         // returns along the same corridor, colliding on the same layer.
