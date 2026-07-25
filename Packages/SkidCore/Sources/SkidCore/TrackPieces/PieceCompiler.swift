@@ -25,42 +25,13 @@ public enum PieceCompiler {
             throw Failure.forkNotSupportedInPhaseA
         }
 
-        // Walk the placed pieces in order, emitting centerline points. Each
-        // piece contributes points from (but not including) its entry — the
-        // previous piece's exit — so the loop isn't double-stamped at seams.
-        var centerline: [Vec2] = []
-        var elevated: Set<Int> = []
-        var rampSegs: Set<Int> = []
-        var ramps: [Ramp] = []
+        let road = lowerPieces(walk.placed)
+        var centerline = road.centerline
+        let elevated = road.elevated
+        let rampSegs = road.rampSegs
+        let ramps = road.ramps
+        let walls = road.walls
         var gates: [Gate] = []
-
-        // The very first point is the start piece's entry.
-        centerline.append(walk.placed[0].entry.position.vec2)
-
-        for placed in walk.placed {
-            let before = centerline.count - 1  // index of this piece's entry point
-            appendSamples(of: placed, into: &centerline)
-            let after = centerline.count - 1  // index of this piece's exit point
-
-            // Segments [before ..< after] belong to this piece. A flat piece
-            // fully up on the deck (entry & exit both at height 1) is elevated
-            // in the runtime Track.
-            if placed.piece.heightDelta == 0 && placed.entryHeight > 0.5 {
-                for seg in before..<after { elevated.insert(seg) }
-            }
-
-            // A ramp/jump piece (changes height, or launches) emits a Ramp
-            // line, and marks its road as sloped.
-            if placed.piece.heightDelta != 0 || placed.piece.launches {
-                ramps.append(rampLine(at: placed))
-                // The sloped road ITSELF, which the runtime needs to know about:
-                // `isOnRamp` and `visualHeight` both scan `rampSegments`, so
-                // without this a climbing car is never treated as between layers
-                // (no smooth growth, no drawing above the deck) and the renderer
-                // draws no ramp at all.
-                for seg in before..<after { rampSegs.insert(seg) }
-            }
-        }
 
         // The centerline is a closed loop; drop the duplicated closing point
         // (last == first by closure) so the runtime's wraparound is clean.
@@ -110,6 +81,7 @@ public enum PieceCompiler {
             elevatedSegments: elevated,
             rampSegments: rampSegs,
             ramps: ramps,
+            walls: walls,
             gates: gates,
             startSlots: slots,
             startHeading: heading,
@@ -135,6 +107,9 @@ public enum PieceCompiler {
             Gate(
                 from: gate.a + shift, to: gate.b + shift, forward: gate.forward,
                 layer: gate.layer)
+        }
+        framed.walls = track.walls.map { wall in
+            Wall(from: wall.a + shift, to: wall.b + shift, layer: wall.layer)
         }
         framed.startSlots = track.startSlots.map { $0 + shift }
         framed.size = bounds.size
@@ -212,6 +187,106 @@ public enum PieceCompiler {
 
     /// A ramp/jump line across the road at a piece's entry, in driving
     /// direction, carrying the layer transition (or a launch).
+    /// Everything the placed pieces lower to, before gates and re-framing.
+    private struct Road {
+        var centerline: [Vec2] = []
+        /// Segments fully up on the deck.
+        var elevated: Set<Int> = []
+        /// Segments on a slope, which belong to BOTH layers.
+        var rampSegs: Set<Int> = []
+        var ramps: [Ramp] = []
+        var walls: [Wall] = []
+    }
+
+    /// Walk the placed pieces in order, emitting centerline points and the
+    /// per-segment sets that describe elevation. Each piece contributes points
+    /// from (but not including) its entry — the previous piece's exit — so the
+    /// loop isn't double-stamped at seams.
+    private static func lowerPieces(_ placed: [PlacedPiece]) -> Road {
+        var road = Road()
+        guard let first = placed.first else { return road }
+        // The very first point is the start piece's entry.
+        road.centerline.append(first.entry.position.vec2)
+
+        for piece in placed {
+            let before = road.centerline.count - 1  // this piece's entry point
+            appendSamples(of: piece, into: &road.centerline)
+            let after = road.centerline.count - 1  // this piece's exit point
+
+            // Segments [before ..< after] belong to this piece. A flat piece
+            // fully up on the deck (entry & exit both at height 1) is elevated
+            // in the runtime Track.
+            if piece.piece.heightDelta == 0 && piece.entryHeight > 0.5 {
+                for segment in before..<after { road.elevated.insert(segment) }
+            }
+
+            // Guard rails along both edges of anything off the ground — the
+            // barrier the editor draws as the blue deck rail. Without these a
+            // bridge has nothing to stop you driving straight off the side; the
+            // only thing catching you was `Race.applyRamps`' fall-off check,
+            // which is the *consequence* of leaving the deck, not a wall.
+            if piece.entryHeight > 0.5 || piece.exitHeight > 0.5 {
+                road.walls.append(contentsOf: deckRails(of: piece))
+            }
+
+            // A ramp/jump piece (changes height, or launches) emits a Ramp
+            // line, and marks its road as sloped.
+            if piece.piece.heightDelta != 0 || piece.piece.launches {
+                road.ramps.append(rampLine(at: piece))
+                // The sloped road ITSELF, which the runtime needs to know about:
+                // `isOnRamp` and `visualHeight` both scan `rampSegments`, so
+                // without this a climbing car is never treated as between layers
+                // (no smooth growth, no drawing above the deck) and the renderer
+                // draws no ramp at all.
+                for segment in before..<after { road.rampSegs.insert(segment) }
+            }
+        }
+        return road
+    }
+
+    /// Guard rails down both edges of an elevated piece, as runtime walls.
+    ///
+    /// Follows the piece's own samples so a curved deck gets a curved rail, and
+    /// offsets by the SAME height-scaled half-width the renderer uses
+    /// (`Elevation.scale`) — otherwise the barrier a car hits would sit somewhere
+    /// other than the edge it can see.
+    ///
+    /// A ramp gets rails too, tapering with the climb: it's the stretch where a
+    /// car is most likely to slide off, and the editor draws them there.
+    private static func deckRails(of placed: PlacedPiece) -> [Wall] {
+        let samples = placed.heightedSamples(degreesPerSample: degreesPerSample)
+        guard samples.count >= 2 else { return [] }
+        let entryDir = Vec2(angle: placed.entry.heading.radians)
+        let exitDir = Vec2(angle: placed.exits[0].heading.radians)
+        var left: [Vec2] = []
+        var right: [Vec2] = []
+        for index in samples.indices {
+            let direction: Vec2
+            if index == 0 {
+                direction = entryDir
+            } else if index == samples.count - 1 {
+                direction = exitDir
+            } else {
+                direction = (samples[index + 1].point - samples[index - 1].point).normalized
+            }
+            let half =
+                Double(PieceCatalog.width) / 2 * Elevation.scale(atHeight: samples[index].height)
+            let side = direction.perpendicular * half
+            left.append(samples[index].point + side)
+            right.append(samples[index].point - side)
+        }
+        // The rail's layer is the deck it belongs to; a ramp's rail guards the
+        // climb, so take the higher of its two ends.
+        let layer = Int(max(placed.entryHeight, placed.exitHeight).rounded())
+        var rails: [Wall] = []
+        for edge in [left, right] {
+            for index in 1..<edge.count {
+                rails.append(Wall(from: edge[index - 1], to: edge[index], layer: layer))
+            }
+        }
+        return rails
+    }
+
     /// The layer-switch line for a ramp piece, at the ramp's **high end**.
     ///
     /// Position matters enormously, because crossing this line flips the car's
