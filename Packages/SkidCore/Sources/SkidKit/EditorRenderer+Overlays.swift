@@ -226,6 +226,16 @@ extension EditorRenderer {
                         runStyle = style
                         if let joint { runPoints.append(joint) }
                     }
+                    // Consecutive pieces BOTH carry the shared joint point (each
+                    // piece's samples include its own endpoints), so appending it
+                    // twice leaves a zero-length segment. Dashing stumbles across
+                    // one and a round join renders it as a diagonal nick through
+                    // the kerb, so drop the repeat.
+                    if let last = runPoints.last,
+                        hypot(last.x - points[sample].x, last.y - points[sample].y) < 0.01
+                    {
+                        continue
+                    }
                     runPoints.append(points[sample])
                 }
             }
