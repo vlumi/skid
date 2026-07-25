@@ -98,8 +98,11 @@ final class EdgeStyleTests: XCTestCase {
         XCTAssertTrue(kerbed(plan, piece: 4, left: true), "exit kerb after the combined corner")
     }
 
-    /// The plan must line up one-for-one with the geometry samples, or the
-    /// renderer would color the wrong stretches.
+    /// The plan must line up one-for-one with the geometry samples AT THE SHARED
+    /// SAMPLING, or the styles land on the wrong stretches. This is the guard for
+    /// a real regression: the plan was built at 6°/sample while the renderer had
+    /// been densified to 3°, so kerbs fragmented into chunks and anything past
+    /// the plan's last index silently fell back to the plain line.
     func testPlanMatchesTheSampleCounts() {
         let pieces: [PieceID] = [
             Pieces.startGrid, Pieces.curve90TightLeft, Pieces.straight, Pieces.chicaneMediumRight,
@@ -109,7 +112,8 @@ final class EdgeStyleTests: XCTestCase {
         XCTAssertEqual(plan.styles.count, walk.placed.count)
         for (index, placed) in walk.placed.enumerated() {
             XCTAssertEqual(
-                plan.styles[index].count, placed.centerlineSamples().count,
+                plan.styles[index].count,
+                placed.centerlineSamples(degreesPerSample: KerbPlan.degreesPerSample).count,
                 "piece \(index): one style per sample")
         }
     }
