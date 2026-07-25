@@ -237,10 +237,9 @@ enum EditorRenderer {
                 let current = style(start)
                 var end = start + 1
                 while end < points.count, style(end - 1) == current { end += 1 }
-                var run = Path()
-                run.move(to: points[start])
-                for point in points[(start + 1)..<end] { run.addLine(to: point) }
-                strokeEdge(run, style: current, width: width, t: t, into: &context)
+                strokeEdge(
+                    Array(points[start..<end]), style: current, width: width, t: t,
+                    into: &context)
                 start = max(end - 1, start + 1)
             }
         }
@@ -250,10 +249,19 @@ enum EditorRenderer {
     /// asphalt pass covers its inner half, so what remains visible is the
     /// outboard part — which is why the stroke is drawn at twice the intended
     /// visible width.
+    ///
+    /// `points` is the run's polyline, used to measure its length: a kerb's
+    /// stripes are sized to divide the run EVENLY, so every kerb starts and ends
+    /// on a whole stripe instead of being cut off mid-red. A fixed dash length
+    /// can't do that — no constant divides every corner's arc length.
     private static func strokeEdge(
-        _ path: Path, style: KerbPlan.Edge, width: Double, t: Transform,
+        _ points: [CGPoint], style: KerbPlan.Edge, width: Double, t: Transform,
         into context: inout GraphicsContext
     ) {
+        guard let first = points.first else { return }
+        var path = Path()
+        path.move(to: first)
+        for point in points.dropFirst() { path.addLine(to: point) }
         switch style {
         case .line:
             let band = max(1.5, Double(PieceCatalog.edgeLine) * 2 * t.scale)
@@ -262,15 +270,30 @@ enum EditorRenderer {
                 style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
         case .kerb:
             let band = max(3, Double(PieceCatalog.kerbBand) * 2 * t.scale)
-            let dash = max(4, width * 0.12 * t.scale)
             context.stroke(
                 path, with: .color(kerbWhite),
                 style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
+            // Pick the stripe length nearest the target that fits a whole number
+            // of red+white pairs into this run.
+            let length = polylineLength(points)
+            let target = width * 0.12 * t.scale
+            let pairs = max(1, (length / (target * 2)).rounded())
+            let dash = length / (pairs * 2)
+            guard dash > 0.5 else { return }
             context.stroke(
                 path, with: .color(kerbRed),
                 style: StrokeStyle(
                     lineWidth: band, lineCap: .butt, lineJoin: .round, dash: [dash, dash]))
         }
+    }
+
+    private static func polylineLength(_ points: [CGPoint]) -> CGFloat {
+        guard points.count >= 2 else { return 0 }
+        var total: CGFloat = 0
+        for i in 1..<points.count {
+            total += hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y)
+        }
+        return total
     }
 
     /// The elevated piece's drop shadow — offset scales with the height at each
