@@ -24,6 +24,18 @@ struct EditorView: View {
     @State var tab: PaletteTab = .curves
     @State var radius: CurveRadius = .medium
 
+    /// The cached "Close it" suggestion, recomputed only when the layout or the
+    /// selected end actually changes. The search costs tens of milliseconds, so
+    /// it must never run from `body` — that made the editor unusable.
+    @State private var closingRun: [PieceID]?
+    @State private var closingRunKey: ClosingKey?
+
+    /// What the cached suggestion was computed for.
+    private struct ClosingKey: Equatable, Hashable {
+        var pieces: [PieceID]
+        var end: PiecePose?
+    }
+
     var body: some View {
         GeometryReader { geo in
             let layout = game.editorLayout ?? TrackLayout(pieces: [PieceCatalog.startPieceID])
@@ -46,6 +58,12 @@ struct EditorView: View {
             .contentShape(Rectangle())
             .gesture(tapToSelect(walk: walk, transform: transform))
             .gesture(panZoom)
+            // Off the render path: the closing search costs tens of ms, so it
+            // runs when the layout or selection changes, not per frame.
+            .task(id: ClosingKey(pieces: layout.pieces, end: nil)) {
+                refreshClosingRun(walk)
+            }
+            .onChangeCompat(of: selectedEnd) { _ in refreshClosingRun(walk) }
         }
         .statusBarHiddenIfAvailable()
     }
@@ -146,7 +164,7 @@ struct EditorView: View {
                     // When a short run of pieces would close the loop exactly,
                     // offer it — the author doesn't have to work out what
                     // cancels a diagonal, they can just take the suggestion.
-                    if let run = suggestedClosingRun(walk) {
+                    if let run = closingRun {
                         Button {
                             for id in run { game.editorAppend(id) }
                         } label: {
@@ -215,14 +233,22 @@ struct EditorView: View {
         return nil
     }
 
-    /// A short run of pieces that would close the loop exactly, if one exists
-    /// within a few pieces — the "Close it" offer.
-    private func suggestedClosingRun(_ walk: WalkResult) -> [PieceID]? {
-        guard let layout = game.editorLayout, let i = effectiveSelection(walk),
-            walk.openEnds.indices.contains(i)
-        else { return nil }
-        let run = layout.closingRun(from: walk.openEnds[i], maxPieces: 3)
-        return (run?.isEmpty ?? true) ? nil : run
+    /// Recompute the "Close it" suggestion if the layout or selection changed.
+    /// Called from a task, never from `body`: the search is far too slow to run
+    /// per frame (it made the editor jam).
+    private func refreshClosingRun(_ walk: WalkResult) {
+        let end = effectiveSelection(walk).flatMap { i in
+            walk.openEnds.indices.contains(i) ? walk.openEnds[i] : nil
+        }
+        let key = ClosingKey(pieces: game.editorLayout?.pieces ?? [], end: end)
+        guard key != closingRunKey else { return }
+        closingRunKey = key
+        guard let layout = game.editorLayout, let end else {
+            closingRun = nil
+            return
+        }
+        let run = layout.closingRun(from: end, maxPieces: 3)
+        closingRun = (run?.isEmpty ?? true) ? nil : run
     }
 
     /// A unit count, trimmed to look like "2U" / "1.5U".
