@@ -110,6 +110,33 @@ extension EditorRenderer {
         }
     }
 
+    /// A checkpoint gate across a seam: a line at the piece's ENTRY port, with a
+    /// post at each road edge — the same read as the game's gates, so what you
+    /// mark in the editor is what you'll drive through.
+    static func drawGate(
+        _ placed: PlacedPiece, width: Double, transform t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        let pose = placed.entry
+        let side = Vec2(angle: pose.heading.radians).perpendicular * (width / 2)
+        let a = pose.position.vec2 - side
+        let b = pose.position.vec2 + side
+        var line = Path()
+        line.move(to: t.screen(a))
+        line.addLine(to: t.screen(b))
+        context.stroke(
+            line, with: .color(.cyan.opacity(0.7)),
+            style: StrokeStyle(lineWidth: max(2, 6 * t.scale), lineCap: .butt))
+        // Posts, so a gate reads as a gate rather than a stray line.
+        let post = max(3, 9 * t.scale)
+        for end in [a, b] {
+            let box = CGRect(
+                x: t.screen(end).x - post / 2, y: t.screen(end).y - post / 2,
+                width: post, height: post)
+            context.fill(Path(ellipseIn: box), with: .color(.cyan))
+        }
+    }
+
     static func drawStartLine(
         _ start: PlacedPiece, width: Double, transform t: Transform,
         into context: inout GraphicsContext

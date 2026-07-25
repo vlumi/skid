@@ -114,7 +114,7 @@ extension EditorView {
         }
         if problems.contains(.overlap) { return "The track crosses itself — reshape it" }
         if problems.contains(.offCanvas) { return "The track runs off the canvas" }
-        if problems.contains(.gates) { return "Loop closed — mark a checkpoint to finish" }
+        if problems.contains(.gates) { return "Tap a joint to add a checkpoint" }
         return nil
     }
 
