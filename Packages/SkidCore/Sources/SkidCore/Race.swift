@@ -236,17 +236,29 @@ public struct Race: Equatable, Sendable {
         }
         guard !car.state.isAirborne else { return }
 
-        // Off the road entirely, while up high? That's a fall off the deck.
+        // Only road the car is genuinely ON can carry it. Off the road, the car
+        // stays at whatever height it has — on the ground that means it simply
+        // drives on the grass.
+        //
+        // This guard is why: without it, a car on the grass BESIDE a ramp picked
+        // up the nearby slope's height, drifted above the tolerance, was then
+        // declared "off the deck" by the check below, and got an 8-tick hop —
+        // land, creep up, hop again. That is the reported bouncing on grass, and
+        // the dotted tyre tracks it left.
         let onRoad = track.distanceToCenterline(car.state.position, height: car.state.height)
-        if car.state.height > Track.heightTolerance, onRoad > track.width / 2 + 6 {
-            car.state.height = 0
-            car.state.airborneTicks = 8
+        let offRoad = onRoad > track.width / 2 + 6
+        if offRoad {
+            // Up high and off the road: that's a fall off the deck.
+            if car.state.height > Track.heightTolerance {
+                car.state.height = 0
+                car.state.airborneTicks = 8
+            }
             return
         }
-        // Otherwise take the height of the road under the car, anchored to the
-        // height it already had so a bridge crossing can't swap it to the other
-        // road. Clamped to a per-tick step so even a badly-formed track can only
-        // ramp the car smoothly, never teleport it between levels.
+        // On the road: take its height, anchored to the height the car already
+        // had so a bridge crossing can't swap it to the other road. Clamped to a
+        // per-tick step so even a badly-formed track can only ramp the car
+        // smoothly, never teleport it between levels.
         let target = track.height(at: car.state.position, preferHeight: car.state.height)
         let step = Self.maxHeightChangePerTick
         car.state.height += max(-step, min(step, target - car.state.height))
@@ -319,8 +331,9 @@ public struct Race: Equatable, Sendable {
             // Ballistic: no steering, no throttle, no grip, no drag — the
             // car flies straight until it lands.
             car.airborneTicks -= 1
+            let before = car.position
             car.position += car.velocity * dt
-            return collideWithWalls(car: &car)
+            return collideWithWalls(car: &car, movedFrom: before)
         }
         let surface = track.surface(at: car.position, height: car.height)
         turn(car: &car, input: input, dt: dt)
@@ -361,9 +374,10 @@ public struct Race: Equatable, Sendable {
         if speed > tuning.maxSpeed {
             car.velocity *= tuning.maxSpeed / speed
         }
+        let beforeMove = car.position
         car.position += car.velocity * dt
 
-        return collideWithWalls(car: &car)
+        return collideWithWalls(car: &car, movedFrom: beforeMove)
     }
 
     /// One tick of heading change: either the wheel (steer channel) or the
@@ -409,29 +423,5 @@ public struct Race: Equatable, Sendable {
         // a plain wheel) and the analog steer amount (a light thumb still
         // places the car precisely).
         car.heading += car.steerActuator * tuning.steerFlipBoost * flipScale * direction * dt
-    }
-
-    /// Returns the hardest into-wall speed absorbed (0 if no contact).
-    private func collideWithWalls(car: inout CarState) -> Double {
-        var hardest = 0.0
-        // A boundary fence stops everyone; a rail only bites at its own height,
-        // so a deck rail never blocks the road passing underneath.
-        for wall in track.walls
-        where wall.kind == .boundary || abs(wall.height - car.height) <= Track.heightTolerance {
-            let closest = car.position.closestPoint(onSegment: wall.a, wall.b)
-            let offset = car.position - closest
-            let dist = offset.length
-            guard dist < CarGeometry.radius, dist > 0 else { continue }
-            let normal = offset.normalized
-            // Push out of the wall, then reflect the into-wall velocity
-            // component with restitution.
-            car.position = closest + normal * CarGeometry.radius
-            let intoWall = car.velocity.dot(normal)
-            if intoWall < 0 {
-                car.velocity -= normal * intoWall * (1 + tuning.wallRestitution)
-                hardest = max(hardest, -intoWall)
-            }
-        }
-        return hardest
     }
 }

@@ -88,10 +88,26 @@ enum TrackRenderer {
             index < colors.count ? colors[index] : carPalette[index % carPalette.count]
         }
 
-        drawRibbon(track: track, elevated: false, into: &context)
+        // **The track is drawn by the EDITOR's renderer**, off the same placed
+        // pieces the editor draws, so what you build is exactly what you drive.
+        // Two separate renderers drifted apart in kerbs, rails and ramp
+        // markings, and every fix had to be made twice.
+        //
+        // The context is already in world space here, so the shared drawing
+        // takes an identity transform.
+        // Only the GROUND here. The bridge goes on later, over the cars driving
+        // underneath it (see `drawCars`), or a car under the bridge would be
+        // painted on top of it.
+        if let layout = track.layout {
+            EditorRenderer.drawTrack(
+                walk: layout.walk(), width: track.width, gateSeams: layout.gateSeams,
+                transform: .identity, heightRange: -1...0.5, into: &context)
+        } else {
+            // No layout (ad-hoc tracks built directly in tests): fall back to the
+            // centerline stroke, which needs no piece model.
+            drawRibbon(track: track, elevated: false, into: &context)
+        }
         drawPatches(track: track, into: &context)
-        drawRampMarkers(track: track, into: &context)
-        drawGridMarkings(track: track, into: &context)
         // Which players are waiting on which gate, in car colors.
         var nextByGate: [Int: [Color]] = [:]
         for (index, car) in race.cars.enumerated() where car.progress.finishedAt == nil {
@@ -111,9 +127,9 @@ enum TrackRenderer {
     /// The ribbon at one height band, as contiguous runs of centerline segments
     /// (a flat track is one full loop at height 0).
     ///
-    /// `elevated: false` draws everything at ground level, `true` everything
-    /// clearly off the ground — the ramps in between are drawn by
-    /// `drawRampMarkers`, which shades them across the climb.
+    /// Only a FALLBACK for tracks with no piece layout (ad-hoc test tracks).
+    /// Every real track is drawn by `EditorRenderer.drawTrack`, which renders the
+    /// placed pieces as width-varying ribbons and shades ramps across their climb.
     private static func ribbonPath(_ track: Track, elevated: Bool) -> Path {
         var path = Path()
         var penDown = false
@@ -332,77 +348,4 @@ extension TrackRenderer {
         }
     }
 
-    /// Sloped bridge approaches: a wedge that widens toward the deck and
-    /// shades from road-gray to deck-gray, with up-slope chevrons — the
-    /// road visibly climbs; the car never warps.
-    static func drawRampMarkers(track: Track, into context: inout GraphicsContext) {
-        let count = track.centerline.count
-        for index in track.centerline.indices {
-            let low = track.height(ofPoint: index)
-            let high = track.height(ofPoint: (index + 1) % count)
-            // A sloped segment is a ramp; level road is drawn by the ribbon pass.
-            guard abs(high - low) > 0.001 else { continue }
-            let a = track.centerline[index]
-            let b = track.centerline[(index + 1) % count]
-            // Uphill is simply the end with the greater height.
-            let deckFirst = low > high
-            let ground = deckFirst ? b : a
-            let deck = deckFirst ? a : b
-            let up = (deck - ground).normalized
-            let side = up.perpendicular
-            let groundHalf = side * (track.width / 2)
-            let deckHalf = side * (track.width / 2 + 8)
-
-            var wedge = Path()
-            wedge.move(to: CGPoint(x: (ground - groundHalf).x, y: (ground - groundHalf).y))
-            wedge.addLine(to: CGPoint(x: (deck - deckHalf).x, y: (deck - deckHalf).y))
-            wedge.addLine(to: CGPoint(x: (deck + deckHalf).x, y: (deck + deckHalf).y))
-            wedge.addLine(to: CGPoint(x: (ground + groundHalf).x, y: (ground + groundHalf).y))
-            wedge.closeSubpath()
-            context.fill(
-                wedge,
-                with: .linearGradient(
-                    Gradient(colors: [asphalt, Color(white: 0.68)]),
-                    startPoint: CGPoint(x: ground.x, y: ground.y),
-                    endPoint: CGPoint(x: deck.x, y: deck.y)
-                )
-            )
-            // White edges so the slope reads against both road and grass.
-            for sign in [-1.0, 1.0] {
-                var edge = Path()
-                let g = ground + groundHalf * sign
-                let d = deck + deckHalf * sign
-                edge.move(to: CGPoint(x: g.x, y: g.y))
-                edge.addLine(to: CGPoint(x: d.x, y: d.y))
-                context.stroke(edge, with: .color(kerbWhite), lineWidth: 5)
-            }
-            // Chevrons along the DRIVING direction (centerline order) —
-            // on the descent that's down-slope; arrows pointing at the
-            // driver read as a wrong-way sign.
-            drawChevrons(
-                from: ground, to: deck, drive: (b - a).normalized,
-                wing: side * (track.width * 0.28), into: &context)
-        }
-    }
-
-    private static func drawChevrons(
-        from ground: Vec2, to deck: Vec2, drive: Vec2, wing: Vec2,
-        into context: inout GraphicsContext
-    ) {
-        let up = (deck - ground).normalized
-        let length = ground.distance(to: deck)
-        for t in [0.3, 0.55, 0.8] {
-            let base = ground + up * (length * t) - drive * 8
-            let tip = base + drive * 16
-            var chevron = Path()
-            chevron.move(to: CGPoint(x: (base - wing).x, y: (base - wing).y))
-            chevron.addLine(to: CGPoint(x: tip.x, y: tip.y))
-            chevron.addLine(to: CGPoint(x: (base + wing).x, y: (base + wing).y))
-            context.stroke(
-                chevron,
-                with: .color(.white.opacity(0.55)),
-                style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
-            )
-        }
-    }
 }

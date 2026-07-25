@@ -37,9 +37,14 @@ extension PieceCompiler {
             } else {
                 direction = (samples[index + 1].point - samples[index - 1].point).normalized
             }
-            let half =
-                Double(PieceCatalog.width) / 2 * Elevation.scale(atHeight: samples[index].height)
-            let side = direction.perpendicular * half
+            // The TRUE road edge, not the height-scaled visual one. The road a
+            // car can drive on is `width` wide at every height (grip width never
+            // scales — only the drawing does), so scaling the rail by
+            // `Elevation.scale` pushed it steadily outboard as the ramp climbed:
+            // measured 0.2 units from the edge at the ramp's foot but 8+ by
+            // mid-ramp, which is the reported "walls don't reach the bottom of
+            // the ramp" and part of the gap cars slipped through.
+            let side = direction.perpendicular * (Double(PieceCatalog.width) / 2)
             left.append(samples[index].point + side)
             right.append(samples[index].point - side)
         }

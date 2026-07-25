@@ -32,9 +32,18 @@ extension TrackRenderer {
         }
 
         if track.heights.contains(where: { $0 > 0.5 }) {
-            drawRibbon(track: track, elevated: true, into: &context)
-            drawDeckRails(track: track, into: &context)
+            // NOW the bridge, on top of the ground cars just drawn — that
+            // ordering is what hides a car driving underneath it. Same shared
+            // renderer as the editor, just the upper height band.
+            if let layout = track.layout {
+                EditorRenderer.drawTrack(
+                    walk: layout.walk(), width: track.width, gateSeams: layout.gateSeams,
+                    transform: .identity, heightRange: 0.5...2, into: &context)
+            } else {
+                drawRibbon(track: track, elevated: true, into: &context)
+            }
             drawGates(gateChrome, elevated: true, into: &context)
+            //
             // Never-invisible rule: a ground car hidden under the bridge
             // shows through as a bubble in its color. Ramp climbers are
             // fully visible on their slope — no bubble.
@@ -88,78 +97,6 @@ extension TrackRenderer {
         }
         return translucent
     }
-
-    /// Retaining rails along the bridge deck — drawn to look **identical to the
-    /// editor's**, since it's the same barrier and should read as the same object
-    /// whether you're building it or driving it.
-    ///
-    /// Matching means four things, not just the color: the same `bridgeRail` blue
-    /// over a dark base, the same world-space band widths (12+5 under 12+2), butt
-    /// caps with round joins, and — most visibly — each side stroked as ONE
-    /// CONTINUOUS POLYLINE. Stroking wall segments individually with round caps
-    /// beaded them into a lumpy chain of blobs at every joint.
-    ///
-    /// Layer-1 walls only. A ramp also emits layer-0 rails so a ground car can't
-    /// drive up its flank; those are the same barrier seen from below, already
-    /// drawn by their layer-1 twin.
-    private static func drawDeckRails(track: Track, into context: inout GraphicsContext) {
-        var rails = Path()
-        for run in railRuns(track.walls.filter { $0.kind == .rail && $0.height > 0.05 }) {
-            guard let first = run.first else { continue }
-            rails.move(to: CGPoint(x: first.x, y: first.y))
-            for point in run.dropFirst() {
-                rails.addLine(to: CGPoint(x: point.x, y: point.y))
-            }
-        }
-        guard !rails.isEmpty else { return }
-        let band = 12.0
-        context.stroke(
-            rails, with: .color(.black.opacity(0.5)),
-            style: StrokeStyle(lineWidth: band + 5, lineCap: .butt, lineJoin: .round))
-        context.stroke(
-            rails, with: .color(bridgeRail),
-            style: StrokeStyle(lineWidth: band + 2, lineCap: .butt, lineJoin: .round))
-    }
-
-    /// Chain wall segments back into continuous polylines by joining ends that
-    /// meet. The compiler emits a rail as many short segments (one per geometry
-    /// sample); this recovers the runs so they can be stroked as single paths,
-    /// the way the editor does from its own sample arrays.
-    private static func railRuns(_ walls: [Wall]) -> [[Vec2]] {
-        var remaining = walls
-        var runs: [[Vec2]] = []
-        while let seed = remaining.popLast() {
-            var run = [seed.a, seed.b]
-            // Extend from both ends until nothing else connects.
-            var grew = true
-            while grew {
-                grew = false
-                for (index, wall) in remaining.enumerated() {
-                    let tail = run[run.count - 1]
-                    let head = run[0]
-                    if (wall.a - tail).length < 0.5 {
-                        run.append(wall.b)
-                    } else if (wall.b - tail).length < 0.5 {
-                        run.append(wall.a)
-                    } else if (wall.b - head).length < 0.5 {
-                        run.insert(wall.a, at: 0)
-                    } else if (wall.a - head).length < 0.5 {
-                        run.insert(wall.b, at: 0)
-                    } else {
-                        continue
-                    }
-                    remaining.remove(at: index)
-                    grew = true
-                    break
-                }
-            }
-            runs.append(run)
-        }
-        return runs
-    }
-
-    /// The bridge guard rail, matching the editor's palette exactly.
-    static let bridgeRail = Color(red: 0.55, green: 0.78, blue: 0.95)
 
     private static func draw(
         car: CarState, color: Color, opacity: Double = 1, scale: Double = 1,

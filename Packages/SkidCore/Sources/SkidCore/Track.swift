@@ -146,6 +146,14 @@ public struct Track: Equatable, Sendable, Codable {
     /// Ordered checkpoint gates; the last one is the start/finish line.
     public var gates: [Gate]
     public var patches: [SurfacePatch]
+    /// The piece layout this track was compiled from.
+    ///
+    /// Kept so the race view can draw the track with **the editor's renderer**,
+    /// off the same placed pieces the editor draws — which is the only way the
+    /// two can be identical rather than merely similar. Two independent
+    /// renderers over two different inputs drifted apart in kerbs, rails and
+    /// ramp markings, and every fix had to be made twice.
+    public var layout: TrackLayout?
     /// Grid slots in start order (pole first), with the heading cars face.
     public var startSlots: [Vec2]
     public var startHeading: Double
@@ -166,6 +174,7 @@ public struct Track: Equatable, Sendable, Codable {
         walls: [Wall] = [],
         gates: [Gate] = [],
         patches: [SurfacePatch] = [],
+        layout: TrackLayout? = nil,
         startSlots: [Vec2] = [],
         startHeading: Double = 0,
         size: Vec2,
@@ -180,6 +189,7 @@ public struct Track: Equatable, Sendable, Codable {
         self.walls = walls
         self.gates = gates
         self.patches = patches
+        self.layout = layout
         self.startSlots = startSlots
         self.startHeading = startHeading
         self.size = size
