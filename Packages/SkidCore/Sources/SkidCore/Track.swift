@@ -207,13 +207,40 @@ public struct Track: Equatable, Sendable, Codable {
         self.pit = pit ?? size * 0.5
     }
 
-    /// How close two heights must be to count as the same **level** — used for
-    /// things that belong to a level as a whole: which cars can collide, which
-    /// gate counts, which wall bites.
-    public static let heightTolerance = 0.35
+    /// The gap between one level and the next. Ground is 0 and the bridge deck is
+    /// 1, so a level is one unit tall; everything below is derived from this rather
+    /// than picked.
+    public static let levelHeight = 1.0
+
+    /// A hair, for comparing two heights that should be equal. Float noise only —
+    /// nothing physical.
+    ///
+    /// This replaced a 0.35 "tolerance" I invented and then justified after the
+    /// fact. It was doing four unrelated jobs at once and was far too generous for
+    /// most of them, which caused a run of bugs: a car at height 0 counted as
+    /// standing on a ramp 0.22 above it, and a wall at 0.8 blocked a car at 1.15.
+    /// Each job now names the scale it actually needs — this one, `surfaceTolerance`
+    /// for standing on a road, `reachTolerance` where a car's own size matters, and
+    /// no tolerance at all for a wall's top edge.
+    public static let heightEpsilon = 0.001
+
+    /// How far apart two things can be in height and still interact physically —
+    /// roughly a car's own vertical presence.
+    ///
+    /// Needed where the question isn't "same level?" but "close enough to touch or
+    /// count": two cars colliding, or a car crossing a checkpoint gate. A car
+    /// part-way up a ramp must still be able to cross a gate near the top of it,
+    /// and must not phase through a car on the deck beside it, so this can't shrink
+    /// to an epsilon. A fifth of a level keeps ground and deck firmly distinct.
+    public static let reachTolerance = levelHeight / 5
 
     /// How closely a car's height must match a stretch of road to be standing
     /// **on** it. Much tighter than `heightTolerance`, and deliberately so.
+    ///
+    /// Derived from the sim: a climbing car's height moves at most
+    /// `Race.maxHeightChangePerTick` per tick, so a car genuinely driving a slope
+    /// is always within about one tick's climb of it. A shade over that keeps hold
+    /// of the road under the car and nothing else.
     ///
     /// These were the same number, and that single fact produced a family of
     /// bugs. At 0.35 a car at height 0 counted as standing on a ramp that was
@@ -223,7 +250,7 @@ public struct Track: Equatable, Sendable, Codable {
     /// grass. Being *on* a surface is a much stricter question than being *at* a
     /// level, so it gets its own, tighter answer: a shade over one tick's climb,
     /// so a car driving a ramp keeps hold of it and nothing else does.
-    public static let surfaceTolerance = 0.12
+    public static let surfaceTolerance = 0.12  // ≈1.5 ticks of climb
 
     /// The height of a centerline point (0 = ground, 1 = deck).
     public func height(ofPoint index: Int) -> Double {
@@ -248,7 +275,7 @@ public struct Track: Equatable, Sendable, Codable {
     /// than merely guarded against — the car under the bridge is at height 0, the
     /// deck above it is at 1, and no comparison can confuse them.
     public func segment(
-        _ index: Int, isAt height: Double, tolerance: Double = Self.heightTolerance
+        _ index: Int, isAt height: Double, tolerance: Double = Self.surfaceTolerance
     ) -> Bool {
         abs(self.height(ofSegment: index) - height) <= tolerance
     }
@@ -360,8 +387,8 @@ public struct Track: Equatable, Sendable, Codable {
             // The car must be at roughly the height of THIS piece of slope.
             guard let height else { return true }
             let span = min(low, high)...max(low, high)
-            if height >= span.lowerBound - Self.heightTolerance,
-                height <= span.upperBound + Self.heightTolerance
+            if height >= span.lowerBound - Self.surfaceTolerance,
+                height <= span.upperBound + Self.surfaceTolerance
             {
                 return true
             }

@@ -52,11 +52,19 @@ extension Race {
     /// The floor is what separates those cases. A ramp rail at 0.5 has floor 0, so
     /// it fences the whole climb from the grass beside it. A deck rail at 1.0 has
     /// floor 1, so it stops cars on the deck and lets the road below run clear.
+    ///
+    /// **No tolerance on the top.** A wall's height *is* where its top is, so a car
+    /// above it is over it — full stop. Adding a tolerance there gave every wall
+    /// invisible extra reach, which is what made the ramp's end cap block the
+    /// legitimate climb: the cap sat at 0.8 but effectively reached 1.15, and a car
+    /// arriving at the mouth at 0.99 hit its own exit. (0.99, not 1.0, because the
+    /// per-tick clamp means the climb approaches deck height asymptotically.)
+    /// The floor keeps a tolerance — that end is about which level the wall belongs
+    /// to, and a car's own size matters there.
     private func blocks(_ wall: Wall, car: CarState) -> Bool {
         guard wall.kind != .boundary else { return true }
         let floor = wall.height.rounded(.down)
-        return car.height >= floor - Track.heightTolerance
-            && car.height <= wall.height + Track.heightTolerance
+        return car.height >= floor - Track.reachTolerance && car.height <= wall.height
     }
 
     /// The point on `wall` nearest the car's swept path this tick — treating the
