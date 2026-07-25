@@ -177,15 +177,15 @@ public final class CouchGame: ObservableObject {
         editorLayout?.pieces.append(id)
     }
 
-    /// Append the context-aware ramp: up (id 13) from the ground, down (id 14)
-    /// from the deck — with only two elevations the one button does both.
+    /// Append the context-aware ramp: up from the ground, down from the deck —
+    /// with only two elevations the one button does both.
     public func editorRamp() {
         guard let layout = editorLayout, let last = layout.walk().placed.last else {
-            editorAppend(13)
+            editorAppend(PieceCatalog.ID.rampUp)
             return
         }
         // On the deck (height up) → ramp down; on the ground → ramp up.
-        editorAppend(last.exitHeight > 0.5 ? 14 : 13)
+        editorAppend(last.exitHeight > 0.5 ? PieceCatalog.ID.rampDown : PieceCatalog.ID.rampUp)
     }
 
     /// Remove the last piece (never the start piece — a track must keep one).

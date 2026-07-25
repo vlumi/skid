@@ -36,8 +36,11 @@ public struct Piece: Equatable, Sendable {
 
     public var id: PieceID
     public var kind: Kind
-    /// The path(s) from entry to exit — one per exit (two for a fork).
-    public var paths: [Segment]
+    /// The path(s) from entry to exit — **one chain per exit** (two for a fork).
+    /// A chain is an ordered list of segments walked in sequence, so a single
+    /// piece can bend twice: an S-chicane is `[.arc(L), .arc(R)]`, a lane jog
+    /// `[.arc(L, 90°), .arc(R, 90°)]`. Most pieces are a one-element chain.
+    public var paths: [[Segment]]
     /// Continuous **height** change across this piece (ground = 0, deck = 1):
     /// a ramp-up is +1, ramp-down −1, everything flat 0. There is no discrete
     /// layer — collision and rendering both derive from height. Height rises
@@ -47,7 +50,7 @@ public struct Piece: Equatable, Sendable {
     public var launches: Bool
 
     public init(
-        id: PieceID, kind: Kind = .road, paths: [Segment],
+        id: PieceID, kind: Kind = .road, paths: [[Segment]],
         heightDelta: Double = 0, launches: Bool = false
     ) {
         self.id = id
@@ -55,6 +58,26 @@ public struct Piece: Equatable, Sendable {
         self.paths = paths
         self.heightDelta = heightDelta
         self.launches = launches
+    }
+}
+
+extension Array where Element == Piece.Segment {
+    /// The exit pose reached by walking this whole chain from `entry` — exact.
+    /// An empty chain is a no-op (the entry pose itself).
+    public func exit(from entry: PiecePose) -> PiecePose {
+        reduce(entry) { pose, segment in segment.exit(from: pose) }
+    }
+
+    /// The pose at the start of each segment in the chain, in order — what a
+    /// renderer needs to lay the segments end to end.
+    public func segmentEntries(from entry: PiecePose) -> [PiecePose] {
+        var pose = entry
+        var poses: [PiecePose] = []
+        for segment in self {
+            poses.append(pose)
+            pose = segment.exit(from: pose)
+        }
+        return poses
     }
 }
 

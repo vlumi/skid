@@ -91,14 +91,30 @@ public struct PlacedPiece: Equatable, Sendable {
         -> [Vec2]
     {
         guard pathIndex < piece.paths.count else { return [entry.position.vec2] }
-        switch piece.paths[pathIndex] {
+        // Walk the chain segment by segment, concatenating samples. Each
+        // segment starts where the previous ended, so drop the duplicated
+        // joint point when appending.
+        let chain = piece.paths[pathIndex]
+        var points: [Vec2] = [entry.position.vec2]
+        for (segment, pose) in zip(chain, chain.segmentEntries(from: entry)) {
+            let sampled = Self.samples(
+                of: segment, from: pose, degreesPerSample: degreesPerSample)
+            points.append(contentsOf: sampled.dropFirst())
+        }
+        return points
+    }
+
+    /// Sample ONE segment from a starting pose, both endpoints included.
+    private static func samples(
+        of segment: Piece.Segment, from entry: PiecePose, degreesPerSample: Double
+    ) -> [Vec2] {
+        let start = entry.position.vec2
+        switch segment {
         case .straight:
-            return [entry.position.vec2, exits[pathIndex].position.vec2]
-        case .arc(let radius, let eighths, _):
+            return [start, segment.exit(from: entry).position.vec2]
+        case .arc(let radius, let eighths, let left):
             let sweepDeg = Double(eighths) * 45
             let steps = max(1, Int((sweepDeg / degreesPerSample).rounded(.up)))
-            let start = entry.position.vec2
-            let left = exits[pathIndex].heading.step == Heading(entry.heading.step + eighths).step
             let toCentre = entry.heading.radians + (left ? .pi / 2 : -.pi / 2)
             let centre = start + Vec2(angle: toCentre) * Double(radius)
             let startAngle = atan2(start.y - centre.y, start.x - centre.x)
@@ -160,7 +176,7 @@ extension TrackLayout {
             guard let current = ends.popLast() else { break }  // stranded piece
             let entry = current.pose
             let entryHeight = current.height
-            let exits = piece.paths.map { $0.exit(from: entry) }
+            let exits = piece.paths.map { $0.exit(from: entry) }  // chain fold
             placed.append(
                 PlacedPiece(
                     id: id, piece: piece, entry: entry, exits: exits,
