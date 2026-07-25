@@ -9,7 +9,7 @@ import SwiftUI
 extension CouchGame {
     /// The track to race: the custom slot when it's picked, else a built-in.
     /// A custom slot that isn't a valid track falls back rather than refusing
-    /// to start (the setup picker already greys it out in that state).
+    /// to start (the setup picker already grays it out in that state).
     func selectedTrack() -> Track {
         guard trackID == Self.customTrackID else { return TrackLibrary.track(id: trackID) }
         return customTrack() ?? TrackLibrary.all[0]
@@ -19,7 +19,7 @@ extension CouchGame {
     public static let customTrackID = "my-track"
 
     /// The custom slot compiled for racing, or nil if it isn't a valid track
-    /// yet — which is what greys it out in the setup picker.
+    /// yet — which is what grays it out in the setup picker.
     public func customTrack() -> Track? {
         guard let editorLayout else { return nil }
         return try? PieceCompiler.compile(editorLayout, id: Self.customTrackID)

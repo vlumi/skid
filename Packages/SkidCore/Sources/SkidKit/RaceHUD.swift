@@ -122,7 +122,7 @@ struct RaceHUD: View {
                 : AnyView(racingChip(car: car, index: index))
             // While racing the chip hugs the map-side edge (thumb rests
             // mid/outer band, so keep status near the track). On finish it
-            // moves to the band's centre and becomes a proper card — plenty of
+            // moves to the band's center and becomes a proper card — plenty of
             // room now that the race is over.
             let y =
                 finished
@@ -136,7 +136,7 @@ struct RaceHUD: View {
         }
     }
 
-    /// The compact in-race chip: colour dot, live position, lap counter.
+    /// The compact in-race chip: color dot, live position, lap counter.
     @ViewBuilder private func racingChip(car: Car, index: Int) -> some View {
         HStack(spacing: 6) {
             Circle()
@@ -158,7 +158,7 @@ struct RaceHUD: View {
         }
     }
 
-    /// The finish state, centred in the band: a bold final position, then the
+    /// The finish state, centered in the band: a bold final position, then the
     /// lap splits and a summed total in one aligned "label … time" column —
     /// an unmistakable "you're done, here's how it went". Kept narrow so it
     /// fits a quarter-screen band on the smallest phones.

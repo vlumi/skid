@@ -42,7 +42,7 @@ final class CustomTrackTests: XCTestCase {
         XCTAssertEqual(original.startSlots, restored.startSlots)
     }
 
-    /// An unfinished design must not pretend to be a track — that's what greys
+    /// An unfinished design must not pretend to be a track — that's what grays
     /// out the custom slot in the setup picker.
     func testAnUnfinishedDesignDoesNotCompile() {
         let open = TrackLayout(pieces: [Pieces.startGrid, Pieces.straight], gateSeams: [0])

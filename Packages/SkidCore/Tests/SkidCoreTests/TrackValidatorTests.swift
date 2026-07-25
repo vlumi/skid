@@ -176,7 +176,7 @@ final class TrackValidatorTests: XCTestCase {
     /// holds once the ring has closed — while it's open, the last piece running
     /// alongside the start piece is a real overlap. Exempting it let the
     /// offending piece land and then blamed every placement after it (the whole
-    /// palette greyed out, one piece too late).
+    /// palette grayed out, one piece too late).
     func testTheOverlappingPlacementItselfIsRefused() {
         let ring: [PieceID] =
             [Pieces.startGrid] + Array(repeating: Pieces.curve90MediumLeft, count: 4)

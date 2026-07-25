@@ -88,7 +88,7 @@ final class AimDriftTests: XCTestCase {
 
     func testFlipStaysGentleAtLowSpeed() {
         // The speed scaling is CURVED (squared), so at ~half speed the flip
-        // is much less than half of full — slow manoeuvring stays gentle
+        // is much less than half of full — slow maneuvering stays gentle
         // rather than twitchy. Measured on the aim flip's boost term.
         func flipStep(atFractionOfTop fraction: Double) -> Double {
             var r = race(tuning: CarTuning(aimTurnRate: 0))  // isolate the boost

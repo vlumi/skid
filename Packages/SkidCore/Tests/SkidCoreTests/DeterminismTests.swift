@@ -59,7 +59,7 @@ final class DeterminismTests: XCTestCase {
 
     func testGridShufflePreservesCarIdentity() {
         // The shuffle moves POSITIONS, not identities: cars[i] is still
-        // player i (so HUD chips + colours, keyed by index, stay correct).
+        // player i (so HUD chips + colors, keyed by index, stay correct).
         let players = [PlayerID(0), PlayerID(1), PlayerID(2), PlayerID(3)]
         let race = Race(track: TrackLibrary.practiceLoop(), players: players, seed: 9)
         XCTAssertEqual(race.cars.map(\.id), players)

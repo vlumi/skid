@@ -61,7 +61,7 @@ High-level only — see [CHANGELOG.md](CHANGELOG.md) for the full detail and
 - **v0.4.0 — Solo play.** AI opponents (no rubber-banding), time trial,
   per-track hiscores, and a personal-best ghost.
 - **v0.3.0 — Couch multiplayer.** 2–4 players on one device, per-player
-  zones/colours, car–car contact vs. ghost racing.
+  zones/colors, car–car contact vs. ghost racing.
 - **v0.2.0 — Make it a race.** Checkpoints, countdown, timing, hazards, HUD,
   run recording.
 - **v0.1.0 — One car, one track.** The deterministic drift sim, first control

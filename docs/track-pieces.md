@@ -165,7 +165,7 @@ thing that has to give way:
 - **A kerb never covers another piece's asphalt.** Drivable surface has
   priority over decoration, always — so the kerb band is *clipped* by every
   other piece's ribbon, not merely "drawn to fit". A kerb that spilled onto a
-  neighbouring road would read as a barrier across a racing line.
+  neighboring road would read as a barrier across a racing line.
 - **Overlapping kerbs merge into one.** Where two bands would occupy the same
   strip, they must render as a single shared kerb rather than two competing
   ones (double-drawn dashes at conflicting phases look like damage). The

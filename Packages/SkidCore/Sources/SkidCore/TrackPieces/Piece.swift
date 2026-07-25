@@ -92,25 +92,25 @@ extension Piece.Segment {
         }
     }
 
-    /// Arc endpoint, kept exact. The centre sits `radius` to the entry's side
-    /// (left for a left turn); the exit sits `radius` from the centre along
+    /// Arc endpoint, kept exact. The center sits `radius` to the entry's side
+    /// (left for a left turn); the exit sits `radius` from the center along
     /// the radial after it sweeps `eighths` × 45°, with the heading turning to
     /// match. Every offset is an integer multiple of a heading unit step, so
     /// the result stays in the ring — exact.
     ///
-    /// Sanity (left, east entry, r, 90° = 2 eighths): centre = (0, r), exit =
+    /// Sanity (left, east entry, r, 90° = 2 eighths): center = (0, r), exit =
     /// (r, r) heading north.
     private static func arcExit(
         from entry: PiecePose, radius: Int, eighths: Int, left: Bool
     ) -> PiecePose {
-        let toCentre = left ? entry.heading.turnedLeft(2) : entry.heading.turnedRight(2)
-        let centre = entry.position + toCentre.unitStep * radius
-        // Radial centre→entry is the opposite of centre-direction; it sweeps
+        let toCenter = left ? entry.heading.turnedLeft(2) : entry.heading.turnedRight(2)
+        let center = entry.position + toCenter.unitStep * radius
+        // Radial center→entry is the opposite of center-direction; it sweeps
         // in the turn direction by `eighths`.
-        let radialToEntry = toCentre.reversed
+        let radialToEntry = toCenter.reversed
         let radialToExit =
             left ? radialToEntry.turnedLeft(eighths) : radialToEntry.turnedRight(eighths)
-        let exitPos = centre + radialToExit.unitStep * radius
+        let exitPos = center + radialToExit.unitStep * radius
         let exitHeading =
             left ? entry.heading.turnedLeft(eighths) : entry.heading.turnedRight(eighths)
         return PiecePose(position: exitPos, heading: exitHeading)

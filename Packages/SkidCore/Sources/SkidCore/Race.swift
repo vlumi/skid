@@ -359,7 +359,7 @@ public struct Race: Equatable, Sendable {
         let maxStep = tuning.steerRate * dt
 
         // The body-flip's speed scaling, CURVED (squared): near-nothing at
-        // low speed so slow manoeuvring stays gentle, unchanged flat-out.
+        // low speed so slow maneuvering stays gentle, unchanged flat-out.
         // Both the aim and steer flips share it. A linear ramp gave too much
         // flip while crawling.
         let flipScale = pow(min(1, car.velocity.length / tuning.maxSpeed), 2)
