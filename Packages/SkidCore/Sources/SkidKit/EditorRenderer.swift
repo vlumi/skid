@@ -241,7 +241,10 @@ enum EditorRenderer {
     /// interpolated sample direction — so adjacent pieces, sharing a port pose,
     /// produce collinear end edges that abut with no grass sliver.
     static func edges(_ placed: PlacedPiece, width: Double, t: Transform) -> Ribbon? {
-        let samples = placed.heightedSamples()
+        // Finer than the default 6°: the kerb's stripes are dashed along this
+        // polyline, and coarse vertices give the dash pattern corners to catch
+        // on (a visible tilt where a boundary lands on one).
+        let samples = placed.heightedSamples(degreesPerSample: 2)
         guard samples.count >= 2 else { return nil }
         let entryDir = Vec2(angle: placed.entry.heading.radians)
         let exitDir = Vec2(angle: placed.exits[0].heading.radians)

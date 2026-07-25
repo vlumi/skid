@@ -268,27 +268,74 @@ extension EditorRenderer {
                 style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
         case .kerb:
             let band = max(3, Double(PieceCatalog.kerbBand) * 2 * t.scale)
-            // Pick the stripe length nearest the target that fits a whole number
-            // of red+white pairs into this run.
+            // Stripes are drawn as explicit QUADS, alternating red and white,
+            // with boundaries exactly ON the polyline vertices.
+            //
+            // A dashed stroke can't do this: it cuts each dash perpendicular to
+            // the local segment, so wherever a boundary happens to land on a
+            // vertex the cut is at the chord angle rather than radial — the
+            // stripe edge reads as tilted. Which boundary lands on which vertex
+            // changes with the dash length, i.e. with zoom, so the tilts flicker
+            // in and out at roughly one position per sampled vertex (~10 on a
+            // long kerb — exactly what was observed).
+            //
+            // Aligning the boundaries to the vertices removes the failure mode
+            // rather than papering over it: every stripe edge is radial because
+            // every edge IS a sample.
+            guard points.count >= 2 else { return }
+            let normals = stripeNormals(points)
+            // Group samples into stripes of roughly the target length, then
+            // alternate colors. A whole number of stripes covers the run, so it
+            // still begins and ends on a complete stripe.
             let length = polylineLength(points)
             let target = width * 0.12 * t.scale
-            let pairs = max(1, (length / (target * 2)).rounded())
-            let dash = length / (pairs * 2)
-            guard dash > 0.5 else { return }
-            // The white is dashed too, offset by one stripe — NOT a solid base
-            // band. A solid base ran the full length of the run while the red
-            // only covered its dashes, so leftover white poked past the final
-            // stripe as a little angled tab at each end of every kerb.
-            context.stroke(
-                path, with: .color(kerbWhite),
-                style: StrokeStyle(
-                    lineWidth: band, lineCap: .butt, lineJoin: .round, dash: [dash, dash],
-                    dashPhase: dash))
-            context.stroke(
-                path, with: .color(kerbRed),
-                style: StrokeStyle(
-                    lineWidth: band, lineCap: .butt, lineJoin: .round, dash: [dash, dash]))
+            let stripes = max(2, Int((length / target).rounded()))
+            let perStripe = max(1, (points.count - 1) / stripes)
+            var index = 0
+            var isRed = true
+            while index < points.count - 1 {
+                let end = min(index + perStripe, points.count - 1)
+                var quad = Path()
+                let half = band / 2
+                quad.move(to: offsetPoint(points[index], normals[index], half))
+                for k in index...end {
+                    quad.addLine(to: offsetPoint(points[k], normals[k], half))
+                }
+                for k in stride(from: end, through: index, by: -1) {
+                    quad.addLine(to: offsetPoint(points[k], normals[k], -half))
+                }
+                quad.closeSubpath()
+                context.fill(quad, with: .color(isRed ? kerbRed : kerbWhite))
+                isRed.toggle()
+                index = end
+            }
         }
+    }
+
+    /// Unit normals at each polyline vertex, averaged from the adjacent segments
+    /// so a stripe's edges stay radial around a curve.
+    static func stripeNormals(_ points: [CGPoint]) -> [CGPoint] {
+        guard points.count >= 2 else { return points.map { _ in CGPoint(x: 0, y: 0) } }
+        func normal(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
+            let dx = b.x - a.x
+            let dy = b.y - a.y
+            let len = max(0.0001, hypot(dx, dy))
+            return CGPoint(x: -dy / len, y: dx / len)
+        }
+        return points.indices.map { i in
+            let before = i > 0 ? normal(points[i - 1], points[i]) : normal(points[0], points[1])
+            let after =
+                i < points.count - 1
+                ? normal(points[i], points[i + 1])
+                : normal(points[points.count - 2], points[points.count - 1])
+            let sum = CGPoint(x: before.x + after.x, y: before.y + after.y)
+            let len = max(0.0001, hypot(sum.x, sum.y))
+            return CGPoint(x: sum.x / len, y: sum.y / len)
+        }
+    }
+
+    static func offsetPoint(_ p: CGPoint, _ n: CGPoint, _ d: CGFloat) -> CGPoint {
+        CGPoint(x: p.x + n.x * d, y: p.y + n.y * d)
     }
 
     static func polylineLength(_ points: [CGPoint]) -> CGFloat {
