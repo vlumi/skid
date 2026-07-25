@@ -249,7 +249,7 @@ final class PieceCompilerTests: XCTestCase {
                 let edge = mid + side * (track.width / 2 * direction)
                 let railed = track.walls.contains { (wall: Wall) in
                     wall.kind == .rail
-                        && abs(wall.height - height) <= Track.heightTolerance
+                        && abs(wall.height - height) <= Track.reachTolerance
                         && edge.distance(toSegment: wall.a, wall.b) < CarGeometry.radius * 2
                 }
                 XCTAssertTrue(railed, "ramp flank unrailed at point \(index)")

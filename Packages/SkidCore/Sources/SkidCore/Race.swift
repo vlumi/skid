@@ -263,7 +263,7 @@ public struct Race: Equatable, Sendable {
         guard onOwnRoad(car.state.position), onOwnRoad(from) else {
             // Off the road. Up high, that's a fall off the deck; on the ground,
             // it's just grass.
-            if car.state.height > Track.heightTolerance {
+            if car.state.height > Track.heightEpsilon {
                 car.state.height = 0
                 car.state.airborneTicks = 8
             }
@@ -294,7 +294,7 @@ public struct Race: Equatable, Sendable {
                 // bridge and one underneath must pass cleanly.
                 guard
                     abs(cars[i].state.height - cars[j].state.height)
-                        <= Track.heightTolerance,
+                        <= Track.reachTolerance,
                     !cars[i].state.isAirborne, !cars[j].state.isAirborne
                 else { continue }
                 let offset = cars[j].state.position - cars[i].state.position
@@ -322,7 +322,7 @@ public struct Race: Equatable, Sendable {
     private func updateProgress(car: inout Car, movedFrom from: Vec2) {
         guard car.progress.finishedAt == nil, !track.gates.isEmpty else { return }
         let gate = track.gates[car.progress.nextGate]
-        guard abs(gate.height - car.state.height) <= Track.heightTolerance,
+        guard abs(gate.height - car.state.height) <= Track.reachTolerance,
             gate.crossedForward(movingFrom: from, to: car.state.position)
         else { return }
         car.progress.nextGate += 1

@@ -101,9 +101,19 @@ extension PieceCompiler {
         return [Wall(from: high.0, to: high.1, height: underDeckCapHeight)]
     }
 
-    /// The cap height under a ramp's raised end — just below the deck, so it
-    /// blocks everything underneath without blocking the deck itself.
-    private static let underDeckCapHeight = 0.99
+    /// The cap height under a ramp's raised end.
+    ///
+    /// It has to clear the highest a car climbing the ramp actually reaches, and
+    /// that is NOT 1.0: the per-tick height clamp means the car approaches deck
+    /// height asymptotically, so it arrives at the mouth around 0.99. A cap at
+    /// 0.99 therefore blocked the legitimate climb — the car hit its own exit
+    /// (measured: heights near the cap ran 0.939…0.993).
+    ///
+    /// So it sits at 0.9: high enough that the only way past is to be nearly at
+    /// deck height (which means having climbed the ramp), low enough to clear the
+    /// arriving climber. With floor = trunc(0.9) = 0 it blocks 0…0.9 — everything
+    /// meaningfully below the deck.
+    private static let underDeckCapHeight = 0.9
 
     /// The map fence: a rectangle just inside the track's own bounds, on both
     /// layers, so a car can't drive off into the surrounding void.
