@@ -18,6 +18,10 @@ public struct Validation: Equatable, Sendable {
         case gates
         /// The footprint doesn't fit the fixed canvas.
         case offCanvas
+        /// The ring closes somewhere other than ground level — it climbed a
+        /// ramp and never came back down, so the road would meet itself at two
+        /// different heights.
+        case unclosedHeight(Double)
     }
 
     public var problems: [Problem]
@@ -66,6 +70,16 @@ public enum TrackValidator {
             problems.append(.offCanvas)
         }
 
+        // 6. Height comes home. A ring that climbs a ramp must descend before it
+        // closes, or the road meets itself at two different heights — a
+        // bridge to nowhere. (The walk only compares heights when auto-mating an
+        // inlet, so a ring closing onto the origin could sneak through elevated.)
+        // Only meaningful once the ring IS closed: mid-build, standing on the
+        // deck is exactly what you'd expect.
+        if walk.openEnds.isEmpty, let last = walk.placed.last, abs(last.exitHeight) > 0.001 {
+            problems.append(.unclosedHeight(last.exitHeight))
+        }
+
         return Validation(problems: problems)
     }
 
@@ -88,7 +102,12 @@ public enum TrackValidator {
     /// stays outside this). Legal crossable pairs and jump-gap unders are
     /// exempt.
     private static func hasIllegalOverlap(_ placed: [PlacedPiece]) -> Bool {
-        let minGap = Double(PieceCatalog.width) * 0.5
+        // Two ribbons touch when their centerlines are a FULL width apart (half
+        // from each side) and overlap below that — so the threshold is the road
+        // width, not half of it. (It was half, which let a lap sit half-on-top
+        // of another and still validate.) A hair under, so ribbons that merely
+        // graze aren't rejected.
+        let minGap = Double(PieceCatalog.width) * 0.95
         // Sampled points + layer per piece (first path only; forks sample the
         // trunk — branch overlap gets full treatment in Phase B).
         let samples = placed.map { samplePoints($0) }
