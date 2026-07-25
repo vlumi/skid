@@ -169,6 +169,40 @@ public struct ClosureGap: Equatable, Sendable {
     /// will — it needs diagonal travel to cancel (a mirrored chicane, a 45°
     /// dogleg).
     public var needsDiagonalTravel: Bool { diagonalX != 0 || diagonalY != 0 }
+
+    /// What kind of work a gap still needs — the useful question, since the two
+    /// currencies are repaid by completely different edits and one of them
+    /// (a stranded √2 debt) can't be fixed by adding length at all.
+    public enum Remedy: Equatable, Sendable {
+        /// Already home.
+        case closed
+        /// The end faces the wrong way; turns are still needed.
+        case turn(eighths: Int)
+        /// Pure axis offset ahead of the end: lengthen straights on axis runs.
+        case straights
+        /// The target is BEHIND the loose end and correctly aligned — the loop
+        /// overshot. No piece added here helps (you can't drive backwards);
+        /// the fix is to shorten or remove a piece earlier in the run.
+        case tooLong
+        /// A √2 debt with the heading already correct. Adding *one* more 45°
+        /// makes this worse, not better: the diagonal turns have to CANCEL —
+        /// opposite-handed pairs, or a symmetric set all the way round (eight
+        /// same-handed 45s cancel; two don't) — and the diagonal-facing runs
+        /// have to balance against their opposites.
+        case balanceDiagonals
+    }
+
+    /// Which edit closes the gap. `forward` is the loose end's heading, used to
+    /// tell "short of the target" from "overshot it".
+    public func remedy(facing forward: Heading) -> Remedy {
+        if isClosed { return .closed }
+        if headingEighths != 0 { return .turn(eighths: headingEighths) }
+        if needsDiagonalTravel { return .balanceDiagonals }
+        // Pure axis gap: is the target ahead of the end, or behind it?
+        let dir = forward.unitStep
+        let ahead = Double(dir.x.a) * axisX + Double(dir.y.a) * axisY
+        return ahead < 0 ? .tooLong : .straights
+    }
 }
 
 extension TrackLayout {
@@ -182,12 +216,97 @@ extension TrackLayout {
         let unit = Double(PieceCatalog.unit)
         let dx = goal.position.x - end.position.x
         let dy = goal.position.y - end.position.y
-        // A Coord is (a + b√2)/2, so the axis part is a/2 and the diagonal part
-        // is b/2 — each divided by the unit to read in whole units.
+        // A Coord is (a + b√2)/2. The AXIS part is `a/2` in world length, so
+        // dividing by the unit gives whole units. The DIAGONAL part is `b/2`
+        // world lengths of √2 — and a unit of diagonal *travel* moves `b` by
+        // `unit` (a 1U straight on a diagonal heading, or a tight 45's
+        // displacement), so the diagonal count is `b / unit`, NOT `b/2/unit`.
+        // Reporting it in the same currency the author spends is the whole
+        // point of the readout.
         return ClosureGap(
             axisX: Double(dx.a) / 2 / unit, axisY: Double(dy.a) / 2 / unit,
-            diagonalX: Double(dx.b) / 2 / unit, diagonalY: Double(dy.b) / 2 / unit,
+            diagonalX: Double(dx.b) / unit, diagonalY: Double(dy.b) / unit,
             headingEighths: ((goal.heading.step - end.heading.step) % 8 + 8) % 8)
+    }
+
+    /// The **shortest** run of catalog pieces that takes `end` exactly onto the
+    /// closure target, or nil if none exists within `maxPieces`. Breadth-first,
+    /// so the first hit is the fewest pieces; exactness is integer equality, so
+    /// a suggestion always really closes.
+    ///
+    /// This is the answer to "what cancels my diagonal?" — the author doesn't
+    /// have to reason about √2 bookkeeping, they can just take the suggestion.
+    /// Search-only pieces are the plain drivable ones: no start piece (exactly
+    /// one per track), no forks/crossings/jumps (they carry rules of their own).
+    ///
+    /// A candidate run is only offered if appending it leaves the layout
+    /// **valid** — so a suggestion never routes the road through pavement that
+    /// is already there. (Checked with the real validator, so "suggestable" and
+    /// "buildable by hand" can't drift apart.)
+    public func closingRun(
+        from end: PiecePose, to target: PiecePose? = nil, maxPieces: Int = 4
+    ) -> [PieceID]? {
+        let goal = target ?? origin
+        guard end != goal else { return [] }
+        /// Would appending this run leave a layout with no illegal overlap?
+        func isClean(_ run: [PieceID]) -> Bool {
+            var candidate = self
+            candidate.pieces += run
+            return !TrackValidator.validate(candidate).problems.contains(.overlap)
+        }
+        // Straights first, then gentler shapes, so among equal-length runs the
+        // search returns the one an author would actually have reached for
+        // (a hairpin "closes" many gaps, but suggesting one is rarely helpful).
+        func cost(_ piece: Piece) -> Int {
+            piece.paths[0].reduce(0) { total, segment in
+                switch segment {
+                case .straight: return total
+                case .arc(_, let eighths, _): return total + eighths
+                }
+            }
+        }
+        let candidates = PieceCatalog.all
+            .filter { $0.key != PieceCatalog.startPieceID && $0.value.kind == .road }
+            .filter { $0.value.heightDelta == 0 && !$0.value.launches }
+            .map { ($0.key, $0.value) }
+            .sorted { (cost($0.1), $0.0) < (cost($1.1), $1.0) }
+
+        /// One partial run under consideration.
+        struct Step {
+            var pose: PiecePose
+            var run: [PieceID]
+            var cost: Int
+        }
+        var frontier = [Step(pose: end, run: [], cost: 0)]
+        var seen: Set<PiecePose> = [end]
+        for _ in 0..<maxPieces {
+            var next: [Step] = []
+            var best: Step?
+            for step in frontier {
+                for (id, piece) in candidates {
+                    let candidate = Step(
+                        pose: piece.paths[0].exit(from: step.pose), run: step.run + [id],
+                        cost: step.cost + cost(piece))
+                    if candidate.pose == goal {
+                        // Keep looking at this depth for a gentler run of the
+                        // same length — the first hit isn't always the tidiest.
+                        // Only offer runs that don't cross existing pavement.
+                        let better = best.map { candidate.cost < $0.cost } ?? true
+                        if better, isClean(candidate.run) { best = candidate }
+                        continue
+                    }
+                    guard !seen.contains(candidate.pose) else { continue }
+                    seen.insert(candidate.pose)
+                    // Prune partial runs that already cross pavement — no
+                    // continuation of them can become a clean suggestion.
+                    guard isClean(candidate.run) else { continue }
+                    next.append(candidate)
+                }
+            }
+            if let best { return best.run }
+            frontier = next
+        }
+        return nil
     }
 }
 

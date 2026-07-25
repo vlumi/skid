@@ -133,14 +133,30 @@ struct EditorView: View {
                 tabRow
                 if tab == .curves { radiusRow }
                 pieceRow(walk: walk)
-                Button(role: .destructive) {
-                    game.editorDeleteLast()
-                } label: {
-                    Text("Delete last", bundle: .module)
-                        .font(.callout.bold())
-                        .padding(.horizontal, 14).padding(.vertical, 10)
-                        .background(.black.opacity(0.3), in: Capsule())
-                        .foregroundStyle(.white)
+                HStack(spacing: 10) {
+                    Button(role: .destructive) {
+                        game.editorDeleteLast()
+                    } label: {
+                        Text("Delete last", bundle: .module)
+                            .font(.callout.bold())
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(.black.opacity(0.3), in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                    // When a short run of pieces would close the loop exactly,
+                    // offer it — the author doesn't have to work out what
+                    // cancels a diagonal, they can just take the suggestion.
+                    if let run = suggestedClosingRun(walk) {
+                        Button {
+                            for id in run { game.editorAppend(id) }
+                        } label: {
+                            Text("Close it (\(run.count))", bundle: .module)
+                                .font(.callout.bold())
+                                .padding(.horizontal, 14).padding(.vertical, 10)
+                                .background(Color.yellow.opacity(0.85), in: Capsule())
+                                .foregroundStyle(.black)
+                        }
+                    }
                 }
             }
             .padding(.bottom, 24)
@@ -156,7 +172,7 @@ struct EditorView: View {
     private func closureHint(_ walk: WalkResult) -> String? {
         let layout = game.editorLayout ?? TrackLayout(pieces: [PieceCatalog.startPieceID])
         guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
-            return nil
+            return closedLoopHint(layout)
         }
         let gap = layout.closureGap(from: walk.openEnds[i])
         var parts: [String] = []
@@ -170,9 +186,43 @@ struct EditorView: View {
         if gap.needsDiagonalTravel {
             parts.append("\(unitText(max(abs(gap.diagonalX), abs(gap.diagonalY)))) diagonal")
         }
-        guard !parts.isEmpty else { return nil }
-        let advice = gap.needsDiagonalTravel ? "needs a 45° pair" : "straights will close it"
+        let advice: String
+        switch gap.remedy(facing: walk.openEnds[i].heading) {
+        case .closed: return nil
+        case .turn(let eighths):
+            // Report the shorter way round, so 7 eighths reads as "45° left".
+            let left = eighths <= 4
+            advice = "turn \((left ? eighths : 8 - eighths) * 45)° \(left ? "left" : "right")"
+        case .straights:
+            advice = "straights will close it"
+        case .tooLong:
+            advice = "overshot — shorten a run instead"
+        case .balanceDiagonals:
+            advice = "45s must cancel — pair them opposite, or 8 round the loop"
+        }
+        guard !parts.isEmpty else { return "Not closed — \(advice)" }
         return "Gap \(parts.joined(separator: " + ")) — \(advice)"
+    }
+
+    /// The ring has no loose end, so anything still unsaveable is a rule other
+    /// than geometry — name it, instead of telling the author to extend an end
+    /// that isn't there.
+    private func closedLoopHint(_ layout: TrackLayout) -> String? {
+        let problems = TrackValidator.validate(layout).problems
+        if problems.contains(.gates) { return "Loop closed — mark a checkpoint to finish" }
+        if problems.contains(.overlap) { return "Loop closed, but it crosses itself" }
+        if problems.contains(.offCanvas) { return "Loop closed, but it runs off the canvas" }
+        return nil
+    }
+
+    /// A short run of pieces that would close the loop exactly, if one exists
+    /// within a few pieces — the "Close it" offer.
+    private func suggestedClosingRun(_ walk: WalkResult) -> [PieceID]? {
+        guard let layout = game.editorLayout, let i = effectiveSelection(walk),
+            walk.openEnds.indices.contains(i)
+        else { return nil }
+        let run = layout.closingRun(from: walk.openEnds[i], maxPieces: 3)
+        return (run?.isEmpty ?? true) ? nil : run
     }
 
     /// A unit count, trimmed to look like "2U" / "1.5U".
@@ -282,106 +332,5 @@ struct EditorView: View {
             width: view.width / 2 - cx * scale + pan.width,
             height: view.height / 2 - cy * scale + pan.height)
         return EditorRenderer.Transform(scale: scale, offset: offset)
-    }
-}
-
-/// A palette tile's icon: a small preview of the piece's shape (its centerline
-/// stroked as a stubby road), so the palette reads by shape not text. The
-/// ramp sentinel draws an up-chevron.
-struct PieceIcon: View {
-    let id: PieceID
-    /// The heading the piece will enter at (the selected loose end) — the icon
-    /// rotates to match, previewing exactly how the piece will land.
-    var entryHeading: Heading = .east
-    /// The height the piece will enter at — so an icon previews the elevated
-    /// (deck) look when building on the bridge, matching what you'll get.
-    var entryHeight: Double = 0
-
-    var body: some View {
-        Canvas { context, size in
-            let inset: CGFloat = 12
-            let box = CGRect(
-                x: inset, y: inset, width: size.width - 2 * inset,
-                height: size.height - 2 * inset)
-            if id == -1 {
-                drawRampChevron(in: box, into: &context)
-            } else {
-                drawPieceShape(in: box, into: &context)
-            }
-        }
-    }
-
-    /// Walk the piece from an entry pose matching the selected loose end's
-    /// heading, then fit its centerline into the box. Rotating the whole icon
-    /// keeps left/right as honest mirrors (they rotate together) and previews
-    /// how the piece will actually land.
-    private func drawPieceShape(in box: CGRect, into context: inout GraphicsContext) {
-        guard let piece = PieceCatalog.piece(id) else { return }
-        let entry = PiecePose(position: .zero, heading: entryHeading)
-        let placed = PlacedPiece(
-            id: id, piece: piece, entry: entry,
-            exits: piece.paths.map { $0.exit(from: entry) }, entryHeight: entryHeight, entrySeam: 0)
-        let pts = placed.piece.paths.indices.flatMap { placed.centerlineSamples(path: $0) }
-        guard pts.count >= 2 else { return }
-        // Shared reference scale so a tight curve reads tighter than a sweeper;
-        // centre the piece's bounding box in the tile. Same y-down orientation
-        // as the canvas, so the icon matches how the piece lands.
-        let reference: CGFloat = 340
-        let scale = box.width / reference
-        let cx = (pts.map(\.x).min()! + pts.map(\.x).max()!) / 2
-        let cy = (pts.map(\.y).min()! + pts.map(\.y).max()!) / 2
-        func screen(_ p: Vec2) -> CGPoint {
-            CGPoint(x: box.midX + (p.x - cx) * scale, y: box.midY + (p.y - cy) * scale)
-        }
-        var path = Path()
-        for k in placed.piece.paths.indices {
-            let seg = placed.centerlineSamples(path: k).map(screen)
-            guard let first = seg.first else { continue }
-            path.move(to: first)
-            for pt in seg.dropFirst() { path.addLine(to: pt) }
-        }
-        // Render like a real road tile: kerb band, red/white dashes, asphalt —
-        // a mini version of what the piece draws on the canvas, so the icon
-        // matches the actual piece. Elevated (ramp) uses the blue rail.
-        let roadW: CGFloat = 13
-        // Elevated look for ramps AND for flat pieces laid on the deck.
-        let elevated = placed.piece.heightDelta != 0 || placed.exitHeight > 0.5
-        if elevated {
-            context.stroke(
-                path, with: .color(Color(red: 0.55, green: 0.78, blue: 0.95)),
-                style: StrokeStyle(lineWidth: roadW + 6, lineCap: .butt, lineJoin: .round))
-            context.stroke(
-                path, with: .color(Color(white: 0.72)),
-                style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
-        } else {
-            context.stroke(
-                path, with: .color(Color(white: 0.95)),
-                style: StrokeStyle(lineWidth: roadW + 5, lineCap: .butt, lineJoin: .round))
-            context.stroke(
-                path, with: .color(Color(red: 0.82, green: 0.16, blue: 0.14)),
-                style: StrokeStyle(
-                    lineWidth: roadW + 5, lineCap: .butt, lineJoin: .round, dash: [5, 5]))
-            context.stroke(
-                path, with: .color(Color(white: 0.62)),
-                style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
-        }
-    }
-
-    private func drawRampChevron(in box: CGRect, into context: inout GraphicsContext) {
-        var chev = Path()
-        chev.move(to: CGPoint(x: box.minX, y: box.maxY))
-        chev.addLine(to: CGPoint(x: box.midX, y: box.minY))
-        chev.addLine(to: CGPoint(x: box.maxX, y: box.maxY))
-        context.stroke(
-            chev, with: .color(.yellow),
-            style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
-        var chev2 = Path()
-        let dy = box.height * 0.34
-        chev2.move(to: CGPoint(x: box.minX, y: box.maxY - dy))
-        chev2.addLine(to: CGPoint(x: box.midX, y: box.minY - dy + 4))
-        chev2.addLine(to: CGPoint(x: box.maxX, y: box.maxY - dy))
-        context.stroke(
-            chev2, with: .color(.yellow.opacity(0.6)),
-            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
     }
 }

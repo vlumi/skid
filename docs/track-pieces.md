@@ -90,19 +90,42 @@ Diagonals extend the same guarantee in a second currency: every reachable
 position is `(a + b√2)/2` with *both* components in whole U — a gap is
 always "j U axis + k U diagonal", never a hair. The catch: axis straights
 only repay the rational part; **√2-debt is repaid only by diagonal travel**.
-The pairing rules that keep a build solvent:
+**Axis and diagonal travel are incommensurable, by construction.** A straight
+of integer length `L` on a diagonal heading displaces `L·√2/2` per axis; for
+that to equal a whole unit you would need `L = U·√2`, which is not an integer
+— so no choice of "diagonal straight length" makes the two grids mesh. This
+isn't a gap in the catalog: integer lengths are exactly what make closure
+exact integer equality, and any √2-scaled length would trade that for
+epsilon-fuzz. Diagonal travel composes perfectly with *itself* (two 1U
+diagonal runs at right angles land on a pure axis offset, exactly), which is
+why the working rule is about cancelling, not converting.
+
+The rules that keep a build solvent:
 
 - two same-radius 45s in succession = a 90 (debt-free);
-- an S-chicane closes against its mirror S;
-- a diagonal run closes against an equal run on the opposite diagonal.
+- **45s must cancel across the loop**: opposite-handed pairs, or a symmetric
+  set all the way round. Eight same-handed 45s (an octagon) cancel; **two do
+  not** — a loop of `45R · 90 · 90 · 90 · 45R` turns a full 360° and still
+  cannot close *at any straight length*, because both 45s push the same way.
+  Adding one more 45 makes such a gap worse, not better;
+- opposite sides must match. A regular octagon closes; so does a stretched
+  one (long/short/long/short) as long as each side equals its opposite.
+  **Watch the start piece**: it is 2U and occupies one of the legs, so an
+  octagon of 1U legs is short by exactly the difference — matching the legs to
+  the start piece (2U, or 2×1U) closes it. That mismatch shows up as a pure
+  *axis* gap, which straights fix;
+- an S-chicane's *lateral* shift cancels against its mirror, but each chicane
+  also advances `r√2` **forward**, and those accumulate — so a mirrored pair
+  gets you back on line without closing the loop by itself.
 
 Symmetric layouts do this bookkeeping automatically — the classic
 **figure-8 with diagonal roads** (two mirrored lobes crossing at 90° on
 diagonal headings) composes and closes exactly. The editor enforces
-exactness at mate time regardless (integer equality); the planned **gap
-readout** on a selected loose end reports the two components separately —
-"2U east + 1U NE" — so the author sees what kind of fix a gap needs before
-hunting for it.
+exactness at mate time regardless (integer equality), and the **gap readout**
+on the selected loose end reports the two components separately — "Gap 2U E +
+1U diagonal" — plus which *edit* is needed: straights for an axis gap, turns
+for a heading, or "45s must cancel" for a stranded √2 debt (the one case
+adding length can never fix).
 
 **Bridging the radii.** Two S families fall out of the system:
 
