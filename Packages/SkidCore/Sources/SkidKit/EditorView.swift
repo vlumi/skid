@@ -16,41 +16,13 @@ struct EditorView: View {
     /// Index into the walk's `openEnds`; nil = none selected.
     @State private var selectedEnd: Int?
 
-    private struct PaletteItem: Identifiable {
-        let id: PieceID
-        let label: LocalizedStringKey
-        /// A sentinel id meaning "the context-aware ramp" (up from ground,
-        /// down from the deck) — resolved to a real piece id on tap.
-        static let rampSentinel = -1
-    }
-
-    /// The append palette, ordered by family so the horizontal scroll reads
-    /// predictably: straights, then 90° corners tight→sweep, then 45s, the
-    /// hairpins, the two S families, and the ramp. "Ramp" is a single button:
-    /// with only two elevations it picks up from the ground and down from the
-    /// deck automatically (see `game.editorRamp`).
-    /// (A grouped two-tier palette — pick radius, then shape — is the planned
-    /// follow-up now that the catalog has three radii.)
-    private let palette: [PaletteItem] = [
-        .init(id: PieceCatalog.ID.shortStraight, label: "Short"),
-        .init(id: PieceCatalog.ID.straight, label: "Straight"),
-        .init(id: PieceCatalog.ID.longStraight, label: "Long"),
-        .init(id: PieceCatalog.ID.curve90TightLeft, label: "Left"),
-        .init(id: PieceCatalog.ID.curve90TightRight, label: "Right"),
-        .init(id: PieceCatalog.ID.curve90MediumLeft, label: "Left ›"),
-        .init(id: PieceCatalog.ID.curve90MediumRight, label: "Right ›"),
-        .init(id: PieceCatalog.ID.curve90SweepLeft, label: "Left ››"),
-        .init(id: PieceCatalog.ID.curve90SweepRight, label: "Right ››"),
-        .init(id: PieceCatalog.ID.curve45MediumLeft, label: "Left 45"),
-        .init(id: PieceCatalog.ID.curve45MediumRight, label: "Right 45"),
-        .init(id: PieceCatalog.ID.hairpinTightLeft, label: "Hairpin L"),
-        .init(id: PieceCatalog.ID.hairpinTightRight, label: "Hairpin R"),
-        .init(id: PieceCatalog.ID.chicaneMediumLeft, label: "Chicane L"),
-        .init(id: PieceCatalog.ID.chicaneMediumRight, label: "Chicane R"),
-        .init(id: PieceCatalog.ID.jog240Left, label: "Jog L"),
-        .init(id: PieceCatalog.ID.jog240Right, label: "Jog R"),
-        .init(id: PaletteItem.rampSentinel, label: "Ramp"),
-    ]
+    /// Which palette tab is showing, and (in Curves) which radius the row is
+    /// tuned to. Tabs exist from the start because the catalog only grows:
+    /// decal variants and, later, decorations group naturally into their own
+    /// tabs rather than lengthening one scroll. (The exact grouping is expected
+    /// to be revisited as those families land.)
+    @State var tab: PaletteTab = .curves
+    @State var radius: CurveRadius = .medium
 
     var body: some View {
         GeometryReader { geo in
@@ -82,7 +54,7 @@ struct EditorView: View {
 
     /// The selected end, defaulting to the LAST loose end (the one you just
     /// laid) so the common case needs no tap.
-    private func effectiveSelection(_ walk: WalkResult) -> Int? {
+    func effectiveSelection(_ walk: WalkResult) -> Int? {
         if let selectedEnd, walk.openEnds.indices.contains(selectedEnd) { return selectedEnd }
         return walk.openEnds.isEmpty ? nil : walk.openEnds.count - 1
     }
@@ -90,7 +62,7 @@ struct EditorView: View {
     /// The heading a newly-appended piece will enter at — the selected loose
     /// end's heading — so the palette icons render rotated to match where the
     /// piece will actually land. Defaults to east.
-    private func appendHeading(_ walk: WalkResult) -> Heading {
+    func appendHeading(_ walk: WalkResult) -> Heading {
         guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
             return .east
         }
@@ -102,7 +74,7 @@ struct EditorView: View {
     /// (deck grey + blue rail) when building on the deck. The walk doesn't
     /// carry heights on `openEnds`, so match the end pose back to the placed
     /// piece whose exit it is.
-    private func appendHeight(_ walk: WalkResult) -> Double {
+    func appendHeight(_ walk: WalkResult) -> Double {
         guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
             return 0
         }
@@ -144,41 +116,23 @@ struct EditorView: View {
         VStack {
             Spacer()
             VStack(spacing: 10) {
-                // Save state / validity hint.
+                // Save state, or how far the selected end is from closing.
                 if game.editorIsSaveable() {
                     Text("Track complete", bundle: .module)
                         .font(.footnote.bold())
                         .foregroundStyle(.white)
+                } else if let gap = closureHint(walk) {
+                    Text(verbatim: gap)
+                        .font(.footnote.monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.75))
                 } else {
                     Text("Extend the loose end to close the loop", bundle: .module)
                         .font(.footnote)
                         .foregroundStyle(.white.opacity(0.75))
                 }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(palette) { item in
-                            Button {
-                                if item.id == PaletteItem.rampSentinel {
-                                    game.editorRamp()
-                                } else {
-                                    game.editorAppend(item.id)
-                                }
-                            } label: {
-                                PieceIcon(
-                                    id: item.id, entryHeading: appendHeading(walk),
-                                    entryHeight: appendHeight(walk)
-                                )
-                                .frame(width: 56, height: 56)
-                                .background(
-                                    .black.opacity(0.3),
-                                    in: RoundedRectangle(cornerRadius: 12)
-                                )
-                                .accessibilityLabel(Text(item.label, bundle: .module))
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                }
+                tabRow
+                if tab == .curves { radiusRow }
+                pieceRow(walk: walk)
                 Button(role: .destructive) {
                     game.editorDeleteLast()
                 } label: {
@@ -190,6 +144,76 @@ struct EditorView: View {
                 }
             }
             .padding(.bottom, 24)
+        }
+    }
+
+    /// How far the selected loose end is from closing, in the unit system — so
+    /// a stuck author can see *what kind* of gap they have. An axis-only gap is
+    /// fixable with straights; a gap carrying a √2 part never is, and needs
+    /// diagonal travel (a mirrored chicane, a 45° dogleg) to cancel.
+    /// Returns nil when there's nothing specific to report (fall back to the
+    /// generic, localized hint).
+    private func closureHint(_ walk: WalkResult) -> String? {
+        let layout = game.editorLayout ?? TrackLayout(pieces: [PieceCatalog.startPieceID])
+        guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
+            return nil
+        }
+        let gap = layout.closureGap(from: walk.openEnds[i])
+        var parts: [String] = []
+        // Axis offsets, named by compass direction (screen y grows downward).
+        if gap.axisX != 0 {
+            parts.append("\(unitText(abs(gap.axisX))) \(gap.axisX > 0 ? "E" : "W")")
+        }
+        if gap.axisY != 0 {
+            parts.append("\(unitText(abs(gap.axisY))) \(gap.axisY > 0 ? "S" : "N")")
+        }
+        if gap.needsDiagonalTravel {
+            parts.append("\(unitText(max(abs(gap.diagonalX), abs(gap.diagonalY)))) diagonal")
+        }
+        guard !parts.isEmpty else { return nil }
+        let advice = gap.needsDiagonalTravel ? "needs a 45° pair" : "straights will close it"
+        return "Gap \(parts.joined(separator: " + ")) — \(advice)"
+    }
+
+    /// A unit count, trimmed to look like "2U" / "1.5U".
+    private func unitText(_ units: Double) -> String {
+        units == units.rounded()
+            ? "\(Int(units))U" : String(format: "%.1fU", units)
+    }
+
+    /// Which family of pieces the row below shows.
+    private var tabRow: some View {
+        HStack(spacing: 8) {
+            ForEach(PaletteTab.allCases) { item in
+                chip(item.label, selected: tab == item) { tab = item }
+            }
+        }
+    }
+
+    /// Which radius the Curves row is tuned to — the second tier, so one row of
+    /// shapes covers all three radii instead of tripling the row.
+    private var radiusRow: some View {
+        HStack(spacing: 8) {
+            ForEach(CurveRadius.allCases) { item in
+                chip(item.label, selected: radius == item, small: true) { radius = item }
+            }
+        }
+    }
+
+    /// A pill toggle shared by both selector rows.
+    private func chip(
+        _ label: LocalizedStringKey, selected: Bool, small: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(label, bundle: .module)
+                .font(small ? .caption.bold() : .footnote.bold())
+                .padding(.horizontal, small ? 10 : 13)
+                .padding(.vertical, small ? 5 : 7)
+                .background(
+                    selected ? Color.white.opacity(0.9) : .black.opacity(0.3), in: Capsule()
+                )
+                .foregroundStyle(selected ? .black : .white)
         }
     }
 
@@ -264,7 +288,7 @@ struct EditorView: View {
 /// A palette tile's icon: a small preview of the piece's shape (its centerline
 /// stroked as a stubby road), so the palette reads by shape not text. The
 /// ramp sentinel draws an up-chevron.
-private struct PieceIcon: View {
+struct PieceIcon: View {
     let id: PieceID
     /// The heading the piece will enter at (the selected loose end) — the icon
     /// rotates to match, previewing exactly how the piece will land.
