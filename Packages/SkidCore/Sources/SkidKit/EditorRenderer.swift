@@ -29,6 +29,9 @@ enum EditorRenderer {
         walk: WalkResult, width: Double, selectedEnd: Int?, gateSeams: [Int] = [],
         transform t: Transform, into context: inout GraphicsContext
     ) {
+        // The size limit, made visible. Under everything else, since it's a
+        // boundary you build inside of.
+        drawCanvasBounds(walk: walk, t: t, into: &context)
         // Every piece is a width-varying RIBBON POLYGON: half-width at each
         // sample follows the height there (Elevation.scale), so a ramp widens
         // as it climbs and the deck is naturally wider — one formula, no
