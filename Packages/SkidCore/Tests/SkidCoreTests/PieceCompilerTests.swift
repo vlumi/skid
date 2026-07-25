@@ -139,21 +139,21 @@ final class PieceCompilerTests: XCTestCase {
     /// the consequence of leaving the deck rather than a wall preventing it.
     func testElevatedPiecesGetGuardRails() throws {
         let track = try compiledBridge()
-        XCTAssertFalse(track.walls.isEmpty, "an elevated piece needs guard rails")
-        // Rails belong to the deck, not the ground.
-        for wall in track.walls {
-            XCTAssertEqual(wall.layer, 1, "a deck rail guards the deck")
-        }
         // Both edges are railed, so rails appear on both sides of the deck.
+        // (Only rails NEAR the deck count — every track also carries a map-
+        // boundary fence, which is not a deck rail.)
         let deckSegment = try XCTUnwrap(track.elevatedSegments.min())
         let deckPoint = track.centerline[deckSegment]
         var sides = Set<Bool>()
-        for wall in track.walls {
+        var found = 0
+        for wall in track.walls where wall.layer == 1 {
             let mid = Vec2((wall.a.x + wall.b.x) / 2, (wall.a.y + wall.b.y) / 2)
             guard (mid - deckPoint).length < track.width * 3 else { continue }
+            found += 1
             // Which side of the centerline point this rail sits on.
             sides.insert(mid.x + mid.y > deckPoint.x + deckPoint.y)
         }
+        XCTAssertGreaterThan(found, 0, "the deck needs rails along it")
         XCTAssertEqual(sides.count, 2, "a deck must be railed on both edges")
     }
 
@@ -203,9 +203,80 @@ final class PieceCompilerTests: XCTestCase {
         XCTAssertGreaterThan(checked, 0, "fixture needs deck clear of the ground road")
     }
 
-    /// A flat track has nothing to fall off, so it gets no rails.
-    func testGroundLevelTracksHaveNoGuardRails() throws {
-        XCTAssertTrue(try compiledSquare().walls.isEmpty)
+    /// A flat track has nothing to fall off, so its only walls are the map fence
+    /// — no deck rails anywhere in the middle.
+    func testGroundLevelTracksHaveOnlyTheBoundaryFence() throws {
+        let track = try compiledSquare()
+        XCTAssertFalse(track.walls.isEmpty, "even a flat track is fenced")
+        // Every wall hugs the frame edge; none cuts across the interior.
+        let inset = 12.0
+        for wall in track.walls {
+            for point in [wall.a, wall.b] {
+                let onEdge =
+                    point.x <= inset || point.y <= inset
+                    || point.x >= track.size.x - inset || point.y >= track.size.y - inset
+                XCTAssertTrue(
+                    onEdge, "a flat track should have no interior walls, found one at \(point)")
+            }
+        }
+    }
+
+    /// **You can't drive off the map.** Piece-built tracks had no boundary at
+    /// all, so a car could leave the playfield entirely and end up under the
+    /// control band. Legacy `TrackDesign` tracks always had this fence.
+    func testTheMapIsFencedOnBothLayers() throws {
+        for track in [try compiledSquare(), try compiledBridge()] {
+            let centre = track.size * 0.5
+            for layer in [0, 1] {
+                for degrees in stride(from: 0, to: 360, by: 15) {
+                    let angle = Double(degrees) * .pi / 180
+                    let outside =
+                        centre + Vec2(cos(angle), sin(angle)) * (track.size.x + track.size.y)
+                    let enclosed = track.walls.contains { wall in
+                        wall.layer == layer
+                            && Gate(from: wall.a, to: wall.b)
+                                .isCrossed(movingFrom: centre, to: outside)
+                    }
+                    XCTAssertTrue(
+                        enclosed,
+                        "track \(track.id) layer \(layer) is open toward \(degrees)°")
+                }
+            }
+        }
+    }
+
+    /// A ramp is an embankment: its flanks are walled on BOTH layers, so you can
+    /// neither drive onto it sideways nor pass under it while it climbs. Its high
+    /// end must stay open to a climbing car, which is still on layer 0 when it
+    /// reaches the switch line.
+    func testRampFlanksAreWalledButTheClimbStaysOpen() throws {
+        let track = try compiledBridge()
+        let count = track.centerline.count
+        for segment in track.rampSegments.sorted() {
+            let a = track.centerline[segment]
+            let b = track.centerline[(segment + 1) % count]
+            let mid = a + (b - a) * 0.5
+            let side = (b - a).normalized.perpendicular
+            for direction in [1.0, -1.0] {
+                let edge = mid + side * (track.width / 2 * direction)
+                for layer in [0, 1] {
+                    let blocked = track.walls.contains { wall in
+                        wall.layer == layer
+                            && edge.distance(toSegment: wall.a, wall.b) < CarGeometry.radius
+                    }
+                    XCTAssertTrue(
+                        blocked, "ramp segment \(segment) flank is open on layer \(layer)")
+                }
+            }
+        }
+        // The climb's exit must NOT be blocked for the layer-0 car arriving there.
+        for ramp in track.ramps where ramp.toLayer > ramp.fromLayer {
+            let mid = Vec2((ramp.a.x + ramp.b.x) / 2, (ramp.a.y + ramp.b.y) / 2)
+            let blocked = track.walls.contains { wall in
+                wall.layer == 0 && mid.distance(toSegment: wall.a, wall.b) < CarGeometry.radius
+            }
+            XCTAssertFalse(blocked, "a climbing car must not be walled out of its own exit")
+        }
     }
 
     /// The deck itself: flat pieces the walk carries at height 1 become elevated

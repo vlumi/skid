@@ -90,22 +90,33 @@ extension TrackRenderer {
         return translucent
     }
 
-    /// Retaining rails along the bridge deck (the layer-1 walls). Drawn as a
-    /// raised barrier — a dark base plus a lighter cap — so the edge that
-    /// catches a wide car up top reads clearly against the deck.
+    /// Retaining rails along the bridge deck. Drawn as a raised barrier — a dark
+    /// base plus a lighter cap — so the edge that catches a wide car up top reads
+    /// clearly against the deck.
+    ///
+    /// The cap is the **same light blue the editor uses** (`bridgeRail`): a
+    /// barrier you can see while building should look like the same object when
+    /// you drive it, and the old near-white grey read as part of the road rather
+    /// than as a wall.
+    ///
+    /// Layer-1 walls only. A ramp also emits layer-0 rails so a ground car can't
+    /// drive up its flank, but drawing those too would double-stroke every ramp.
     private static func drawDeckRails(track: Track, into context: inout GraphicsContext) {
         for wall in track.walls where wall.layer == 1 {
             var rail = Path()
             rail.move(to: CGPoint(x: wall.a.x, y: wall.a.y))
             rail.addLine(to: CGPoint(x: wall.b.x, y: wall.b.y))
             context.stroke(
-                rail, with: .color(.black.opacity(0.4)),
-                style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                rail, with: .color(.black.opacity(0.5)),
+                style: StrokeStyle(lineWidth: 9, lineCap: .round))
             context.stroke(
-                rail, with: .color(Color(white: 0.85)),
-                style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                rail, with: .color(bridgeRail),
+                style: StrokeStyle(lineWidth: 5, lineCap: .round))
         }
     }
+
+    /// The bridge guard rail, matching the editor's palette exactly.
+    static let bridgeRail = Color(red: 0.55, green: 0.78, blue: 0.95)
 
     private static func draw(
         car: CarState, color: Color, opacity: Double = 1, scale: Double = 1,
