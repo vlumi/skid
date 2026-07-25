@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 7 — 2026-07-26
+
 - **Build your own tracks.** A new track editor lets you lay a course piece by
   piece from the start line — straights, curves, hairpins, and ramps — extending
   from a loose end until the loop closes back on itself. The layout renders live
