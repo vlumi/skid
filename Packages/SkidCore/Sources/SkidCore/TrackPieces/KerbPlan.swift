@@ -44,13 +44,21 @@ public struct KerbPlan: Equatable, Sendable {
 }
 
 extension KerbPlan {
+    /// The sampling the plan is built at. Anything indexing a plan by sample
+    /// number MUST sample its geometry the same way, or the styles land on the
+    /// wrong stretches — which showed up as kerbs fragmenting into chunks when
+    /// the renderer was densified independently.
+    public static let degreesPerSample: Double = 3
+
     /// How far past a corner's apex the exit kerb runs, as a fraction of the
     /// following pieces' length. Corner exit is where a car runs wide under
     /// power, so the kerb tapers off shortly after the turn ends.
     private static let exitRun = 1.5
 
     /// Work out the kerbs for a walked layout.
-    public static func plan(for walk: WalkResult, degreesPerSample: Double = 6) -> KerbPlan {
+    public static func plan(for walk: WalkResult, degreesPerSample: Double = Self.degreesPerSample)
+        -> KerbPlan
+    {
         let placed = walk.placed
         // Start everything as the plain line, then paint kerbs on.
         var styles: [[(left: Edge, right: Edge)]] = placed.map { piece in
