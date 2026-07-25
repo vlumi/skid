@@ -99,6 +99,44 @@ final class PieceCompilerTests: XCTestCase {
         XCTAssertLessThan(track.size.y - (ys.max()! - ys.min()!), slop, "frame too tall")
     }
 
+    /// The road must sit CENTERED in the frame, because the renderer centers the
+    /// frame on screen — so any imbalance inside it shows up as lopsided grass.
+    ///
+    /// The regression this guards: the frame was the bounding box of everything
+    /// drawn, and a gate reaches outboard over the grass. An oval with a
+    /// checkpoint on one straight pushed the box out on that side only, which on
+    /// a phone read as a few pixels of grass on the left and a visibly wider band
+    /// on the right. Gates are now allowed to overhang, padded equally on both
+    /// sides.
+    func testTheRoadIsCenteredInTheFrameDespiteOneSidedGates() throws {
+        // A gate on a single straight is what makes this asymmetric, so mark
+        // seams unevenly around the ring rather than symmetrically.
+        let layout = TrackLayout(
+            pieces: [
+                Pieces.startGrid, Pieces.curve90MediumLeft, Pieces.curve90MediumLeft,
+                Pieces.straight, Pieces.curve90MediumLeft, Pieces.curve90MediumLeft,
+            ], gateSeams: [0, 1, 2])
+        let track = try PieceCompiler.compile(layout, id: "lopsided")
+        let half = track.width / 2
+        let xs = track.centerline.map { $0.x }
+        let ys = track.centerline.map { $0.y }
+        let left = xs.min()! - half
+        let right = track.size.x - (xs.max()! + half)
+        let top = ys.min()! - half
+        let bottom = track.size.y - (ys.max()! + half)
+        XCTAssertEqual(left, right, accuracy: 0.001, "road off-center horizontally")
+        XCTAssertEqual(top, bottom, accuracy: 0.001, "road off-center vertically")
+        // …and the gates still fit inside the frame they were padded for.
+        for gate in track.gates {
+            for point in [gate.a, gate.b] {
+                XCTAssertGreaterThanOrEqual(point.x, -0.001)
+                XCTAssertLessThanOrEqual(point.x, track.size.x + 0.001)
+                XCTAssertGreaterThanOrEqual(point.y, -0.001)
+                XCTAssertLessThanOrEqual(point.y, track.size.y + 0.001)
+            }
+        }
+    }
+
     /// A gate's `forward` is a DIRECTION, so re-framing must not translate it —
     /// shifting it would silently corrupt lap counting, which only accepts a
     /// crossing with a positive component along `forward`.
