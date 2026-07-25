@@ -16,11 +16,13 @@ right after the driving is proven; networking is deliberately last among the
 features because deterministic lockstep is designed in from the first line of
 the sim, not bolted on.
 
-One thing that order leaves for late: the game *around* the race. Today a result
-evaporates the moment it ends — no profiles, no standings, nothing to beat
-tomorrow. **v0.9.0 is that layer**, deliberately after the technical foundation
-(editor, platforms, networking) rather than before it, since profiles and shared
-times both lean on identity and transport decisions those milestones settle.
+What that order leaves for late is the game *around* the race, and the app around
+that. Today a result evaporates the moment it ends, and the UI is a harness built
+to reach the technology rather than a design. **v0.9.0 is both** — the real front
+end plus profiles, records and tournaments — deliberately after the technical
+foundation (editor, platforms, networking), since a menu redesign wants to know
+what it's presenting and shared times lean on identity and transport decisions
+those milestones settle.
 
 ---
 
@@ -99,16 +101,31 @@ indirection from the couch redesign keeps them localized.
       in a networked race (or a vote/host-only pause). Decide here, not in the
       couch code.
 
-## v0.9.0 — Making it a game: profiles, records, tournaments
+## v0.9.0 — The actual game: UI redesign, profiles, records, tournaments
 
-**The gap this fills.** Everything so far is a driving toy: you race, and the
-result evaporates. There's no reason to come back tomorrow, nothing to beat, and
-nothing to argue about with the person next to you. The pieces are closer than
-they look — per-track personal bests and full ghost recordings already persist,
-keyed by track id — but nothing above them ties results to *people* or to a
-series.
+**The gap this fills.** Everything so far has been built to answer technical
+questions — is the drift fun, can a phone build a track, does a bridge work — and
+the surface around it is scaffolding put there to reach those answers. Two things
+are missing, and they're the same thing from different ends: the game keeps no
+record of what you did, and the app has no shape beyond "start a race".
 
-Ordered so each step is useful on its own:
+- [ ] **UI and menu redesign — the whole surface.** The current UI is a harness,
+      not a design: the app is three phases (setup → racing → editing) with a
+      single flat setup screen, no results screen, no menu hierarchy, no track
+      browser, and settings scattered between setup and a pause-menu Tuning panel
+      that was only ever meant for on-device A/B tests. It shows: `SetupView`
+      still switches on the names of tracks that no longer exist. Redesign it as
+      a product — a real front end, a track browser (needs the library from v0.6),
+      results and records screens, a settings home, and the editor reachable as a
+      first-class destination rather than a button on the setup sheet. **This is
+      the bulk of the milestone**, and it's the natural home for the deferred
+      **pause-menu cleanup** (including per-player scheme changes mid-race) and
+      for splitting the dev-only Tuning dials out of the player-facing settings.
+
+Then the game layer proper. The pieces are closer than they look — per-track
+personal bests and full ghost recordings already persist, keyed by track id — but
+nothing above them ties results to *people* or to a series. Ordered so each step
+is useful on its own:
 
 - [ ] **Local player profiles.** A chosen name at minimum, on-device only (no
       accounts, no server — see "out of scope"). Everything below hangs off
@@ -151,10 +168,6 @@ Ordered so each step is useful on its own:
 
 ## Backlog (unversioned)
 
-- [ ] **Pause-menu cleanup** (with per-player scheme change). The pause menu
-      wants a rethink; fold in a way to change each player's scheme mid-race
-      (setup-time per-player selection already shipped — this is the in-race
-      counterpart, deferred out of that PR on purpose).
 - [ ] **Map themes**: whole-map looks beyond grass (sand/desert, snow, …).
       The track format already carries a `theme` field; the renderer learns
       it when the first non-grass theme lands.
