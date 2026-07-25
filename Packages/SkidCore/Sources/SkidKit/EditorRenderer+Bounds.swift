@@ -66,7 +66,12 @@ extension EditorRenderer {
     }
 
     /// Room left on this axis — a quiet boundary you build inside of.
-    private static let boundsFree = Color.white.opacity(0.3)
+    ///
+    /// Nearly opaque white on purpose. A faint white (this was 0.3 alpha) blends
+    /// with the grass into a dull pink that reads as a *warning*, so a track with
+    /// plenty of room looked like it was jammed against the limit. The two states
+    /// have to be unmistakable at a glance, on green.
+    private static let boundsFree = Color.white.opacity(0.75)
     /// This axis is full: the reason pieces are being refused.
-    private static let boundsFull = Color(red: 0.95, green: 0.42, blue: 0.3).opacity(0.85)
+    private static let boundsFull = Color(red: 1.0, green: 0.25, blue: 0.2)
 }

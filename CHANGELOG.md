@@ -34,6 +34,11 @@ ships (see [AGENTS.md](AGENTS.md)).
   the whole layout rather than piece by piece, so one continuous kerb can run
   across several pieces with an even stripe rhythm. All of it sits outboard of
   the road, so nothing narrows the surface you actually drive on.
+- **Your own tracks now fill the screen when you race them.** A track you build
+  is framed on what it actually occupies, so it's drawn at the right scale and
+  centered — previously every editor track was framed against the largest
+  *permitted* size, which left a smaller course rendered shrunken and pushed
+  off to one side with part of it past the screen edge.
 - **See the build limit, and turn your track.** The editor draws the size limit
   as a dashed boundary around your layout, with the edges turning red on
   whichever axis has run out of room — so a grayed-out palette now has a visible
