@@ -60,8 +60,50 @@ extension PieceCompiler {
                 rails.append(Wall(from: edge[index - 1], to: edge[index], height: height))
             }
         }
+        rails.append(contentsOf: rampEndCaps(left: left, right: right, samples: samples))
         return rails
     }
+
+    /// The end caps that make a ramp a closed embankment you cannot drive under.
+    ///
+    /// **The high end is the important one.** A ramp rises off the ground, so the
+    /// space beneath its upper reaches is open air — driving in there is driving
+    /// *through* the embankment. Sealing it needs a wall across the ramp's mouth at
+    /// a height just BELOW the deck: high enough to stop everything underneath,
+    /// low enough that a car arriving along the ramp at deck height passes over it
+    /// and onto the bridge.
+    ///
+    /// That height also has to be picked with the wall rule in mind
+    /// (`Race.blocks`): a wall blocks from `trunc(height)` up to `height`, so a cap
+    /// at 0.99 blocks 0…0.99 — everything under the deck — while the deck itself
+    /// (1.0) is clear. A cap at exactly 1.0 would have floor 1 and stop nothing
+    /// below, which is why it can't simply sit at deck height.
+    ///
+    /// The caps span the full width between the side rails' endpoints, so they meet
+    /// the sides exactly and leave no gap at the corners.
+    ///
+    /// The low end gets NO cap. It's the way in, and a wall there would have to
+    /// claim deck height to let ground cars through — which puts a "height 1" wall
+    /// 192 units from any deck-height road, misrepresenting where the deck is (a
+    /// test flagged exactly that). A car on the deck can't reach the ramp's foot
+    /// anyway: it would have to descend the slope to get there, which means it is
+    /// no longer at deck height.
+    private static func rampEndCaps(
+        left: [Vec2], right: [Vec2], samples: [(point: Vec2, height: Double)]
+    ) -> [Wall] {
+        guard let leftFirst = left.first, let leftLast = left.last,
+            let rightFirst = right.first, let rightLast = right.last,
+            let firstHeight = samples.first?.height, let lastHeight = samples.last?.height
+        else { return [] }
+        // The high end: a climb ends high, a descent starts high.
+        let high = lastHeight > firstHeight ? (leftLast, rightLast) : (leftFirst, rightFirst)
+        // Under the raised end: solid to everyone below the deck.
+        return [Wall(from: high.0, to: high.1, height: underDeckCapHeight)]
+    }
+
+    /// The cap height under a ramp's raised end — just below the deck, so it
+    /// blocks everything underneath without blocking the deck itself.
+    private static let underDeckCapHeight = 0.99
 
     /// The map fence: a rectangle just inside the track's own bounds, on both
     /// layers, so a car can't drive off into the surrounding void.
