@@ -184,15 +184,15 @@ enum EditorRenderer {
         into context: inout GraphicsContext
     ) {
         guard let e = edges(placed, width: width, t: t) else { return }
-        // Extend the FILL a hair (~0.6px) past both end cuts along the port
-        // direction, so abutting pieces' fills overlap sub-pixel and the
-        // antialiased seam shows no background hairline. Only the fill is
-        // extended — the rails still stop at the true cut, so nothing visibly
-        // pokes past a joint.
-        let fillLeft = extendEnds(e.left, by: 0.6)
-        let fillRight = extendEnds(e.right, by: 0.6)
+        // The fill stops exactly at the end cuts. It used to overshoot by 0.6px
+        // to hide the antialiased hairline between abutting fills — but that
+        // overshoot is along the port direction, which on a curve diverges from
+        // the neighbor's edge, so it poked sideways past the road and ate a
+        // diagonal wedge out of the kerb underneath. The hairline no longer needs
+        // hiding anyway: edge decoration is painted UNDER all asphalt, so the
+        // white line already sits in the seam.
         var outline = Path()
-        outline.addLines(fillLeft + fillRight.reversed())
+        outline.addLines(e.left + e.right.reversed())
         outline.closeSubpath()
 
         let elevated = placed.entryHeight > 0.5 || placed.exitHeight > 0.5
