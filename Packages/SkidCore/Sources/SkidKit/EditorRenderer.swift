@@ -46,6 +46,19 @@ enum EditorRenderer {
         for (_, placed) in ordered {
             drawPieceShadow(placed, width: width, t: t, into: &context)
         }
+        // Edge decoration (the white line, and kerbs where a corner earns one)
+        // goes down BEFORE any asphalt, for two reasons that are really one:
+        // asphalt painted over it *is* the clipping rule — a kerb can never
+        // cover a neighboring piece's road, because that road is drawn after —
+        // and two kerb bands that overlap merge into one shared band instead of
+        // fighting over the same strip with clashing dash phases.
+        // Kerbs are worked out from the CORNERS, not per piece: the apex kerb
+        // and the run-wide exit kerb straddle piece boundaries (see `KerbPlan`).
+        let kerbs = KerbPlan.plan(for: walk)
+        for (index, placed) in ordered {
+            drawPieceEdges(
+                (index: index, element: placed), kerbs: kerbs, width: width, t: t, into: &context)
+        }
         for (_, placed) in ordered {
             drawPieceRibbon(placed, width: width, t: t, into: &context)
         }
@@ -186,10 +199,78 @@ enum EditorRenderer {
         outline.closeSubpath()
 
         let elevated = placed.entryHeight > 0.5 || placed.exitHeight > 0.5
-        // Fill first, THEN rails only along the two SIDE edges (never across
-        // the end cuts — that was the stray kerb line at joints).
         fillRoad(outline, placed: placed, samples: e.samples, t: t, into: &context)
-        strokeSideRails(left: e.left, right: e.right, elevated: elevated, t: t, into: &context)
+        // Only the DECK's guard rails are drawn on top of the road: they're real
+        // barriers, not paint, so they belong over the surface. Ground edge
+        // decoration went down in the earlier pass, under all asphalt.
+        if elevated {
+            strokeDeckRails(left: e.left, right: e.right, t: t, into: &context)
+        }
+    }
+
+    /// A piece's edge decoration, laid down BEFORE any asphalt: the thin white
+    /// line every road carries, widened into a red/white kerb on the edges that
+    /// earn one (a corner's apex, both sides of a chicane). Everything sits
+    /// *outboard* of the grip surface — the band is drawn straddling the edge and
+    /// the asphalt pass then covers its inner half, so decoration never narrows
+    /// the road, and a kerb can't spill onto a neighboring piece's road because
+    /// that road is painted afterwards.
+    private static func drawPieceEdges(
+        _ entry: (index: Int, element: PlacedPiece), kerbs: KerbPlan, width: Double,
+        t: Transform, into context: inout GraphicsContext
+    ) {
+        let placed = entry.element
+        let piece = entry.index
+        // Deck edges are guard rails, drawn over the road instead.
+        guard placed.entryHeight <= 0.5, placed.exitHeight <= 0.5 else { return }
+        guard let e = edges(placed, width: width, t: t) else { return }
+        // Draw each side as runs of a single style, so a corner's kerb can start
+        // and stop partway along a piece without breaking the stroke.
+        for side in [true, false] {
+            let points = extendEnds(side ? e.left : e.right, by: 0.6)
+            func style(_ sample: Int) -> KerbPlan.Edge {
+                let pair = kerbs.style(piece: piece, sample: sample)
+                return side ? pair.left : pair.right
+            }
+            var start = 0
+            while start < points.count - 1 {
+                let current = style(start)
+                var end = start + 1
+                while end < points.count, style(end - 1) == current { end += 1 }
+                var run = Path()
+                run.move(to: points[start])
+                for point in points[(start + 1)..<end] { run.addLine(to: point) }
+                strokeEdge(run, style: current, width: width, t: t, into: &context)
+                start = max(end - 1, start + 1)
+            }
+        }
+    }
+
+    /// One run of edge decoration. The band straddles the road edge and the
+    /// asphalt pass covers its inner half, so what remains visible is the
+    /// outboard part — which is why the stroke is drawn at twice the intended
+    /// visible width.
+    private static func strokeEdge(
+        _ path: Path, style: KerbPlan.Edge, width: Double, t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        switch style {
+        case .line:
+            let band = max(1.5, Double(PieceCatalog.edgeLine) * 2 * t.scale)
+            context.stroke(
+                path, with: .color(kerbWhite),
+                style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
+        case .kerb:
+            let band = max(3, Double(PieceCatalog.kerbBand) * 2 * t.scale)
+            let dash = max(4, width * 0.12 * t.scale)
+            context.stroke(
+                path, with: .color(kerbWhite),
+                style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
+            context.stroke(
+                path, with: .color(kerbRed),
+                style: StrokeStyle(
+                    lineWidth: band, lineCap: .butt, lineJoin: .round, dash: [dash, dash]))
+        }
     }
 
     /// The elevated piece's drop shadow — offset scales with the height at each
@@ -254,46 +335,28 @@ enum EditorRenderer {
         return Ribbon(left: left, right: right, heights: heights, samples: samples)
     }
 
-    /// The two side edges (left, right) as open polylines — the kerb (ground)
-    /// or guardrail (deck). NOT a closed loop, so the piece's entry/exit cuts
-    /// carry no line and adjacent pieces' rails join seamlessly.
-    private static func strokeSideRails(
-        left: [CGPoint], right: [CGPoint], elevated: Bool, t: Transform,
+    /// The deck's guard rails — real barriers, not paint, so unlike ground edge
+    /// decoration they're drawn ON TOP of the road surface. Open polylines, so
+    /// the piece's entry/exit cuts carry no line and adjacent rails join
+    /// seamlessly; ends extend a hair past the cut so a big screen shows no
+    /// hairline gap at the joint.
+    private static func strokeDeckRails(
+        left: [CGPoint], right: [CGPoint], t: Transform,
         into context: inout GraphicsContext
     ) {
-        // Extend the rail ends a hair past the cut (same as the fill), so on a
-        // big screen the kerb/wall of abutting pieces overlaps sub-pixel and
-        // shows no hairline gap along the joint.
-        let l = extendEnds(left, by: 0.6)
-        let r = extendEnds(right, by: 0.6)
-        var edges = Path()
-        if let a = l.first {
-            edges.move(to: a)
-            l.dropFirst().forEach { edges.addLine(to: $0) }
+        var rails = Path()
+        for side in [extendEnds(left, by: 0.6), extendEnds(right, by: 0.6)] {
+            guard let first = side.first else { continue }
+            rails.move(to: first)
+            side.dropFirst().forEach { rails.addLine(to: $0) }
         }
-        if let b = r.first {
-            edges.move(to: b)
-            r.dropFirst().forEach { edges.addLine(to: $0) }
-        }
-        // Butt caps (not round): the rail ends flush with the piece cut, like
-        // the road fill, instead of a half-disc poking past the joint.
         let band = max(2, 12 * t.scale)
-        if elevated {
-            context.stroke(
-                edges, with: .color(.black.opacity(0.5)),
-                style: StrokeStyle(lineWidth: band + 5, lineCap: .butt, lineJoin: .round))
-            context.stroke(
-                edges, with: .color(bridgeRail),
-                style: StrokeStyle(lineWidth: band + 2, lineCap: .butt, lineJoin: .round))
-        } else {
-            context.stroke(
-                edges, with: .color(kerbWhite),
-                style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
-            context.stroke(
-                edges, with: .color(kerbRed),
-                style: StrokeStyle(
-                    lineWidth: band, lineCap: .butt, lineJoin: .round, dash: [band * 2, band * 2]))
-        }
+        context.stroke(
+            rails, with: .color(.black.opacity(0.5)),
+            style: StrokeStyle(lineWidth: band + 5, lineCap: .butt, lineJoin: .round))
+        context.stroke(
+            rails, with: .color(bridgeRail),
+            style: StrokeStyle(lineWidth: band + 2, lineCap: .butt, lineJoin: .round))
     }
 
     private static func offset(_ p: CGPoint, by s: CGSize) -> CGPoint {
