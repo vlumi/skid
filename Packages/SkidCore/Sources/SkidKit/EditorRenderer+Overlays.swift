@@ -18,7 +18,7 @@ extension EditorRenderer {
         // heightDelta) fall back to forward.
         let uphill = placed.piece.heightDelta >= 0
         // A tight LADDER of uniform chevrons EVENLY spaced by arc-length up the
-        // ramp centre, all pointing uphill — like a road "steep grade" sign.
+        // ramp center, all pointing uphill — like a road "steep grade" sign.
         // (A straight ramp has only 2 centerline points, so pick positions by
         // interpolating along the polyline, not by sample index — otherwise
         // they'd all collapse onto one point.)
@@ -107,6 +107,50 @@ extension EditorRenderer {
             context.stroke(
                 hash, with: .color(.white.opacity(0.85)),
                 style: StrokeStyle(lineWidth: lineW, lineCap: .butt))
+        }
+    }
+
+    /// A checkpoint gate across a seam: a line at the piece's ENTRY port, with a
+    /// post at each road edge — the same read as the game's gates, so what you
+    /// mark in the editor is what you'll drive through.
+    static func drawGate(
+        _ placed: PlacedPiece, width: Double, transform t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        let pose = placed.entry
+        let across = Vec2(angle: pose.heading.radians).perpendicular
+        let center = pose.position.vec2
+        let edge = across * (width / 2)
+        let lineWidth = max(2, 6 * t.scale)
+
+        // Across the road, solid: the part of the gate you always cross.
+        var road = Path()
+        road.move(to: t.screen(center - edge))
+        road.addLine(to: t.screen(center + edge))
+        context.stroke(
+            road, with: .color(.cyan.opacity(0.75)),
+            style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
+
+        // Onto the grass, faded: running wide still counts, out to roughly here.
+        // (The compiler caps this side near a neighboring lane, so it's shown
+        // as a soft reach rather than a hard edge.)
+        let reach = across * (width / 2 + width)
+        for direction in [1.0, -1.0] {
+            var apron = Path()
+            apron.move(to: t.screen(center + edge * direction))
+            apron.addLine(to: t.screen(center + reach * direction))
+            context.stroke(
+                apron, with: .color(.cyan.opacity(0.28)),
+                style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt, dash: [lineWidth * 2]))
+        }
+
+        // Posts at the road edges, so a gate reads as a gate.
+        let post = max(3, 9 * t.scale)
+        for end in [center - edge, center + edge] {
+            let box = CGRect(
+                x: t.screen(end).x - post / 2, y: t.screen(end).y - post / 2,
+                width: post, height: post)
+            context.fill(Path(ellipseIn: box), with: .color(.cyan))
         }
     }
 

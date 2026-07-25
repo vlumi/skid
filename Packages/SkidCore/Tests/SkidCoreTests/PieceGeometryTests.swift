@@ -10,14 +10,14 @@ final class PieceGeometryTests: XCTestCase {
     }
 
     func testLeft90FromEast() {
-        // r=100, left 90°: centre (0,100), exit (100,100) heading north.
+        // r=100, left 90°: center (0,100), exit (100,100) heading north.
         let e = exit(.arc(radius: 100, eighths: 2, left: true))
         XCTAssertEqual(e.position, CoordPoint(100, 100))
         XCTAssertEqual(e.heading, Heading(2))  // north
     }
 
     func testRight90FromEast() {
-        // r=100, right 90°: centre (0,-100), exit (100,-100) heading south.
+        // r=100, right 90°: center (0,-100), exit (100,-100) heading south.
         let e = exit(.arc(radius: 100, eighths: 2, left: false))
         XCTAssertEqual(e.position, CoordPoint(100, -100))
         XCTAssertEqual(e.heading, Heading(6))  // south
@@ -27,7 +27,7 @@ final class PieceGeometryTests: XCTestCase {
         // r=100, left 45°: exit heading NE; position uses √2/2 exactly.
         let e = exit(.arc(radius: 100, eighths: 1, left: true))
         XCTAssertEqual(e.heading, Heading(1))  // NE
-        // centre (0,100); radial centre→entry = south (heading 6), swept left
+        // center (0,100); radial center→entry = south (heading 6), swept left
         // 45° → SE (heading 7); exit = (0,100) + 100·SE-unit.
         // SE unit = (√2/2, -√2/2) = Coord(a:0,b:1),(a:0,b:-1).
         XCTAssertEqual(e.position.x, Coord(a: 0, b: 100))  // 100·√2/2

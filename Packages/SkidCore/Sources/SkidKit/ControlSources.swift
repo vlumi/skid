@@ -99,7 +99,7 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     /// Per-axis dead zone (points) so a resting thumb doesn't creep.
     public var deadzone: Double = 10
     /// Steps per axis direction: 1 = pure digital, nil = fully analog.
-    /// Default analog — the on-device feel favourite.
+    /// Default analog — the on-device feel favorite.
     public var levels: Int?
     /// Response curve: 1 = linear; >1 = softer near center, steeper at
     /// the edges (applied before quantization). Default is a gentle curve.
@@ -173,7 +173,7 @@ public final class AimControlSource: HeadingAwareControlSource {
     /// Thumb offsets shorter than this (points) don't aim — a resting or
     /// barely-nudged thumb coasts rather than snapping to a direction.
     public var deadzone: Double = 10
-    /// Steer ramp for the REVERSE manoeuvre: full lock once the target is
+    /// Steer ramp for the REVERSE maneuver: full lock once the target is
     /// this many radians off the tail.
     public var fullSteerError = Double.pi / 3
     /// Past this much error (radians) the target counts as "behind".

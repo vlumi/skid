@@ -42,7 +42,7 @@ enum TrackRenderer {
         // map is height-constrained by the leftover between them; on a wide
         // (landscape) usable area the map may instead be width-constrained.
         // Reserve minBand on the two sides the bands occupy, fit the map in
-        // the remaining box, then centre it — the surplus falls to the bands.
+        // the remaining box, then center it — the surplus falls to the bands.
         let portrait = usable.height >= usable.width
         let box =
             portrait

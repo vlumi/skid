@@ -124,8 +124,43 @@ public enum PieceCompiler {
         }
         let pos = pose.position.vec2
         let fwd = Vec2(angle: pose.heading.radians)
-        let side = fwd.perpendicular * (Double(PieceCatalog.width) / 2)
-        return Gate(from: pos - side, to: pos + side, forward: fwd, layer: layer)
+        // A gate spans the whole CORRIDOR, not just the asphalt: running wide
+        // onto the grass still counts (the grass is its own penalty), only a
+        // gross cut through the infield misses. Each side reaches out
+        // independently, capped at HALFWAY to any other lane so a gate can
+        // never be satisfied from a neighboring road.
+        let half = Double(PieceCatalog.width) / 2
+        let side = fwd.perpendicular
+        let opposite = Vec2(-side.x, -side.y)
+        let inner = pos + opposite * reach(from: pos, along: opposite, half: half, placed: placed)
+        let outer = pos + side * reach(from: pos, along: side, half: half, placed: placed)
+        return Gate(from: inner, to: outer, forward: fwd, layer: layer)
+    }
+
+    /// How far a gate may extend to one side: the road's half-width plus a
+    /// margin of grass, but never past halfway to another lane.
+    private static func reach(
+        from pos: Vec2, along direction: Vec2, half: Double, placed: [PlacedPiece]
+    ) -> Double {
+        // The grass margin a wide car may still be caught in — generous enough
+        // that running wide counts, short of the infield.
+        let margin = Double(PieceCatalog.width)
+        var limit = half + margin
+        // Any pavement out this way caps the reach at the midpoint between the
+        // two roads, so the corridor can't spill into the neighbor's lane.
+        for piece in placed {
+            for point in piece.centerlineSamples(degreesPerSample: 20) {
+                let offset = point - pos
+                let sideways = offset.dot(direction)
+                // Only pavement genuinely out to this side, and roughly abreast
+                // rather than ahead or behind (that's the same road).
+                guard sideways > half else { continue }
+                let along = abs(offset.dot(Vec2(-direction.y, direction.x)))
+                guard along < half else { continue }
+                limit = min(limit, sideways / 2)
+            }
+        }
+        return max(half, limit)
     }
 
     // MARK: - Start grid
@@ -143,7 +178,7 @@ public enum PieceCompiler {
         /// start piece has to provide.
         public static var depth: Double { back + Double(slots - 1) * gap }
 
-        /// Slot centres, pole first, from the line pose. `dir` is the driving
+        /// Slot centers, pole first, from the line pose. `dir` is the driving
         /// direction; slots run back from the line, staggered sideways.
         public static func positions(line: Vec2, dir: Vec2) -> [Vec2] {
             let inward = dir.perpendicular

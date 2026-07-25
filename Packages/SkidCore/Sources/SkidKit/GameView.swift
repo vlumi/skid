@@ -183,56 +183,6 @@ public final class CouchGame: ObservableObject {
         phase = .editing
     }
 
-    /// Append a catalog piece to the end of the layout (extends the loose end).
-    /// **Refused** if the piece would pave over the track or leave the canvas —
-    /// blocking the placement beats accepting it and showing a warning that's
-    /// easy to miss. Returns whether it was placed.
-    @discardableResult
-    public func editorAppend(_ id: PieceID) -> Bool {
-        guard let layout = editorLayout else { return false }
-        guard TrackValidator.canAppend(id, to: layout) else { return false }
-        editorLayout?.pieces.append(id)
-        return true
-    }
-
-    /// Whether a palette piece can be placed right now — so the editor can grey
-    /// out the ones that would break the track instead of letting you tap them.
-    public func editorCanAppend(_ id: PieceID) -> Bool {
-        guard let layout = editorLayout else { return false }
-        return TrackValidator.canAppend(id, to: layout)
-    }
-
-    /// Append the context-aware ramp: up from the ground, down from the deck —
-    /// with only two elevations the one button does both.
-    public func editorRamp() {
-        guard let layout = editorLayout, let last = layout.walk().placed.last else {
-            editorAppend(PieceCatalog.ID.rampUp)
-            return
-        }
-        // On the deck (height up) → ramp down; on the ground → ramp up.
-        editorAppend(last.exitHeight > 0.5 ? PieceCatalog.ID.rampDown : PieceCatalog.ID.rampUp)
-    }
-
-    /// Remove the last piece (never the start piece — a track must keep one).
-    public func editorDeleteLast() {
-        guard var layout = editorLayout, layout.pieces.count > 1 else { return }
-        layout.pieces.removeLast()
-        // Drop any gate seam that no longer has a piece.
-        layout.gateSeams = layout.gateSeams.filter { $0 < layout.pieces.count }
-        editorLayout = layout
-    }
-
-    /// Start a fresh track (just the start piece).
-    public func editorReset() {
-        editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID], gateSeams: [0])
-    }
-
-    /// Whether the current layout is saveable (closed + valid).
-    public func editorIsSaveable() -> Bool {
-        guard let editorLayout else { return false }
-        return TrackValidator.validate(editorLayout).isSaveable
-    }
-
     /// Compile the current editor layout to a runtime `Track` for preview.
     /// Nil if it isn't saveable yet. (Test-driving it in a real race arrives
     /// with step 3 — wiring editor tracks into the game.)

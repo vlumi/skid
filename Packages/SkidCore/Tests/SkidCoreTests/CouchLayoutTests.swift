@@ -14,13 +14,13 @@ final class CouchLayoutTests: XCTestCase {
 
     // MARK: - fittedMapRect
 
-    func testFittedMapRectPortraitIsWidthBoundAndCentred() {
+    func testFittedMapRectPortraitIsWidthBoundAndCentered() {
         let screen = CGSize(width: 393, height: 852)
         let map = TrackRenderer.fittedMapRect(trackSize: trackSize, in: screen)
         XCTAssertEqual(map.width, 393, accuracy: 0.5)  // full width (width-bound)
         XCTAssertEqual(map.height, 1000 * 393 / 1600, accuracy: 0.5)  // ≈ 245.6
         XCTAssertEqual(map.midX, 393 / 2, accuracy: 1e-6)
-        XCTAssertEqual(map.midY, 852 / 2, accuracy: 1e-6)  // centred → gaps top/bottom
+        XCTAssertEqual(map.midY, 852 / 2, accuracy: 1e-6)  // centered → gaps top/bottom
         XCTAssertGreaterThan(map.minY, 250)  // a big top gap for a band
         XCTAssertGreaterThan(screen.height - map.maxY, 250)  // and bottom
     }
@@ -31,7 +31,7 @@ final class CouchLayoutTests: XCTestCase {
         let screen = CGSize(width: 852, height: 393)
         let map = TrackRenderer.fittedMapRect(trackSize: trackSize, in: screen)
         XCTAssertLessThanOrEqual(map.width, 852 - 2 * 150 + 0.5)  // side bands reserved
-        XCTAssertEqual(map.midX, 852 / 2, accuracy: 1e-6)  // centred
+        XCTAssertEqual(map.midX, 852 / 2, accuracy: 1e-6)  // centered
     }
 
     func testMinBandIsReservedAndMapAspectCapped() {
@@ -162,7 +162,7 @@ final class CouchLayoutTests: XCTestCase {
     func testTouchOnMapAreaIsDropped() {
         let r = rig(2)
         r.layout(size: screen, mapRect: map)
-        // A touch in the map's centre belongs to no band → ignored (no
+        // A touch in the map's center belongs to no band → ignored (no
         // owner), so a later move for it is a no-op. Fingers stay off track.
         r.touchBegan(id: 1, at: Vec2(map.midX, map.midY))
         // The player's stick never armed: no origin.

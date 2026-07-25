@@ -143,7 +143,7 @@ choppy sim.
 ### Cars (procedural, open-wheel)
 
 Cars render as classic buggy-style open-wheelers, old-F1 silhouette: a narrow
-body with all four tires visible outside it, in the per-player colour. A
+body with all four tires visible outside it, in the per-player color. A
 handful of procedural shapes, no image assets; the visible tires are what
 anchor the skid-mark trails (and can later show steering angle).
 
@@ -248,7 +248,7 @@ limit; iPad ~11):
    right turn needs a full circle — classic one-button racers dodged this
    with tracks that only turn one way, which ours won't be. Candidates
    before the A/B: **tap flips direction, hold turns** (fully general, costs
-   a tap-vs-hold timing gate — the favourite); alternating per tap is
+   a tap-vs-hold timing gate — the favorite); alternating per tap is
    broken (two same-direction corners in a row force a wrong-way turn);
    restricting the scheme to mostly-one-direction tracks demotes it to a
    gimmick. If no variant reads well, cut the scheme.

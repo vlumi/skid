@@ -1,7 +1,7 @@
 import Foundation
 
 /// Whether a layout is **saveable**, and if not, exactly why — so the editor
-/// can explain a loose end rather than just greying out Save. Everything short
+/// can explain a loose end rather than just graying out Save. Everything short
 /// of saveable is a normal *editing* state, never an error.
 public struct Validation: Equatable, Sendable {
     public enum Problem: Equatable, Sendable {
@@ -118,7 +118,7 @@ public enum TrackValidator {
     /// Sample each piece's centerline to world points and check that no two
     /// non-adjacent pieces on the **same layer** actually cross — their
     /// centerlines coming within ~half a road width, which means the paved
-    /// surfaces genuinely overlap (mere closeness between neighbouring corners
+    /// surfaces genuinely overlap (mere closeness between neighboring corners
     /// stays outside this). Legal crossable pairs and jump-gap unders are
     /// exempt.
     private static func hasIllegalOverlap(_ placed: [PlacedPiece], ringClosed: Bool) -> Bool {
