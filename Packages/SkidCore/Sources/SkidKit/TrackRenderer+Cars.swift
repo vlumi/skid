@@ -17,14 +17,13 @@ extension TrackRenderer {
         for ghost in scene.ghosts where !ghost.isAirborne {
             draw(car: ghost, color: .white, opacity: 0.38, into: &context)
         }
-        // A car on a ramp slope is transitioning between layers: it draws
-        // ABOVE the deck (else its nose slides under the bridge edge and
-        // the car "warps" on top when the layer flips mid-car).
-        func onRamp(_ car: Car) -> Bool {
-            !track.rampSegments.isEmpty && track.isOnRamp(car.state.position)
-        }
+        // A car on a ramp slope draws ABOVE the deck, so its nose never slides
+        // under the bridge edge on the way up.
+        func onRamp(_ car: Car) -> Bool { track.isOnRamp(car.state.position) }
+        // "On the ground" is now a height comparison, not a layer test.
+        func onGround(_ car: Car) -> Bool { car.state.height <= 0.5 }
         for (index, car) in race.cars.enumerated()
-        where car.state.layer == 0 && !car.state.isAirborne && !onRamp(car) {
+        where onGround(car) && !car.state.isAirborne && !onRamp(car) {
             draw(
                 car: car.state, color: colorAt(index),
                 opacity: translucent.contains(index) ? 0.55 : 1,
@@ -32,16 +31,16 @@ extension TrackRenderer {
             )
         }
 
-        if !track.elevatedSegments.isEmpty {
-            drawRibbon(track: track, layer: 1, into: &context)
+        if track.heights.contains(where: { $0 > 0.5 }) {
+            drawRibbon(track: track, elevated: true, into: &context)
             drawDeckRails(track: track, into: &context)
-            drawGates(gateChrome, layerFilter: 1, into: &context)
+            drawGates(gateChrome, elevated: true, into: &context)
             // Never-invisible rule: a ground car hidden under the bridge
             // shows through as a bubble in its color. Ramp climbers are
             // fully visible on their slope — no bubble.
             for (index, car) in race.cars.enumerated()
-            where car.state.layer == 0 && !onRamp(car)
-                && track.distanceToCenterline(car.state.position, layer: 1)
+            where onGround(car) && !onRamp(car)
+                && track.distanceToCenterline(car.state.position, height: 1)
                     < track.width / 2 + 8
             {
                 let p = car.state.position
@@ -56,11 +55,11 @@ extension TrackRenderer {
             // Elevation.scale factor the road width uses), so a car grows as it
             // climbs and reads as elevated on the deck — no discrete pop.
             for (index, car) in race.cars.enumerated()
-            where !car.state.isAirborne && (car.state.layer == 1 || onRamp(car)) {
-                let h = track.visualHeight(at: car.state.position, layer: car.state.layer)
+            where !car.state.isAirborne && (!onGround(car) || onRamp(car)) {
+                // The car's own height IS the scale now — no reconstruction.
                 draw(
                     car: car.state, color: colorAt(index),
-                    scale: Elevation.scale(atHeight: h), into: &context)
+                    scale: Elevation.scale(atHeight: car.state.height), into: &context)
             }
         }
 
@@ -90,29 +89,73 @@ extension TrackRenderer {
         return translucent
     }
 
-    /// Retaining rails along the bridge deck. Drawn as a raised barrier — a dark
-    /// base plus a lighter cap — so the edge that catches a wide car up top reads
-    /// clearly against the deck.
+    /// Retaining rails along the bridge deck — drawn to look **identical to the
+    /// editor's**, since it's the same barrier and should read as the same object
+    /// whether you're building it or driving it.
     ///
-    /// The cap is the **same light blue the editor uses** (`bridgeRail`): a
-    /// barrier you can see while building should look like the same object when
-    /// you drive it, and the old near-white grey read as part of the road rather
-    /// than as a wall.
+    /// Matching means four things, not just the color: the same `bridgeRail` blue
+    /// over a dark base, the same world-space band widths (12+5 under 12+2), butt
+    /// caps with round joins, and — most visibly — each side stroked as ONE
+    /// CONTINUOUS POLYLINE. Stroking wall segments individually with round caps
+    /// beaded them into a lumpy chain of blobs at every joint.
     ///
     /// Layer-1 walls only. A ramp also emits layer-0 rails so a ground car can't
-    /// drive up its flank, but drawing those too would double-stroke every ramp.
+    /// drive up its flank; those are the same barrier seen from below, already
+    /// drawn by their layer-1 twin.
     private static func drawDeckRails(track: Track, into context: inout GraphicsContext) {
-        for wall in track.walls where wall.layer == 1 {
-            var rail = Path()
-            rail.move(to: CGPoint(x: wall.a.x, y: wall.a.y))
-            rail.addLine(to: CGPoint(x: wall.b.x, y: wall.b.y))
-            context.stroke(
-                rail, with: .color(.black.opacity(0.5)),
-                style: StrokeStyle(lineWidth: 9, lineCap: .round))
-            context.stroke(
-                rail, with: .color(bridgeRail),
-                style: StrokeStyle(lineWidth: 5, lineCap: .round))
+        var rails = Path()
+        for run in railRuns(track.walls.filter { $0.kind == .rail && $0.height > 0.05 }) {
+            guard let first = run.first else { continue }
+            rails.move(to: CGPoint(x: first.x, y: first.y))
+            for point in run.dropFirst() {
+                rails.addLine(to: CGPoint(x: point.x, y: point.y))
+            }
         }
+        guard !rails.isEmpty else { return }
+        let band = 12.0
+        context.stroke(
+            rails, with: .color(.black.opacity(0.5)),
+            style: StrokeStyle(lineWidth: band + 5, lineCap: .butt, lineJoin: .round))
+        context.stroke(
+            rails, with: .color(bridgeRail),
+            style: StrokeStyle(lineWidth: band + 2, lineCap: .butt, lineJoin: .round))
+    }
+
+    /// Chain wall segments back into continuous polylines by joining ends that
+    /// meet. The compiler emits a rail as many short segments (one per geometry
+    /// sample); this recovers the runs so they can be stroked as single paths,
+    /// the way the editor does from its own sample arrays.
+    private static func railRuns(_ walls: [Wall]) -> [[Vec2]] {
+        var remaining = walls
+        var runs: [[Vec2]] = []
+        while let seed = remaining.popLast() {
+            var run = [seed.a, seed.b]
+            // Extend from both ends until nothing else connects.
+            var grew = true
+            while grew {
+                grew = false
+                for (index, wall) in remaining.enumerated() {
+                    let tail = run[run.count - 1]
+                    let head = run[0]
+                    if (wall.a - tail).length < 0.5 {
+                        run.append(wall.b)
+                    } else if (wall.b - tail).length < 0.5 {
+                        run.append(wall.a)
+                    } else if (wall.b - head).length < 0.5 {
+                        run.insert(wall.a, at: 0)
+                    } else if (wall.a - head).length < 0.5 {
+                        run.insert(wall.b, at: 0)
+                    } else {
+                        continue
+                    }
+                    remaining.remove(at: index)
+                    grew = true
+                    break
+                }
+            }
+            runs.append(run)
+        }
+        return runs
     }
 
     /// The bridge guard rail, matching the editor's palette exactly.

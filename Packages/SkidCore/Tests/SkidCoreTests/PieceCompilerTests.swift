@@ -74,79 +74,55 @@ final class PieceCompilerTests: XCTestCase {
         XCTAssertEqual(t.startSlots.count, 4)
     }
 
-    /// **A ramp's road must be marked as sloped.** `Track.isOnRamp` and
-    /// `Track.visualHeight` both scan `rampSegments`; the renderer's ramp drawing
-    /// reads it too. The piece compiler never populated it, so ramps and decks
-    /// did not work at all: nothing drew, a climbing car was never treated as
-    /// between layers, and it never grew smoothly as it went up.
-    func testRampRoadIsMarkedAsSloped() throws {
+    /// A bridge's road climbs continuously: the compiler emits a height per
+    /// centerline point, so the ramp is sloped road rather than a flag plus a
+    /// transition line.
+    func testTheBridgeRoadClimbsContinuously() throws {
         let track = try compiledBridge()
-        XCTAssertFalse(track.rampSegments.isEmpty, "a bridge must mark its ramp road")
-        // One run per ramp piece (up and down), and they must be distinct.
-        XCTAssertEqual(track.ramps.count, 2, "one layer-switch line per ramp piece")
-        // The runtime's ramp queries must actually fire on the sloped road.
-        for segment in track.rampSegments {
-            XCTAssertTrue(
-                track.isOnRamp(track.centerline[segment]),
-                "segment \(segment) is ramp road but isOnRamp says otherwise")
+        XCTAssertEqual(track.heights.count, track.centerline.count, "one height per point")
+        XCTAssertTrue(track.heights.contains { $0 > 0.9 }, "the deck reaches full height")
+        XCTAssertTrue(track.heights.contains { $0 < 0.1 }, "the ground stays down")
+        // Somewhere in between: the actual slope.
+        XCTAssertTrue(
+            track.heights.contains { $0 > 0.2 && $0 < 0.8 }, "the ramp is a gradual climb")
+        // No neighbouring pair jumps a whole level, so no point is a cliff.
+        for index in track.centerline.indices {
+            let next = (index + 1) % track.centerline.count
+            XCTAssertLessThan(
+                abs(track.heights[next] - track.heights[index]), 0.6,
+                "height steps abruptly between points \(index) and \(next)")
         }
+        // The runtime recognises the slope as a ramp.
+        let sloped = track.centerline.indices.first { index in
+            let next = (index + 1) % track.centerline.count
+            return abs(track.heights[next] - track.heights[index]) > 0.05
+        }
+        let rampPoint = try XCTUnwrap(sloped)
+        XCTAssertTrue(track.isOnRamp(track.centerline[rampPoint]))
     }
 
-    /// **The layer-switch line belongs at the ramp's HIGH end.**
-    ///
-    /// Crossing it flips the car's layer instantly. With the line at the ramp's
-    /// entry, a car became "on the deck" the moment it touched the BOTTOM of the
-    /// ramp — a road-length short of the deck and still at ground level. It read
-    /// as the car jumping at the foot of the ramp, and then the fall-off check in
-    /// `Race.applyRamps` (now far from the deck's centerline) dropped it back
-    /// down, so it drove *under* the bridge and missed the gate up there. Only
-    /// enough speed to clear both checks in one tick got you up.
-    func testRampLinesSitAtTheDeckEndNotTheApproach() throws {
-        let track = try compiledBridge()
-        let up = try XCTUnwrap(track.ramps.first { $0.toLayer > $0.fromLayer })
-        let down = try XCTUnwrap(track.ramps.first { $0.toLayer < $0.fromLayer })
-        // The two lines are at genuinely different places (they used to be able
-        // to coincide, which made a car flip up and back down in one instant).
-        let upMid = Vec2((up.a.x + up.b.x) / 2, (up.a.y + up.b.y) / 2)
-        let downMid = Vec2((down.a.x + down.b.x) / 2, (down.a.y + down.b.y) / 2)
-        XCTAssertGreaterThan(
-            (upMid - downMid).length, track.width,
-            "the up and down switch lines must not sit on top of each other")
-        // Each line sits where the ELEVATED road is, not out on the ground
-        // approach: the nearest elevated segment is closer than the nearest
-        // ground-level, non-ramp segment.
-        for (name, mid) in [("up", upMid), ("down", downMid)] {
-            var nearestElevated = Double.greatestFiniteMagnitude
-            var nearestGround = Double.greatestFiniteMagnitude
-            for (index, point) in track.centerline.enumerated() {
-                let distance = (point - mid).length
-                if track.elevatedSegments.contains(index) {
-                    nearestElevated = min(nearestElevated, distance)
-                } else if !track.rampSegments.contains(index) {
-                    nearestGround = min(nearestGround, distance)
-                }
-            }
-            XCTAssertLessThan(
-                nearestElevated, nearestGround,
-                "the \(name) ramp's switch line should be at the deck end")
-        }
+    /// A plain bridge emits NO launch lines. `rampUp` used to be flagged
+    /// `launches: true`, so driving up a bridge threw the car ballistically at the
+    /// top — the reported "car jumps at the top of the ramp", and the reason
+    /// reaching the deck depended on carrying speed. Launching belongs to the
+    /// separate `jump` piece.
+    func testABridgeRampDoesNotLaunchTheCar() throws {
+        XCTAssertTrue(try compiledBridge().ramps.isEmpty)
     }
 
     /// **A bridge needs barriers.** The editor draws blue guard rails along an
     /// elevated piece's edges, but the compiler emitted no walls at all — so a
-    /// raced bridge had nothing stopping a car driving off the side. The only
-    /// thing catching you was the fall-off check in `Race.applyRamps`, which is
-    /// the consequence of leaving the deck rather than a wall preventing it.
+    /// raced bridge had nothing stopping a car driving off the side.
     func testElevatedPiecesGetGuardRails() throws {
         let track = try compiledBridge()
-        // Both edges are railed, so rails appear on both sides of the deck.
-        // (Only rails NEAR the deck count — every track also carries a map-
-        // boundary fence, which is not a deck rail.)
-        let deckSegment = try XCTUnwrap(track.elevatedSegments.min())
-        let deckPoint = track.centerline[deckSegment]
+        // Find a full-height deck point, then look for rails beside it. (Only
+        // rails near the deck count — every track also carries a map-boundary
+        // fence, which is not a deck rail.)
+        let deckIndex = try XCTUnwrap(track.heights.firstIndex { $0 > 0.9 })
+        let deckPoint = track.centerline[deckIndex]
         var sides = Set<Bool>()
         var found = 0
-        for wall in track.walls where wall.layer == 1 {
+        for wall in track.walls where wall.kind == .rail && wall.height > 0.5 {
             let mid = Vec2((wall.a.x + wall.b.x) / 2, (wall.a.y + wall.b.y) / 2)
             guard (mid - deckPoint).length < track.width * 3 else { continue }
             found += 1
@@ -157,47 +133,58 @@ final class PieceCompilerTests: XCTestCase {
         XCTAssertEqual(sides.count, 2, "a deck must be railed on both edges")
     }
 
-    /// **The ramp road must not vanish under a car crossing between layers.**
-    ///
-    /// The reported symptom was the car jumping at the TOP of the ramp. Cause: a
-    /// ramp segment is neither elevated nor plain ground, so a per-layer surface
-    /// lookup found no same-layer asphalt for it. Once the layer flipped at the
-    /// top, the whole descending ramp read as GRASS to the physics — the car came
-    /// over the crest and lost grip as though it had landed in the rough. A ramp
-    /// belongs to both layers, being the connection between them.
-    func testRampRoadIsAsphaltOnBothLayers() throws {
+    /// A rail sits at the height of the road it guards, so it bites a car up on
+    /// the deck and lets the road underneath pass freely. That is what stops a
+    /// deck rail from walling off the road beneath a bridge.
+    func testRailsSitAtTheHeightOfTheirRoad() throws {
         let track = try compiledBridge()
-        XCTAssertFalse(track.rampSegments.isEmpty, "fixture must have ramps")
-        for segment in track.rampSegments.sorted() {
-            let a = track.centerline[segment]
-            let b = track.centerline[(segment + 1) % track.centerline.count]
-            for step in 0...4 {
-                let point = a + (b - a) * (Double(step) / 4)
-                for layer in [0, 1] {
-                    XCTAssertEqual(
-                        track.surface(at: point, layer: layer), .asphalt,
-                        "ramp segment \(segment) at t=\(Double(step) / 4) is not asphalt "
-                            + "on layer \(layer)")
-                }
-            }
+        for wall in track.walls where wall.kind == .rail {
+            let mid = Vec2((wall.a.x + wall.b.x) / 2, (wall.a.y + wall.b.y) / 2)
+            // The road nearest this rail, at the rail's own height, is close by.
+            XCTAssertLessThan(
+                track.distanceToCenterline(mid, height: wall.height), track.width,
+                "a rail at height \(wall.height) is nowhere near road at that height")
         }
     }
 
-    /// …but the bridge must still BE a bridge: the road passing underneath is
-    /// ground-only, so a car down there can't grip the deck above it. (Without
-    /// this, widening layer membership could quietly turn a bridge into a
-    /// crossroads.)
-    func testDeckIsNotDrivableFromTheGroundLayer() throws {
+    /// The whole ramp is drivable asphalt at the height it sits at — the road
+    /// never vanishes from under a climbing car. (Under the old layer model, the
+    /// descending ramp read as grass once the layer flipped at the top, so the car
+    /// lost grip coming over the crest.)
+    func testTheRampIsAsphaltAtItsOwnHeight() throws {
         let track = try compiledBridge()
-        // A deck point that isn't part of a ramp: ground layer must see grass
-        // there unless ground road genuinely runs beneath it.
+        let count = track.centerline.count
         var checked = 0
-        for segment in track.elevatedSegments.sorted() {
-            let point = track.centerline[segment]
-            guard track.distanceToCenterline(point, layer: 0) > track.width else { continue }
+        for index in track.centerline.indices {
+            let next = (index + 1) % count
+            guard abs(track.heights[next] - track.heights[index]) > 0.05 else { continue }
+            let a = track.centerline[index]
+            let b = track.centerline[next]
+            for step in 0...4 {
+                let t = Double(step) / 4
+                let point = a + (b - a) * t
+                let height = track.heights[index] + (track.heights[next] - track.heights[index]) * t
+                XCTAssertEqual(
+                    track.surface(at: point, height: height), .asphalt,
+                    "the ramp is not asphalt at its own height (t=\(t))")
+            }
+            checked += 1
+        }
+        XCTAssertGreaterThan(checked, 0, "fixture must contain a ramp")
+    }
+
+    /// …but the bridge must still BE a bridge: a car on the ground can't grip the
+    /// deck above it.
+    func testDeckIsNotDrivableFromTheGround() throws {
+        let track = try compiledBridge()
+        var checked = 0
+        for (index, height) in track.heights.enumerated() where height > 0.9 {
+            let point = track.centerline[index]
+            // Only where no ground road genuinely runs beneath.
+            guard track.distanceToCenterline(point, height: 0) > track.width else { continue }
             XCTAssertEqual(
-                track.surface(at: point, layer: 0), .grass,
-                "deck segment \(segment) must not be drivable from the ground")
+                track.surface(at: point, height: 0), .grass,
+                "deck point \(index) must not be drivable from the ground")
             checked += 1
         }
         XCTAssertGreaterThan(checked, 0, "fixture needs deck clear of the ground road")
@@ -224,73 +211,52 @@ final class PieceCompilerTests: XCTestCase {
     /// **You can't drive off the map.** Piece-built tracks had no boundary at
     /// all, so a car could leave the playfield entirely and end up under the
     /// control band. Legacy `TrackDesign` tracks always had this fence.
-    func testTheMapIsFencedOnBothLayers() throws {
+    func testTheMapIsFenced() throws {
         for track in [try compiledSquare(), try compiledBridge()] {
             let centre = track.size * 0.5
-            for layer in [0, 1] {
+            for _ in [0] {
                 for degrees in stride(from: 0, to: 360, by: 15) {
                     let angle = Double(degrees) * .pi / 180
                     let outside =
                         centre + Vec2(cos(angle), sin(angle)) * (track.size.x + track.size.y)
-                    let enclosed = track.walls.contains { wall in
-                        wall.layer == layer
-                            && Gate(from: wall.a, to: wall.b)
-                                .isCrossed(movingFrom: centre, to: outside)
+                    let enclosed = track.walls.contains { (wall: Wall) in
+                        Gate(from: wall.a, to: wall.b)
+                            .isCrossed(movingFrom: centre, to: outside)
                     }
                     XCTAssertTrue(
-                        enclosed,
-                        "track \(track.id) layer \(layer) is open toward \(degrees)°")
+                        enclosed, "track \(track.id) is open toward \(degrees)°")
                 }
             }
         }
     }
 
-    /// A ramp is an embankment: its flanks are walled on BOTH layers, so you can
-    /// neither drive onto it sideways nor pass under it while it climbs. Its high
-    /// end must stay open to a climbing car, which is still on layer 0 when it
-    /// reaches the switch line.
-    func testRampFlanksAreWalledButTheClimbStaysOpen() throws {
+    /// A ramp is railed down both flanks, so you can't slide off the side of the
+    /// climb. With heights there are no "end caps" to get wrong: a car under the
+    /// bridge is simply at a different height from the ramp, so it can't be on it.
+    func testRampFlanksAreRailed() throws {
         let track = try compiledBridge()
         let count = track.centerline.count
-        for segment in track.rampSegments.sorted() {
-            let a = track.centerline[segment]
-            let b = track.centerline[(segment + 1) % count]
+        var checked = 0
+        for index in track.centerline.indices {
+            let next = (index + 1) % count
+            guard abs(track.heights[next] - track.heights[index]) > 0.05 else { continue }
+            let a = track.centerline[index]
+            let b = track.centerline[next]
             let mid = a + (b - a) * 0.5
+            let height = (track.heights[index] + track.heights[next]) / 2
             let side = (b - a).normalized.perpendicular
             for direction in [1.0, -1.0] {
                 let edge = mid + side * (track.width / 2 * direction)
-                for layer in [0, 1] {
-                    let blocked = track.walls.contains { wall in
-                        wall.layer == layer
-                            && edge.distance(toSegment: wall.a, wall.b) < CarGeometry.radius
-                    }
-                    XCTAssertTrue(
-                        blocked, "ramp segment \(segment) flank is open on layer \(layer)")
+                let railed = track.walls.contains { (wall: Wall) in
+                    wall.kind == .rail
+                        && abs(wall.height - height) <= Track.heightTolerance
+                        && edge.distance(toSegment: wall.a, wall.b) < CarGeometry.radius * 2
                 }
+                XCTAssertTrue(railed, "ramp flank unrailed at point \(index)")
             }
+            checked += 1
         }
-        // The climb's exit must NOT be blocked for the layer-0 car arriving there.
-        for ramp in track.ramps where ramp.toLayer > ramp.fromLayer {
-            let mid = Vec2((ramp.a.x + ramp.b.x) / 2, (ramp.a.y + ramp.b.y) / 2)
-            let blocked = track.walls.contains { wall in
-                wall.layer == 0 && mid.distance(toSegment: wall.a, wall.b) < CarGeometry.radius
-            }
-            XCTAssertFalse(blocked, "a climbing car must not be walled out of its own exit")
-        }
-    }
-
-    /// The deck itself: flat pieces the walk carries at height 1 become elevated
-    /// road, and the ground-level remainder stays on layer 0.
-    func testDeckPiecesAreElevatedAndTheRestIsNot() throws {
-        let track = try compiledBridge()
-        XCTAssertFalse(track.elevatedSegments.isEmpty, "the bridge needs a deck")
-        XCTAssertLessThan(
-            track.elevatedSegments.count, track.centerline.count,
-            "the whole ring must not be elevated")
-        // Layer follows the set, which is what the physics and the renderer use.
-        for segment in track.elevatedSegments {
-            XCTAssertEqual(track.segmentLayer(segment), 1)
-        }
+        XCTAssertGreaterThan(checked, 0, "fixture must contain a ramp")
     }
 
     /// **The framing contract.** `Track.size` is the renderer's letterbox: it

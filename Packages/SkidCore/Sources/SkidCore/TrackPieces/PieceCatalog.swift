@@ -109,11 +109,13 @@ public enum PieceCatalog {
             [arc(tightRadius, 2, $0), arc(mediumRadius, 2, !$0)]
         }
 
-        // Ramps (straight 2U, height change; up launches).
-        add(
-            Piece(
-                id: ID.rampUp, paths: [[.straight(length: straight)]], heightDelta: 1,
-                launches: true))
+        // Ramps (straight 2U, height change). A bridge ramp is something you
+        // DRIVE UP, so it must not launch: flagged `launches: true`, an up-ramp
+        // threw the car into ballistic flight at the top, which is exactly the
+        // "car jumps at the top of the ramp" that made bridges feel broken — and
+        // it made reaching the deck depend on carrying enough speed. Launching is
+        // what the separate `jump` piece is for.
+        add(Piece(id: ID.rampUp, paths: [[.straight(length: straight)]], heightDelta: 1))
         add(Piece(id: ID.rampDown, paths: [[.straight(length: straight)]], heightDelta: -1))
 
         // Start grid (straight 2U; the start/finish line is at its exit).

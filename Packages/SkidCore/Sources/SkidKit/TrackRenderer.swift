@@ -88,7 +88,7 @@ enum TrackRenderer {
             index < colors.count ? colors[index] : carPalette[index % carPalette.count]
         }
 
-        drawRibbon(track: track, layer: 0, into: &context)
+        drawRibbon(track: track, elevated: false, into: &context)
         drawPatches(track: track, into: &context)
         drawRampMarkers(track: track, into: &context)
         drawGridMarkings(track: track, into: &context)
@@ -101,22 +101,27 @@ enum TrackRenderer {
             spans: gateSpans,
             nextByGate: nextByGate,
             worldCenter: Vec2(track.size.x / 2, track.size.y / 2),
-            layers: track.gates.map(\.layer)
+            heights: track.gates.map(\.height)
         )
-        drawGates(gateChrome, layerFilter: 0, into: &context)
+        drawGates(gateChrome, elevated: false, into: &context)
         drawMarks(marks, into: &context)
         drawCars(scene: scene, gateChrome: gateChrome, colorAt: color, into: &context)
     }
 
-    /// The ribbon of one layer, as contiguous runs of that layer's
-    /// centerline segments (a flat track's layer 0 is one full loop).
-    private static func ribbonPath(_ track: Track, layer: Int) -> Path {
+    /// The ribbon at one height band, as contiguous runs of centerline segments
+    /// (a flat track is one full loop at height 0).
+    ///
+    /// `elevated: false` draws everything at ground level, `true` everything
+    /// clearly off the ground — the ramps in between are drawn by
+    /// `drawRampMarkers`, which shades them across the climb.
+    private static func ribbonPath(_ track: Track, elevated: Bool) -> Path {
         var path = Path()
         var penDown = false
         for i in track.centerline.indices {
             let a = track.centerline[i]
             let b = track.centerline[(i + 1) % track.centerline.count]
-            if track.segmentLayer(i) == layer {
+            let high = track.height(ofSegment: i) > 0.5
+            if high == elevated {
                 if !penDown {
                     path.move(to: CGPoint(x: a.x, y: a.y))
                     penDown = true
@@ -129,13 +134,13 @@ enum TrackRenderer {
         return path
     }
 
-    static func drawRibbon(track: Track, layer: Int, into context: inout GraphicsContext) {
-        let path = ribbonPath(track, layer: layer)
+    static func drawRibbon(track: Track, elevated: Bool, into context: inout GraphicsContext) {
+        let path = ribbonPath(track, elevated: elevated)
         // Ground loops close on themselves, so round caps never show; the
         // bridge deck is an open span and must end FLUSH where the ramp
         // wedges meet it — butt caps, or a half-circle bulges over the ramp.
-        let cap: CGLineCap = layer > 0 ? .butt : .round
-        if layer > 0 {
+        let cap: CGLineCap = elevated ? .butt : .round
+        if elevated {
             // The bridge floats: a soft drop shadow under its span —
             // trimmed at both ends so no dark band falls across the ramp
             // mouths where the deck meets its slopes.
@@ -159,7 +164,7 @@ enum TrackRenderer {
         )
         context.stroke(
             path,
-            with: .color(layer > 0 ? Color(white: 0.68) : asphalt),
+            with: .color(elevated ? Color(white: 0.68) : asphalt),
             style: StrokeStyle(lineWidth: track.width, lineCap: cap, lineJoin: .round)
         )
     }
@@ -197,15 +202,16 @@ enum TrackRenderer {
         var spans: [(a: Vec2, b: Vec2)?]
         var nextByGate: [Int: [Color]]
         var worldCenter: Vec2
-        var layers: [Int]
+        var heights: [Double]
     }
 
     static func drawGates(
-        _ chrome: GateChrome, layerFilter: Int, into context: inout GraphicsContext
+        _ chrome: GateChrome, elevated: Bool, into context: inout GraphicsContext
     ) {
         for (index, span) in chrome.spans.enumerated() {
             guard let span else { continue }
-            guard index < chrome.layers.count, chrome.layers[index] == layerFilter else {
+            guard index < chrome.heights.count, (chrome.heights[index] > 0.5) == elevated
+            else {
                 continue
             }
             let isStartFinish = index == chrome.spans.count - 1
@@ -330,14 +336,16 @@ extension TrackRenderer {
     /// shades from road-gray to deck-gray, with up-slope chevrons — the
     /// road visibly climbs; the car never warps.
     static func drawRampMarkers(track: Track, into context: inout GraphicsContext) {
-        for index in track.rampSegments.sorted() {
-            let count = track.centerline.count
+        let count = track.centerline.count
+        for index in track.centerline.indices {
+            let low = track.height(ofPoint: index)
+            let high = track.height(ofPoint: (index + 1) % count)
+            // A sloped segment is a ramp; level road is drawn by the ribbon pass.
+            guard abs(high - low) > 0.001 else { continue }
             let a = track.centerline[index]
             let b = track.centerline[(index + 1) % count]
-            // The end that meets the deck is the one whose neighboring
-            // segment is elevated.
-            let previous = (index + count - 1) % count
-            let deckFirst = track.segmentLayer(previous) == 1
+            // Uphill is simply the end with the greater height.
+            let deckFirst = low > high
             let ground = deckFirst ? b : a
             let deck = deckFirst ? a : b
             let up = (deck - ground).normalized

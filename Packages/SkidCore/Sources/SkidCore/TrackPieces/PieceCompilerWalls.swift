@@ -43,47 +43,19 @@ extension PieceCompiler {
             left.append(samples[index].point + side)
             right.append(samples[index].point - side)
         }
-        // Which layers these rails block. `collideWithWalls` only tests walls on
-        // the car's OWN layer, so this decides what the barrier actually stops.
-        //
-        // A flat deck piece guards layer 1 — only a car up there can fall off it.
-        // A ramp's SIDES guard both layers, since a climbing car is still layer 0
-        // while a descending one is already layer 1, and neither may leave
-        // sideways.
-        let sloped = placed.piece.heightDelta != 0 || placed.piece.launches
-        let layers = sloped ? [0, 1] : [Int(max(placed.entryHeight, placed.exitHeight).rounded())]
+        // Each rail sits at the HEIGHT of the road it guards, so it bites a car
+        // at that height and lets anything at a very different height pass. On a
+        // ramp this falls out for free: the rail at each sample takes that
+        // sample's own height, so the barrier climbs with the slope and a car
+        // passing underneath at height 0 never touches it.
         var rails: [Wall] = []
-        for layer in layers {
-            for edge in [left, right] {
-                for index in 1..<edge.count {
-                    rails.append(Wall(from: edge[index - 1], to: edge[index], layer: layer))
-                }
+        for edge in [left, right] {
+            for index in 1..<edge.count {
+                let height = (samples[index - 1].height + samples[index].height) / 2
+                rails.append(Wall(from: edge[index - 1], to: edge[index], height: height))
             }
         }
-        if sloped {
-            rails.append(contentsOf: rampEndCaps(placed, left: left, right: right))
-        }
         return rails
-    }
-
-    /// The **low** end of a ramp embankment, sealed against anyone up on the
-    /// deck: a car at height 1 can't drop off the bottom of the slope.
-    ///
-    /// Only the low end gets a cap. The high end can't have one, and this is
-    /// worth being precise about: the layer-switch line sits exactly there (the
-    /// whole point of the earlier fix), so a climbing car is still layer 0 when it
-    /// arrives and a layer-0 wall at that spot would block it from its own exit —
-    /// measured as sitting 0 away from the ramp line, well inside a car radius.
-    /// A ground car approaching the ramp's raised end head-on is instead stopped
-    /// by the side rails converging there, and by the map boundary beyond.
-    private static func rampEndCaps(_ placed: PlacedPiece, left: [Vec2], right: [Vec2]) -> [Wall] {
-        guard let leftFirst = left.first, let leftLast = left.last,
-            let rightFirst = right.first, let rightLast = right.last
-        else { return [] }
-        // Which end is low? A climb starts low; a descent ends low.
-        let climbing = placed.piece.heightDelta > 0
-        let low = climbing ? (leftFirst, rightFirst) : (leftLast, rightLast)
-        return [Wall(from: low.0, to: low.1, layer: 1)]
     }
 
     /// The map fence: a rectangle just inside the track's own bounds, on both
@@ -99,12 +71,14 @@ extension PieceCompiler {
             Vec2(inset, inset), Vec2(size.x - inset, inset),
             Vec2(size.x - inset, size.y - inset), Vec2(inset, size.y - inset),
         ]
-        // Both layers: falling off the world is no better up on the deck.
-        return [0, 1].flatMap { layer in
+        // A boundary wall stops a car at ANY height (see `Wall.Kind.boundary`),
+        // so one ring is enough — falling off the world is no better up on the
+        // deck.
+        return [0].flatMap { _ in
             corners.indices.map { index in
                 Wall(
                     from: corners[index], to: corners[(index + 1) % corners.count],
-                    layer: layer)
+                    kind: .boundary)
             }
         }
     }

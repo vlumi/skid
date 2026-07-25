@@ -76,11 +76,37 @@ public struct PlacedPiece: Equatable, Sendable {
     /// (eased along the piece). Renderers use this to vary road width / car
     /// scale continuously with elevation — a ramp widens as it climbs, no
     /// special-casing. First path only (the driven trunk).
-    public func heightedSamples(degreesPerSample: Double = 6) -> [(point: Vec2, height: Double)] {
+    /// A **sloped** piece is densified by its climb as well as by its curvature.
+    /// Curvature alone leaves a straight ramp with just its two endpoints, so the
+    /// height would step 0 → 1 in one go: the smoothstep never appears, and the
+    /// road is a cliff rather than a slope. `maxHeightStep` caps how much any one
+    /// step may climb.
+    public func heightedSamples(degreesPerSample: Double = 6, maxHeightStep: Double = 0.05)
+        -> [(point: Vec2, height: Double)]
+    {
         let pts = centerlineSamples(degreesPerSample: degreesPerSample)
         guard pts.count > 1 else { return pts.map { ($0, entryHeight) } }
-        let last = Double(pts.count - 1)
-        return pts.enumerated().map { i, p in (p, height(atFraction: Double(i) / last)) }
+        let delta = abs(piece.heightDelta)
+        guard delta > 0.001 else {
+            let last = Double(pts.count - 1)
+            return pts.enumerated().map { i, p in (p, height(atFraction: Double(i) / last)) }
+        }
+        // Subdivide each geometric span so no step climbs more than the cap.
+        let needed = max(pts.count - 1, Int((delta / maxHeightStep).rounded(.up)))
+        let perSpan = Int((Double(needed) / Double(pts.count - 1)).rounded(.up))
+        var dense: [(point: Vec2, height: Double)] = []
+        let spans = pts.count - 1
+        for span in 0..<spans {
+            let a = pts[span]
+            let b = pts[span + 1]
+            for step in 0..<perSpan {
+                let local = Double(step) / Double(perSpan)
+                let fraction = (Double(span) + local) / Double(spans)
+                dense.append((a + (b - a) * local, height(atFraction: fraction)))
+            }
+        }
+        dense.append((pts[pts.count - 1], height(atFraction: 1)))
+        return dense
     }
 
     /// World-space centerline samples for one of this piece's paths, arcs

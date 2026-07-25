@@ -1,22 +1,37 @@
 import Foundation
 
-/// Built-in tracks: `TrackDesign` JSON bundled under Resources/Tracks/
-/// (the source of truth — `skid-tracks export` re-encodes it, the future
-/// editor writes it), decoded and compiled once at first use. Every track:
-/// closed asphalt ribbon in grass, directional corridor gates
-/// (start/finish last), 4 grid slots, hazards as design.
+/// The built-in tracks, as **share codes** — the exact strings the editor's Copy
+/// button produces.
+///
+/// This replaces the old bundled-JSON `TrackDesign` library and its separate
+/// compiler. A built-in is now just a track someone built in the editor and
+/// pasted here, compiled by the same `PieceCompiler` as a player's own design.
+/// One code path, one geometry model, and a built-in can be opened in the editor
+/// and tweaked like anything else.
+///
+/// Codes are canonical and byte-stable, so they're safe to hold in source.
 public enum TrackLibrary {
-    /// Every bundled design, in manifest order.
-    public static let designs: [TrackDesign] = loadBundledDesigns()
+    /// A built-in: a display name and the code it compiles from.
+    public struct Builtin: Sendable {
+        public var id: String
+        public var name: String
+        public var code: String
+    }
 
-    /// Every built-in track, compiled once — the bundled designs are
-    /// build artifacts, so a failure here is a broken build, not a
-    /// runtime condition to limp through.
-    public static let all: [Track] = designs.map { design in
+    public static let builtins: [Builtin] = [
+        Builtin(id: "small", name: "Small track", code: "AQcBCh8MDAwJAAAKDBoCAwAIAwMFA0gCWAA"),
+        Builtin(id: "oval", name: "Big oval", code: "AdcBCB8NDQEBDQ0BAgUAAQIEBgMFBLAGGAA"),
+        Builtin(id: "eight", name: "Eight", code: "ARMBDR8LAAsLHQEeDAwADAECBAADBgkDBQNIAtAB"),
+    ]
+
+    /// Every built-in, compiled once. A code that doesn't compile is a broken
+    /// build, not a runtime condition to limp through — the same stance the old
+    /// bundled-design library took.
+    public static let all: [Track] = builtins.map { builtin in
         do {
-            return try design.compile()
+            return try PieceCompiler.compile(TrackCode.decode(builtin.code), id: builtin.id)
         } catch {
-            fatalError("bundled design '\(design.id)' failed to compile: \(error)")
+            fatalError("built-in track '\(builtin.id)' failed to compile: \(error)")
         }
     }
 
@@ -25,37 +40,17 @@ public enum TrackLibrary {
         all.first { $0.id == id } ?? all[0]
     }
 
-    /// The authored display name for a track id.
+    /// The display name for a track id.
     public static func displayName(id: String) -> String {
-        designs.first { $0.id == id }?.name ?? id
+        builtins.first { $0.id == id }?.name ?? id
     }
 
-    // Named accessors for the built-ins (tests and demos use these).
-    public static func practiceLoop() -> Track { track(id: "practice-loop") }
-    public static func gauntlet() -> Track { track(id: "gauntlet") }
-    public static func hairpin() -> Track { track(id: "hairpin") }
-    public static func overpass() -> Track { track(id: "overpass") }
-
-    /// Raw bytes of a bundled file (tests verify canonical encoding).
-    static func bundledData(resource: String) -> Data? {
-        guard
-            let url = Bundle.module.url(
-                forResource: resource, withExtension: "json", subdirectory: "Tracks")
-        else { return nil }
-        return try? Data(contentsOf: url)
+    /// The layout behind a built-in — what "edit a copy of this track" needs.
+    public static func layout(id: String) -> TrackLayout? {
+        guard let builtin = builtins.first(where: { $0.id == id }) else { return nil }
+        return try? TrackCode.decode(builtin.code)
     }
 
-    private static func loadBundledDesigns() -> [TrackDesign] {
-        guard
-            let manifestData = bundledData(resource: "manifest"),
-            let manifest = TrackManifest.decode(manifestData)
-        else { fatalError("bundled track manifest is missing or unreadable") }
-        return manifest.tracks.map { id in
-            guard
-                let data = bundledData(resource: id),
-                let file = TrackDesignFile.decode(data)
-            else { fatalError("bundled track design '\(id)' is missing or unreadable") }
-            return file.design
-        }
-    }
+    /// A simple flat ring, for tests and demos that just need a track.
+    public static func testRing() -> Track { track(id: "small") }
 }
