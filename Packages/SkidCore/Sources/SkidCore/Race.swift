@@ -211,40 +211,77 @@ public struct Race: Equatable, Sendable {
         tick += 1
     }
 
-    /// Ramp lines switch layers; launching ramps also throw the car into a
-    /// brief ballistic flight scaled by its speed. Driving back through a
-    /// ramp backward takes the car down again. A grounded elevated car
-    /// that strays off its ribbon falls back to the ground layer.
+    /// **The car follows the height of the road it is on.**
+    ///
+    /// This replaced a layer state machine that flipped the car between discrete
+    /// levels whenever it crossed a ramp's transition line. Every bridge bug came
+    /// from that design: the car popped as it flipped, the road vanished from
+    /// under it mid-transition, and — worst — a car driving *under* a bridge could
+    /// come out on top of the ramp, because a transition line has no way to know
+    /// which of two overlapping roads you are on.
+    ///
+    /// Reading the height off the nearest road *at the car's current height*
+    /// makes all of that unreachable. The car under the bridge is at 0, matches
+    /// the road at 0, and stays there; nothing can lift it. Climbing a ramp, the
+    /// nearest road at ~its height is the next bit of slope, so it rises
+    /// smoothly. The only discontinuity left is a genuine one: driving off the
+    /// deck's edge, which is a fall.
+    ///
+    /// A launch line still throws the car, since that IS an event at a place.
     private func applyRamps(car: inout Car, movedFrom from: Vec2) {
         guard !car.state.isAirborne else { return }
-        var flippedThisTick = false
-        for ramp in track.ramps {
-            switch ramp.crossing(movingFrom: from, to: car.state.position) {
-            case 1 where car.state.layer == ramp.fromLayer:
-                car.state.layer = ramp.toLayer
-                flippedThisTick = true
-                if ramp.launches {
-                    let flight = Int(car.state.velocity.length * tuning.jumpTicksPerSpeed)
-                    car.state.airborneTicks = min(60, flight)
-                }
-            case -1 where car.state.layer == ramp.toLayer:
-                car.state.layer = ramp.fromLayer
-                flippedThisTick = true
-            default:
-                break
+        for ramp in track.ramps where ramp.crossing(movingFrom: from, to: car.state.position) == 1 {
+            let flight = Int(car.state.velocity.length * tuning.jumpTicksPerSpeed)
+            car.state.airborneTicks = min(60, flight)
+        }
+        guard !car.state.isAirborne else { return }
+
+        // **Only the road the car is physically standing on may carry it.**
+        //
+        // The question has to be "which road am I on?", not "is there road near
+        // my height?". Asking it the second way is what let a car on the grass
+        // beside a ramp be judged on-road: it sat 60 units from the ground road
+        // but 47 from the ramp, and 47 was inside the generous margin, so it took
+        // the ramp's height, climbed, and arrived on the bridge without ever
+        // driving up anything. Reported as "if I drive under the bridge on grass,
+        // the car appears on the bridge".
+        //
+        // So: find the nearest road AT the car's own height, and require the car
+        // to be within the real asphalt half-width of it — no margin. Anything
+        // else is off-road, and off-road the car keeps the height it has, which on
+        // the ground simply means driving on the grass. (Sitting still on the
+        // grass must not creep upward either; that was the earlier bouncing bug.)
+        // Judged at BOTH ends of this tick's movement: a car must have been on the
+        // road it takes height from. The car moves before this runs, so testing only
+        // where it arrived let it cross from grass onto ramp asphalt within one tick
+        // and inherit the slope — how driving on the grass under the bridge put you
+        // on the bridge (20 of 520 such runs reached the deck).
+        let height = car.state.height
+        func onOwnRoad(_ position: Vec2) -> Bool {
+            track.distanceToCenterline(position, height: height) <= track.width / 2
+        }
+        guard onOwnRoad(car.state.position), onOwnRoad(from) else {
+            // Off the road. Up high, that's a fall off the deck; on the ground,
+            // it's just grass.
+            if car.state.height > Track.heightEpsilon {
+                car.state.height = 0
+                car.state.airborneTicks = 8
             }
+            return
         }
-        // Never fall off on the very tick a ramp flipped the layer — the
-        // car is at the deck's edge by definition there.
-        if !flippedThisTick, car.state.layer > 0,
-            track.distanceToCenterline(car.state.position, layer: car.state.layer)
-                > track.width / 2 + 6
-        {
-            // Off the edge of the bridge: a short drop back to the ground.
-            car.state.layer = 0
-            car.state.airborneTicks = 8
-        }
+        // On the road: take its height, anchored to the height the car already
+        // had so a bridge crossing can't swap it to the other road. Clamped to a
+        // per-tick step so even a badly-formed track can only ramp the car
+        // smoothly, never teleport it between levels.
+        let target = track.height(at: car.state.position, preferHeight: car.state.height)
+        let step = Self.maxHeightChangePerTick
+        car.state.height += max(-step, min(step, target - car.state.height))
     }
+
+    /// The most the car's height can change in one tick. A ramp climbs over many
+    /// ticks, so this never limits legitimate driving; it exists so that no track,
+    /// however odd, can snap a car between the ground and a deck.
+    static let maxHeightChangePerTick = 0.08
 
     /// Car–car contact: equal-mass circles push apart and exchange the
     /// closing velocity component with restitution. Pairs resolve in index
@@ -253,7 +290,11 @@ public struct Race: Equatable, Sendable {
         guard cars.count > 1 else { return }
         for i in 0..<(cars.count - 1) {
             for j in (i + 1)..<cars.count {
-                guard cars[i].state.layer == cars[j].state.layer,
+                // Cars only touch if they're at the same height: one on the
+                // bridge and one underneath must pass cleanly.
+                guard
+                    abs(cars[i].state.height - cars[j].state.height)
+                        <= Track.reachTolerance,
                     !cars[i].state.isAirborne, !cars[j].state.isAirborne
                 else { continue }
                 let offset = cars[j].state.position - cars[i].state.position
@@ -281,7 +322,7 @@ public struct Race: Equatable, Sendable {
     private func updateProgress(car: inout Car, movedFrom from: Vec2) {
         guard car.progress.finishedAt == nil, !track.gates.isEmpty else { return }
         let gate = track.gates[car.progress.nextGate]
-        guard gate.layer == car.state.layer,
+        guard abs(gate.height - car.state.height) <= Track.reachTolerance,
             gate.crossedForward(movingFrom: from, to: car.state.position)
         else { return }
         car.progress.nextGate += 1
@@ -304,10 +345,11 @@ public struct Race: Equatable, Sendable {
             // Ballistic: no steering, no throttle, no grip, no drag — the
             // car flies straight until it lands.
             car.airborneTicks -= 1
+            let before = car.position
             car.position += car.velocity * dt
-            return collideWithWalls(car: &car)
+            return collideWithWalls(car: &car, movedFrom: before)
         }
-        let surface = track.surface(at: car.position, layer: car.layer)
+        let surface = track.surface(at: car.position, height: car.height)
         turn(car: &car, input: input, dt: dt)
 
         // Decompose the world-space velocity against the NEW heading: the
@@ -346,9 +388,10 @@ public struct Race: Equatable, Sendable {
         if speed > tuning.maxSpeed {
             car.velocity *= tuning.maxSpeed / speed
         }
+        let beforeMove = car.position
         car.position += car.velocity * dt
 
-        return collideWithWalls(car: &car)
+        return collideWithWalls(car: &car, movedFrom: beforeMove)
     }
 
     /// One tick of heading change: either the wheel (steer channel) or the
@@ -394,26 +437,5 @@ public struct Race: Equatable, Sendable {
         // a plain wheel) and the analog steer amount (a light thumb still
         // places the car precisely).
         car.heading += car.steerActuator * tuning.steerFlipBoost * flipScale * direction * dt
-    }
-
-    /// Returns the hardest into-wall speed absorbed (0 if no contact).
-    private func collideWithWalls(car: inout CarState) -> Double {
-        var hardest = 0.0
-        for wall in track.walls where wall.layer == car.layer {
-            let closest = car.position.closestPoint(onSegment: wall.a, wall.b)
-            let offset = car.position - closest
-            let dist = offset.length
-            guard dist < CarGeometry.radius, dist > 0 else { continue }
-            let normal = offset.normalized
-            // Push out of the wall, then reflect the into-wall velocity
-            // component with restitution.
-            car.position = closest + normal * CarGeometry.radius
-            let intoWall = car.velocity.dot(normal)
-            if intoWall < 0 {
-                car.velocity -= normal * intoWall * (1 + tuning.wallRestitution)
-                hardest = max(hardest, -intoWall)
-            }
-        }
-        return hardest
     }
 }

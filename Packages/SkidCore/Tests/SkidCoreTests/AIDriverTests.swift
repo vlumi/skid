@@ -7,7 +7,7 @@ final class AIDriverTests: XCTestCase {
     /// the practice loop, gates and all, in a sane time.
     func testAICompletesALap() {
         var race = Race(
-            track: TrackLibrary.practiceLoop(), players: [PlayerID(0)],
+            track: TrackLibrary.testRing(), players: [PlayerID(0)],
             config: RaceConfig(laps: 1)
         )
         var driver = AIDriver()
@@ -29,7 +29,7 @@ final class AIDriverTests: XCTestCase {
     func testAIIsDeterministic() {
         func run() -> (Race, AIDriver) {
             var race = Race(
-                track: TrackLibrary.practiceLoop(),
+                track: TrackLibrary.testRing(),
                 players: [PlayerID(0), PlayerID(1)],
                 config: RaceConfig(laps: 2)
             )
@@ -57,7 +57,7 @@ final class AIDriverTests: XCTestCase {
             score: Int, race: Race
         ) {
             var race = Race(
-                track: TrackLibrary.practiceLoop(), players: [PlayerID(0)],
+                track: TrackLibrary.testRing(), players: [PlayerID(0)],
                 config: RaceConfig(laps: laps))
             var ai = driver
             for _ in 0..<(seconds * Race.tickRate) {
@@ -81,7 +81,7 @@ final class AIDriverTests: XCTestCase {
     func testEasyDriverActuallyTouchesGrass() {
         // Device feedback: Easy looked too clean. Its line wander must be
         // big enough to genuinely run wide off the ribbon now and then.
-        var race = Race(track: TrackLibrary.practiceLoop(), players: [PlayerID(0)])
+        var race = Race(track: TrackLibrary.testRing(), players: [PlayerID(0)])
         var driver = AIDriver.make(.easy)
         var grassTicks = 0
         for _ in 0..<(45 * Race.tickRate) {
@@ -95,7 +95,7 @@ final class AIDriverTests: XCTestCase {
     }
 
     func testCenterlineWalkEdgeCases() {
-        let track = TrackLibrary.practiceLoop()
+        let track = TrackLibrary.testRing()
         // Distances beyond a full loop wrap instead of bailing out.
         let start = Vec2(700, 800)
         let wrapped = track.pointAlongCenterline(
@@ -110,13 +110,13 @@ final class AIDriverTests: XCTestCase {
         XCTAssertEqual(empty.pointAlongCenterline(from: Vec2(1, 2), distance: 50), Vec2(1, 2))
     }
 
-    func testCenterlineWalk() {
-        let track = TrackLibrary.practiceLoop()
-        // A point on the bottom straight walks forward along +x.
-        let start = Vec2(700, 800)
+    func testCenterlineWalk() throws {
+        let track = TrackLibrary.testRing()
+        // Walk from a point ON the centerline, so the result is comparable
+        // without depending on any particular track shape.
+        let start = try XCTUnwrap(track.centerline.first)
         let ahead = track.pointAlongCenterline(from: start, distance: 100)
-        XCTAssertEqual(ahead.y, 800, accuracy: 1)
-        XCTAssertEqual(ahead.x, 800, accuracy: 1)
+        XCTAssertEqual(start.distance(to: ahead), 100, accuracy: 2, "walks the requested distance")
         // Walking a full loop length returns near the start point.
         var perimeter = 0.0
         for i in track.centerline.indices {
@@ -125,6 +125,6 @@ final class AIDriverTests: XCTestCase {
             perimeter += a.distance(to: b)
         }
         let around = track.pointAlongCenterline(from: start, distance: perimeter)
-        XCTAssertLessThan(around.distance(to: Vec2(700, 800)), 2)
+        XCTAssertLessThan(around.distance(to: start), 2)
     }
 }

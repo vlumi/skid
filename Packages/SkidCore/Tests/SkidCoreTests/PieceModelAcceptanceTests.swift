@@ -79,9 +79,10 @@ final class PieceModelAcceptanceTests: XCTestCase {
 
         XCTAssertTrue(TrackValidator.validate(layout).isSaveable)
         let track = try PieceCompiler.compile(layout, id: "accept-ramp")
-        XCTAssertFalse(track.elevatedSegments.isEmpty, "the deck should be elevated")
-        XCTAssertFalse(track.ramps.isEmpty, "ramps should be emitted")
-        XCTAssertTrue(track.ramps.contains { $0.launches }, "ramp-up launches")
+        XCTAssertTrue(track.heights.contains { $0 > 0.5 }, "the deck should be elevated")
+        XCTAssertTrue(track.heights.contains { $0 < 0.5 }, "…and the rest grounded")
+        // A bridge ramp is driven, not jumped: no launch lines on this track.
+        XCTAssertTrue(track.ramps.isEmpty, "a plain ramp emits no launch line")
     }
 
     // MARK: - helpers

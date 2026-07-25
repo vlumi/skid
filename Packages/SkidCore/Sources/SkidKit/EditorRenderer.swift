@@ -18,6 +18,10 @@ enum EditorRenderer {
     static let endHitRadius: CGFloat = 26
 
     struct Transform {
+        /// World space unchanged — for callers whose context is already scaled
+        /// and translated (the race view).
+        static let identity = Transform(scale: 1, offset: .zero)
+
         var scale: CGFloat
         var offset: CGSize
         func screen(_ p: Vec2) -> CGPoint {
@@ -32,53 +36,7 @@ enum EditorRenderer {
         // The size limit, made visible. Under everything else, since it's a
         // boundary you build inside of.
         drawCanvasBounds(walk: walk, t: t, into: &context)
-        // Every piece is a width-varying RIBBON POLYGON: half-width at each
-        // sample follows the height there (Elevation.scale), so a ramp widens
-        // as it climbs and the deck is naturally wider — one formula, no
-        // ground/deck/ramp special cases. Draw lowest height first so a bridge
-        // paints over the road beneath it; equal heights keep walk order.
-        let ordered = walk.placed.enumerated().sorted { a, b in
-            let ha = a.element.entryHeight + a.element.exitHeight
-            let hb = b.element.entryHeight + b.element.exitHeight
-            return ha != hb ? ha < hb : a.offset < b.offset
-        }
-        // Two passes: ALL shadows first, then ALL road surfaces. Otherwise an
-        // elevated piece's offset shadow lands on a neighbor's already-drawn
-        // road (e.g. the down-ramp getting a dark smear from the deck's
-        // shadow). Shadows under everything; surfaces on top, low-to-high.
-        for (_, placed) in ordered {
-            drawPieceShadow(placed, width: width, t: t, into: &context)
-        }
-        // Edge decoration (the white line, and kerbs where a corner earns one)
-        // goes down BEFORE any asphalt, for two reasons that are really one:
-        // asphalt painted over it *is* the clipping rule — a kerb can never
-        // cover a neighboring piece's road, because that road is drawn after —
-        // and two kerb bands that overlap merge into one shared band instead of
-        // fighting over the same strip with clashing dash phases.
-        // Kerbs are worked out from the CORNERS, not per piece: the apex kerb
-        // and the run-wide exit kerb straddle piece boundaries (see `KerbPlan`).
-        let kerbs = KerbPlan.plan(for: walk)
-        drawAllEdges(walk: walk, kerbs: kerbs, width: width, t: t, into: &context)
-        for (_, placed) in ordered {
-            drawPieceRibbon(placed, width: width, t: t, into: &context)
-        }
-        // Launch/ramp chevrons on top.
-        for placed in walk.placed where placed.piece.heightDelta != 0 || placed.piece.launches {
-            drawRampChevrons(placed, width: width, transform: t, into: &context)
-        }
-
-        // Checkpoint gates across the seams the author marked (seam 0 is the
-        // start/finish, drawn as its own line below).
-        for seam in gateSeams where seam != 0 && seam < walk.placed.count {
-            drawGate(walk.placed[seam], width: width, transform: t, into: &context)
-        }
-
-        // Grid-slot markings, then the start/finish line at the start piece's
-        // exit (the line paints over the hashes).
-        if let start = walk.placed.first(where: { $0.id == PieceCatalog.startPieceID }) {
-            drawGridMarkings(start, width: width, transform: t, into: &context)
-            drawStartLine(start, width: width, transform: t, into: &context)
-        }
+        drawTrack(walk: walk, width: width, gateSeams: gateSeams, transform: t, into: &context)
 
         // Loose (unbuilt) ends get a construction treatment. That's every
         // walk openEnd, PLUS the back of the start piece whenever the loop
@@ -96,6 +54,84 @@ enum EditorRenderer {
         }
         for (i, end) in looseEnds.enumerated() {
             drawLooseEnd(end, width: width, selected: i == selectedEnd, t: t, into: &context)
+        }
+    }
+
+    /// **The track itself** — shadows, edge decoration, asphalt, ramp markings,
+    /// gates, grid and start line. No editor chrome.
+    ///
+    /// Shared with the race view, which is the whole point: two separate
+    /// renderers over two different inputs (placed pieces here, a compiled
+    /// `Track` there) drifted apart in kerbs, rails and ramp markings, and every
+    /// fix had to be made twice. Now what you build is literally what you drive,
+    /// because it is the same drawing code over the same placed pieces.
+    /// `heightRange` limits which pieces are drawn, so a caller can interleave
+    /// something between the levels. The race view needs exactly that: it draws
+    /// the ground, then the cars on the ground, then the bridge over them, then
+    /// the cars up on the bridge — otherwise a car under the bridge would be
+    /// painted on top of it. The editor passes the full range and draws it all at
+    /// once.
+    static func drawTrack(
+        walk: WalkResult, width: Double, gateSeams: [Int], transform t: Transform,
+        heightRange: ClosedRange<Double> = -1...2,
+        into context: inout GraphicsContext
+    ) {
+        // Every piece is a width-varying RIBBON POLYGON: half-width at each
+        // sample follows the height there (Elevation.scale), so a ramp widens
+        // as it climbs and the deck is naturally wider — one formula, no
+        // ground/deck/ramp special cases. Draw lowest height first so a bridge
+        // paints over the road beneath it; equal heights keep walk order.
+        let ordered = walk.placed.enumerated()
+            .filter { heightRange.contains(max($0.element.entryHeight, $0.element.exitHeight)) }
+            .sorted { a, b in
+                let ha = a.element.entryHeight + a.element.exitHeight
+                let hb = b.element.entryHeight + b.element.exitHeight
+                return ha != hb ? ha < hb : a.offset < b.offset
+            }
+        // Two passes: ALL shadows first, then ALL road surfaces. Otherwise an
+        // elevated piece's offset shadow lands on a neighbor's already-drawn
+        // road (e.g. the down-ramp getting a dark smear from the deck's
+        // shadow). Shadows under everything; surfaces on top, low-to-high.
+        for (_, placed) in ordered {
+            drawPieceShadow(placed, width: width, t: t, into: &context)
+        }
+        // Edge decoration (the white line, and kerbs where a corner earns one)
+        // goes down BEFORE any asphalt, for two reasons that are really one:
+        // asphalt painted over it *is* the clipping rule — a kerb can never
+        // cover a neighboring piece's road, because that road is drawn after —
+        // and two kerb bands that overlap merge into one shared band instead of
+        // fighting over the same strip with clashing dash phases.
+        // Kerbs are worked out from the CORNERS, not per piece: the apex kerb
+        // and the run-wide exit kerb straddle piece boundaries (see `KerbPlan`).
+        let kerbs = KerbPlan.plan(for: walk)
+        drawAllEdges(
+            walk: walk, kerbs: kerbs, width: width, t: t, heightRange: heightRange,
+            into: &context)
+        for (_, placed) in ordered {
+            drawPieceRibbon(placed, width: width, t: t, into: &context)
+        }
+        // Climb markings on ramps. A LAUNCH gets them too; an ordinary ramp is
+        // just sloped road, and its own wedge shading already reads as a climb.
+        for (_, placed) in ordered
+        where placed.piece.heightDelta != 0 || placed.piece.launches {
+            drawRampChevrons(placed, width: width, transform: t, into: &context)
+        }
+
+        // Checkpoint gates across the seams the author marked (seam 0 is the
+        // start/finish, drawn as its own line below).
+        for seam in gateSeams where seam != 0 && seam < walk.placed.count {
+            let piece = walk.placed[seam]
+            guard heightRange.contains(piece.entryHeight) else { continue }
+            drawGate(piece, width: width, transform: t, into: &context)
+        }
+
+        // Grid-slot markings, then the start/finish line at the start piece's
+        // exit (the line paints over the hashes).
+        if let start = walk.placed.first(where: { $0.id == PieceCatalog.startPieceID }),
+            heightRange.contains(start.exitHeight)
+        {
+            drawGridMarkings(start, width: width, transform: t, into: &context)
+            drawStartLine(start, width: width, transform: t, into: &context)
         }
     }
 

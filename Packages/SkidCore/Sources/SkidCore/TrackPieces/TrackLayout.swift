@@ -4,7 +4,7 @@ import Foundation
 /// pose (the start line, on the fixed canvas), the gate seam indices, and a
 /// theme. This is exactly what the share code carries. Geometry is never
 /// stored — it derives from walking the list.
-public struct TrackLayout: Equatable, Sendable {
+public struct TrackLayout: Equatable, Sendable, Codable {
     public enum Theme: Int, Equatable, Sendable, Codable {
         case normal = 0, snow = 1, sand = 2
     }
@@ -56,11 +56,6 @@ public struct PlacedPiece: Equatable, Sendable {
     /// Height at this piece's exit.
     public var exitHeight: Double { entryHeight + piece.heightDelta }
 
-    /// The discrete surface a car on this piece collides with — derived from
-    /// height, not stored. Rounds so a flat deck piece (height 1) is layer 1,
-    /// ground (0) is layer 0; a ramp mid-climb rounds to whichever it's nearer.
-    public var layer: Int { Int(exitHeight.rounded()) }
-
     /// Height at fraction `f` (0…1) along this piece, eased with **smoothstep**
     /// so a ramp meets the ground and deck smoothly rather than with hard
     /// creases. Flat pieces stay constant; the whole visual scale (road width,
@@ -76,11 +71,38 @@ public struct PlacedPiece: Equatable, Sendable {
     /// (eased along the piece). Renderers use this to vary road width / car
     /// scale continuously with elevation — a ramp widens as it climbs, no
     /// special-casing. First path only (the driven trunk).
-    public func heightedSamples(degreesPerSample: Double = 6) -> [(point: Vec2, height: Double)] {
+    ///
+    /// A **sloped** piece is densified by its climb as well as by its curvature.
+    /// Curvature alone leaves a straight ramp with just its two endpoints, so the
+    /// height would step 0 → 1 in one go: the smoothstep never appears, and the
+    /// road is a cliff rather than a slope. `maxHeightStep` caps how much any one
+    /// step may climb.
+    public func heightedSamples(degreesPerSample: Double = 6, maxHeightStep: Double = 0.05)
+        -> [(point: Vec2, height: Double)]
+    {
         let pts = centerlineSamples(degreesPerSample: degreesPerSample)
         guard pts.count > 1 else { return pts.map { ($0, entryHeight) } }
-        let last = Double(pts.count - 1)
-        return pts.enumerated().map { i, p in (p, height(atFraction: Double(i) / last)) }
+        let delta = abs(piece.heightDelta)
+        guard delta > 0.001 else {
+            let last = Double(pts.count - 1)
+            return pts.enumerated().map { i, p in (p, height(atFraction: Double(i) / last)) }
+        }
+        // Subdivide each geometric span so no step climbs more than the cap.
+        let needed = max(pts.count - 1, Int((delta / maxHeightStep).rounded(.up)))
+        let perSpan = Int((Double(needed) / Double(pts.count - 1)).rounded(.up))
+        var dense: [(point: Vec2, height: Double)] = []
+        let spans = pts.count - 1
+        for span in 0..<spans {
+            let a = pts[span]
+            let b = pts[span + 1]
+            for step in 0..<perSpan {
+                let local = Double(step) / Double(perSpan)
+                let fraction = (Double(span) + local) / Double(spans)
+                dense.append((a + (b - a) * local, height(atFraction: fraction)))
+            }
+        }
+        dense.append((pts[pts.count - 1], height(atFraction: 1)))
+        return dense
     }
 
     /// World-space centerline samples for one of this piece's paths, arcs
