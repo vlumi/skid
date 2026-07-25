@@ -49,7 +49,10 @@ enum EdgeDecoration {
         case .kerb:
             let total = samples[samples.count - 1].distance
             guard total > 0 else { return }
-            let stripes = max(2, Int((total / stripeLength).rounded()))
+            // An ODD stripe count, so a run reads red-at-both-ends rather than
+            // petering out on white (which looks like the kerb was cut short).
+            var stripes = max(3, Int((total / stripeLength).rounded()))
+            if stripes.isMultiple(of: 2) { stripes += 1 }
             let step = total / Double(stripes)
             for stripe in 0..<stripes {
                 let from = Double(stripe) * step
