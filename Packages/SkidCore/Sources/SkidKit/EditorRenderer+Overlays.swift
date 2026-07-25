@@ -118,18 +118,35 @@ extension EditorRenderer {
         into context: inout GraphicsContext
     ) {
         let pose = placed.entry
-        let side = Vec2(angle: pose.heading.radians).perpendicular * (width / 2)
-        let a = pose.position.vec2 - side
-        let b = pose.position.vec2 + side
-        var line = Path()
-        line.move(to: t.screen(a))
-        line.addLine(to: t.screen(b))
+        let across = Vec2(angle: pose.heading.radians).perpendicular
+        let centre = pose.position.vec2
+        let edge = across * (width / 2)
+        let lineWidth = max(2, 6 * t.scale)
+
+        // Across the road, solid: the part of the gate you always cross.
+        var road = Path()
+        road.move(to: t.screen(centre - edge))
+        road.addLine(to: t.screen(centre + edge))
         context.stroke(
-            line, with: .color(.cyan.opacity(0.7)),
-            style: StrokeStyle(lineWidth: max(2, 6 * t.scale), lineCap: .butt))
-        // Posts, so a gate reads as a gate rather than a stray line.
+            road, with: .color(.cyan.opacity(0.75)),
+            style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
+
+        // Onto the grass, faded: running wide still counts, out to roughly here.
+        // (The compiler caps this side near a neighbouring lane, so it's shown
+        // as a soft reach rather than a hard edge.)
+        let reach = across * (width / 2 + width)
+        for direction in [1.0, -1.0] {
+            var apron = Path()
+            apron.move(to: t.screen(centre + edge * direction))
+            apron.addLine(to: t.screen(centre + reach * direction))
+            context.stroke(
+                apron, with: .color(.cyan.opacity(0.28)),
+                style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt, dash: [lineWidth * 2]))
+        }
+
+        // Posts at the road edges, so a gate reads as a gate.
         let post = max(3, 9 * t.scale)
-        for end in [a, b] {
+        for end in [centre - edge, centre + edge] {
             let box = CGRect(
                 x: t.screen(end).x - post / 2, y: t.screen(end).y - post / 2,
                 width: post, height: post)
