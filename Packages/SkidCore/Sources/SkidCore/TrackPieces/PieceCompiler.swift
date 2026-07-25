@@ -130,19 +130,38 @@ public enum PieceCompiler {
 
     // MARK: - Start grid
 
+    /// Where the four grid slots sit relative to the start/finish line: the
+    /// pole `back` behind it, each next slot a further `gap` back, staggered
+    /// `lateral` to alternating sides. Shared so the renderer paints its hash
+    /// marks exactly where the compiler puts the cars.
+    public enum Grid {
+        public static let back = 70.0
+        public static let gap = 50.0
+        public static let lateral = 28.0
+        public static let slots = 4
+        /// How far behind the line the last slot sits — the depth of ribbon the
+        /// start piece has to provide.
+        public static var depth: Double { back + Double(slots - 1) * gap }
+
+        /// Slot centres, pole first, from the line pose. `dir` is the driving
+        /// direction; slots run back from the line, staggered sideways.
+        public static func positions(line: Vec2, dir: Vec2) -> [Vec2] {
+            let inward = dir.perpendicular
+            return (0..<slots).map { slot in
+                line - dir * (back + Double(slot) * gap)
+                    + inward * (slot % 2 == 0 ? lateral : -lateral)
+            }
+        }
+    }
+
     /// Four grid slots ON the start piece, measured back from the start/finish
     /// line at its exit, pole first, staggered left/right, all facing the drive
-    /// direction. The start piece is a straight ≥ 300, so the whole grid
-    /// (~220 deep) stays on the ribbon behind the line.
+    /// direction. The start piece is a 2U straight and the grid is ~220 deep,
+    /// so the whole grid stays on the ribbon behind the line (asserted in
+    /// tests, since the two numbers must stay compatible).
     private static func startGrid(at start: PlacedPiece) -> (slots: [Vec2], heading: Double) {
         let line = start.exits[0].position.vec2  // start/finish is at the exit
         let dir = Vec2(angle: start.entry.heading.radians)
-        let inward = dir.perpendicular
-        let back = 70.0, gap = 50.0, lateral = 28.0
-        let slots = (0..<4).map { slot in
-            line - dir * (back + Double(slot) * gap)
-                + inward * (slot % 2 == 0 ? lateral : -lateral)
-        }
-        return (slots, start.entry.heading.radians)
+        return (Grid.positions(line: line, dir: dir), start.entry.heading.radians)
     }
 }

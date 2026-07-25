@@ -4,8 +4,13 @@ import XCTest
 
 /// Phase-A compile: a saveable layout → a well-formed runtime `Track`.
 final class PieceCompilerTests: XCTestCase {
+    private typealias Pieces = PieceCatalog.ID
     // Closed rounded square that clears itself (same as the validator test).
-    private let square: [PieceID] = [15, 7, 1, 7, 1, 7, 1, 7]
+    private let square: [PieceID] = [
+        Pieces.startGrid, Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
+        Pieces.straight,
+        Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
+    ]
 
     private func compiledSquare() throws -> Track {
         try PieceCompiler.compile(
@@ -14,7 +19,9 @@ final class PieceCompilerTests: XCTestCase {
 
     func testUnsaveableLayoutThrows() {
         XCTAssertThrowsError(
-            try PieceCompiler.compile(TrackLayout(pieces: [15, 1, 1], gateSeams: [0]))
+            try PieceCompiler.compile(
+                TrackLayout(
+                    pieces: [Pieces.startGrid, Pieces.straight, Pieces.straight], gateSeams: [0]))
         ) { error in
             guard case PieceCompiler.Failure.notSaveable = error else {
                 return XCTFail("expected notSaveable, got \(error)")
@@ -27,7 +34,12 @@ final class PieceCompilerTests: XCTestCase {
         // (Even if not perfectly closed, the fork check fires after saveable;
         // so use a minimal closeable-ish ring — assert the error type when it
         // is saveable, else accept notSaveable.)
-        let layout = TrackLayout(pieces: [15, 18, 8, 8, 8], gateSeams: [0, 1])
+        let layout = TrackLayout(
+            pieces: [
+                Pieces.startGrid, Pieces.forkStraightLeft, Pieces.curve90TightRight,
+                Pieces.curve90TightRight,
+                Pieces.curve90TightRight,
+            ], gateSeams: [0, 1])
         XCTAssertThrowsError(try PieceCompiler.compile(layout))
     }
 
