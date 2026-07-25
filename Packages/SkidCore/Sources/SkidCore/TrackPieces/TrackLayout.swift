@@ -144,6 +144,53 @@ public struct WalkResult: Equatable, Sendable {
     public var isConnected: Bool { failure == nil && openEnds.isEmpty }
 }
 
+/// How far a loose end is from closing, split into the two currencies the unit
+/// system spends: whole units along the axes, and whole units of *diagonal*
+/// travel (the √2 part). The split is what tells an author which kind of piece
+/// can still fix a gap — axis straights only ever repay the axis part, while a
+/// √2 debt needs diagonal travel (a mirrored chicane, a 45° dogleg).
+public struct ClosureGap: Equatable, Sendable {
+    /// Axis offset in whole units — the `a` (rational) halves of the coordinate.
+    public var axisX: Double
+    public var axisY: Double
+    /// Diagonal offset in whole units — the `b` (√2) halves.
+    public var diagonalX: Double
+    public var diagonalY: Double
+    /// Eighths of a turn between the two headings (0 = already aligned).
+    public var headingEighths: Int
+
+    /// Nothing left to pay: same position, same heading.
+    public var isClosed: Bool {
+        axisX == 0 && axisY == 0 && !needsDiagonalTravel && headingEighths == 0
+    }
+
+    /// Whether any √2 debt remains. When false, the gap is pure axis travel and
+    /// straights can close it; when true, no number of axis straights ever
+    /// will — it needs diagonal travel to cancel (a mirrored chicane, a 45°
+    /// dogleg).
+    public var needsDiagonalTravel: Bool { diagonalX != 0 || diagonalY != 0 }
+}
+
+extension TrackLayout {
+    /// The gap from `end` to the pose it must reach to close (by default the
+    /// layout's origin — where a fork-free ring comes home), measured in the
+    /// unit system so it reads as "2U east plus 1U of NE travel" rather than a
+    /// raw float. Exact: the components come straight off the integer
+    /// coordinates, so a closed loop reports exactly zero.
+    public func closureGap(from end: PiecePose, to target: PiecePose? = nil) -> ClosureGap {
+        let goal = target ?? origin
+        let unit = Double(PieceCatalog.unit)
+        let dx = goal.position.x - end.position.x
+        let dy = goal.position.y - end.position.y
+        // A Coord is (a + b√2)/2, so the axis part is a/2 and the diagonal part
+        // is b/2 — each divided by the unit to read in whole units.
+        return ClosureGap(
+            axisX: Double(dx.a) / 2 / unit, axisY: Double(dy.a) / 2 / unit,
+            diagonalX: Double(dx.b) / 2 / unit, diagonalY: Double(dy.b) / 2 / unit,
+            headingEighths: ((goal.heading.step - end.heading.step) % 8 + 8) % 8)
+    }
+}
+
 extension TrackLayout {
     /// Walk the piece list from the origin, placing each piece and threading
     /// poses. Forks push their extra exit onto a stack of loose ends; a piece
