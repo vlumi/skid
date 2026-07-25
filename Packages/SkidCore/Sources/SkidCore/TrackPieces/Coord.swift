@@ -42,6 +42,20 @@ public struct Coord: Equatable, Hashable, Sendable, Codable {
         Coord(a: x.a * n, b: x.b * n)
     }
 
+    /// Multiply by √2⁄2 — the primitive a 45° rotation is built from.
+    ///
+    /// `(a + b·√2)/2 · √2⁄2 = (2b + a·√2)/4 = (b + (a/2)·√2)/2`, i.e. a swap of
+    /// the two components with the rational part halved. That halving is the one
+    /// place the ring can be left, so it's exact precisely when `a` is even —
+    /// see `timesHalfSqrt2IsExact`.
+    public var timesHalfSqrt2: Coord {
+        Coord(a: b, b: a / 2)
+    }
+
+    /// Whether `timesHalfSqrt2` stays in the ring: the rational part must halve
+    /// cleanly.
+    public var timesHalfSqrt2IsExact: Bool { a.isMultiple(of: 2) }
+
     /// The real value, for lowering to `Vec2` at compile time only.
     public var value: Double {
         (Double(a) + Double(b) * 2.0.squareRoot()) / 2
@@ -78,6 +92,39 @@ public struct CoordPoint: Equatable, Hashable, Sendable, Codable {
     /// Scale both axes by an integer — stays exact.
     public static func * (p: CoordPoint, n: Int) -> CoordPoint {
         CoordPoint(x: p.x * n, y: p.y * n)
+    }
+
+    /// Rotate counterclockwise about the origin by `eighths` × 45°, **exactly**.
+    ///
+    /// Quarter turns are pure component swaps. A 45° turn is
+    /// `(x, y) → ((x − y)·√2⁄2, (x + y)·√2⁄2)`, which stays in the ring exactly
+    /// when `x ± y` divides by √2 — checked by `canRotate45`. Rotating a whole
+    /// layout keeps loop closure integer-exact, which is the entire reason the
+    /// piece model uses this ring instead of floats.
+    public func rotated(eighths: Int) -> CoordPoint {
+        var point = self
+        var steps = ((eighths % 8) + 8) % 8
+        // Peel off a 45° turn first, leaving whole quarter turns.
+        if !steps.isMultiple(of: 2) {
+            point = point.rotated45()
+            steps -= 1
+        }
+        for _ in 0..<(steps / 2) {
+            point = CoordPoint(x: -point.y, y: point.x)  // +90°
+        }
+        return point
+    }
+
+    /// A single 45° counterclockwise turn:
+    /// `(x, y) → ((x − y)·√2⁄2, (x + y)·√2⁄2)`.
+    private func rotated45() -> CoordPoint {
+        CoordPoint(x: (x - y).timesHalfSqrt2, y: (x + y).timesHalfSqrt2)
+    }
+
+    /// Whether a 45° rotation of this point stays exact. Quarter turns always
+    /// do; a 45° turn needs both `x − y` and `x + y` to survive the √2⁄2 scale.
+    public var canRotate45: Bool {
+        (x - y).timesHalfSqrt2IsExact && (x + y).timesHalfSqrt2IsExact
     }
 
     /// Lower to the sim's float geometry — the one lossy step, at compile time.

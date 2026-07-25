@@ -17,6 +17,10 @@ extension EditorView {
         guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
             return closedLoopHint(layout)
         }
+        // Being out of ROOM outranks the gap: when every piece is grayed out,
+        // the gap reading is useless advice ("turn 180° left" — with what?).
+        // Without this, a size-blocked palette had no explanation at all.
+        if let full = sizeLimitHint(walk) { return full }
         let end = walk.openEnds[i]
         let gap = layout.closureGap(from: end)
         guard let advice = advice(for: gap, facing: end.heading) else { return nil }
@@ -25,6 +29,41 @@ extension EditorView {
         // just measures the gap and says which kind of edit closes it.
         guard !parts.isEmpty else { return "Not closed — \(advice)" }
         return "Gap \(parts.joined(separator: " + ")) — \(advice)"
+    }
+
+    /// Why the palette is grayed out, when the reason is SIZE rather than shape.
+    ///
+    /// The canvas rule caps the track's *bounding box*, not its position — so
+    /// "off the canvas" is the wrong mental model and moving the track doesn't
+    /// help. Rotating can: it TRADES one axis for the other (a diagonal
+    /// footprint measuring 1158 × 1158 becomes 1539 × 480 at 45°), which can fit
+    /// a non-square limit that the current orientation doesn't. It's a trade,
+    /// not a saving — so the advice offers it as something to try, alongside the
+    /// reliable fix of shortening a run. Names the full axis, matching what the
+    /// drawn bounds highlight.
+    ///
+    /// Nil unless the room really has run out, so this never crowds out the gap
+    /// reading during normal building.
+    func sizeLimitHint(_ walk: WalkResult) -> String? {
+        let points = walk.placed.flatMap { $0.centerlineSamples() }
+        guard let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
+            let minY = points.map(\.y).min(), let maxY = points.map(\.y).max()
+        else { return nil }
+        let half = Double(PieceCatalog.width) / 2
+        let limit = TrackValidator.canvas
+        // The smallest piece that could still be laid: if even a short straight
+        // won't fit, the palette is empty for size reasons and needs saying.
+        let smallest = Double(PieceCatalog.shortStraight)
+        let freeX = limit.x - ((maxX - minX) + 2 * half)
+        let freeY = limit.y - ((maxY - minY) + 2 * half)
+        guard freeX < smallest || freeY < smallest else { return nil }
+        let axis: String
+        if freeX < smallest && freeY < smallest {
+            axis = "Out of room"
+        } else {
+            axis = freeX < smallest ? "Out of room across" : "Out of room down"
+        }
+        return "\(axis) — shorten a run, or try rotating"
     }
 
     /// The gap's components, in the currencies the unit system spends.

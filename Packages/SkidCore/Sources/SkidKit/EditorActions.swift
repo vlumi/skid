@@ -72,6 +72,43 @@ extension CouchGame {
         editorLayout = layout
     }
 
+    /// Turn the whole layout 45° about its own center, by rotating the stored
+    /// **origin** — the same rigid-body trick as `editorCenterOnCanvas`, since
+    /// every other coordinate derives from that one anchor.
+    ///
+    /// This is a real shaping tool, not just cosmetics. The canvas rule limits
+    /// the layout's *bounding box*, and rotating TRADES one axis for the other:
+    /// a diagonal footprint measuring 1158 × 1158 becomes 1539 × 480 at 45°.
+    /// Against a non-square limit that can turn "doesn't fit" into "fits" —
+    /// and, just as easily, the other way round, so it's offered as something to
+    /// try rather than a guaranteed fix.
+    ///
+    /// Exact by construction: `Heading` is eight 45° steps and `Coord` is closed
+    /// under 45° rotation, so this introduces no drift and loop closure stays
+    /// integer-exact.
+    /// Refused (returning false) if a 45° step would land the origin off the
+    /// exact ring — better to decline than to silently round and break the
+    /// integer loop closure everything else depends on.
+    @discardableResult
+    public func editorRotate(eighths: Int = 1) -> Bool {
+        guard var layout = editorLayout else { return false }
+        let origin = layout.origin
+        guard origin.position.canRotate45 || eighths.isMultiple(of: 2) else { return false }
+
+        // Rotate the origin about the world origin — exactly — then let the
+        // re-center below slide the whole thing back into view. Turning about
+        // the footprint's own center would need a half-unit pivot, which is
+        // exactly what the ring can't represent.
+        layout.origin = PiecePose(
+            position: origin.position.rotated(eighths: eighths),
+            heading: origin.heading.turnedLeft(eighths))
+        editorLayout = layout
+        // Rotating swings the track into another quadrant, so bring it back onto
+        // the canvas instead of leaving it at negative coordinates.
+        editorCenterOnCanvas()
+        return true
+    }
+
     /// Toggle a seam as a checkpoint gate. Seam 0 is the start/finish and is
     /// permanent; the rest are the author's choice, up to the 16-gate cap.
     ///

@@ -124,18 +124,24 @@ struct EditorView: View {
                 } label: {
                     Text("New", bundle: .module).pillStyle()
                 }
-                Button {
+                // The three view/layout tools are ICONS, not words: seven
+                // full-width text pills overflow a small phone (they wrapped to
+                // "Ce/nte/r"), and these three are a different class of thing
+                // from Done/New/Copy/Paste anyway.
+                iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
                     resetView()
-                } label: {
-                    Text("Fit", bundle: .module).pillStyle()
                 }
                 // Re-center the layout on the canvas. Closing a loop does this
                 // automatically; the button is for tracks built before that, or
                 // reshaped since.
-                Button {
+                iconButton("scope", "Center on canvas") {
                     game.editorCenterOnCanvas()
-                } label: {
-                    Text("Center", bundle: .module).pillStyle()
+                }
+                // Turn the whole track 45°. Also the fix when the size limit
+                // blocks a piece: a diagonal run spends its length on both axes
+                // at once, so squaring it up shrinks the bounding box.
+                iconButton("rotate.right", "Rotate 45°") {
+                    game.editorRotate()
                 }
                 // Copy the share code out — how a design becomes a built-in, or
                 // gets kept somewhere until there's a real track library.
@@ -155,6 +161,23 @@ struct EditorView: View {
             .padding()
             Spacer()
         }
+    }
+
+    /// A compact icon pill, for the view/layout tools. The label is the
+    /// accessibility name — the icon carries the meaning visually, but a
+    /// glyph alone tells a screen reader nothing.
+    private func iconButton(
+        _ symbol: String, _ label: LocalizedStringKey, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.callout.bold())
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(.black.opacity(0.35), in: Capsule())
+                .foregroundStyle(.white)
+        }
+        .accessibilityLabel(Text(label, bundle: .module))
     }
 
     private func paletteBar(walk: WalkResult) -> some View {

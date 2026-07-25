@@ -27,6 +27,21 @@ ships (see [AGENTS.md](AGENTS.md)).
   closes back on itself. The layout renders live as you build, with a "build
   here" arrow on the end you're extending and construction stripes on any end
   still open. (Test-driving and sharing your creations come next.)
+- **Painted edges and racing kerbs.** Every road now carries a thin white edge
+  line, and corners earn red/white kerbs where a real circuit puts them: at the
+  apex you cut, on the outside of a corner exit where you run wide under power,
+  and on both sides of a chicane. The kerbs are worked out from the corners of
+  the whole layout rather than piece by piece, so one continuous kerb can run
+  across several pieces with an even stripe rhythm. All of it sits outboard of
+  the road, so nothing narrows the surface you actually drive on.
+- **See the build limit, and turn your track.** The editor draws the size limit
+  as a dashed boundary around your layout, with the edges turning red on
+  whichever axis has run out of room — so a grayed-out palette now has a visible
+  reason instead of leaving you guessing. A new Rotate button turns the whole
+  track 45° at a time, which reshapes its footprint (a diagonal course is long
+  and thin one way, square the other) and can bring an oversized layout back
+  within the limit. Fit, Center, and Rotate are now compact icons, so the top
+  bar stops wrapping on a small phone.
 - **A ground-up track look, driven by height.** Elevation is now one smooth
   scale from ground to bridge deck: ramps taper as a true wedge (narrow at the
   bottom, wide at the top), the deck and the cars on it grow with height instead
