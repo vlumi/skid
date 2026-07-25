@@ -30,6 +30,7 @@ public enum PieceCompiler {
         // previous piece's exit — so the loop isn't double-stamped at seams.
         var centerline: [Vec2] = []
         var elevated: Set<Int> = []
+        var rampSegs: Set<Int> = []
         var ramps: [Ramp] = []
         var gates: [Gate] = []
 
@@ -49,9 +50,15 @@ public enum PieceCompiler {
             }
 
             // A ramp/jump piece (changes height, or launches) emits a Ramp
-            // line at its entry seam.
+            // line, and marks its road as sloped.
             if placed.piece.heightDelta != 0 || placed.piece.launches {
                 ramps.append(rampLine(at: placed))
+                // The sloped road ITSELF, which the runtime needs to know about:
+                // `isOnRamp` and `visualHeight` both scan `rampSegments`, so
+                // without this a climbing car is never treated as between layers
+                // (no smooth growth, no drawing above the deck) and the renderer
+                // draws no ramp at all.
+                for seg in before..<after { rampSegs.insert(seg) }
             }
         }
 
@@ -101,6 +108,7 @@ public enum PieceCompiler {
             centerline: centerline,
             width: Double(PieceCatalog.width),
             elevatedSegments: elevated,
+            rampSegments: rampSegs,
             ramps: ramps,
             gates: gates,
             startSlots: slots,
@@ -204,9 +212,29 @@ public enum PieceCompiler {
 
     /// A ramp/jump line across the road at a piece's entry, in driving
     /// direction, carrying the layer transition (or a launch).
+    /// The layer-switch line for a ramp piece, at the ramp's **high end**.
+    ///
+    /// Position matters enormously, because crossing this line flips the car's
+    /// discrete layer instantly. Putting it at the ramp's ENTRY meant the car
+    /// became "on the deck" the moment it touched the bottom of the ramp — while
+    /// still physically at ground level, a road-length away from the deck. Two
+    /// visible symptoms followed: the car appeared to jump at the start of the
+    /// ramp, and then, being on layer 1 but nowhere near the deck's centerline,
+    /// the fall-off check in `applyRamps` dropped it straight back to the
+    /// ground — so it drove *under* the bridge and missed the gate up there.
+    /// Only enough speed to clear both checks in one tick got you up.
+    ///
+    /// At the high end, the flip happens exactly where the sloped road meets the
+    /// deck, which is what `fromLayer`/`toLayer` describe. A launch (jump) piece
+    /// is the exception: it throws the car ballistically from its lip, so its
+    /// line belongs at the take-off point — the exit it launches from.
     private static func rampLine(at placed: PlacedPiece) -> Ramp {
-        let pos = placed.entry.position.vec2
-        let fwd = Vec2(angle: placed.entry.heading.radians)
+        // The high end: a climb switches at its exit, a descent at its entry —
+        // in both cases the end that touches the deck.
+        let climbing = placed.piece.heightDelta > 0
+        let pose = climbing || placed.piece.launches ? placed.exits[0] : placed.entry
+        let pos = pose.position.vec2
+        let fwd = Vec2(angle: pose.heading.radians)
         let side = fwd.perpendicular * (Double(PieceCatalog.width) / 2)
         // The runtime Track's Ramp still speaks discrete layers; derive them
         // from the piece's entry/exit height.
