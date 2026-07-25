@@ -486,6 +486,41 @@ packs ~45% more characters per version than byte mode — a base32-uppercase
 code (with an uppercased share path) would exploit it if the budget ever
 tightens. Not needed at current sizes.
 
+## A library of your own tracks *(planned)*
+
+The custom slot in the setup picker is the first step; the shape it grows into:
+
+- **A track's identity is a UUID, not its name.** Once designs arrive from
+  other people by link/QR, two of them *will* be called "Hairpin" — so name
+  can't be identity without forcing renames on import. A UUID also keeps
+  hiscores stable across a rename (they key on `Track.id`).
+- **Names are for humans and need not be unique.** Duplicates are the author's
+  business; the UI can warn ("you already have a track called that") without
+  blocking. Requiring uniqueness only creates dead ends.
+- **Editing any track starts a copy.** Opening a built-in or an imported track
+  in the editor copies it into your library with a fresh UUID and a default
+  name ("Hairpin (copy)"), so the original is never mutated and there's no
+  "pick a new name" gate before you can start.
+- **The share code stays pure content.** It carries pieces, gates, origin and
+  theme — deliberately no id, because the receiving device mints its own UUID
+  on import. The *name* travels alongside as a new optional TLV section
+  (tag 5 `NAME`), which the budget table already has room for.
+
+**Signed tracks** *(wanted; sizing decided, not built)*. Each device holds an
+Ed25519 keypair in the Keychain with `kSecAttrSynchronizable` so it follows
+the user's iCloud, and a published track carries author + signature (tags 6
+`AUTHOR`, 7 `SIG`). What that buys is **attribution**, not integrity against a
+malicious sharer — anyone can strip a signature and re-sign as themselves,
+because nothing vouches for which key is whom. Useful for "by *author*" and
+for keying hiscores by (track, author); not an anti-cheat mechanism.
+
+The catch is the **QR budget**: 32-byte key + 64-byte signature = 96 B, which
+roughly triples a typical 46 B track and pushes the worst case past the V11
+ceiling the format promises to stay inside. So signing is an **optional
+section**, not mandatory: bare codes stay QR-sized, signatures ride along on
+links (or on a truncated 32-byte signature, which is ample for attribution).
+Keep the budget table honest when it lands.
+
 ## Open until wired up
 
 - **The catalog pass implementing the unit system** — renumber every
