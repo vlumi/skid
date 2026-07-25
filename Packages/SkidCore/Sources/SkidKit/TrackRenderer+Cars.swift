@@ -17,9 +17,22 @@ extension TrackRenderer {
         for ghost in scene.ghosts where !ghost.isAirborne {
             draw(car: ghost, color: .white, opacity: 0.38, into: &context)
         }
-        // A car on a ramp slope draws ABOVE the deck, so its nose never slides
+        // A car climbing a ramp draws ABOVE the deck, so its nose never slides
         // under the bridge edge on the way up.
-        func onRamp(_ car: Car) -> Bool { track.isOnRamp(car.state.position) }
+        //
+        // It must be ON the ramp, not merely near one: asking only "is there
+        // sloped road at this spot" was true for a car on the grass beside a ramp
+        // and for one on the road passing under the bridge, so those were promoted
+        // into the elevated pass and drawn up on the deck. The debug overlay caught
+        // it — a car reading "h 0.00 / grass / off road 101" drawn on the bridge.
+        //
+        // Being on the ramp means: at the ramp's height AND on its asphalt.
+        func onRamp(_ car: Car) -> Bool {
+            let state = car.state
+            guard track.isOnRamp(state.position, height: state.height) else { return false }
+            return track.distanceToCenterline(state.position, height: state.height)
+                <= track.width / 2
+        }
         // "On the ground" is now a height comparison, not a layer test.
         func onGround(_ car: Car) -> Bool { car.state.height <= 0.5 }
         for (index, car) in race.cars.enumerated()
@@ -52,12 +65,7 @@ extension TrackRenderer {
                 && track.distanceToCenterline(car.state.position, height: 1)
                     < track.width / 2 + 8
             {
-                let p = car.state.position
-                let bubble = CGRect(x: p.x - 15, y: p.y - 15, width: 30, height: 30)
-                context.fill(
-                    Path(ellipseIn: bubble), with: .color(colorAt(index).opacity(0.55)))
-                context.stroke(
-                    Path(ellipseIn: bubble), with: .color(.white.opacity(0.85)), lineWidth: 2.5)
+                drawBubble(at: car.state.position, color: colorAt(index), into: &context)
             }
             // Bridge cars, and ramp climbers on their way up/down: scaled
             // SMOOTHLY by the continuous height at their position (the same
@@ -78,6 +86,17 @@ extension TrackRenderer {
                 car: car.state, color: colorAt(index), scale: 1.22, shadow: true,
                 into: &context)
         }
+    }
+
+    /// A car hidden under the bridge, shown through it in its own color, so no
+    /// player is ever invisible.
+    private static func drawBubble(
+        at position: Vec2, color: Color, into context: inout GraphicsContext
+    ) {
+        let bubble = CGRect(x: position.x - 15, y: position.y - 15, width: 30, height: 30)
+        context.fill(Path(ellipseIn: bubble), with: .color(color.opacity(0.55)))
+        context.stroke(
+            Path(ellipseIn: bubble), with: .color(.white.opacity(0.85)), lineWidth: 2.5)
     }
 
     /// Ghost mode: overlapping pass-through cars go translucent so pileups

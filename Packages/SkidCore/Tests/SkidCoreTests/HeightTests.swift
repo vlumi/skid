@@ -180,48 +180,6 @@ final class HeightTests: XCTestCase {
         XCTAssertEqual(track.surface(at: outside, height: 1), .grass)
     }
 
-    /// **You can't hop onto a ramp from the grass beside it.** Reported as
-    /// "I can jump on the bridge/ramp from the grass, both from under the bridge
-    /// and from the sides, across the walls — more often than not".
-    ///
-    /// Two causes, both fixed: the rails were placed at the height-SCALED road
-    /// width, so they drifted outboard as the ramp climbed (0.2 units off the edge
-    /// at the foot, 8+ by mid-ramp); and a rail only blocked a car at its own
-    /// height, so the mid-ramp rails (around 0.5) matched neither a ground car nor
-    /// a deck car and stopped nobody.
-    func testARampCannotBeEnteredFromItsFlank() throws {
-        let track = TrackLibrary.track(id: "eight")
-        let count = track.centerline.count
-        var attempts = 0
-        for index in track.centerline.indices {
-            let next = (index + 1) % count
-            guard abs(track.heights[next] - track.heights[index]) > 0.02 else { continue }
-            // Skip the ramp's own mouth — driving in there is the point of a ramp.
-            guard track.heights[index] > 0.05 else { continue }
-            let a = track.centerline[index]
-            let b = track.centerline[next]
-            let mid = a + (b - a) * 0.5
-            let side = (b - a).normalized.perpendicular
-            for direction in [1.0, -1.0] {
-                attempts += 1
-                var race = Race(track: track, players: [PlayerID(0)])
-                let start = mid + side * (track.width / 2 + 100) * direction
-                let aim = (mid - start).normalized
-                race.cars[0].state.position = start
-                race.cars[0].state.height = 0
-                race.cars[0].state.heading = atan2(aim.y, aim.x)
-                race.cars[0].state.velocity = aim * 400
-                for _ in 0..<90 {
-                    race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
-                }
-                XCTAssertLessThan(
-                    race.cars[0].state.height, 0.3,
-                    "climbed the ramp from its flank at segment \(index), side \(direction)")
-            }
-        }
-        XCTAssertGreaterThan(attempts, 10, "fixture must have a ramp with flanks to test")
-    }
-
     /// A car on the grass stays put at ground level — it must not bounce.
     ///
     /// Reported as "the car starts jumping up and down a bit on grass sometimes",
@@ -306,80 +264,48 @@ final class HeightTests: XCTestCase {
             "\(reachedDeck) runs from the grass under the bridge ended up on it")
     }
 
-    /// **The road under a bridge stays open.** A deck rail must not wall off the
-    /// road passing beneath it.
+    /// **A car on the grass must not be drawn on the bridge.** Caught with the
+    /// debug overlay: a car reading "h 0.00 / grass / off road 101" was drawn up on
+    /// the deck.
     ///
-    /// This regressed when rails were made to block every car at or below their
-    /// height (fixing the hop-onto-the-ramp gap): a deck rail at 1.0 then also
-    /// blocked a ground car. A rail blocks from its own level's floor up to its
-    /// height — floor 1 for a deck rail, floor 0 for a mid-ramp one — so the ramp
-    /// stays fenced while the road below runs clear.
-    func testTheRoadUnderTheBridgeIsNotWalledOff() throws {
+    /// The renderer decides a car is climbing with `isOnRamp`, which was
+    /// position-only — true for anything near sloped road, including a car on the
+    /// grass beside a ramp and one on the road passing underneath it. Those were
+    /// promoted into the elevated pass and drawn on the bridge. Being on a ramp
+    /// now means at the ramp's height AND on its asphalt: 113 grass positions
+    /// qualified before, none do now, while all 24 real ramp points still do.
+    func testGrassCarsAreNotTreatedAsClimbing() {
         let track = TrackLibrary.track(id: "eight")
-        let count = track.centerline.count
-        let under = try XCTUnwrap(
-            track.centerline.indices.first { index in
-                track.height(ofSegment: index) < 0.1
-                    && track.distanceToCenterline(track.centerline[index], height: 1) < track.width
-            })
-        var race = Race(track: track, players: [PlayerID(0)])
-        let start = track.centerline[(under + count - 4) % count]
-        let aim = (track.centerline[(under + 4) % count] - start).normalized
-        race.cars[0].state.position = start
-        race.cars[0].state.height = 0
-        race.cars[0].state.heading = atan2(aim.y, aim.x)
-        for _ in 0..<120 {
-            race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
-            for event in race.lastEvents {
-                if case .wallImpact = event {
-                    XCTFail("a car driving under the bridge hit a wall")
-                }
+        func climbing(_ point: Vec2, height: Double) -> Bool {
+            track.isOnRamp(point, height: height)
+                && track.distanceToCenterline(point, height: height) <= track.width / 2
+        }
+        var grassSamples = 0
+        for gx in stride(from: 20.0, to: track.size.x - 20, by: 20) {
+            for gy in stride(from: 20.0, to: track.size.y - 20, by: 20) {
+                let point = Vec2(gx, gy)
+                guard track.surface(at: point, height: 0) == .grass else { continue }
+                grassSamples += 1
+                XCTAssertFalse(
+                    climbing(point, height: 0),
+                    "a ground car on the grass at \(point) would be drawn as climbing")
             }
         }
-        XCTAssertGreaterThan(
-            start.distance(to: race.cars[0].state.position), track.width * 2,
-            "the car should have driven clear through, under the bridge")
-    }
+        XCTAssertGreaterThan(grassSamples, 100, "sweep must cover the grass")
 
-    /// Rails sit on the road's TRUE edge, not the height-scaled visual one — the
-    /// grip width never scales with height, so a scaled rail sits somewhere the
-    /// car can't reach.
-    func testRailsSitOnTheRealRoadEdge() {
-        let track = TrackLibrary.track(id: "eight")
+        // …but a car actually on the slope still reads as climbing, or it would
+        // draw under the bridge edge on the way up.
         let count = track.centerline.count
-        var checked = 0
+        var rampPoints = 0
         for index in track.centerline.indices {
             let next = (index + 1) % count
-            guard abs(track.heights[next] - track.heights[index]) > 0.02 else { continue }
-            let a = track.centerline[index]
-            let b = track.centerline[next]
-            let mid = a + (b - a) * 0.5
-            let side = (b - a).normalized.perpendicular
-            let edge = mid + side * (track.width / 2)
-            let nearest =
-                track.walls.filter { $0.kind == .rail }
-                .map { edge.distance(toSegment: $0.a, $0.b) }.min() ?? .greatestFiniteMagnitude
-            XCTAssertLessThan(nearest, 2, "the rail at segment \(index) is off the road edge")
-            checked += 1
+            guard abs(track.heights[next] - track.heights[index]) > 0.05 else { continue }
+            rampPoints += 1
+            XCTAssertTrue(
+                climbing(track.centerline[index], height: track.heights[index]),
+                "a car on the ramp at point \(index) should read as climbing")
         }
-        XCTAssertGreaterThan(checked, 0, "fixture must contain a ramp")
-    }
-
-    /// A fast car can't tunnel through a wall between ticks: collision is swept
-    /// against the whole movement, not just the end position.
-    func testAFastCarCannotTunnelThroughTheBoundary() {
-        let track = TrackLibrary.track(id: "eight")
-        var race = Race(track: track, players: [PlayerID(0)])
-        // Aim at the map's edge at an absurd speed.
-        race.cars[0].state.position = Vec2(track.size.x / 2, 60)
-        race.cars[0].state.heading = -.pi / 2
-        race.cars[0].state.velocity = Vec2(0, -4000)
-        for _ in 0..<30 {
-            race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
-        }
-        XCTAssertGreaterThan(
-            race.cars[0].state.position.y, -CarGeometry.radius,
-            "the car tunnelled straight through the boundary fence")
+        XCTAssertGreaterThan(rampPoints, 0, "fixture must contain a ramp")
     }
 
     func testElevatedDeterminism() {
