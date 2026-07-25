@@ -16,6 +16,12 @@ right after the driving is proven; networking is deliberately last among the
 features because deterministic lockstep is designed in from the first line of
 the sim, not bolted on.
 
+One thing that order leaves for late: the game *around* the race. Today a result
+evaporates the moment it ends — no profiles, no standings, nothing to beat
+tomorrow. **v0.9.0 is that layer**, deliberately after the technical foundation
+(editor, platforms, networking) rather than before it, since profiles and shared
+times both lean on identity and transport decisions those milestones settle.
+
 ---
 
 Shipped milestones (v0.1–v0.5) are summarized in the
@@ -26,45 +32,35 @@ Shipped milestones (v0.1–v0.5) are summarized in the
 
 Hand-authoring track geometry hit its quality ceiling; a **phone-first**
 editor with a small piece catalog is the answer, and its data becomes the
-sharing format. Design settled — see [docs/track-pieces.md](docs/track-pieces.md);
-approach:
+sharing format. Design settled — see [docs/track-pieces.md](docs/track-pieces.md).
 
-- [ ] **Piece model, headless first.** A track is a port-graph of quantized
-      catalog pieces (straights/curves/ramps/crossings/forks/jumps), snapped
-      **port-to-port** ("magnet", no real grid) and stored as a flat piece
-      list. Validity = every port mated; loose ends = unsaveable. Compiles to
-      the runtime `Track` — rings + crossings + jumps first (Phase A);
-      **forked routes need engine work** (multi-route `Track`, AI branch
-      choice) and compile in Phase B. Build + test as pure logic before any
-      UI, **alongside** the free-form `TrackDesign` path (don't entangle it).
-- [ ] **Phone-first editor UI** on top: tap-a-piece, tap-a-port, thumb-
-      reachable palette, one-handed pan/zoom, no precision gestures. Must be
-      genuinely usable on a phone, not a big-screen-only afterthought (iPad
-      is an authoring convenience, not the design target).
-- [ ] **Shareable tracks** — a track is a short list of piece ids, so it
-      base64s into a short URL at `skid.misaki.fi/t/<code>`. Hard goal: **any
-      design fits in a scannable QR code** (budget table in the design doc —
-      keep it honest as encoding sections are added).
-- [ ] Wire editor output into track selection / the game.
-- [ ] *Open, decide with the editor in hand:* whether built-ins migrate to
-      the piece model (replace) or stay free-form `TrackDesign` (layer) —
-      hinges on whether the catalog can rebuild Hairpin/Overpass well.
-- [ ] **Content convention: taller track aspect.** All maps get redrawn in
-      the editor; author them ~**1.2:1** (e.g. ~1600×1333) instead of today's
-      1.6:1, so the map is ~⅓ bigger on the smallest phone while still leaving
-      ≥132pt control bands. Engine is already aspect-agnostic (`fittedMapRect`
-      + the couch bands adapt) — this is purely an authoring choice, nothing
-      to build, but it belongs with the editor since that's where maps are made.
-- [ ] **Catalog beyond road pieces — decorations.** On-road arrows, trees,
-      buildings, walls (scenery + directional markers, not just track
-      segments). Placed in the editor.
-- [ ] **Gates at seams only, editor-marked.** A gate anchors to the boundary
-      between two pieces (a port), not mid-segment; the author marks which
-      seams count (start/finish fixed at seam 0, up to 16 gates total).
-- [ ] **Rougher hazard shapes + surface textures.** Water/oil/mud shouldn't
-      be perfect circles — rotatable, combinable blobs. Plus textures for most
-      surfaces eventually (grass, mud); asphalt stays plain gray. Rendering
-      polish, lands alongside the decorations catalog.
+Most of this milestone has landed: the piece model, the editor, share codes,
+continuous-height bridges, and the built-ins rebuilt from pieces (the old
+free-form `TrackDesign` path is gone, so there is now exactly one track engine).
+What's left:
+
+- [ ] **Catalog beyond road pieces.** More road pieces (the palette is still
+      small), plus **decorations**: on-road arrows, trees, buildings, walls
+      (scenery + directional markers, not just track segments). Placed in the
+      editor. Fold in the **ramp-wall vs deck-rail visual distinction** — a ramp
+      wall reaches the ground, a deck rail only exists up top, and today they
+      look identical, so where a car can pass underneath isn't readable.
+- [ ] **Hazards as placeable pieces.** Water/oil/mud left with the old
+      hand-authored tracks and needs to come back as something you place. Not
+      perfect circles — rotatable, combinable blobs. Plus surface textures for
+      grass and mud eventually (asphalt stays plain gray).
+- [ ] **Crossings and jumps in the compiler.** The catalog has the geometry and
+      the editor has the buttons hidden; the Phase-A compiler can't build either
+      yet. (Forked routes are further out still — they need a multi-route
+      `Track` and AI branch choice.)
+- [ ] **Track size classes.** Bigger canvases for bigger screens: a track
+      declares its size, and the oversized ones are iPad/Mac-only. Lets much
+      more elaborate courses exist without making them unplayable on a phone.
+- [ ] **A real track library.** Many named tracks with stable identity (UUID),
+      not one "My track" slot — plus import by link/QR, and signing so a shared
+      track carries its author. See docs/track-pieces.md for the settled plan.
+- [ ] **Editor conveniences.** Build from either end of a chain, not just the
+      last loose end. Longer term: undo.
 
 ## v0.7.0 — Mac, physical controls & orientation
 
@@ -103,6 +99,41 @@ indirection from the couch redesign keeps them localized.
       in a networked race (or a vote/host-only pause). Decide here, not in the
       couch code.
 
+## v0.9.0 — Making it a game: profiles, records, tournaments
+
+**The gap this fills.** Everything so far is a driving toy: you race, and the
+result evaporates. There's no reason to come back tomorrow, nothing to beat, and
+nothing to argue about with the person next to you. The pieces are closer than
+they look — per-track personal bests and full ghost recordings already persist,
+keyed by track id — but nothing above them ties results to *people* or to a
+series.
+
+Ordered so each step is useful on its own:
+
+- [ ] **Local player profiles.** A chosen name at minimum, on-device only (no
+      accounts, no server — see "out of scope"). Everything below hangs off
+      this, which is why it's first. Open question: allow ad-hoc anonymous
+      players, or make everyone pick a name up front?
+- [ ] **Records that stick, and are worth looking at.** Best lap and best race
+      already persist per track; make them visible and per-profile — a results
+      screen worth reading, "you beat your best" in the moment, and a per-track
+      board of who on this device holds what.
+- [ ] **Tournaments.** A series of races across one or more couch sessions, with
+      standings per profile. Also *unlocks* the **reverse-standings grid** (race
+      N starts in reverse order of the standings after N−1, worst on pole; ties
+      broken by the seeded RNG), which is blocked today purely for lack of a
+      cross-race standings layer. Decide: fixed cups, or pick-your-own series?
+- [ ] **Send a time to a friend.** A ghost is a seed plus an input stream, so
+      it's small — the same trick as a track code. Share a time as a link/QR,
+      import it, and race against their ghost on your device. Needs the track
+      identity from the library work, so the two ends agree on which course a
+      time belongs to. **This is the closest thing to online play that stays
+      within "no server":** asynchronous, peer-shared, no accounts. Landing after
+      v0.8 means the track-identity and transport questions are already answered.
+- [ ] **Career ladder** with cosmetic-only unlocks (liveries, effects) to show
+      off when racing others — never performance. Wants profiles and tournaments
+      under it first.
+
 ## v1.0.0 — The store release
 
 - [ ] **Final polish & balancing pass.** With all content and controls
@@ -127,16 +158,11 @@ indirection from the couch redesign keeps them localized.
 - [ ] **Map themes**: whole-map looks beyond grass (sand/desert, snow, …).
       The track format already carries a `theme` field; the renderer learns
       it when the first non-grass theme lands.
-- [ ] **Per-edge road styling**: the two road edges styled independently —
-      the classic red/white striped kerb on the **outer edge of curves**,
-      plain white on straights (and inner edges). In the piece model this is
-      renderer support keyed off piece kind/curve side (a decal-style variant,
-      not new geometry); the free-form format also has a per-corner `kerb`
-      flag. Pending renderer work.
 - [ ] Full replay viewer (watch/scrub any stored run — the data exists from
-      v0.2); shareable ghost files between devices
-- [ ] Full vertical loops — the crazy one; only if the two-layer jump model
-      proves fun (and readable) in play
+      v0.2). Sharing a run as a ghost is in v0.6.5.
+- [ ] Full vertical loops — the crazy one; only if bridges and jumps prove fun
+      (and readable) in play. Note elevation is now a continuous height, not two
+      layers, so a loop is no longer obviously outside the model.
 - [ ] Procedural track variations (the editor's piece catalog could seed
       these) — a maybe, not a commitment
 - [ ] Damage/pickup mischief (dropped oil, turbo) — only if the core race
@@ -144,23 +170,14 @@ indirection from the couch redesign keeps them localized.
 - [ ] Finnish/Japanese localization (String Catalog makes this
       translation-only)
 - [ ] Spectator dressing: stands, trackside props, crowd texture
-- [ ] **Local player profiles**: a chosen name at minimum, all on-device
-      (no server accounts). Open question: allow ad-hoc anonymous players,
-      or track everyone from the start by the name they chose?
-- [ ] **Tournaments**: brackets/series across couch sessions, standings
-      per profile. *Would unlock* a **reverse-standings starting grid** (race
-      N grid = reverse of standings after N−1, worst on pole; ties broken by
-      the seeded RNG) — blocked today for lack of any persistent cross-race
-      standings layer.
-- [ ] **Career ladder** with cosmetic-only unlocks (liveries, effects) to
-      show off when racing others — never performance
 - [ ] **Different vehicles** — maybe; only if they stay balance-neutral
       (distinct look/feel, same competitive envelope)
-- [ ] *(Parked)* **Portable profiles**: bring your profile to someone
-      else's iPad and carry results home, cryptographically owned so nobody
-      can claim your player. Unsolved: nothing stops the same profile
-      "playing" on two devices at once — park it; may be moot once network
-      play exists (your device is your identity)
+- [ ] *(Parked)* **Portable profiles**: bring your profile to someone else's
+      iPad and carry results home, cryptographically owned so nobody can claim
+      your player. Unsolved: nothing stops the same profile "playing" on two
+      devices at once. Now that profiles land *after* networked play (v0.9 after
+      v0.8), revisit it there — if your device is your identity on the network,
+      this may be moot.
 
 ## Deliberately out of scope
 
