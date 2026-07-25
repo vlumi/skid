@@ -57,7 +57,16 @@ public enum PieceCompiler {
 
         // The centerline is a closed loop; drop the duplicated closing point
         // (last == first by closure) so the runtime's wraparound is clean.
-        if centerline.count > 1, centerline.first == centerline.last {
+        //
+        // Compared with a TOLERANCE, not `==`. Loop closure is exact in the
+        // `Coord` ring, but these points have been lowered to `Vec2`, where the
+        // last point can miss the first by an ULP or two — leaving a
+        // zero-length closing segment that later float work can round into
+        // visibility. A hair under a millimetre of road is far below anything
+        // geometric and safely above accumulated rounding.
+        if centerline.count > 1, let first = centerline.first, let last = centerline.last,
+            (last - first).length < 0.001
+        {
             centerline.removeLast()
         }
 
@@ -71,7 +80,23 @@ public enum PieceCompiler {
 
         let (slots, heading) = startGrid(at: walk.placed[0])
 
-        return Track(
+        // Frame the track on what it ACTUALLY occupies, not on the whole
+        // allowance.
+        //
+        // `Track.size` is the renderer's letterbox: it fits `size` to the screen
+        // and centers on `size / 2`. Reporting the full canvas here meant every
+        // piece-built track was drawn at the scale of the largest *permitted*
+        // track and centered on the canvas rather than on itself — so a 1200×960
+        // oval rendered small and shoved off to one side, with part of it off
+        // screen. Built-in tracks never showed this because a `TrackDesign`
+        // carries a hand-authored `size` that matches its layout.
+        //
+        // Two halves, both required: measure the real footprint, AND move the
+        // geometry so it starts at the origin, since the renderer assumes the
+        // world runs 0…size.
+        // Gates reach OUTBOARD of the asphalt (running wide onto the grass still
+        // counts), so they'd stick out of a frame measured from the road alone.
+        let unframed = Track(
             id: id,
             centerline: centerline,
             width: Double(PieceCatalog.width),
@@ -81,6 +106,90 @@ public enum PieceCompiler {
             startSlots: slots,
             startHeading: heading,
             size: TrackValidator.canvas)
+        return framed(unframed)
+    }
+
+    /// Re-frame a track onto its own footprint: report its true extent as `size`,
+    /// and move its geometry to start at the origin.
+    private static func framed(_ track: Track) -> Track {
+        let bounds = footprint(
+            of: track.centerline, gates: track.gates, slots: track.startSlots)
+        let shift = Vec2(-bounds.origin.x, -bounds.origin.y)
+        var framed = track
+        framed.centerline = track.centerline.map { $0 + shift }
+        // Only the POSITIONS shift; `forward` is a direction and must not.
+        framed.ramps = track.ramps.map { ramp in
+            Ramp(
+                from: ramp.a + shift, to: ramp.b + shift, forward: ramp.forward,
+                fromLayer: ramp.fromLayer, toLayer: ramp.toLayer, launches: ramp.launches)
+        }
+        framed.gates = track.gates.map { gate in
+            Gate(
+                from: gate.a + shift, to: gate.b + shift, forward: gate.forward,
+                layer: gate.layer)
+        }
+        framed.startSlots = track.startSlots.map { $0 + shift }
+        framed.size = bounds.size
+        // `pit` defaults to the center of whatever `size` was at init, so it has
+        // to be re-derived from the new frame rather than shifted.
+        framed.pit = bounds.size * 0.5
+        return framed
+    }
+
+    /// The frame to draw the track in: centered on the ROAD, and grown
+    /// symmetrically until the chrome fits.
+    ///
+    /// Centering is the whole point here. The renderer places the map by fitting
+    /// this frame to the screen, so whatever is off-center *inside* the frame is
+    /// off-center on screen. Measuring the raw bounding box of everything drawn
+    /// gets that wrong: gates deliberately reach outboard over the grass, and a
+    /// gate on one side only (an oval with a checkpoint on the right straight)
+    /// pushed the box out on that side alone — leaving a few pixels of grass on
+    /// the left and a visibly bigger band on the right.
+    ///
+    /// So: take the road's own box (symmetric by construction), then for each
+    /// axis find the largest overhang of any gate end or grid slot beyond it, and
+    /// add that much to BOTH sides. The chrome still fits, and the road stays
+    /// centered.
+    private static func footprint(of centerline: [Vec2], gates: [Gate], slots: [Vec2])
+        -> Footprint
+    {
+        guard !centerline.isEmpty else { return Footprint(origin: .zero, size: Vec2(1, 1)) }
+        // Half the road, plus the widest thing drawn outboard of it. A deck is
+        // wider still (Elevation.scale), so allow for that too.
+        let half =
+            Double(PieceCatalog.width) / 2 * Elevation.scale(atHeight: 1)
+            + Double(PieceCatalog.kerbBand)
+        let xs = centerline.map { $0.x }
+        let ys = centerline.map { $0.y }
+        var minX = xs.min()! - half
+        var maxX = xs.max()! + half
+        var minY = ys.min()! - half
+        var maxY = ys.max()! + half
+
+        // The chrome's worst overhang on each axis, applied to both sides so the
+        // road stays in the middle.
+        var padX = 0.0
+        var padY = 0.0
+        for point in gates.flatMap({ [$0.a, $0.b] }) + slots {
+            padX = max(padX, minX - point.x, point.x - maxX)
+            padY = max(padY, minY - point.y, point.y - maxY)
+        }
+        minX -= padX
+        maxX += padX
+        minY -= padY
+        maxY += padY
+        return Footprint(
+            origin: Vec2(minX, minY), size: Vec2(maxX - minX, maxY - minY))
+    }
+
+    /// Where a compiled track sits and how big it is — the two numbers the
+    /// renderer's letterbox needs.
+    private struct Footprint {
+        /// The top-left corner, in the coordinates the walk produced.
+        var origin: Vec2
+        /// The extent, which becomes `Track.size`.
+        var size: Vec2
     }
 
     // MARK: - Centerline

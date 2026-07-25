@@ -16,7 +16,22 @@ public enum PieceCatalog {
     public static let unit = 120
 
     /// One global road width in v1, so every port mates trivially. Width == U.
+    ///
+    /// This is the **grip width**: the asphalt a car drives on, and what
+    /// collision and `Elevation.scale` work from. Edge decoration lives
+    /// *outboard* of it (see `edgeLine` / `kerbBand`) and never eats into it.
     public static let width = unit
+
+    /// The thin white line every road edge carries — the default look, painted
+    /// just outside the grip surface. It marks the edge without pretending to
+    /// be a feature.
+    public static let edgeLine = unit / 20  // 6
+
+    /// The red/white kerb band, for edges that earn one — a curve's outer edge,
+    /// an apex. Wider than the plain line, and also entirely outboard: a kerb is
+    /// paint, so it never narrows the road, counts as asphalt if a car touches
+    /// it (no slowdown, no barrier), and grass starts only past it.
+    public static let kerbBand = unit / 8  // 15
 
     /// The three curve radii — measured to the road **center** — on the same
     /// 1:2:4 doubling as the straights. The tight radius equals a full width,
