@@ -14,7 +14,7 @@ public enum PieceCompiler {
     }
 
     /// Arc sampling density — matches the existing ≤6°/segment convention.
-    private static let degreesPerSample = 6.0
+    static let degreesPerSample = 6.0
 
     public static func compile(_ layout: TrackLayout, id: String = "") throws -> Track {
         let validation = TrackValidator.validate(layout)
@@ -108,9 +108,13 @@ public enum PieceCompiler {
                 from: gate.a + shift, to: gate.b + shift, forward: gate.forward,
                 layer: gate.layer)
         }
-        framed.walls = track.walls.map { wall in
-            Wall(from: wall.a + shift, to: wall.b + shift, layer: wall.layer)
-        }
+        framed.walls =
+            track.walls.map { wall in
+                Wall(from: wall.a + shift, to: wall.b + shift, layer: wall.layer)
+            }
+            // The fence goes on AFTER re-framing, since it's defined against the
+            // final `size` rather than against the walked coordinates.
+            + boundaryWalls(size: bounds.size)
         framed.startSlots = track.startSlots.map { $0 + shift }
         framed.size = bounds.size
         // `pit` defaults to the center of whatever `size` was at init, so it has
@@ -242,49 +246,6 @@ public enum PieceCompiler {
             }
         }
         return road
-    }
-
-    /// Guard rails down both edges of an elevated piece, as runtime walls.
-    ///
-    /// Follows the piece's own samples so a curved deck gets a curved rail, and
-    /// offsets by the SAME height-scaled half-width the renderer uses
-    /// (`Elevation.scale`) — otherwise the barrier a car hits would sit somewhere
-    /// other than the edge it can see.
-    ///
-    /// A ramp gets rails too, tapering with the climb: it's the stretch where a
-    /// car is most likely to slide off, and the editor draws them there.
-    private static func deckRails(of placed: PlacedPiece) -> [Wall] {
-        let samples = placed.heightedSamples(degreesPerSample: degreesPerSample)
-        guard samples.count >= 2 else { return [] }
-        let entryDir = Vec2(angle: placed.entry.heading.radians)
-        let exitDir = Vec2(angle: placed.exits[0].heading.radians)
-        var left: [Vec2] = []
-        var right: [Vec2] = []
-        for index in samples.indices {
-            let direction: Vec2
-            if index == 0 {
-                direction = entryDir
-            } else if index == samples.count - 1 {
-                direction = exitDir
-            } else {
-                direction = (samples[index + 1].point - samples[index - 1].point).normalized
-            }
-            let half =
-                Double(PieceCatalog.width) / 2 * Elevation.scale(atHeight: samples[index].height)
-            let side = direction.perpendicular * half
-            left.append(samples[index].point + side)
-            right.append(samples[index].point - side)
-        }
-        // The rail's layer is the deck it belongs to; a ramp's rail guards the
-        // climb, so take the higher of its two ends.
-        let layer = Int(max(placed.entryHeight, placed.exitHeight).rounded())
-        var rails: [Wall] = []
-        for edge in [left, right] {
-            for index in 1..<edge.count {
-                rails.append(Wall(from: edge[index - 1], to: edge[index], layer: layer))
-            }
-        }
-        return rails
     }
 
     /// The layer-switch line for a ramp piece, at the ramp's **high end**.
