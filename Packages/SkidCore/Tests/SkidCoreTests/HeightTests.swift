@@ -180,6 +180,123 @@ final class HeightTests: XCTestCase {
         XCTAssertEqual(track.surface(at: outside, height: 1), .grass)
     }
 
+    /// **You can't hop onto a ramp from the grass beside it.** Reported as
+    /// "I can jump on the bridge/ramp from the grass, both from under the bridge
+    /// and from the sides, across the walls — more often than not".
+    ///
+    /// Two causes, both fixed: the rails were placed at the height-SCALED road
+    /// width, so they drifted outboard as the ramp climbed (0.2 units off the edge
+    /// at the foot, 8+ by mid-ramp); and a rail only blocked a car at its own
+    /// height, so the mid-ramp rails (around 0.5) matched neither a ground car nor
+    /// a deck car and stopped nobody.
+    func testARampCannotBeEnteredFromItsFlank() throws {
+        let track = TrackLibrary.track(id: "eight")
+        let count = track.centerline.count
+        var attempts = 0
+        for index in track.centerline.indices {
+            let next = (index + 1) % count
+            guard abs(track.heights[next] - track.heights[index]) > 0.02 else { continue }
+            // Skip the ramp's own mouth — driving in there is the point of a ramp.
+            guard track.heights[index] > 0.05 else { continue }
+            let a = track.centerline[index]
+            let b = track.centerline[next]
+            let mid = a + (b - a) * 0.5
+            let side = (b - a).normalized.perpendicular
+            for direction in [1.0, -1.0] {
+                attempts += 1
+                var race = Race(track: track, players: [PlayerID(0)])
+                let start = mid + side * (track.width / 2 + 100) * direction
+                let aim = (mid - start).normalized
+                race.cars[0].state.position = start
+                race.cars[0].state.height = 0
+                race.cars[0].state.heading = atan2(aim.y, aim.x)
+                race.cars[0].state.velocity = aim * 400
+                for _ in 0..<90 {
+                    race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
+                }
+                XCTAssertLessThan(
+                    race.cars[0].state.height, 0.3,
+                    "climbed the ramp from its flank at segment \(index), side \(direction)")
+            }
+        }
+        XCTAssertGreaterThan(attempts, 10, "fixture must have a ramp with flanks to test")
+    }
+
+    /// A car on the grass stays put at ground level — it must not bounce.
+    ///
+    /// Reported as "the car starts jumping up and down a bit on grass sometimes",
+    /// visible as dotted tyre tracks. Cause: a car on the grass beside a ramp
+    /// picked up the nearby slope's height, drifted over the tolerance, was
+    /// declared off-the-deck, and got a short hop — repeatedly. Only road the car
+    /// is actually on may carry it.
+    /// Swept over the whole infield rather than one spot, because the bug only
+    /// fired near a ramp: on the old code 36 of 202 grass starts took off, and
+    /// none do now.
+    func testACarOnGrassDoesNotBounce() {
+        let track = TrackLibrary.track(id: "eight")
+        var starts = 0
+        for gx in stride(from: 40.0, to: track.size.x - 40, by: 60) {
+            for gy in stride(from: 40.0, to: track.size.y - 40, by: 60) {
+                let start = Vec2(gx, gy)
+                guard track.surface(at: start, height: 0) == .grass else { continue }
+                starts += 1
+                var race = Race(track: track, players: [PlayerID(0)])
+                race.cars[0].state.position = start
+                race.cars[0].state.height = 0
+                race.cars[0].state.heading = 0.7
+                race.cars[0].state.velocity = Vec2(angle: 0.7) * 300
+                for _ in 0..<120 {
+                    race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
+                    XCTAssertFalse(
+                        race.cars[0].state.isAirborne,
+                        "a car driving on the grass from \(start) took off")
+                }
+            }
+        }
+        XCTAssertGreaterThan(starts, 50, "sweep must actually cover the infield")
+    }
+
+    /// Rails sit on the road's TRUE edge, not the height-scaled visual one — the
+    /// grip width never scales with height, so a scaled rail sits somewhere the
+    /// car can't reach.
+    func testRailsSitOnTheRealRoadEdge() {
+        let track = TrackLibrary.track(id: "eight")
+        let count = track.centerline.count
+        var checked = 0
+        for index in track.centerline.indices {
+            let next = (index + 1) % count
+            guard abs(track.heights[next] - track.heights[index]) > 0.02 else { continue }
+            let a = track.centerline[index]
+            let b = track.centerline[next]
+            let mid = a + (b - a) * 0.5
+            let side = (b - a).normalized.perpendicular
+            let edge = mid + side * (track.width / 2)
+            let nearest =
+                track.walls.filter { $0.kind == .rail }
+                .map { edge.distance(toSegment: $0.a, $0.b) }.min() ?? .greatestFiniteMagnitude
+            XCTAssertLessThan(nearest, 2, "the rail at segment \(index) is off the road edge")
+            checked += 1
+        }
+        XCTAssertGreaterThan(checked, 0, "fixture must contain a ramp")
+    }
+
+    /// A fast car can't tunnel through a wall between ticks: collision is swept
+    /// against the whole movement, not just the end position.
+    func testAFastCarCannotTunnelThroughTheBoundary() {
+        let track = TrackLibrary.track(id: "eight")
+        var race = Race(track: track, players: [PlayerID(0)])
+        // Aim at the map's edge at an absurd speed.
+        race.cars[0].state.position = Vec2(track.size.x / 2, 60)
+        race.cars[0].state.heading = -.pi / 2
+        race.cars[0].state.velocity = Vec2(0, -4000)
+        for _ in 0..<30 {
+            race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
+        }
+        XCTAssertGreaterThan(
+            race.cars[0].state.position.y, -CarGeometry.radius,
+            "the car tunnelled straight through the boundary fence")
+    }
+
     func testElevatedDeterminism() {
         func run() -> Race {
             var race = Race(

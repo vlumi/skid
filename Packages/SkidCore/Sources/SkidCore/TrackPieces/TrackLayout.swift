@@ -4,7 +4,7 @@ import Foundation
 /// pose (the start line, on the fixed canvas), the gate seam indices, and a
 /// theme. This is exactly what the share code carries. Geometry is never
 /// stored — it derives from walking the list.
-public struct TrackLayout: Equatable, Sendable {
+public struct TrackLayout: Equatable, Sendable, Codable {
     public enum Theme: Int, Equatable, Sendable, Codable {
         case normal = 0, snow = 1, sand = 2
     }
@@ -56,11 +56,6 @@ public struct PlacedPiece: Equatable, Sendable {
     /// Height at this piece's exit.
     public var exitHeight: Double { entryHeight + piece.heightDelta }
 
-    /// The discrete surface a car on this piece collides with — derived from
-    /// height, not stored. Rounds so a flat deck piece (height 1) is layer 1,
-    /// ground (0) is layer 0; a ramp mid-climb rounds to whichever it's nearer.
-    public var layer: Int { Int(exitHeight.rounded()) }
-
     /// Height at fraction `f` (0…1) along this piece, eased with **smoothstep**
     /// so a ramp meets the ground and deck smoothly rather than with hard
     /// creases. Flat pieces stay constant; the whole visual scale (road width,
@@ -76,6 +71,7 @@ public struct PlacedPiece: Equatable, Sendable {
     /// (eased along the piece). Renderers use this to vary road width / car
     /// scale continuously with elevation — a ramp widens as it climbs, no
     /// special-casing. First path only (the driven trunk).
+    ///
     /// A **sloped** piece is densified by its climb as well as by its curvature.
     /// Curvature alone leaves a straight ramp with just its two endpoints, so the
     /// height would step 0 → 1 in one go: the smoothstep never appears, and the

@@ -42,6 +42,12 @@ ships (see [AGENTS.md](AGENTS.md)).
   under it, cars on the deck and the road below pass cleanly, and a bridge is
   fenced along both edges. Ramps are for driving up — if you want to be launched,
   that's the jump piece.
+- **The editor and the race look the same, because they are the same.** The
+  race view now draws the track with the editor's renderer, off the same pieces —
+  so kerbs, guard rails, ramp shading and markings are identical whether you're
+  building a track or driving it, and there's no second renderer to drift out of
+  step. Bridge rails sit exactly on the road edge now, all the way down to the
+  foot of the ramp.
 - **You can't drive off the map any more.** Every track is bounded, so a spin
   at the edge no longer sends you out of the playfield.
 - **Painted edges and racing kerbs.** Every road now carries a thin white edge

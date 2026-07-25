@@ -15,11 +15,15 @@ extension EditorRenderer {
     /// are accumulated in WORLD units so stripe length never depends on zoom.
     static func drawAllEdges(
         walk: WalkResult, kerbs: KerbPlan, width: Double, t: Transform,
+        heightRange: ClosedRange<Double> = -1...2,
         into context: inout GraphicsContext
     ) {
         let stripeLength = width * 0.22
         for side in [true, false] {
-            for run in edgeRuns(walk: walk, kerbs: kerbs, width: width, side: side, t: t) {
+            for run in edgeRuns(
+                walk: walk, kerbs: kerbs, width: width, side: side,
+                within: (t, heightRange))
+            {
                 EdgeDecoration.draw(
                     run: run.samples, style: run.style,
                     band: bandWidth(run.style, t: t), stripeLength: stripeLength,
@@ -47,8 +51,11 @@ extension EditorRenderer {
     /// Break one side of the ring into runs of a single style, gathering samples
     /// across piece boundaries so a run is never cut short by a joint.
     private static func edgeRuns(
-        walk: WalkResult, kerbs: KerbPlan, width: Double, side: Bool, t: Transform
+        walk: WalkResult, kerbs: KerbPlan, width: Double, side: Bool,
+        within: (t: Transform, heightRange: ClosedRange<Double>)
     ) -> [EdgeRun] {
+        let t = within.t
+        let heightRange = within.heightRange
         var runs: [EdgeRun] = []
         var current: EdgeRun?
         var distance = 0.0
@@ -64,7 +71,10 @@ extension EditorRenderer {
 
         for (index, placed) in walk.placed.enumerated() {
             // Deck edges get guard rails instead, and break any run in progress.
-            guard placed.entryHeight <= 0.5, placed.exitHeight <= 0.5 else {
+            // A piece outside the requested height band breaks it too.
+            guard placed.entryHeight <= 0.5, placed.exitHeight <= 0.5,
+                heightRange.contains(max(placed.entryHeight, placed.exitHeight))
+            else {
                 close()
                 continue
             }

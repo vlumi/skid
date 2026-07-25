@@ -82,6 +82,7 @@ public enum PieceCompiler {
             ramps: ramps,
             walls: walls,
             gates: gates,
+            layout: layout,
             startSlots: slots,
             startHeading: heading,
             size: TrackValidator.canvas)
