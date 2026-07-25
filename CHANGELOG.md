@@ -26,7 +26,10 @@ ships (see [AGENTS.md](AGENTS.md)).
   knows whether to climb or descend — extending from a loose end until the loop
   closes back on itself. The layout renders live as you build, with a "build
   here" arrow on the end you're extending and construction stripes on any end
-  still open. (Test-driving and sharing your creations come next.)
+  still open. Tap a joint to mark a checkpoint, and when the loop closes you can
+  race it — there's a "My track" slot that keeps your design between sessions.
+  Copy puts a share code on the clipboard and Paste loads one back, so a track
+  can be kept or passed on until there's a proper track library.
 - **Painted edges and racing kerbs.** Every road now carries a thin white edge
   line, and corners earn red/white kerbs where a real circuit puts them: at the
   apex you cut, on the outside of a corner exit where you run wide under power,
@@ -34,26 +37,20 @@ ships (see [AGENTS.md](AGENTS.md)).
   the whole layout rather than piece by piece, so one continuous kerb can run
   across several pieces with an even stripe rhythm. All of it sits outboard of
   the road, so nothing narrows the surface you actually drive on.
-- **Your own tracks now fill the screen when you race them.** A track you build
-  is framed on what it actually occupies, so it's drawn at the right scale and
-  centered — previously every editor track was framed against the largest
-  *permitted* size, which left a smaller course rendered shrunken and pushed
-  off to one side with part of it past the screen edge.
 - **See the build limit, and turn your track.** The editor draws the size limit
   as a dashed boundary around your layout, with the edges turning red on
-  whichever axis has run out of room — so a grayed-out palette now has a visible
-  reason instead of leaving you guessing. A new Rotate button turns the whole
-  track 45° at a time, which reshapes its footprint (a diagonal course is long
-  and thin one way, square the other) and can bring an oversized layout back
-  within the limit. Fit, Center, and Rotate are now compact icons, so the top
-  bar stops wrapping on a small phone.
+  whichever axis has run out of room, so you can see why a piece won't fit. A
+  Rotate button turns the whole track 45° at a time, which reshapes its
+  footprint — a diagonal course is long and thin one way, square the other — and
+  can bring an oversized layout back within the limit. Fit, Center, and Rotate
+  are compact icons in the top bar.
 - **A ground-up track look, driven by height.** Elevation is now one smooth
   scale from ground to bridge deck: ramps taper as a true wedge (narrow at the
   bottom, wide at the top), the deck and the cars on it grow with height instead
   of popping between levels, and a car swells smoothly as it climbs. One
   "Deck scale" dial in the Tuning panel tunes the whole elevated look at once.
-  Bridges paint cleanly over the road beneath, ramps read as a climb with a
-  grade-marking chevron, and the road pieces join without gaps.
+  Bridges paint cleanly over the road beneath, and a ramp reads as a climb from
+  the grade-marking chevrons up its middle.
 
 ## v0.5.0
 
