@@ -207,13 +207,23 @@ public struct Track: Equatable, Sendable, Codable {
         self.pit = pit ?? size * 0.5
     }
 
-    /// How close two heights must be to count as the same surface.
-    ///
-    /// One road width's worth of climb, which is well under the gap between the
-    /// ground and a deck (1.0) but comfortably wider than the step between two
-    /// adjacent samples on a ramp — so a car is never judged to be on a
-    /// different surface from the stretch of road it is actually driving.
+    /// How close two heights must be to count as the same **level** — used for
+    /// things that belong to a level as a whole: which cars can collide, which
+    /// gate counts, which wall bites.
     public static let heightTolerance = 0.35
+
+    /// How closely a car's height must match a stretch of road to be standing
+    /// **on** it. Much tighter than `heightTolerance`, and deliberately so.
+    ///
+    /// These were the same number, and that single fact produced a family of
+    /// bugs. At 0.35 a car at height 0 counted as standing on a ramp that was
+    /// already 0.22 above it — measured as "asphalt / on road" from 50 units away
+    /// while the car was in fact underneath the slope. It got asphalt grip there,
+    /// and could then take the ramp's height and ride up onto the bridge from the
+    /// grass. Being *on* a surface is a much stricter question than being *at* a
+    /// level, so it gets its own, tighter answer: a shade over one tick's climb,
+    /// so a car driving a ramp keeps hold of it and nothing else does.
+    public static let surfaceTolerance = 0.12
 
     /// The height of a centerline point (0 = ground, 1 = deck).
     public func height(ofPoint index: Int) -> Double {
@@ -246,7 +256,7 @@ public struct Track: Equatable, Sendable, Codable {
     /// Distance from `p` to the centerline loop — optionally only the road at
     /// roughly `height`, so a bridge and the road beneath it stay distinct.
     public func distanceToCenterline(
-        _ p: Vec2, height: Double? = nil, heightTolerance: Double = Self.heightTolerance
+        _ p: Vec2, height: Double? = nil, heightTolerance: Double = Self.surfaceTolerance
     ) -> Double {
         var best = Double.greatestFiniteMagnitude
         for i in centerline.indices {
@@ -333,11 +343,26 @@ public struct Track: Equatable, Sendable, Codable {
     ///
     /// Derived from `heights` rather than a stored set: a segment is sloped when
     /// its two ends sit at different heights.
-    public func isOnRamp(_ p: Vec2, near tolerance: Double = 10) -> Bool {
+    /// `height` is the car's own height, and it matters: without it this answers
+    /// "is there sloped road near this spot", which is true for a car sitting on
+    /// the grass beside a ramp and for one on the road passing *under* one. The
+    /// renderer used that to decide a car was on a ramp and drew it up on the
+    /// bridge while the sim had it on the grass at height 0 — visible in the debug
+    /// overlay as a car reading "h 0.00 / grass / off road" while drawn on the deck.
+    public func isOnRamp(_ p: Vec2, height: Double? = nil, near tolerance: Double = 10) -> Bool {
         for i in centerline.indices {
             let next = (i + 1) % centerline.count
-            guard abs(height(ofPoint: i) - height(ofPoint: next)) > 0.001 else { continue }
-            if p.distance(toSegment: centerline[i], centerline[next]) <= width / 2 + tolerance {
+            let low = self.height(ofPoint: i)
+            let high = self.height(ofPoint: next)
+            guard abs(low - high) > 0.001 else { continue }
+            guard p.distance(toSegment: centerline[i], centerline[next]) <= width / 2 + tolerance
+            else { continue }
+            // The car must be at roughly the height of THIS piece of slope.
+            guard let height else { return true }
+            let span = min(low, high)...max(low, high)
+            if height >= span.lowerBound - Self.heightTolerance,
+                height <= span.upperBound + Self.heightTolerance
+            {
                 return true
             }
         }
@@ -382,7 +407,7 @@ public struct Track: Equatable, Sendable, Codable {
     /// What a car at `p` and `height` is driving on. Patches win over the
     /// ribbon; everything beyond the road at that height is grass.
     public func surface(at p: Vec2, height: Double = 0) -> Surface {
-        for patch in patches where abs(patch.height - height) <= Self.heightTolerance {
+        for patch in patches where abs(patch.height - height) <= Self.surfaceTolerance {
             if p.distance(to: patch.center) <= patch.radius {
                 return patch.surface
             }

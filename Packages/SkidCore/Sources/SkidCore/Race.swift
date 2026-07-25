@@ -258,9 +258,7 @@ public struct Race: Equatable, Sendable {
         // on the bridge (20 of 520 such runs reached the deck).
         let height = car.state.height
         func onOwnRoad(_ position: Vec2) -> Bool {
-            track.distanceToCenterline(
-                position, height: height, heightTolerance: Self.surfaceGrip)
-                <= track.width / 2
+            track.distanceToCenterline(position, height: height) <= track.width / 2
         }
         guard onOwnRoad(car.state.position), onOwnRoad(from) else {
             // Off the road. Up high, that's a fall off the deck; on the ground,
@@ -279,13 +277,6 @@ public struct Race: Equatable, Sendable {
         let step = Self.maxHeightChangePerTick
         car.state.height += max(-step, min(step, target - car.state.height))
     }
-
-    /// How closely a car's height must match a stretch of road for that road to
-    /// carry it. Deliberately tighter than `Track.heightTolerance` (which decides
-    /// whether two things are on the same *level*): a shade over one tick's climb,
-    /// so a car driving a ramp keeps hold of it while a car parked alongside at a
-    /// different height does not.
-    static let surfaceGrip = maxHeightChangePerTick * 1.5
 
     /// The most the car's height can change in one tick. A ramp climbs over many
     /// ticks, so this never limits legitimate driving; it exists so that no track,
