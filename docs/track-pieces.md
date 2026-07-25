@@ -387,8 +387,9 @@ unsaveable, never a crash.
 
 ## Compile
 
-`origin + [PieceID] + gate seams → Track`, directly (no `TrackDesign` detour
-— the free-form path stays untouched alongside, per the earlier decision):
+`origin + [PieceID] + gate seams → Track`, directly — and this is now the only
+track compiler, since the hand-authored `TrackDesign` path and its bundled JSON
+were deleted once the built-ins became share codes:
 
 1. Walk the graph from the **stored origin pose** with exact coordinates.
 2. Emit the centerline: straights as segment endpoints, arcs sampled at the
@@ -475,11 +476,10 @@ future decoration section needs. Two quieter reasons seal it:
 - **Canonical bytes.** The TLV has one encoding per track, byte-identical
   everywhere — which matters the moment a code is used as an identity
   (dedup, per-track hiscores). JSON has key-order/whitespace ambiguity, and
-  deflate output varies across library versions. (The same reasoning already
-  canonicalizes the built-ins' `TrackDesign` JSON.)
+  deflate output varies across library versions.
 - **A ~100-line parser** with CRC-8 up front beats running untrusted input
-  through a decompressor before validation; and the human-readable job is
-  already covered by the `TrackDesign` JSON where humans actually author.
+  through a decompressor before validation; and nothing needs a human-readable
+  form, since tracks are authored in the editor rather than typed out.
 
 **Future headroom lever**, before any format surgery: QR *alphanumeric mode*
 packs ~45% more characters per version than byte mode — a base32-uppercase

@@ -27,8 +27,7 @@ public enum PieceCompiler {
 
         let road = lowerPieces(walk.placed)
         var centerline = road.centerline
-        let elevated = road.elevated
-        let rampSegs = road.rampSegs
+        var heights = road.heights
         let ramps = road.ramps
         let walls = road.walls
         var gates: [Gate] = []
@@ -46,6 +45,7 @@ public enum PieceCompiler {
             (last - first).length < 0.001
         {
             centerline.removeLast()
+            if heights.count > centerline.count { heights.removeLast() }
         }
 
         // Gates: the road cross-section at each marked seam, seams ascending.
@@ -78,8 +78,7 @@ public enum PieceCompiler {
             id: id,
             centerline: centerline,
             width: Double(PieceCatalog.width),
-            elevatedSegments: elevated,
-            rampSegments: rampSegs,
+            heights: heights,
             ramps: ramps,
             walls: walls,
             gates: gates,
@@ -99,18 +98,16 @@ public enum PieceCompiler {
         framed.centerline = track.centerline.map { $0 + shift }
         // Only the POSITIONS shift; `forward` is a direction and must not.
         framed.ramps = track.ramps.map { ramp in
-            Ramp(
-                from: ramp.a + shift, to: ramp.b + shift, forward: ramp.forward,
-                fromLayer: ramp.fromLayer, toLayer: ramp.toLayer, launches: ramp.launches)
+            Ramp(from: ramp.a + shift, to: ramp.b + shift, forward: ramp.forward)
         }
         framed.gates = track.gates.map { gate in
             Gate(
                 from: gate.a + shift, to: gate.b + shift, forward: gate.forward,
-                layer: gate.layer)
+                height: gate.height)
         }
         framed.walls =
             track.walls.map { wall in
-                Wall(from: wall.a + shift, to: wall.b + shift, layer: wall.layer)
+                Wall(from: wall.a + shift, to: wall.b + shift, height: wall.height, kind: wall.kind)
             }
             // The fence goes on AFTER re-framing, since it's defined against the
             // final `size` rather than against the walked coordinates.
@@ -187,98 +184,64 @@ public enum PieceCompiler {
         line.append(contentsOf: pts.dropFirst())  // entry already in `line`
     }
 
-    // MARK: - Ramps & gates
+    // MARK: - Lowering pieces
 
-    /// A ramp/jump line across the road at a piece's entry, in driving
-    /// direction, carrying the layer transition (or a launch).
     /// Everything the placed pieces lower to, before gates and re-framing.
     private struct Road {
         var centerline: [Vec2] = []
-        /// Segments fully up on the deck.
-        var elevated: Set<Int> = []
-        /// Segments on a slope, which belong to BOTH layers.
-        var rampSegs: Set<Int> = []
+        /// Height per centerline point, parallel to `centerline`.
+        var heights: [Double] = []
+        /// Jump take-off lines only — an ordinary climb is just `heights`.
         var ramps: [Ramp] = []
         var walls: [Wall] = []
     }
 
-    /// Walk the placed pieces in order, emitting centerline points and the
-    /// per-segment sets that describe elevation. Each piece contributes points
-    /// from (but not including) its entry — the previous piece's exit — so the
-    /// loop isn't double-stamped at seams.
+    /// Walk the placed pieces in order, emitting centerline points with their
+    /// heights. Each piece contributes points from (but not including) its entry
+    /// — the previous piece's exit — so the loop isn't double-stamped at seams.
+    ///
+    /// Height comes straight from `heightedSamples`, the same smoothstepped
+    /// profile the editor draws, so the road a car drives is the road it looked
+    /// like while being built.
     private static func lowerPieces(_ placed: [PlacedPiece]) -> Road {
         var road = Road()
         guard let first = placed.first else { return road }
-        // The very first point is the start piece's entry.
         road.centerline.append(first.entry.position.vec2)
+        road.heights.append(first.entryHeight)
 
         for piece in placed {
-            let before = road.centerline.count - 1  // this piece's entry point
-            appendSamples(of: piece, into: &road.centerline)
-            let after = road.centerline.count - 1  // this piece's exit point
-
-            // Segments [before ..< after] belong to this piece. A flat piece
-            // fully up on the deck (entry & exit both at height 1) is elevated
-            // in the runtime Track.
-            if piece.piece.heightDelta == 0 && piece.entryHeight > 0.5 {
-                for segment in before..<after { road.elevated.insert(segment) }
+            for sample in piece.heightedSamples(degreesPerSample: degreesPerSample)
+                .dropFirst()
+            {
+                road.centerline.append(sample.point)
+                road.heights.append(sample.height)
             }
 
             // Guard rails along both edges of anything off the ground — the
             // barrier the editor draws as the blue deck rail. Without these a
-            // bridge has nothing to stop you driving straight off the side; the
-            // only thing catching you was `Race.applyRamps`' fall-off check,
-            // which is the *consequence* of leaving the deck, not a wall.
+            // bridge has nothing to stop you driving off the side.
             if piece.entryHeight > 0.5 || piece.exitHeight > 0.5 {
                 road.walls.append(contentsOf: deckRails(of: piece))
             }
 
-            // A ramp/jump piece (changes height, or launches) emits a Ramp
-            // line, and marks its road as sloped.
-            if piece.piece.heightDelta != 0 || piece.piece.launches {
-                road.ramps.append(rampLine(at: piece))
-                // The sloped road ITSELF, which the runtime needs to know about:
-                // `isOnRamp` and `visualHeight` both scan `rampSegments`, so
-                // without this a climbing car is never treated as between layers
-                // (no smooth growth, no drawing above the deck) and the renderer
-                // draws no ramp at all.
-                for segment in before..<after { road.rampSegs.insert(segment) }
+            // Only a LAUNCH needs a line: it throws the car ballistically, which
+            // is a real event at a place. An ordinary ramp needs nothing — its
+            // climb is in `heights`, and the car follows the road.
+            if piece.piece.launches {
+                road.ramps.append(launchLine(at: piece))
             }
         }
         return road
     }
 
-    /// The layer-switch line for a ramp piece, at the ramp's **high end**.
-    ///
-    /// Position matters enormously, because crossing this line flips the car's
-    /// discrete layer instantly. Putting it at the ramp's ENTRY meant the car
-    /// became "on the deck" the moment it touched the bottom of the ramp — while
-    /// still physically at ground level, a road-length away from the deck. Two
-    /// visible symptoms followed: the car appeared to jump at the start of the
-    /// ramp, and then, being on layer 1 but nowhere near the deck's centerline,
-    /// the fall-off check in `applyRamps` dropped it straight back to the
-    /// ground — so it drove *under* the bridge and missed the gate up there.
-    /// Only enough speed to clear both checks in one tick got you up.
-    ///
-    /// At the high end, the flip happens exactly where the sloped road meets the
-    /// deck, which is what `fromLayer`/`toLayer` describe. A launch (jump) piece
-    /// is the exception: it throws the car ballistically from its lip, so its
-    /// line belongs at the take-off point — the exit it launches from.
-    private static func rampLine(at placed: PlacedPiece) -> Ramp {
-        // The high end: a climb switches at its exit, a descent at its entry —
-        // in both cases the end that touches the deck.
-        let climbing = placed.piece.heightDelta > 0
-        let pose = climbing || placed.piece.launches ? placed.exits[0] : placed.entry
-        let pos = pose.position.vec2
-        let fwd = Vec2(angle: pose.heading.radians)
-        let side = fwd.perpendicular * (Double(PieceCatalog.width) / 2)
-        // The runtime Track's Ramp still speaks discrete layers; derive them
-        // from the piece's entry/exit height.
-        let from = Int(placed.entryHeight.rounded())
-        let to = Int(placed.exitHeight.rounded())
-        return Ramp(
-            from: pos - side, to: pos + side, forward: fwd,
-            fromLayer: from, toLayer: to, launches: placed.piece.launches)
+    /// The take-off line of a jump, across the road at the piece's exit — the lip
+    /// the car leaves from.
+    private static func launchLine(at placed: PlacedPiece) -> Ramp {
+        let pose = placed.exits[0]
+        let position = pose.position.vec2
+        let forward = Vec2(angle: pose.heading.radians)
+        let side = forward.perpendicular * (Double(PieceCatalog.width) / 2)
+        return Ramp(from: position - side, to: position + side, forward: forward)
     }
 
     /// The road cross-section (a span of `width`) at a seam, as a Gate. Seam N
@@ -286,14 +249,14 @@ public enum PieceCompiler {
     /// sits at the start piece's EXIT** (where the grid lines up behind it).
     private static func gate(at seam: Int, in placed: [PlacedPiece]) -> Gate {
         let pose: PiecePose
-        let layer: Int
+        let height: Double
         if seam == 0 {
             pose = placed[0].exits[0]
-            layer = Int(placed[0].exitHeight.rounded())
+            height = placed[0].exitHeight
         } else {
             let p = placed[seam % placed.count]
             pose = p.entry
-            layer = Int(p.entryHeight.rounded())
+            height = p.entryHeight
         }
         let pos = pose.position.vec2
         let fwd = Vec2(angle: pose.heading.radians)
@@ -307,7 +270,7 @@ public enum PieceCompiler {
         let opposite = Vec2(-side.x, -side.y)
         let inner = pos + opposite * reach(from: pos, along: opposite, half: half, placed: placed)
         let outer = pos + side * reach(from: pos, along: side, half: half, placed: placed)
-        return Gate(from: inner, to: outer, forward: fwd, layer: layer)
+        return Gate(from: inner, to: outer, forward: fwd, height: height)
     }
 
     /// How far a gate may extend to one side: the road's half-width plus a

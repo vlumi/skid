@@ -21,7 +21,7 @@ final class DeterminismTests: XCTestCase {
 
     private func runRace(seed: UInt64, ticks: Int) -> Race {
         let players = [PlayerID(0), PlayerID(1), PlayerID(2), PlayerID(3)]
-        var race = Race(track: TrackLibrary.practiceLoop(), players: players, seed: seed)
+        var race = Race(track: TrackLibrary.testRing(), players: players, seed: seed)
         for _ in 0..<ticks {
             var inputs: [PlayerID: CarInput] = [:]
             for player in players {
@@ -37,11 +37,11 @@ final class DeterminismTests: XCTestCase {
         let b = runRace(seed: 42, ticks: 1800)
         XCTAssertEqual(a, b)
         // Sanity: the script actually moved the cars off the grid.
-        XCTAssertNotEqual(a.cars[0].state.position, TrackLibrary.practiceLoop().startSlots[0])
+        XCTAssertNotEqual(a.cars[0].state.position, TrackLibrary.testRing().startSlots[0])
     }
 
     func testGridShuffleIsAValidPermutationAndSeedStable() {
-        let track = TrackLibrary.practiceLoop()
+        let track = TrackLibrary.testRing()
         let players = [PlayerID(0), PlayerID(1), PlayerID(2), PlayerID(3)]
         let slots = Set(track.startSlots.prefix(players.count))
 
@@ -61,12 +61,12 @@ final class DeterminismTests: XCTestCase {
         // The shuffle moves POSITIONS, not identities: cars[i] is still
         // player i (so HUD chips + colors, keyed by index, stay correct).
         let players = [PlayerID(0), PlayerID(1), PlayerID(2), PlayerID(3)]
-        let race = Race(track: TrackLibrary.practiceLoop(), players: players, seed: 9)
+        let race = Race(track: TrackLibrary.testRing(), players: players, seed: 9)
         XCTAssertEqual(race.cars.map(\.id), players)
     }
 
     func testMissingInputsCoast() {
-        var race = Race(track: TrackLibrary.practiceLoop(), players: [PlayerID(0)])
+        var race = Race(track: TrackLibrary.testRing(), players: [PlayerID(0)])
         race.advance(inputs: [:])
         XCTAssertEqual(race.tick, 1)
     }

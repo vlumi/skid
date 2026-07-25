@@ -30,6 +30,20 @@ ships (see [AGENTS.md](AGENTS.md)).
   race it — there's a "My track" slot that keeps your design between sessions.
   Copy puts a share code on the clipboard and Paste loads one back, so a track
   can be kept or passed on until there's a proper track library.
+- **New tracks, all built from pieces.** The four hand-authored circuits are
+  replaced by three built on the editor's own piece model — Small track, Big
+  oval, and Eight, the last a figure-eight with a bridge over its own crossing.
+  Every track in the game, built-in or your own, is now the same kind of thing,
+  so a built-in can be opened in the editor and reshaped. (Surface hazards like
+  the old oil patches will return as a piece you can place.)
+- **Bridges you can actually drive.** Elevation is one continuous height from
+  ground to deck: the car climbs the ramp, rides the deck, and comes back down
+  in one smooth motion, growing as it rises. Driving under a bridge keeps you
+  under it, cars on the deck and the road below pass cleanly, and a bridge is
+  fenced along both edges. Ramps are for driving up — if you want to be launched,
+  that's the jump piece.
+- **You can't drive off the map any more.** Every track is bounded, so a spin
+  at the edge no longer sends you out of the playfield.
 - **Painted edges and racing kerbs.** Every road now carries a thin white edge
   line, and corners earn red/white kerbs where a real circuit puts them: at the
   apex you cut, on the outside of a corner exit where you run wide under power,
