@@ -128,7 +128,7 @@ public enum PieceCompiler {
         // onto the grass still counts (the grass is its own penalty), only a
         // gross cut through the infield misses. Each side reaches out
         // independently, capped at HALFWAY to any other lane so a gate can
-        // never be satisfied from a neighbouring road.
+        // never be satisfied from a neighboring road.
         let half = Double(PieceCatalog.width) / 2
         let side = fwd.perpendicular
         let opposite = Vec2(-side.x, -side.y)
@@ -147,7 +147,7 @@ public enum PieceCompiler {
         let margin = Double(PieceCatalog.width)
         var limit = half + margin
         // Any pavement out this way caps the reach at the midpoint between the
-        // two roads, so the corridor can't spill into the neighbour's lane.
+        // two roads, so the corridor can't spill into the neighbor's lane.
         for piece in placed {
             for point in piece.centerlineSamples(degreesPerSample: 20) {
                 let offset = point - pos
@@ -178,7 +178,7 @@ public enum PieceCompiler {
         /// start piece has to provide.
         public static var depth: Double { back + Double(slots - 1) * gap }
 
-        /// Slot centres, pole first, from the line pose. `dir` is the driving
+        /// Slot centers, pole first, from the line pose. `dir` is the driving
         /// direction; slots run back from the line, staggered sideways.
         public static func positions(line: Vec2, dir: Vec2) -> [Vec2] {
             let inward = dir.perpendicular

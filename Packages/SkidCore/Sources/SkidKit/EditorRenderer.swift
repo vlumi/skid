@@ -11,7 +11,7 @@ enum EditorRenderer {
     private static let kerbRed = Color(red: 0.82, green: 0.16, blue: 0.14)
     private static let grass = Color(red: 0.28, green: 0.55, blue: 0.23)
     /// Bridge guardrail — a bold light blue so walls read unmistakably as
-    /// barriers, distinct from the grey road/kerb.
+    /// barriers, distinct from the gray road/kerb.
     private static let bridgeRail = Color(red: 0.55, green: 0.78, blue: 0.95)
 
     /// Screen radius of a loose-end tap dot.
@@ -40,7 +40,7 @@ enum EditorRenderer {
             return ha != hb ? ha < hb : a.offset < b.offset
         }
         // Two passes: ALL shadows first, then ALL road surfaces. Otherwise an
-        // elevated piece's offset shadow lands on a neighbour's already-drawn
+        // elevated piece's offset shadow lands on a neighbor's already-drawn
         // road (e.g. the down-ramp getting a dark smear from the deck's
         // shadow). Shadows under everything; surfaces on top, low-to-high.
         for (_, placed) in ordered {
@@ -195,7 +195,7 @@ enum EditorRenderer {
     /// The elevated piece's drop shadow — offset scales with the height at each
     /// point, so a ramp casts a growing shadow (near-zero at the ground end,
     /// full at the deck). Drawn in a pass BEFORE any road surface so it never
-    /// smears onto a neighbouring piece's road.
+    /// smears onto a neighboring piece's road.
     private static func drawPieceShadow(
         _ placed: PlacedPiece, width: Double, t: Transform,
         into context: inout GraphicsContext
@@ -301,7 +301,7 @@ enum EditorRenderer {
     }
 
     /// Push a polyline's two endpoints outward along its own end direction by
-    /// `d` screen points — so a filled ribbon overlaps its neighbour by a hair
+    /// `d` screen points — so a filled ribbon overlaps its neighbor by a hair
     /// and the antialiased seam shows no background hairline.
     private static func extendEnds(_ pts: [CGPoint], by d: CGFloat) -> [CGPoint] {
         guard pts.count >= 2 else { return pts }
@@ -320,7 +320,7 @@ enum EditorRenderer {
         return out
     }
 
-    private static let deckGrey = Color(white: 0.72)
+    private static let deckGray = Color(white: 0.72)
 
     /// Fill the road surface: flat pieces solid (deck lighter), a ramp shaded
     /// dark(ground)→light(deck) so the slope reads.
@@ -331,10 +331,10 @@ enum EditorRenderer {
     ) {
         guard placed.piece.heightDelta != 0 else {
             let elevated = placed.entryHeight > 0.5
-            context.fill(outline, with: .color(elevated ? deckGrey : asphalt))
+            context.fill(outline, with: .color(elevated ? deckGray : asphalt))
             return
         }
-        let colors = placed.piece.heightDelta > 0 ? [asphalt, deckGrey] : [deckGrey, asphalt]
+        let colors = placed.piece.heightDelta > 0 ? [asphalt, deckGray] : [deckGray, asphalt]
         context.fill(
             outline,
             with: .linearGradient(

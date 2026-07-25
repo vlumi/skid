@@ -40,7 +40,7 @@ ships (see [AGENTS.md](AGENTS.md)).
 ### build 6 — 2026-07-24
 
 - **Each player picks their own controls.** Casual (aim) or Pro (d-pad) is
-  now chosen per player in setup, under their colour — so one couch can mix
+  now chosen per player in setup, under their color — so one couch can mix
   aim drivers and d-pad drivers. (The old global scheme toggle in the pause
   menu is gone; set it before the race for now.)
 - **Everyone ready? Tap to go.** A race now opens frozen with a Play button
@@ -73,7 +73,7 @@ ships (see [AGENTS.md](AGENTS.md)).
   whole half/quadrant. The track sits clean in the middle: no more zone
   outlines or fingers covering the road, and lap/time chips ride the outer
   edge of each band, out of the notch. One shared pause sits on the seam
-  below the map. The map and every control centre within the safe area on
+  below the map. The map and every control center within the safe area on
   notched phones — only the band's tinted box bleeds to the screen edge.
 - **The stick follows your thumb to the edge.** Drag past the edge of the
   control stick and it slides along with your finger instead of pinning —
@@ -91,7 +91,7 @@ ships (see [AGENTS.md](AGENTS.md)).
   full-lock holds (and the keyboard later) that get the drift. Tune it with
   the new "Flip" dial in the pause menu. The flip now stays gentle at low
   speed and only really bites once you're moving (for aim mode too), so
-  slow manoeuvring isn't twitchy.
+  slow maneuvering isn't twitchy.
 - **A "Grip" dial** for the drift's weight: turn it down and the car's
   motion lags where it's pointing longer — a heavier, slidier feel — up and
   it snaps to the nose. Plus the aim "Flip rate" now dials all the way to 0
@@ -113,7 +113,7 @@ ships (see [AGENTS.md](AGENTS.md)).
   all live dials in the pause menu's Tuning panel (physics dials apply on
   Reset; hiscores only count on the stock setup, like Pace).
 - **The heading arrow moved out where you can see it** — a bold arrow
-  floating ahead of your car in your colour, instead of a tiny dart glued
+  floating ahead of your car in your color, instead of a tiny dart glued
   to the nose of an already-tiny car.
 - Old personal bests and their ghosts were set under the old physics, so
   they won't match the new feel — new bests await.
@@ -133,9 +133,9 @@ ships (see [AGENTS.md](AGENTS.md)).
 - **Friendlier controls, same skill ceiling**: the wheel now eases toward
   your thumb instead of snapping, so a twitch no longer jerks the nose —
   full lock is still just as quick to reach. Analog steering with a gentle
-  response curve is the new default (the on-thumb favourite); the Tuning
+  response curve is the new default (the on-thumb favorite); the Tuning
   panel still lets you dial it back.
-- **A heading dart** ahead of each car's nose, in its colour, so you can
+- **A heading dart** ahead of each car's nose, in its color, so you can
   see where you're actually pointing mid-drift — when the car is sliding
   sideways, the nose and the travel direction part ways.
 - **Overpass, less brutal up top**: the bridge deck now has retaining
@@ -149,7 +149,7 @@ ships (see [AGENTS.md](AGENTS.md)).
   longer counts — you have to round the far end.
 - **The pause button has a home**: every track now has a "pit" — an
   infield spot near the start/finish — and the pause button lives there,
-  always off the racing line instead of pinned to screen-centre (where it
+  always off the racing line instead of pinned to screen-center (where it
   sometimes sat right on the road).
 
 ### build 2 — 2026-07-22

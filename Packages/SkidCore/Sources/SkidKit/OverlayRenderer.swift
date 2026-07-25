@@ -5,7 +5,7 @@ import SwiftUI
 /// floating d-pads.
 enum OverlayRenderer {
     /// A player's zone chrome on a shared screen: a soft fill of the
-    /// player's colour so whose-is-whose reads at a glance over the grass,
+    /// player's color so whose-is-whose reads at a glance over the grass,
     /// a stronger outline, plus a tab on the player's own edge (where their
     /// `up` points from).
     static func drawZone(_ zone: ZoneChrome, into context: inout GraphicsContext) {

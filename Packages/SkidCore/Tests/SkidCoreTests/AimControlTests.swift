@@ -6,7 +6,7 @@ import XCTest
 
 /// The aim-to-drive scheme: the thumb points a world direction and the
 /// scheme hands it to the sim as an `aim` command (the body-flip lives in
-/// the physics). Reversing is a low-speed manoeuvre only. These pin the
+/// the physics). Reversing is a low-speed maneuver only. These pin the
 /// sign conventions (screen ↔ world) and the flip-vs-reverse gate.
 @MainActor
 final class AimControlTests: XCTestCase {

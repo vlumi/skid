@@ -63,7 +63,7 @@ approach:
       seams count (start/finish fixed at seam 0, up to 16 gates total).
 - [ ] **Rougher hazard shapes + surface textures.** Water/oil/mud shouldn't
       be perfect circles — rotatable, combinable blobs. Plus textures for most
-      surfaces eventually (grass, mud); asphalt stays plain grey. Rendering
+      surfaces eventually (grass, mud); asphalt stays plain gray. Rendering
       polish, lands alongside the decorations catalog.
 
 ## v0.7.0 — Mac, physical controls & orientation

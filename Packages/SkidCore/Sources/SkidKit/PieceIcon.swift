@@ -42,7 +42,7 @@ struct PieceIcon: View {
         let pts = placed.piece.paths.indices.flatMap { placed.centerlineSamples(path: $0) }
         guard pts.count >= 2 else { return }
         // Shared reference scale so a tight curve reads tighter than a sweeper;
-        // centre the piece's bounding box in the tile. Same y-down orientation
+        // center the piece's bounding box in the tile. Same y-down orientation
         // as the canvas, so the icon matches how the piece lands.
         let reference: CGFloat = 340
         let scale = box.width / reference
@@ -89,7 +89,7 @@ struct PieceIcon: View {
     /// A small arrowhead at the piece's ENTRY, pointing the way traffic drives
     /// in. Without it a symmetric shape is ambiguous — a 180° hairpin's left and
     /// right variants are mirror images that look identical once the icon
-    /// centres them, so there's no way to tell which way it turns.
+    /// centers them, so there's no way to tell which way it turns.
     private func drawEntryMarker(
         _ placed: PlacedPiece, screen: (Vec2) -> CGPoint, into context: inout GraphicsContext
     ) {
