@@ -50,7 +50,9 @@ ships (see [AGENTS.md](AGENTS.md)).
   of popping between levels, and a car swells smoothly as it climbs. One
   "Deck scale" dial in the Tuning panel tunes the whole elevated look at once.
   Bridges paint cleanly over the road beneath, and a ramp reads as a climb from
-  the grade-marking chevrons up its middle.
+  the grade-marking chevrons up its middle. A bridge you build in the editor
+  drives as one too: the car climbs the ramp and takes the deck rather than
+  switching height at the foot of the slope.
 
 ## v0.5.0
 
