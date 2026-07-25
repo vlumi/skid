@@ -268,9 +268,6 @@ extension EditorRenderer {
                 style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
         case .kerb:
             let band = max(3, Double(PieceCatalog.kerbBand) * 2 * t.scale)
-            context.stroke(
-                path, with: .color(kerbWhite),
-                style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
             // Pick the stripe length nearest the target that fits a whole number
             // of red+white pairs into this run.
             let length = polylineLength(points)
@@ -278,6 +275,15 @@ extension EditorRenderer {
             let pairs = max(1, (length / (target * 2)).rounded())
             let dash = length / (pairs * 2)
             guard dash > 0.5 else { return }
+            // The white is dashed too, offset by one stripe — NOT a solid base
+            // band. A solid base ran the full length of the run while the red
+            // only covered its dashes, so leftover white poked past the final
+            // stripe as a little angled tab at each end of every kerb.
+            context.stroke(
+                path, with: .color(kerbWhite),
+                style: StrokeStyle(
+                    lineWidth: band, lineCap: .butt, lineJoin: .round, dash: [dash, dash],
+                    dashPhase: dash))
             context.stroke(
                 path, with: .color(kerbRed),
                 style: StrokeStyle(

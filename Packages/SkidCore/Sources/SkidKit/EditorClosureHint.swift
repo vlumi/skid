@@ -88,6 +88,27 @@ extension EditorView {
         }
     }
 
+    /// Load a track from a share code on the clipboard — the interim way to keep
+    /// a handful of designs before there's a real track library. Shows "Bad code"
+    /// briefly if the clipboard doesn't hold a readable one, rather than
+    /// silently doing nothing.
+    func pasteCode() {
+        #if canImport(UIKit)
+        guard let pasted = UIPasteboard.general.string,
+            game.loadCustomTrack(code: pasted)
+        else {
+            pasteFailed = true
+            return
+        }
+        pasteFailed = false
+        copiedCode = false
+        // A pasted track may have been built before auto-centering, so put it
+        // where it can be seen.
+        game.editorCenterOnCanvas()
+        resetView()
+        #endif
+    }
+
     /// Put the track's share code on the clipboard — how a design leaves the
     /// device to be pasted into the repo as a built-in (or shared). Copy only:
     /// a button that also *loaded* a clipboard code could silently replace the
