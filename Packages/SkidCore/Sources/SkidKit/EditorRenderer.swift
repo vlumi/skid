@@ -7,8 +7,8 @@ import SwiftUI
 /// `TrackRenderer`, which assumes a closed, compiled `Track`.
 enum EditorRenderer {
     private static let asphalt = Color(white: 0.62)
-    private static let kerbWhite = Color(white: 0.95)
-    private static let kerbRed = Color(red: 0.82, green: 0.16, blue: 0.14)
+    static let kerbWhite = Color(white: 0.95)
+    static let kerbRed = Color(red: 0.82, green: 0.16, blue: 0.14)
     private static let grass = Color(red: 0.28, green: 0.55, blue: 0.23)
     /// Bridge guardrail — a bold light blue so walls read unmistakably as
     /// barriers, distinct from the gray road/kerb.
@@ -55,10 +55,7 @@ enum EditorRenderer {
         // Kerbs are worked out from the CORNERS, not per piece: the apex kerb
         // and the run-wide exit kerb straddle piece boundaries (see `KerbPlan`).
         let kerbs = KerbPlan.plan(for: walk)
-        for (index, placed) in ordered {
-            drawPieceEdges(
-                (index: index, element: placed), kerbs: kerbs, width: width, t: t, into: &context)
-        }
+        drawAllEdges(walk: walk, kerbs: kerbs, width: width, t: t, into: &context)
         for (_, placed) in ordered {
             drawPieceRibbon(placed, width: width, t: t, into: &context)
         }
@@ -208,94 +205,6 @@ enum EditorRenderer {
         }
     }
 
-    /// A piece's edge decoration, laid down BEFORE any asphalt: the thin white
-    /// line every road carries, widened into a red/white kerb on the edges that
-    /// earn one (a corner's apex, both sides of a chicane). Everything sits
-    /// *outboard* of the grip surface — the band is drawn straddling the edge and
-    /// the asphalt pass then covers its inner half, so decoration never narrows
-    /// the road, and a kerb can't spill onto a neighboring piece's road because
-    /// that road is painted afterwards.
-    private static func drawPieceEdges(
-        _ entry: (index: Int, element: PlacedPiece), kerbs: KerbPlan, width: Double,
-        t: Transform, into context: inout GraphicsContext
-    ) {
-        let placed = entry.element
-        let piece = entry.index
-        // Deck edges are guard rails, drawn over the road instead.
-        guard placed.entryHeight <= 0.5, placed.exitHeight <= 0.5 else { return }
-        guard let e = edges(placed, width: width, t: t) else { return }
-        // Draw each side as runs of a single style, so a corner's kerb can start
-        // and stop partway along a piece without breaking the stroke.
-        for side in [true, false] {
-            let points = extendEnds(side ? e.left : e.right, by: 0.6)
-            func style(_ sample: Int) -> KerbPlan.Edge {
-                let pair = kerbs.style(piece: piece, sample: sample)
-                return side ? pair.left : pair.right
-            }
-            var start = 0
-            while start < points.count - 1 {
-                let current = style(start)
-                var end = start + 1
-                while end < points.count, style(end - 1) == current { end += 1 }
-                strokeEdge(
-                    Array(points[start..<end]), style: current, width: width, t: t,
-                    into: &context)
-                start = max(end - 1, start + 1)
-            }
-        }
-    }
-
-    /// One run of edge decoration. The band straddles the road edge and the
-    /// asphalt pass covers its inner half, so what remains visible is the
-    /// outboard part — which is why the stroke is drawn at twice the intended
-    /// visible width.
-    ///
-    /// `points` is the run's polyline, used to measure its length: a kerb's
-    /// stripes are sized to divide the run EVENLY, so every kerb starts and ends
-    /// on a whole stripe instead of being cut off mid-red. A fixed dash length
-    /// can't do that — no constant divides every corner's arc length.
-    private static func strokeEdge(
-        _ points: [CGPoint], style: KerbPlan.Edge, width: Double, t: Transform,
-        into context: inout GraphicsContext
-    ) {
-        guard let first = points.first else { return }
-        var path = Path()
-        path.move(to: first)
-        for point in points.dropFirst() { path.addLine(to: point) }
-        switch style {
-        case .line:
-            let band = max(1.5, Double(PieceCatalog.edgeLine) * 2 * t.scale)
-            context.stroke(
-                path, with: .color(kerbWhite),
-                style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
-        case .kerb:
-            let band = max(3, Double(PieceCatalog.kerbBand) * 2 * t.scale)
-            context.stroke(
-                path, with: .color(kerbWhite),
-                style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
-            // Pick the stripe length nearest the target that fits a whole number
-            // of red+white pairs into this run.
-            let length = polylineLength(points)
-            let target = width * 0.12 * t.scale
-            let pairs = max(1, (length / (target * 2)).rounded())
-            let dash = length / (pairs * 2)
-            guard dash > 0.5 else { return }
-            context.stroke(
-                path, with: .color(kerbRed),
-                style: StrokeStyle(
-                    lineWidth: band, lineCap: .butt, lineJoin: .round, dash: [dash, dash]))
-        }
-    }
-
-    private static func polylineLength(_ points: [CGPoint]) -> CGFloat {
-        guard points.count >= 2 else { return 0 }
-        var total: CGFloat = 0
-        for i in 1..<points.count {
-            total += hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y)
-        }
-        return total
-    }
-
     /// The elevated piece's drop shadow — offset scales with the height at each
     /// point, so a ramp casts a growing shadow (near-zero at the ground end,
     /// full at the deck). Drawn in a pass BEFORE any road surface so it never
@@ -321,7 +230,7 @@ enum EditorRenderer {
     }
 
     /// The ribbon geometry both the shadow and the surface pass read.
-    private struct Ribbon {
+    struct Ribbon {
         var left: [CGPoint]
         var right: [CGPoint]
         var heights: [Double]
@@ -333,7 +242,7 @@ enum EditorRenderer {
     /// normals use the exact PORT heading (entry / exit pose), not the
     /// interpolated sample direction — so adjacent pieces, sharing a port pose,
     /// produce collinear end edges that abut with no grass sliver.
-    private static func edges(_ placed: PlacedPiece, width: Double, t: Transform) -> Ribbon? {
+    static func edges(_ placed: PlacedPiece, width: Double, t: Transform) -> Ribbon? {
         let samples = placed.heightedSamples()
         guard samples.count >= 2 else { return nil }
         let entryDir = Vec2(angle: placed.entry.heading.radians)
