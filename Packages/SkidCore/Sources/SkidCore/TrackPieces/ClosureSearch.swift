@@ -203,9 +203,13 @@ struct ClosureSearch {
         var candidate = layout
         candidate.pieces += run
         let problems = TrackValidator.validate(candidate).problems
-        if problems.contains(.overlap) { return false }
-        return !problems.contains {
-            if case .unclosedHeight = $0 { return true } else { return false }
+        // Everything except the gate rule, which is a separate one-tap step the
+        // author does afterwards (and is present on every editor track, so
+        // treating it as a blocker would reject every suggestion).
+        return !problems.contains { problem in
+            if case .gates = problem { return false }
+            if case .openEnds = problem { return false }  // the run closes them
+            return true
         }
     }
 }
