@@ -24,15 +24,31 @@ struct EditorView: View {
         static let rampSentinel = -1
     }
 
-    /// The append palette (v1 core geometry the phone build needs first).
-    /// "Ramp" is a single button: with only two elevations, it picks up from
-    /// the ground and down from the deck automatically (see `game.editorRamp`).
+    /// The append palette, ordered by family so the horizontal scroll reads
+    /// predictably: straights, then 90° corners tight→sweep, then 45s, the
+    /// hairpins, the two S families, and the ramp. "Ramp" is a single button:
+    /// with only two elevations it picks up from the ground and down from the
+    /// deck automatically (see `game.editorRamp`).
+    /// (A grouped two-tier palette — pick radius, then shape — is the planned
+    /// follow-up now that the catalog has three radii.)
     private let palette: [PaletteItem] = [
-        .init(id: 1, label: "Straight"),
-        .init(id: 7, label: "Left"),
-        .init(id: 8, label: "Right"),
-        .init(id: 9, label: "Left ›"),
-        .init(id: 10, label: "Right ›"),
+        .init(id: PieceCatalog.ID.shortStraight, label: "Short"),
+        .init(id: PieceCatalog.ID.straight, label: "Straight"),
+        .init(id: PieceCatalog.ID.longStraight, label: "Long"),
+        .init(id: PieceCatalog.ID.curve90TightLeft, label: "Left"),
+        .init(id: PieceCatalog.ID.curve90TightRight, label: "Right"),
+        .init(id: PieceCatalog.ID.curve90MediumLeft, label: "Left ›"),
+        .init(id: PieceCatalog.ID.curve90MediumRight, label: "Right ›"),
+        .init(id: PieceCatalog.ID.curve90SweepLeft, label: "Left ››"),
+        .init(id: PieceCatalog.ID.curve90SweepRight, label: "Right ››"),
+        .init(id: PieceCatalog.ID.curve45MediumLeft, label: "Left 45"),
+        .init(id: PieceCatalog.ID.curve45MediumRight, label: "Right 45"),
+        .init(id: PieceCatalog.ID.hairpinTightLeft, label: "Hairpin L"),
+        .init(id: PieceCatalog.ID.hairpinTightRight, label: "Hairpin R"),
+        .init(id: PieceCatalog.ID.chicaneMediumLeft, label: "Chicane L"),
+        .init(id: PieceCatalog.ID.chicaneMediumRight, label: "Chicane R"),
+        .init(id: PieceCatalog.ID.jog240Left, label: "Jog L"),
+        .init(id: PieceCatalog.ID.jog240Right, label: "Jog R"),
         .init(id: PaletteItem.rampSentinel, label: "Ramp"),
     ]
 

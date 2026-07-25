@@ -240,33 +240,42 @@ One byte per piece id; the id space is an **append-only registry** — ids are
 never renumbered or reused, so old share-codes keep decoding forever. New
 pieces (and whole new families) are added by appending ids.
 
-> The table below is the **shipped v1 code**. The next catalog pass
-> renumbers every dimension onto the unit system above (straights
-> 120/240/480, radii 120/240/480, ramps/start/jump 240, crossings 120/240)
-> and adds the S-chicane, lane-jog, and medium-hairpin pieces — ids
-> reshuffle freely until the format's first public release.
+Every dimension below is on the unit system (U = 120). Nothing outside the
+catalog hardcodes an id — callers use the named `PieceCatalog.ID` constants,
+so ids stay data and can be reshuffled until the format's first public
+release.
 
 | id | piece | notes |
 |---:|---|---|
-| 0 | straight 150 | |
-| 1 | straight 300 | |
-| 2 | straight 600 | |
-| 3–6 | curve 45° · L/R × radius 60/160 | tight and sweeper |
-| 7–10 | curve 90° · L/R × radius 60/160 | convenience (= two 45s) |
-| 11–12 | hairpin 180° · L/R, radius 60 | the Hairpin rebuild |
-| 13 | ramp up (straight 300, layer +1, launches) | |
-| 14 | ramp down (straight 300, layer −1) | |
-| 15 | **start grid** (straight 300, grid decal, start line at exit) | exactly one per track |
-| 16–17 | **crossable straight** 150 / 300 | at-grade crossings: 150 = 90° only, 300 = any angle |
-| 18–20 | **fork** · straight+L / straight+R / symmetric L·R | one entry, two exits; radius 160 |
-| 21–23 | **join** · mirrors of the forks | two entries, one exit |
-| 24 | **jump 300** (launch lip · gap · landing) | gap may be crossed beneath |
-| 128–130 | straight 150/300/600 **+ direction arrow** | decal variants, two-byte range |
+| 0–2 | straight 120 / 240 / 480 | 1U / 2U / 4U |
+| 3–8 | curve 45° · L/R × tight/medium/sweep | radii 120 / 240 / 480 |
+| 9–14 | curve 90° · L/R × tight/medium/sweep | convenience (= two 45s) |
+| 15–18 | hairpin 180° · L/R × tight/medium | a sweep U-turn would span 9U |
+| 19–24 | **S-chicane** · L-then-R / R-then-L × 3 radii | two chained 45s; shift r(2−√2), pairs to close |
+| 25–28 | **lane jog** · L/R × 240 / 360 shift | two chained 90s; grid-clean radius bridges |
+| 29 | ramp up (straight 240, height +1, launches) | |
+| 30 | ramp down (straight 240, height −1) | |
+| 31 | **start grid** (straight 240, hash-marked slots, start line at exit) | exactly one per track |
+| 32–33 | **crossable straight** 120 / 240 | at-grade crossings: 120 = 90° only, 240 = any angle |
+| 34–36 | **fork** · straight+L / straight+R / symmetric L·R | one entry, two exits; radius 240 |
+| 37–39 | **join** · mirrors of the forks | two entries, one exit |
+| 40 | **jump 240** (launch lip · gap · landing) | gap may be crossed beneath |
+| 128–130 | straight 120/240/480 **+ direction arrow** | decal variants, two-byte range |
 
-Deliberately small — a phone-browsable palette — but designed to grow:
+A piece's path is an ordered **chain** of segments (one chain per exit, two
+for a fork), which is what lets a single id bend twice: a chicane is two 45°
+arcs, a jog two 90s. Most pieces are a one-element chain.
+
+Still deliberately small — a phone-browsable palette — and designed to grow:
 lengths/radii are plain integer parameters, so variants are new ids, not new
-machinery. Expected later families: chicanes, S-bends, wider/narrower roads,
-themed surface patches, more decals.
+machinery. Expected later families: wider/narrower roads (the width model
+above), themed surface patches, more decals.
+
+**The start grid** paints its four slots on the pavement as hash marks across
+each slot's front edge, at exactly the positions the compiler places cars
+(`PieceCompiler.Grid`) — the same markings in the editor and in the game. The
+grid is ~220 deep, which a 240 start piece clears; a test asserts the two
+numbers stay compatible.
 
 **Decals vs. decorations vs. hazards.** Three categories, split by *what
 they touch*:
