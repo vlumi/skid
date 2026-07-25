@@ -136,36 +136,49 @@ public enum PieceCompiler {
         return framed
     }
 
-    /// The bounding box of everything the renderer draws, so nothing lands
-    /// outside the frame it's told to fit.
+    /// The frame to draw the track in: centered on the ROAD, and grown
+    /// symmetrically until the chrome fits.
     ///
-    /// The centerline is padded by half a road plus the outboard decoration (and
-    /// the deck's extra width, since an elevated piece is drawn wider). Gate ends
-    /// and grid slots are included as points, because a gate deliberately reaches
-    /// out over the grass and would otherwise poke through the edge.
+    /// Centering is the whole point here. The renderer places the map by fitting
+    /// this frame to the screen, so whatever is off-center *inside* the frame is
+    /// off-center on screen. Measuring the raw bounding box of everything drawn
+    /// gets that wrong: gates deliberately reach outboard over the grass, and a
+    /// gate on one side only (an oval with a checkpoint on the right straight)
+    /// pushed the box out on that side alone — leaving a few pixels of grass on
+    /// the left and a visibly bigger band on the right.
+    ///
+    /// So: take the road's own box (symmetric by construction), then for each
+    /// axis find the largest overhang of any gate end or grid slot beyond it, and
+    /// add that much to BOTH sides. The chrome still fits, and the road stays
+    /// centered.
     private static func footprint(of centerline: [Vec2], gates: [Gate], slots: [Vec2])
         -> Footprint
     {
         guard !centerline.isEmpty else { return Footprint(origin: .zero, size: Vec2(1, 1)) }
+        // Half the road, plus the widest thing drawn outboard of it. A deck is
+        // wider still (Elevation.scale), so allow for that too.
         let half =
             Double(PieceCatalog.width) / 2 * Elevation.scale(atHeight: 1)
             + Double(PieceCatalog.kerbBand)
-        var minX = Double.greatestFiniteMagnitude
-        var minY = Double.greatestFiniteMagnitude
-        var maxX = -Double.greatestFiniteMagnitude
-        var maxY = -Double.greatestFiniteMagnitude
-        for point in centerline {
-            minX = min(minX, point.x - half)
-            minY = min(minY, point.y - half)
-            maxX = max(maxX, point.x + half)
-            maxY = max(maxY, point.y + half)
-        }
+        let xs = centerline.map { $0.x }
+        let ys = centerline.map { $0.y }
+        var minX = xs.min()! - half
+        var maxX = xs.max()! + half
+        var minY = ys.min()! - half
+        var maxY = ys.max()! + half
+
+        // The chrome's worst overhang on each axis, applied to both sides so the
+        // road stays in the middle.
+        var padX = 0.0
+        var padY = 0.0
         for point in gates.flatMap({ [$0.a, $0.b] }) + slots {
-            minX = min(minX, point.x)
-            minY = min(minY, point.y)
-            maxX = max(maxX, point.x)
-            maxY = max(maxY, point.y)
+            padX = max(padX, minX - point.x, point.x - maxX)
+            padY = max(padY, minY - point.y, point.y - maxY)
         }
+        minX -= padX
+        maxX += padX
+        minY -= padY
+        maxY += padY
         return Footprint(
             origin: Vec2(minX, minY), size: Vec2(maxX - minX, maxY - minY))
     }
