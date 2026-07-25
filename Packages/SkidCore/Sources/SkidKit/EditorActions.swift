@@ -16,7 +16,7 @@ extension CouchGame {
         editorLayout?.pieces.append(id)
         // The moment the ring closes, finish the job: put default checkpoints in
         // (a closed loop with only the start line marked is unsaveable, and
-        // nothing about that is the author's mistake) and centre it on the
+        // nothing about that is the author's mistake) and center it on the
         // canvas, since a layout that grew left or up sits at negative
         // coordinates and would race letterboxed into a corner.
         if editorLayout?.walk().openEnds.isEmpty == true {
@@ -26,7 +26,7 @@ extension CouchGame {
         return true
     }
 
-    /// Whether a palette piece can be placed right now — so the editor can grey
+    /// Whether a palette piece can be placed right now — so the editor can gray
     /// out the ones that would break the track instead of letting you tap them.
     public func editorCanAppend(_ id: PieceID) -> Bool {
         guard let layout = editorLayout else { return false }
@@ -44,7 +44,7 @@ extension CouchGame {
         editorAppend(last.exitHeight > 0.5 ? PieceCatalog.ID.rampDown : PieceCatalog.ID.rampUp)
     }
 
-    /// Move the whole layout so it sits centred on the canvas, by shifting the
+    /// Move the whole layout so it sits centered on the canvas, by shifting the
     /// stored **origin** — the layout slides as one rigid thing, since every
     /// other coordinate derives from that anchor.
     ///

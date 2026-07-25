@@ -92,7 +92,7 @@ struct EditorView: View {
 
     /// The height a newly-appended piece will enter at — the selected loose
     /// end's exit height — so the palette icons preview the elevated look
-    /// (deck grey + blue rail) when building on the deck. The walk doesn't
+    /// (deck gray + blue rail) when building on the deck. The walk doesn't
     /// carry heights on `openEnds`, so match the end pose back to the placed
     /// piece whose exit it is.
     func appendHeight(_ walk: WalkResult) -> Double {
@@ -127,13 +127,13 @@ struct EditorView: View {
                 } label: {
                     Text("Fit", bundle: .module).pillStyle()
                 }
-                // Re-centre the layout on the canvas. Closing a loop does this
+                // Re-center the layout on the canvas. Closing a loop does this
                 // automatically; the button is for tracks built before that, or
                 // reshaped since.
                 Button {
                     game.editorCenterOnCanvas()
                 } label: {
-                    Text("Centre", bundle: .module).pillStyle()
+                    Text("Center", bundle: .module).pillStyle()
                 }
                 // The share code — copy it out to make a design permanent (paste
                 // it into the repo as a built-in), or paste one in to load it.
@@ -306,7 +306,7 @@ struct EditorView: View {
             width: max(1, view.width - 2 * margin), height: max(1, view.height - 2 * margin))
         let baseScale = min(box.width / w, box.height / h)
         let scale = baseScale * zoom
-        // Centre the footprint, then apply pan.
+        // Center the footprint, then apply pan.
         let cx = (minX + maxX) / 2
         let cy = (minY + maxY) / 2
         let offset = CGSize(

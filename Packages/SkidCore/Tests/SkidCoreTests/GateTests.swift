@@ -48,7 +48,7 @@ final class GateTests: XCTestCase {
 
     /// A layout built outward from the origin can run to NEGATIVE coordinates —
     /// i.e. off the canvas — and would race letterboxed into a corner, half
-    /// offscreen. Centring shifts the stored origin so the whole rigid layout
+    /// offscreen. Centering shifts the stored origin so the whole rigid layout
     /// lands inside the canvas.
     func testCenteringBringsALayoutOntoTheCanvas() throws {
         var layout = TrackLayout(pieces: userTrack, gateSeams: [0, 3, 6])
@@ -107,7 +107,7 @@ final class GateTests: XCTestCase {
     }
 
     /// ...but never more than halfway to another lane, or a gate could be
-    /// satisfied from the neighbouring road. A hairpin puts its legs 2r apart,
+    /// satisfied from the neighboring road. A hairpin puts its legs 2r apart,
     /// which is exactly where that cap has to bite.
     func testGatesAreCappedHalfwayToANeighbouringLane() throws {
         let hairpin: [PieceID] = [
@@ -116,7 +116,7 @@ final class GateTests: XCTestCase {
         ]
         let layout = TrackLayout(pieces: hairpin, gateSeams: [0, 2])
         guard let track = try? PieceCompiler.compile(layout, id: "hairpin") else { return }
-        // The legs' centrelines are 2 x tightRadius apart, so no gate may span
+        // The legs' centerlines are 2 x tightRadius apart, so no gate may span
         // far enough to touch the other one.
         let laneGap = Double(2 * PieceCatalog.tightRadius)
         for gate in track.gates {

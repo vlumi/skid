@@ -18,7 +18,7 @@ public enum PieceCatalog {
     /// One global road width in v1, so every port mates trivially. Width == U.
     public static let width = unit
 
-    /// The three curve radii — measured to the road **centre** — on the same
+    /// The three curve radii — measured to the road **center** — on the same
     /// 1:2:4 doubling as the straights. The tight radius equals a full width,
     /// so its inner edge still sweeps a real arc (at U/2) instead of
     /// collapsing to a pivot point.

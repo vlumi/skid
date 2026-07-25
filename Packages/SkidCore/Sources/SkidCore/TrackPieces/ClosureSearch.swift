@@ -23,10 +23,10 @@ struct ClosureSearch {
     /// (exactly one per track), no forks/crossings/jumps (each carries rules of
     /// its own), no ramps (they change height).
     private let candidates: [(id: PieceID, piece: Piece)]
-    /// Centreline samples of pavement a new run must avoid. The pieces at each
+    /// Centerline samples of pavement a new run must avoid. The pieces at each
     /// END of the existing chain are legitimately adjacent to the run (it starts
     /// at one and finishes at the other), so they're excluded — otherwise every
-    /// candidate is rejected for touching its own neighbours.
+    /// candidate is rejected for touching its own neighbors.
     private let existing: [(point: Vec2, height: Double)]
     private let clearanceSquared: Double
     /// The furthest a single piece can carry the road, for pruning runs that can
@@ -63,7 +63,7 @@ struct ClosureSearch {
         }
     }
 
-    /// Centreline samples with long spans subdivided, so no gap between
+    /// Centerline samples with long spans subdivided, so no gap between
     /// consecutive points is wide enough for a road to slip through unnoticed.
     private static func densified(_ placed: PlacedPiece) -> [Vec2] {
         let step = Double(PieceCatalog.width) * 0.6

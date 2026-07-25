@@ -67,7 +67,7 @@ struct RaceScreen: View {
                         race: race, colors: colors, rig: rig, size: fullSize,
                         started: session.started)
 
-                    // The map centre is meta-control space (no car races there,
+                    // The map center is meta-control space (no car races there,
                     // and map-area touches are otherwise inert). A tap on it
                     // starts the race off the ready gate, and after that opens
                     // the pause menu — one learned "tap the map" gesture. Sized
@@ -111,7 +111,7 @@ struct RaceScreen: View {
             }
     }
 
-    /// The ready gate: a big Play button on the map centre while the race is
+    /// The ready gate: a big Play button on the map center while the race is
     /// frozen before the start, so everyone can get their thumbs in place.
     /// Tapping the map (see `mapTapTarget`) starts the countdown; this is just
     /// the visible affordance that also teaches the "tap the map" gesture.

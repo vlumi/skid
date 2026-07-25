@@ -115,13 +115,13 @@ public struct PlacedPiece: Equatable, Sendable {
         case .arc(let radius, let eighths, let left):
             let sweepDeg = Double(eighths) * 45
             let steps = max(1, Int((sweepDeg / degreesPerSample).rounded(.up)))
-            let toCentre = entry.heading.radians + (left ? .pi / 2 : -.pi / 2)
-            let centre = start + Vec2(angle: toCentre) * Double(radius)
-            let startAngle = atan2(start.y - centre.y, start.x - centre.x)
+            let toCenter = entry.heading.radians + (left ? .pi / 2 : -.pi / 2)
+            let center = start + Vec2(angle: toCenter) * Double(radius)
+            let startAngle = atan2(start.y - center.y, start.x - center.x)
             let sweep = (left ? 1.0 : -1.0) * Double(eighths) * .pi / 4
             return (0...steps).map { k in
                 let a = startAngle + sweep * Double(k) / Double(steps)
-                return centre + Vec2(angle: a) * Double(radius)
+                return center + Vec2(angle: a) * Double(radius)
             }
         }
     }

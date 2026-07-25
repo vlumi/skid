@@ -6,7 +6,7 @@ import XCTest
 
 /// The Pro d-pad scheme: the pad materializes where the thumb lands and STAYS
 /// there for the touch's whole life (gas / brake / left / right keep fixed
-/// screen positions). These pin the fixed-origin behaviour — the fix for the
+/// screen positions). These pin the fixed-origin behavior — the fix for the
 /// origin creeping upward when gas is held without braking.
 @MainActor
 final class DPadControlTests: XCTestCase {
