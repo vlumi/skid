@@ -152,6 +152,30 @@ surface — it never eats asphalt, counts as asphalt if touched (no slowdown,
 no barrier), and grass begins only past it. Deck guard rails are the
 opposite: real barriers, never decals.
 
+**Overlap is measured on the asphalt only** *(decided)*. Two ribbons may not
+pave over each other, but their kerbs **may abut or share space**: roads
+exactly 1U apart are legal and read as a shared kerb between them — a real
+track feature, and the tightest fit the unit grid naturally produces (a
+hairpin's legs land exactly there). Requiring kerb clearance would outlaw
+those fits.
+
+That licence comes with two hard rules for the kerb pass, since paint is the
+thing that has to give way:
+
+- **A kerb never covers another piece's asphalt.** Drivable surface has
+  priority over decoration, always — so the kerb band is *clipped* by every
+  other piece's ribbon, not merely "drawn to fit". A kerb that spilled onto a
+  neighbouring road would read as a barrier across a racing line.
+- **Overlapping kerbs merge into one.** Where two bands would occupy the same
+  strip, they must render as a single shared kerb rather than two competing
+  ones (double-drawn dashes at conflicting phases look like damage). The
+  natural implementation is to build the kerb geometry for the whole layout in
+  one pass — union the bands, subtract all asphalt — instead of per piece,
+  which is also what makes per-edge styling tractable.
+
+This matters most on a curve's outer edge, where the band is widest and tight
+fits are commonest.
+
 ### The editing model — one chain, geometry always derived
 
 Editing works like laying rollercoaster track: the start line goes down
@@ -461,6 +485,41 @@ future decoration section needs. Two quieter reasons seal it:
 packs ~45% more characters per version than byte mode — a base32-uppercase
 code (with an uppercased share path) would exploit it if the budget ever
 tightens. Not needed at current sizes.
+
+## A library of your own tracks *(planned)*
+
+The custom slot in the setup picker is the first step; the shape it grows into:
+
+- **A track's identity is a UUID, not its name.** Once designs arrive from
+  other people by link/QR, two of them *will* be called "Hairpin" — so name
+  can't be identity without forcing renames on import. A UUID also keeps
+  hiscores stable across a rename (they key on `Track.id`).
+- **Names are for humans and need not be unique.** Duplicates are the author's
+  business; the UI can warn ("you already have a track called that") without
+  blocking. Requiring uniqueness only creates dead ends.
+- **Editing any track starts a copy.** Opening a built-in or an imported track
+  in the editor copies it into your library with a fresh UUID and a default
+  name ("Hairpin (copy)"), so the original is never mutated and there's no
+  "pick a new name" gate before you can start.
+- **The share code stays pure content.** It carries pieces, gates, origin and
+  theme — deliberately no id, because the receiving device mints its own UUID
+  on import. The *name* travels alongside as a new optional TLV section
+  (tag 5 `NAME`), which the budget table already has room for.
+
+**Signed tracks** *(wanted; sizing decided, not built)*. Each device holds an
+Ed25519 keypair in the Keychain with `kSecAttrSynchronizable` so it follows
+the user's iCloud, and a published track carries author + signature (tags 6
+`AUTHOR`, 7 `SIG`). What that buys is **attribution**, not integrity against a
+malicious sharer — anyone can strip a signature and re-sign as themselves,
+because nothing vouches for which key is whom. Useful for "by *author*" and
+for keying hiscores by (track, author); not an anti-cheat mechanism.
+
+The catch is the **QR budget**: 32-byte key + 64-byte signature = 96 B, which
+roughly triples a typical 46 B track and pushes the worst case past the V11
+ceiling the format promises to stay inside. So signing is an **optional
+section**, not mandatory: bare codes stay QR-sized, signatures ride along on
+links (or on a truncated 32-byte signature, which is ample for attribution).
+Keep the budget table honest when it lands.
 
 ## Open until wired up
 

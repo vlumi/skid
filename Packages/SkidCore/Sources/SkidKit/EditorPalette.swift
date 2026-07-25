@@ -7,14 +7,14 @@ import SwiftUI
 /// grows as catalog families land (decals, decorations).
 extension EditorView {
     enum PaletteTab: String, CaseIterable, Identifiable {
-        case straights, curves, special
+        case straights, curves, elevation
         var id: String { rawValue }
 
         var label: LocalizedStringKey {
             switch self {
             case .straights: return "Straights"
             case .curves: return "Curves"
-            case .special: return "Special"
+            case .elevation: return "Elevation"
             }
         }
     }
@@ -54,15 +54,17 @@ extension EditorView {
             ]
         case .curves:
             return curvePieces
-        case .special:
+        case .elevation:
             // "Ramp" is a single button: with only two elevations it picks up
             // from the ground and down from the deck automatically (see
             // `game.editorRamp`).
-            return [
-                .init(id: PaletteItem.rampSentinel, label: "Ramp"),
-                .init(id: PieceCatalog.ID.crossing, label: "Crossing"),
-                .init(id: PieceCatalog.ID.jump, label: "Jump"),
-            ]
+            //
+            // Crossings and jumps are NOT offered yet: the catalog has their
+            // geometry, but the Phase-A compiler doesn't handle either kind
+            // (a track containing one fails to compile), so placing them could
+            // only ever build something broken. They return with the compiler
+            // work — see docs/track-pieces.md "Beyond the ring".
+            return [.init(id: PaletteItem.rampSentinel, label: "Ramp")]
         }
     }
 
@@ -111,6 +113,20 @@ extension EditorView {
         return items
     }
 
+    /// Whether this palette entry can be placed on the current loose end. The
+    /// ramp button resolves to whichever ramp direction applies.
+    func canPlace(_ item: PaletteItem) -> Bool {
+        guard let layout = game.editorLayout else { return false }
+        let id: PieceID
+        if item.id == PaletteItem.rampSentinel {
+            let elevated = (layout.walk().placed.last?.exitHeight ?? 0) > 0.5
+            id = elevated ? PieceCatalog.ID.rampDown : PieceCatalog.ID.rampUp
+        } else {
+            id = item.id
+        }
+        return game.editorCanAppend(id)
+    }
+
     /// The scrollable row of piece buttons for the current tab. Each icon
     /// renders the piece as it will land on the selected loose end (rotated to
     /// its heading, in the deck look when building elevated).
@@ -118,6 +134,10 @@ extension EditorView {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
                 ForEach(visiblePieces) { item in
+                    // A piece that would pave over the track or run off the
+                    // canvas is DISABLED — being blocked beats placing it and
+                    // then reading a warning that's easy to miss.
+                    let placeable = canPlace(item)
                     Button {
                         if item.id == PaletteItem.rampSentinel {
                             game.editorRamp()
@@ -133,8 +153,10 @@ extension EditorView {
                         .background(
                             Color.black.opacity(0.3), in: RoundedRectangle(cornerRadius: 12)
                         )
+                        .opacity(placeable ? 1 : 0.25)
                         .accessibilityLabel(Text(item.label, bundle: .module))
                     }
+                    .disabled(!placeable)
                 }
             }
             .padding(.horizontal)
