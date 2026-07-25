@@ -38,6 +38,10 @@ struct SetupView: View {
                             game.trackID = track.id
                         }
                     }
+                    // The custom slot: one permanent place for your own design,
+                    // raced with the full setup (players, AI, laps) like any
+                    // built-in. Only selectable once it compiles to a real track.
+                    customTrackChoice
                 }
 
                 if game.mode == .race {
@@ -246,6 +250,26 @@ struct SetupView: View {
                 .foregroundStyle(.white.opacity(0.85))
             HStack(spacing: 10, content: content)
         }
+    }
+
+    /// The custom-track slot. Disabled until the editor's design is a valid,
+    /// closed track — so it can't be selected into a race that won't work.
+    @ViewBuilder private var customTrackChoice: some View {
+        let ready = game.customTrack() != nil
+        let selected = game.trackID == CouchGame.customTrackID
+        Button {
+            game.trackID = CouchGame.customTrackID
+        } label: {
+            Text("My track", bundle: .module)
+                .font(.callout.bold())
+                .padding(.horizontal, 18)
+                .padding(.vertical, 9)
+                .background(
+                    selected ? Color.white.opacity(0.9) : .black.opacity(0.25), in: Capsule()
+                )
+                .foregroundStyle(selected ? .black : .white.opacity(ready ? 1 : 0.35))
+        }
+        .disabled(!ready)
     }
 
     private func choice(_ label: Text, selected: Bool, action: @escaping () -> Void) -> some View {
