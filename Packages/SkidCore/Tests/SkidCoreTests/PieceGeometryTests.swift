@@ -144,6 +144,69 @@ final class PieceGeometryTests: XCTestCase {
         XCTAssertEqual(end.position.y.b, 0, "no √2 residue may survive the pair")
     }
 
+    // MARK: - The closure gap readout
+
+    /// A closed loop reports an exactly-zero gap — no epsilon, since the
+    /// components come off the integer coordinates.
+    func testClosedLoopReportsNoGap() {
+        let layout = TrackLayout(pieces: [
+            PieceCatalog.ID.startGrid, PieceCatalog.ID.curve90TightLeft, PieceCatalog.ID.straight,
+            PieceCatalog.ID.curve90TightLeft, PieceCatalog.ID.straight,
+            PieceCatalog.ID.curve90TightLeft, PieceCatalog.ID.straight,
+            PieceCatalog.ID.curve90TightLeft,
+        ])
+        let walk = layout.walk()
+        XCTAssertTrue(walk.openEnds.isEmpty)
+        // With nothing open there's nothing to measure; measuring the final
+        // exit against the origin still reports closed.
+        let end = walk.placed.last!.exits[0]
+        XCTAssertTrue(layout.closureGap(from: end).isClosed)
+    }
+
+    /// A gap made only of straights and 90s is pure AXIS travel: whole units,
+    /// no √2 part — so straights can still close it.
+    func testAxisOnlyGapIsWholeUnitsAndFixableWithStraights() {
+        // Start piece (2U) alone: the loose end sits 2U east of the origin.
+        let layout = TrackLayout(pieces: [PieceCatalog.ID.startGrid])
+        let end = layout.walk().openEnds[0]
+        let gap = layout.closureGap(from: end)
+        XCTAssertFalse(gap.isClosed)
+        XCTAssertFalse(gap.needsDiagonalTravel, "straights and 90s owe no √2 debt")
+        XCTAssertEqual(gap.axisX, -2, "the origin is 2U back west of the end")
+        XCTAssertEqual(gap.axisY, 0)
+    }
+
+    /// A single 45° curve leaves a √2 debt: straights can never close it, and
+    /// the readout must say so.
+    func testDiagonalGapIsFlaggedAsNeedingDiagonalTravel() {
+        let layout = TrackLayout(pieces: [
+            PieceCatalog.ID.startGrid, PieceCatalog.ID.curve45MediumLeft,
+        ])
+        let end = layout.walk().openEnds[0]
+        let gap = layout.closureGap(from: end)
+        XCTAssertTrue(gap.needsDiagonalTravel, "a lone 45 owes a √2 debt")
+        // The gap is measured end → target, so a screen-left 45 (which turns the
+        // end clockwise to step 7) needs one eighth back to face east again.
+        XCTAssertEqual(gap.headingEighths, 1)
+    }
+
+    /// A mirrored chicane pair cancels its LATERAL √2 shift exactly (the y gap
+    /// comes back to zero), but each chicane also advances `r√2` FORWARD, and
+    /// those accumulate — so a pair still owes a forward diagonal debt. Worth
+    /// pinning down: it means "chicanes close against their mirror" is about
+    /// getting back on line, not about closing the loop by itself.
+    func testMirroredChicanePairCancelsSidewaysButNotForward() {
+        let paired = TrackLayout(pieces: [
+            PieceCatalog.ID.startGrid, PieceCatalog.ID.chicaneMediumLeft,
+            PieceCatalog.ID.chicaneMediumRight,
+        ])
+        let gap = paired.closureGap(from: paired.walk().openEnds[0])
+        XCTAssertEqual(gap.headingEighths, 0, "the pair ends back on the entry heading")
+        XCTAssertEqual(gap.diagonalY, 0, "the sideways √2 shift cancels exactly")
+        XCTAssertNotEqual(gap.diagonalX, 0, "but the forward √2 advance accumulates")
+        XCTAssertTrue(gap.needsDiagonalTravel)
+    }
+
     /// The 2×2 starting grid has to fit on the start piece behind the line —
     /// the one place a shortened piece length could silently push cars off the
     /// ribbon, so it's asserted rather than assumed.
