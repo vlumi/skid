@@ -152,6 +152,30 @@ surface — it never eats asphalt, counts as asphalt if touched (no slowdown,
 no barrier), and grass begins only past it. Deck guard rails are the
 opposite: real barriers, never decals.
 
+**Overlap is measured on the asphalt only** *(decided)*. Two ribbons may not
+pave over each other, but their kerbs **may abut or share space**: roads
+exactly 1U apart are legal and read as a shared kerb between them — a real
+track feature, and the tightest fit the unit grid naturally produces (a
+hairpin's legs land exactly there). Requiring kerb clearance would outlaw
+those fits.
+
+That licence comes with two hard rules for the kerb pass, since paint is the
+thing that has to give way:
+
+- **A kerb never covers another piece's asphalt.** Drivable surface has
+  priority over decoration, always — so the kerb band is *clipped* by every
+  other piece's ribbon, not merely "drawn to fit". A kerb that spilled onto a
+  neighbouring road would read as a barrier across a racing line.
+- **Overlapping kerbs merge into one.** Where two bands would occupy the same
+  strip, they must render as a single shared kerb rather than two competing
+  ones (double-drawn dashes at conflicting phases look like damage). The
+  natural implementation is to build the kerb geometry for the whole layout in
+  one pass — union the bands, subtract all asphalt — instead of per piece,
+  which is also what makes per-edge styling tractable.
+
+This matters most on a curve's outer edge, where the band is widest and tight
+fits are commonest.
+
 ### The editing model — one chain, geometry always derived
 
 Editing works like laying rollercoaster track: the start line goes down
