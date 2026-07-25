@@ -76,7 +76,7 @@ public enum TrackValidator {
         }
 
         // 2. No disallowed same-layer overlap.
-        if hasIllegalOverlap(walk.placed) {
+        if hasIllegalOverlap(walk.placed, ringClosed: walk.openEnds.isEmpty) {
             problems.append(.overlap)
         }
 
@@ -121,12 +121,22 @@ public enum TrackValidator {
     /// surfaces genuinely overlap (mere closeness between neighbouring corners
     /// stays outside this). Legal crossable pairs and jump-gap unders are
     /// exempt.
-    private static func hasIllegalOverlap(_ placed: [PlacedPiece]) -> Bool {
+    private static func hasIllegalOverlap(_ placed: [PlacedPiece], ringClosed: Bool) -> Bool {
         // Two ribbons touch when their centerlines are a FULL width apart (half
         // from each side) and overlap below that — so the threshold is the road
         // width, not half of it. (It was half, which let a lap sit half-on-top
         // of another and still validate.) A hair under, so ribbons that merely
         // graze aren't rejected.
+        // **What counts as overlap (decided):** the ASPHALT only. Two ribbons
+        // must not pave over each other, but their kerbs may abut or share
+        // space — roads exactly 1U apart are legal and read as a shared kerb
+        // between them, which is a real track feature and the tightest fit the
+        // unit grid naturally produces (hairpin legs land exactly there).
+        // Requiring kerb clearance instead would outlaw those fits. The
+        // Consequences for the kerb pass: a kerb must never cover another
+        // piece's asphalt (drivable surface beats decoration, so the band is
+        // clipped by every other ribbon), and overlapping kerbs must merge into
+        // one shared band rather than double-drawing. See docs/track-pieces.md.
         let minGap = Double(PieceCatalog.width) * 0.95
         // Sampled points + layer per piece (first path only; forks sample the
         // trunk — branch overlap gets full treatment in Phase B).
@@ -135,10 +145,15 @@ public enum TrackValidator {
         let n = placed.count
         for i in placed.indices {
             for j in placed.indices where j > i {
-                // Skip sequence-adjacent pieces, and the ring wraparound pair
-                // (first & last) that share the start seam — they touch legally.
+                // Sequence-adjacent pieces share a port, so they always touch.
                 if j == i + 1 { continue }
-                if i == 0 && j == n - 1 { continue }
+                // The first/last pair share the start seam ONLY once the ring
+                // has closed. While it's still open, the last piece running up
+                // alongside the start piece is a real overlap — and it's exactly
+                // the placement that should have been refused, so exempting it
+                // unconditionally let the offending piece land and then blamed
+                // everything placed after it.
+                if ringClosed && i == 0 && j == n - 1 { continue }
                 // Different heights can't collide — that's a bridge crossing.
                 if abs(placed[i].entryHeight - placed[j].entryHeight) > 0.5 { continue }
                 if legallyCrossing(placed[i], placed[j]) { continue }

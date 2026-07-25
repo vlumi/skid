@@ -171,6 +171,25 @@ final class TrackValidatorTests: XCTestCase {
         XCTAssertTrue(TrackValidator.canAppend(Pieces.straight, to: fresh))
     }
 
+    /// The piece that CREATES an overlap must be the one refused. The first/last
+    /// pair was exempted unconditionally as "the start seam", but that only
+    /// holds once the ring has closed — while it's open, the last piece running
+    /// alongside the start piece is a real overlap. Exempting it let the
+    /// offending piece land and then blamed every placement after it (the whole
+    /// palette greyed out, one piece too late).
+    func testTheOverlappingPlacementItselfIsRefused() {
+        let ring: [PieceID] =
+            [Pieces.startGrid] + Array(repeating: Pieces.curve90MediumLeft, count: 4)
+        // Four pieces in, the ring is about to lap onto its own start.
+        let beforeOverlap = TrackLayout(pieces: Array(ring.prefix(4)))
+        XCTAssertFalse(
+            TrackValidator.validate(beforeOverlap).problems.contains(.overlap),
+            "still clean before the offending piece")
+        XCTAssertFalse(
+            TrackValidator.canAppend(Pieces.curve90MediumLeft, to: beforeOverlap),
+            "the placement that would create the overlap must be refused")
+    }
+
     func testSelfOverlapReported() {
         // A degenerate loop folding back on itself: start + hairpin + hairpin
         // returns along the same corridor, colliding on the same layer.
