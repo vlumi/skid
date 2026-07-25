@@ -24,11 +24,17 @@ struct EditorView: View {
     @State var tab: PaletteTab = .curves
     @State var radius: CurveRadius = .medium
 
-    /// The cached "Close it" suggestion, recomputed only when the layout or the
-    /// selected end actually changes. The search costs tens of milliseconds, so
-    /// it must never run from `body` — that made the editor unusable.
-    @State private var closingRun: [PieceID]?
+    /// The cached "Close it" search result, recomputed only when the layout or
+    /// the selected end actually changes. The search costs tens of milliseconds,
+    /// so it must never run from `body` — that made the editor unusable.
+    @State private var closingOutcome: ClosureOutcome?
     @State private var closingRunKey: ClosingKey?
+
+    /// The suggested run, when the search found one.
+    private var closingRun: [PieceID]? {
+        guard case .found(let run) = closingOutcome, !run.isEmpty else { return nil }
+        return run
+    }
 
     /// What the cached suggestion was computed for.
     private struct ClosingKey: Equatable, Hashable {
@@ -192,7 +198,16 @@ struct EditorView: View {
         guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
             return closedLoopHint(layout)
         }
-        let gap = layout.closureGap(from: walk.openEnds[i])
+        let end = walk.openEnds[i]
+        let gap = layout.closureGap(from: end)
+        guard let advice = advice(for: gap, facing: end.heading) else { return nil }
+        let parts = gapParts(gap)
+        guard !parts.isEmpty else { return "Not closed — \(advice)\(searchNote)" }
+        return "Gap \(parts.joined(separator: " + ")) — \(advice)\(searchNote)"
+    }
+
+    /// The gap's components, in the currencies the unit system spends.
+    private func gapParts(_ gap: ClosureGap) -> [String] {
         var parts: [String] = []
         // Axis offsets, named by compass direction (screen y grows downward).
         if gap.axisX != 0 {
@@ -204,22 +219,35 @@ struct EditorView: View {
         if gap.needsDiagonalTravel {
             parts.append("\(unitText(max(abs(gap.diagonalX), abs(gap.diagonalY)))) diagonal")
         }
-        let advice: String
-        switch gap.remedy(facing: walk.openEnds[i].heading) {
-        case .closed: return nil
+        return parts
+    }
+
+    /// Which edit closes the gap, in words. Nil when there's nothing to do.
+    private func advice(for gap: ClosureGap, facing heading: Heading) -> String? {
+        switch gap.remedy(facing: heading) {
+        case .closed:
+            return nil
         case .turn(let eighths):
             // Report the shorter way round, so 7 eighths reads as "45° left".
             let left = eighths <= 4
-            advice = "turn \((left ? eighths : 8 - eighths) * 45)° \(left ? "left" : "right")"
+            return "turn \((left ? eighths : 8 - eighths) * 45)° \(left ? "left" : "right")"
         case .straights:
-            advice = "straights will close it"
+            return "straights will close it"
         case .tooLong:
-            advice = "overshot — shorten a run instead"
+            return "overshot — shorten a run instead"
         case .balanceDiagonals:
-            advice = "45s must cancel — pair them opposite, or 8 round the loop"
+            return "45s must cancel — pair them opposite, or 8 round the loop"
         }
-        guard !parts.isEmpty else { return "Not closed — \(advice)" }
-        return "Gap \(parts.joined(separator: " + ")) — \(advice)"
+    }
+
+    /// If the search looked and couldn't finish within its depth, say so —
+    /// silence reads as "impossible" when it only means "not in N pieces".
+    private var searchNote: String {
+        switch closingOutcome {
+        case .needsMorePieces(let searched): return " (over \(searched) pieces)"
+        case .impossible: return " (no way home from here)"
+        default: return ""
+        }
     }
 
     /// The ring has no loose end, so anything still unsaveable is a rule other
@@ -227,6 +255,9 @@ struct EditorView: View {
     /// that isn't there.
     private func closedLoopHint(_ layout: TrackLayout) -> String? {
         let problems = TrackValidator.validate(layout).problems
+        for problem in problems {
+            if case .unclosedHeight = problem { return "Ramp back down before closing" }
+        }
         if problems.contains(.gates) { return "Loop closed — mark a checkpoint to finish" }
         if problems.contains(.overlap) { return "Loop closed, but it crosses itself" }
         if problems.contains(.offCanvas) { return "Loop closed, but it runs off the canvas" }
@@ -244,11 +275,10 @@ struct EditorView: View {
         guard key != closingRunKey else { return }
         closingRunKey = key
         guard let layout = game.editorLayout, let end else {
-            closingRun = nil
+            closingOutcome = nil
             return
         }
-        let run = layout.closingRun(from: end, maxPieces: 3)
-        closingRun = (run?.isEmpty ?? true) ? nil : run
+        closingOutcome = layout.closingOutcome(from: end, maxPieces: 3)
     }
 
     /// A unit count, trimmed to look like "2U" / "1.5U".

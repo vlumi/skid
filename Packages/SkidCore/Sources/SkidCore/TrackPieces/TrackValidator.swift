@@ -18,6 +18,10 @@ public struct Validation: Equatable, Sendable {
         case gates
         /// The footprint doesn't fit the fixed canvas.
         case offCanvas
+        /// The ring closes somewhere other than ground level — it climbed a
+        /// ramp and never came back down, so the road would meet itself at two
+        /// different heights.
+        case unclosedHeight(Double)
     }
 
     public var problems: [Problem]
@@ -64,6 +68,16 @@ public enum TrackValidator {
         // 5. Fits the canvas.
         if !fitsCanvas(walk.placed) {
             problems.append(.offCanvas)
+        }
+
+        // 6. Height comes home. A ring that climbs a ramp must descend before it
+        // closes, or the road meets itself at two different heights — a
+        // bridge to nowhere. (The walk only compares heights when auto-mating an
+        // inlet, so a ring closing onto the origin could sneak through elevated.)
+        // Only meaningful once the ring IS closed: mid-build, standing on the
+        // deck is exactly what you'd expect.
+        if walk.openEnds.isEmpty, let last = walk.placed.last, abs(last.exitHeight) > 0.001 {
+            problems.append(.unclosedHeight(last.exitHeight))
         }
 
         return Validation(problems: problems)

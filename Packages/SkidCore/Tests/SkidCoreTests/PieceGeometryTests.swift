@@ -328,6 +328,26 @@ final class PieceGeometryTests: XCTestCase {
         }
     }
 
+    /// From an ELEVATED loose end, a suggested run has to ramp back down before
+    /// closing. A pose carries no height, so a height-blind search happily
+    /// "closed" a deck-level end onto the ground-level origin — a bridge to
+    /// nowhere the walk would then refuse to mate.
+    func testSuggestedRunFromTheDeckRampsBackDown() {
+        let onDeck: [PieceID] = [PieceCatalog.ID.startGrid, PieceCatalog.ID.rampUp]
+        let layout = TrackLayout(pieces: onDeck)
+        let walk = layout.walk()
+        let end = walk.openEnds[0]
+        XCTAssertEqual(walk.placed.last?.exitHeight, 1, "the end sits on the deck")
+        guard let run = layout.closingRun(from: end, maxPieces: 4) else { return }
+        XCTAssertTrue(
+            run.contains(PieceCatalog.ID.rampDown),
+            "a run home from the deck must descend; got \(run)")
+        // And the finished ring is genuinely closed at ground level.
+        let closed = TrackLayout(pieces: onDeck + run)
+        XCTAssertTrue(closed.walk().openEnds.isEmpty, "the run must actually close the ring")
+        XCTAssertEqual(closed.walk().placed.last?.exitHeight, 0, "and close on the ground")
+    }
+
     /// When no run can close a gap, the suggester says so rather than offering
     /// something that doesn't work — the two-same-handed-45 loop has no fix.
     func testSuggesterReturnsNilWhenNoShortRunCloses() {
