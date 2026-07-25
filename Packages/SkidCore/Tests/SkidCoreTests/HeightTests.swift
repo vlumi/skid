@@ -256,6 +256,41 @@ final class HeightTests: XCTestCase {
         XCTAssertGreaterThan(starts, 50, "sweep must actually cover the infield")
     }
 
+    /// **The road under a bridge stays open.** A deck rail must not wall off the
+    /// road passing beneath it.
+    ///
+    /// This regressed when rails were made to block every car at or below their
+    /// height (fixing the hop-onto-the-ramp gap): a deck rail at 1.0 then also
+    /// blocked a ground car. A rail blocks from its own level's floor up to its
+    /// height — floor 1 for a deck rail, floor 0 for a mid-ramp one — so the ramp
+    /// stays fenced while the road below runs clear.
+    func testTheRoadUnderTheBridgeIsNotWalledOff() throws {
+        let track = TrackLibrary.track(id: "eight")
+        let count = track.centerline.count
+        let under = try XCTUnwrap(
+            track.centerline.indices.first { index in
+                track.height(ofSegment: index) < 0.1
+                    && track.distanceToCenterline(track.centerline[index], height: 1) < track.width
+            })
+        var race = Race(track: track, players: [PlayerID(0)])
+        let start = track.centerline[(under + count - 4) % count]
+        let aim = (track.centerline[(under + 4) % count] - start).normalized
+        race.cars[0].state.position = start
+        race.cars[0].state.height = 0
+        race.cars[0].state.heading = atan2(aim.y, aim.x)
+        for _ in 0..<120 {
+            race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
+            for event in race.lastEvents {
+                if case .wallImpact = event {
+                    XCTFail("a car driving under the bridge hit a wall")
+                }
+            }
+        }
+        XCTAssertGreaterThan(
+            start.distance(to: race.cars[0].state.position), track.width * 2,
+            "the car should have driven clear through, under the bridge")
+    }
+
     /// Rails sit on the road's TRUE edge, not the height-scaled visual one — the
     /// grip width never scales with height, so a scaled rail sits somewhere the
     /// car can't reach.

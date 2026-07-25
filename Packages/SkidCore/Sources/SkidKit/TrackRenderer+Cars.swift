@@ -38,7 +38,7 @@ extension TrackRenderer {
             if let layout = track.layout {
                 EditorRenderer.drawTrack(
                     walk: layout.walk(), width: track.width, gateSeams: layout.gateSeams,
-                    transform: .identity, heightRange: 0.5...2, into: &context)
+                    transform: track.layoutTransform, heightRange: 0.5...2, into: &context)
             } else {
                 drawRibbon(track: track, elevated: true, into: &context)
             }

@@ -154,6 +154,15 @@ public struct Track: Equatable, Sendable, Codable {
     /// renderers over two different inputs drifted apart in kerbs, rails and
     /// ramp markings, and every fix had to be made twice.
     public var layout: TrackLayout?
+    /// How far the compiled geometry was moved from where walking `layout`
+    /// puts it, so anything drawn from the layout can be shifted to match.
+    ///
+    /// Compiling re-frames a track onto its own footprint (see
+    /// `PieceCompiler.framed`), and that offset isn't a whole number of units, so
+    /// it can't be folded back into the layout's exact integer origin. Drawing
+    /// the raw walk therefore put the track visibly off from where it physically
+    /// was — right shape, wrong place.
+    public var layoutOffset: Vec2
     /// Grid slots in start order (pole first), with the heading cars face.
     public var startSlots: [Vec2]
     public var startHeading: Double
@@ -175,6 +184,7 @@ public struct Track: Equatable, Sendable, Codable {
         gates: [Gate] = [],
         patches: [SurfacePatch] = [],
         layout: TrackLayout? = nil,
+        layoutOffset: Vec2 = .zero,
         startSlots: [Vec2] = [],
         startHeading: Double = 0,
         size: Vec2,
@@ -190,6 +200,7 @@ public struct Track: Equatable, Sendable, Codable {
         self.gates = gates
         self.patches = patches
         self.layout = layout
+        self.layoutOffset = layoutOffset
         self.startSlots = startSlots
         self.startHeading = startHeading
         self.size = size
