@@ -71,13 +71,15 @@ struct SetupView: View {
     }
 
     /// Display name for a built-in track id.
+    /// A built-in's display name, from the library rather than a switch here.
+    ///
+    /// This used to hardcode the names of the four hand-authored circuits, so once
+    /// they were replaced by piece-built tracks every one of them fell through to
+    /// the default and the picker showed "Practice" three times over. Names belong
+    /// with the tracks. (The custom slot is drawn by `customTrackChoice`, not
+    /// through here.)
     private func trackName(_ id: String) -> Text {
-        switch id {
-        case "gauntlet": return Text("Gauntlet", bundle: .module)
-        case "hairpin": return Text("Hairpin", bundle: .module)
-        case "overpass": return Text("Overpass", bundle: .module)
-        default: return Text("Practice", bundle: .module)
-        }
+        Text(verbatim: TrackLibrary.displayName(id: id))
     }
 
     @ViewBuilder private var hiscoreLine: some View {
