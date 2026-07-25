@@ -51,13 +51,33 @@ struct ClosureSearch {
             .map { (id: $0.key, piece: $0.value) }
             .sorted { (Self.cost($0.piece), $0.id) < (Self.cost($1.piece), $1.id) }
         existing = placed.dropFirst().dropLast(1).flatMap { piece in
-            TrackValidator.samplePoints(piece).map { (point: $0, height: piece.entryHeight) }
+            // Densified along straights too: the angular sampler gives a long
+            // straight only its endpoints, which leaves a wide corridor the
+            // proximity test can't see into.
+            Self.densified(piece).map { (point: $0, height: piece.entryHeight) }
         }
         let clearance = Double(PieceCatalog.width) * 0.95
         clearanceSquared = clearance * clearance
         reach = candidates.reduce(0) { longest, entry in
             max(longest, entry.piece.paths[0].exit(from: .origin).position.vec2.length)
         }
+    }
+
+    /// Centreline samples with long spans subdivided, so no gap between
+    /// consecutive points is wide enough for a road to slip through unnoticed.
+    private static func densified(_ placed: PlacedPiece) -> [Vec2] {
+        let step = Double(PieceCatalog.width) * 0.6
+        let points = placed.centerlineSamples(degreesPerSample: 20)
+        guard points.count >= 2 else { return points }
+        var out: [Vec2] = [points[0]]
+        for i in 1..<points.count {
+            let span = points[i] - points[i - 1]
+            let pieces = max(1, Int((span.length / step).rounded(.up)))
+            for k in 1...pieces {
+                out.append(points[i - 1] + span * (Double(k) / Double(pieces)))
+            }
+        }
+        return out
     }
 
     /// Straights are free, arcs cost their sweep — so among equal-length runs
@@ -160,8 +180,12 @@ struct ClosureSearch {
 
     /// Does a piece placed here stay clear of pavement already laid *at the same
     /// height*? Different heights pass freely — that's a bridge.
+    ///
+    /// A cheap point-proximity test (this is called per search node), so it can
+    /// miss a crossing that happens between samples; the winning run is
+    /// re-checked by the real validator, which compares segments properly.
     private func staysClear(_ placed: PlacedPiece, at height: Double) -> Bool {
-        for point in placed.centerlineSamples(degreesPerSample: 45) {
+        for point in Self.densified(placed) {
             for other in existing
             where abs(other.height - height) < 0.5
                 && (point - other.point).lengthSquared < clearanceSquared

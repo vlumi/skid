@@ -110,6 +110,21 @@ final class TrackValidatorTests: XCTestCase {
             "an open chain on the deck is a normal editing state")
     }
 
+    /// Centerlines that CROSS must be caught even when their sample points are
+    /// far apart. Two 4U straights meeting at right angles have their nearest
+    /// endpoints 339 units apart — way over the width threshold — so a
+    /// point-to-point check missed them entirely and a figure-8 whose lobes met
+    /// at the waist validated happily. The check compares segments now.
+    func testCrossingCenterlinesAreCaughtBetweenSamplePoints() {
+        // Two lobes turning opposite ways meet back at the middle.
+        let figure8: [PieceID] =
+            [Pieces.startGrid]
+            + Array(repeating: Pieces.curve90MediumLeft, count: 4)
+            + Array(repeating: Pieces.curve90MediumRight, count: 4)
+        let v = TrackValidator.validate(TrackLayout(pieces: figure8, gateSeams: [0, 2]))
+        XCTAssertTrue(v.problems.contains(.overlap), "lobes meeting at the waist is an overlap")
+    }
+
     func testSelfOverlapReported() {
         // A degenerate loop folding back on itself: start + hairpin + hairpin
         // returns along the same corridor, colliding on the same layer.
