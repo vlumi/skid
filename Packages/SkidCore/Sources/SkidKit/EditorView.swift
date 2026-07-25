@@ -26,6 +26,8 @@ struct EditorView: View {
 
     /// Brief confirmation that the share code went to the clipboard.
     @State var copiedCode = false
+    /// Brief warning that the clipboard didn't hold a readable share code.
+    @State var pasteFailed = false
 
     /// The cached "Close it" search result, recomputed only when the layout or
     /// the selected end actually changes. The search costs tens of milliseconds,
@@ -135,12 +137,19 @@ struct EditorView: View {
                 } label: {
                     Text("Center", bundle: .module).pillStyle()
                 }
-                // The share code — copy it out to make a design permanent (paste
-                // it into the repo as a built-in), or paste one in to load it.
+                // Copy the share code out — how a design becomes a built-in, or
+                // gets kept somewhere until there's a real track library.
                 Button {
                     copyCode()
                 } label: {
-                    Text(copiedCode ? "Copied" : "Code", bundle: .module).pillStyle()
+                    Text(copiedCode ? "Copied" : "Copy", bundle: .module).pillStyle()
+                }
+                // …and paste one back in to load it. Separate buttons on purpose:
+                // one that did both could silently replace the track you're on.
+                Button {
+                    pasteCode()
+                } label: {
+                    Text(pasteFailed ? "Bad code" : "Paste", bundle: .module).pillStyle()
                 }
             }
             .padding()
@@ -277,7 +286,7 @@ struct EditorView: View {
         return SimultaneousGesture(drag, pinch)
     }
 
-    private func resetView() {
+    func resetView() {
         zoom = 1
         baseZoom = 1
         pan = .zero
