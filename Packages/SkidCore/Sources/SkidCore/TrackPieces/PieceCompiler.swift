@@ -114,6 +114,8 @@ public enum PieceCompiler {
             // final `size` rather than against the walked coordinates.
             + boundaryWalls(size: bounds.size)
         framed.startSlots = track.startSlots.map { $0 + shift }
+        // Remember the shift, so drawing from the layout can match the geometry.
+        framed.layoutOffset = shift
         framed.size = bounds.size
         // `pit` defaults to the center of whatever `size` was at init, so it has
         // to be re-derived from the new frame rather than shifted.

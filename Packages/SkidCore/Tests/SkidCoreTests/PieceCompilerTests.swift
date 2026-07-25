@@ -259,6 +259,30 @@ final class PieceCompilerTests: XCTestCase {
         XCTAssertGreaterThan(checked, 0, "fixture must contain a ramp")
     }
 
+    /// **What's drawn must sit where the physics is.**
+    ///
+    /// The race view draws the track from the piece layout (so it matches the
+    /// editor exactly), but compiling re-frames the geometry onto its own
+    /// footprint. That shift isn't a whole number of units, so it can't be folded
+    /// into the layout's exact integer origin — it has to be carried as
+    /// `layoutOffset` and applied when drawing. Without it the track was rendered
+    /// visibly offset from where it actually was: right shape, wrong place.
+    func testLayoutOffsetAlignsDrawingWithGeometry() throws {
+        for track in [try compiledSquare(), try compiledBridge()] {
+            let layout = try XCTUnwrap(track.layout)
+            let drawn = layout.walk().placed.flatMap { $0.centerlineSamples() }
+                .map { $0 + track.layoutOffset }
+            let drawnXs = drawn.map { $0.x }
+            let drawnYs = drawn.map { $0.y }
+            let realXs = track.centerline.map { $0.x }
+            let realYs = track.centerline.map { $0.y }
+            XCTAssertEqual(drawnXs.min()!, realXs.min()!, accuracy: 1, "\(track.id) left edge")
+            XCTAssertEqual(drawnXs.max()!, realXs.max()!, accuracy: 1, "\(track.id) right edge")
+            XCTAssertEqual(drawnYs.min()!, realYs.min()!, accuracy: 1, "\(track.id) top edge")
+            XCTAssertEqual(drawnYs.max()!, realYs.max()!, accuracy: 1, "\(track.id) bottom edge")
+        }
+    }
+
     /// **The framing contract.** `Track.size` is the renderer's letterbox: it
     /// fits `size` to the screen and centers on `size / 2`. So the geometry must
     /// actually live inside `0…size` on both axes, and `size` must be the track's

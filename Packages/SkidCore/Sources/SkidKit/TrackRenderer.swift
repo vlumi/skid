@@ -16,6 +16,16 @@ struct WorldScene {
     var ghosts: [CarState] = []
 }
 
+extension Track {
+    /// The transform that puts layout-space drawing where the compiled geometry
+    /// actually is. The race context is already scaled to world units, so this is
+    /// a pure translation by `layoutOffset`.
+    var layoutTransform: EditorRenderer.Transform {
+        EditorRenderer.Transform(
+            scale: 1, offset: CGSize(width: layoutOffset.x, height: layoutOffset.y))
+    }
+}
+
 /// Draws the whole world procedurally into a `Canvas` context — grass,
 /// kerbed asphalt ribbon, start line, marks, cars. No image assets anywhere.
 enum TrackRenderer {
@@ -101,7 +111,7 @@ enum TrackRenderer {
         if let layout = track.layout {
             EditorRenderer.drawTrack(
                 walk: layout.walk(), width: track.width, gateSeams: layout.gateSeams,
-                transform: .identity, heightRange: -1...0.5, into: &context)
+                transform: track.layoutTransform, heightRange: -1...0.5, into: &context)
         } else {
             // No layout (ad-hoc tracks built directly in tests): fall back to the
             // centerline stroke, which needs no piece model.

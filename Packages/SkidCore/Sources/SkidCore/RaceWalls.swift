@@ -35,24 +35,28 @@ extension Race {
 
     /// Whether this wall stops this car.
     ///
-    /// A boundary fence stops everyone. A **rail** is the physical edge of a
-    /// stretch of road, and it stops a car that is either at its height OR below
-    /// it: you can't drive off the side of a ramp, and you can't climb onto one
-    /// from the grass beside it either.
+    /// A boundary fence stops everyone. A **rail** guards one stretch of road, and
+    /// it blocks from **its own level's floor up to its own height** — that is,
+    /// from `trunc(height)` to `height`.
     ///
-    /// Matching only the rail's own height was wrong in a way that exactly
-    /// produced the reported bug. A rail partway up a ramp sits at, say, 0.5;
-    /// with a 0.35 tolerance it matched neither a ground car (0) nor a deck car
-    /// (1), so on a measured track only 32 of 82 rails stopped anything and the
-    /// mid-ramp ones stopped nobody. That is the gap you drove through to hop
-    /// onto the bridge.
+    /// Both looser rules are wrong, and each produced a reported bug:
     ///
-    /// A car ABOVE the rail passes freely, which is what keeps a bridge a bridge:
-    /// the road underneath is at 0 while the deck's rails are at 1, so a car down
-    /// there is unobstructed.
+    /// - Blocking only the rail's exact height left the mid-ramp rails (around
+    ///   0.5) matching neither a ground car nor a deck car, so on a measured
+    ///   track just 32 of 82 rails stopped anything — the gap cars used to hop
+    ///   onto the bridge from the grass.
+    /// - Blocking everything at or below the rail meant a deck rail at 1.0 also
+    ///   blocked a ground car, walling off the road that passes *underneath* the
+    ///   bridge.
+    ///
+    /// The floor is what separates those cases. A ramp rail at 0.5 has floor 0, so
+    /// it fences the whole climb from the grass beside it. A deck rail at 1.0 has
+    /// floor 1, so it stops cars on the deck and lets the road below run clear.
     private func blocks(_ wall: Wall, car: CarState) -> Bool {
         guard wall.kind != .boundary else { return true }
-        return car.height <= wall.height + Track.heightTolerance
+        let floor = wall.height.rounded(.down)
+        return car.height >= floor - Track.heightTolerance
+            && car.height <= wall.height + Track.heightTolerance
     }
 
     /// The point on `wall` nearest the car's swept path this tick — treating the
