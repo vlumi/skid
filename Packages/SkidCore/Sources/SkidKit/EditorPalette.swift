@@ -111,6 +111,20 @@ extension EditorView {
         return items
     }
 
+    /// Whether this palette entry can be placed on the current loose end. The
+    /// ramp button resolves to whichever ramp direction applies.
+    func canPlace(_ item: PaletteItem) -> Bool {
+        guard let layout = game.editorLayout else { return false }
+        let id: PieceID
+        if item.id == PaletteItem.rampSentinel {
+            let elevated = (layout.walk().placed.last?.exitHeight ?? 0) > 0.5
+            id = elevated ? PieceCatalog.ID.rampDown : PieceCatalog.ID.rampUp
+        } else {
+            id = item.id
+        }
+        return game.editorCanAppend(id)
+    }
+
     /// The scrollable row of piece buttons for the current tab. Each icon
     /// renders the piece as it will land on the selected loose end (rotated to
     /// its heading, in the deck look when building elevated).
@@ -118,6 +132,10 @@ extension EditorView {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
                 ForEach(visiblePieces) { item in
+                    // A piece that would pave over the track or run off the
+                    // canvas is DISABLED — being blocked beats placing it and
+                    // then reading a warning that's easy to miss.
+                    let placeable = canPlace(item)
                     Button {
                         if item.id == PaletteItem.rampSentinel {
                             game.editorRamp()
@@ -133,8 +151,10 @@ extension EditorView {
                         .background(
                             Color.black.opacity(0.3), in: RoundedRectangle(cornerRadius: 12)
                         )
+                        .opacity(placeable ? 1 : 0.25)
                         .accessibilityLabel(Text(item.label, bundle: .module))
                     }
+                    .disabled(!placeable)
                 }
             }
             .padding(.horizontal)

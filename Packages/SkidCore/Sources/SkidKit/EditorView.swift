@@ -253,14 +253,18 @@ struct EditorView: View {
     /// The ring has no loose end, so anything still unsaveable is a rule other
     /// than geometry — name it, instead of telling the author to extend an end
     /// that isn't there.
+    /// Geometry problems come FIRST. A missing checkpoint is a one-tap fix and
+    /// is present on every track the editor builds (it seeds only seam 0), so
+    /// reporting it first permanently masked the real blockers — a self-crossing
+    /// track showed "mark a checkpoint to finish" and looked finishable.
     private func closedLoopHint(_ layout: TrackLayout) -> String? {
         let problems = TrackValidator.validate(layout).problems
         for problem in problems {
             if case .unclosedHeight = problem { return "Ramp back down before closing" }
         }
+        if problems.contains(.overlap) { return "The track crosses itself — reshape it" }
+        if problems.contains(.offCanvas) { return "The track runs off the canvas" }
         if problems.contains(.gates) { return "Loop closed — mark a checkpoint to finish" }
-        if problems.contains(.overlap) { return "Loop closed, but it crosses itself" }
-        if problems.contains(.offCanvas) { return "Loop closed, but it runs off the canvas" }
         return nil
     }
 

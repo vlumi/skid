@@ -125,6 +125,52 @@ final class TrackValidatorTests: XCTestCase {
         XCTAssertTrue(v.problems.contains(.overlap), "lobes meeting at the waist is an overlap")
     }
 
+    /// A real user build: sweeping arcs, four right then two left, a straight,
+    /// two more left — a figure-8 whose lobes cross at the waist. It closes
+    /// geometrically, so only the overlap rule can catch it.
+    func testSweepingFigureEightIsRejected() {
+        let pieces: [PieceID] =
+            [Pieces.startGrid]
+            + Array(repeating: Pieces.curve90SweepRight, count: 4)
+            + Array(repeating: Pieces.curve90SweepLeft, count: 2)
+            + [Pieces.straight]
+            + Array(repeating: Pieces.curve90SweepLeft, count: 2)
+        let walk = TrackLayout(pieces: pieces).walk()
+        XCTAssertTrue(walk.openEnds.isEmpty, "this shape does close, so geometry won't stop it")
+        let v = TrackValidator.validate(TrackLayout(pieces: pieces, gateSeams: [0, 2]))
+        XCTAssertTrue(v.problems.contains(.overlap), "crossing lobes must be an overlap")
+        XCTAssertFalse(v.isSaveable)
+    }
+
+    /// The editor blocks placements instead of accepting them and warning: a
+    /// piece that would pave over the track is refused up front.
+    func testCanAppendRefusesAPieceThatWouldOverlap() {
+        // A tight ring, one piece short of lapping back over its own start.
+        let ring: [PieceID] =
+            [Pieces.startGrid] + Array(repeating: Pieces.curve90TightLeft, count: 4)
+        let base = TrackLayout(pieces: ring)
+        // Whatever the validator would flag as an overlap, canAppend must refuse.
+        for candidate in [Pieces.curve90TightLeft, Pieces.straight, Pieces.hairpinTightLeft] {
+            var next = base
+            next.pieces.append(candidate)
+            let overlaps = TrackValidator.validate(next).problems.contains(.overlap)
+            XCTAssertEqual(
+                TrackValidator.canAppend(candidate, to: base), !overlaps,
+                "canAppend must agree with the overlap rule for piece \(candidate)")
+        }
+    }
+
+    /// Blocking must NOT trip on the rules a work in progress is expected to
+    /// break — loose ends, one gate, standing on the deck are all normal.
+    func testCanAppendAllowsNormalMidBuildStates() {
+        let onDeck = TrackLayout(pieces: [Pieces.startGrid, Pieces.rampUp])
+        XCTAssertTrue(
+            TrackValidator.canAppend(Pieces.straight, to: onDeck),
+            "extending along the deck is a normal editing state")
+        let fresh = TrackLayout(pieces: [Pieces.startGrid])
+        XCTAssertTrue(TrackValidator.canAppend(Pieces.straight, to: fresh))
+    }
+
     func testSelfOverlapReported() {
         // A degenerate loop folding back on itself: start + hairpin + hairpin
         // returns along the same corridor, colliding on the same layer.

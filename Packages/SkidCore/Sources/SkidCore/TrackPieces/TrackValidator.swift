@@ -36,6 +36,26 @@ public enum TrackValidator {
     /// the ~1.2:1 taller-aspect convention — tune with the catalog numbers).
     public static let canvas = Vec2(1600, 1333)
 
+    /// Whether appending `id` keeps the layout **buildable** — i.e. it doesn't
+    /// pave over itself or leave the canvas. The editor uses this to refuse the
+    /// placement outright, which is far better than accepting it and showing a
+    /// message the author can miss.
+    ///
+    /// Deliberately ignores the rules a work-in-progress is *expected* to break:
+    /// loose ends, the gate count, and standing on the deck are all normal
+    /// mid-build states, not reasons to block a piece.
+    public static func canAppend(_ id: PieceID, to layout: TrackLayout) -> Bool {
+        var candidate = layout
+        candidate.pieces.append(id)
+        let problems = validate(candidate).problems
+        return !problems.contains { problem in
+            switch problem {
+            case .overlap, .offCanvas, .walk: return true
+            case .openEnds, .gates, .startCount, .unclosedHeight: return false
+            }
+        }
+    }
+
     public static func validate(_ layout: TrackLayout) -> Validation {
         var problems: [Validation.Problem] = []
 

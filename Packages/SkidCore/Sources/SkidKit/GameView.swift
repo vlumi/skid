@@ -173,8 +173,22 @@ public final class CouchGame: ObservableObject {
     }
 
     /// Append a catalog piece to the end of the layout (extends the loose end).
-    public func editorAppend(_ id: PieceID) {
+    /// **Refused** if the piece would pave over the track or leave the canvas —
+    /// blocking the placement beats accepting it and showing a warning that's
+    /// easy to miss. Returns whether it was placed.
+    @discardableResult
+    public func editorAppend(_ id: PieceID) -> Bool {
+        guard let layout = editorLayout else { return false }
+        guard TrackValidator.canAppend(id, to: layout) else { return false }
         editorLayout?.pieces.append(id)
+        return true
+    }
+
+    /// Whether a palette piece can be placed right now — so the editor can grey
+    /// out the ones that would break the track instead of letting you tap them.
+    public func editorCanAppend(_ id: PieceID) -> Bool {
+        guard let layout = editorLayout else { return false }
+        return TrackValidator.canAppend(id, to: layout)
     }
 
     /// Append the context-aware ramp: up from the ground, down from the deck —
