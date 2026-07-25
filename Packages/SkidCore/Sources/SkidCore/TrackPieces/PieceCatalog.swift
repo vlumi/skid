@@ -8,112 +8,202 @@ import Foundation
 /// Numbers here (lengths, radii, width) are v1 values, expected to be tuned on
 /// device once the editor renders them.
 public enum PieceCatalog {
-    /// One global road width in v1, so every port mates trivially.
-    public static let width = 120
+    /// The base unit **U** every length and radius is a multiple of — equal to
+    /// the road width, so footprints stay unit-quantized too. Integer
+    /// dimensions are automatically exact on the (a + b√2)/2 lattice, so the
+    /// unit system is purely about *meshing*: whatever the author builds,
+    /// mismatches are whole units, never stray fractions.
+    public static let unit = 120
 
-    /// Radii used by the curve families.
-    public static let tightRadius = 60
-    public static let sweepRadius = 160
+    /// One global road width in v1, so every port mates trivially. Width == U.
+    public static let width = unit
+
+    /// The three curve radii — measured to the road **centre** — on the same
+    /// 1:2:4 doubling as the straights. The tight radius equals a full width,
+    /// so its inner edge still sweeps a real arc (at U/2) instead of
+    /// collapsing to a pivot point.
+    public static let tightRadius = unit  // 120
+    public static let mediumRadius = 2 * unit  // 240
+    public static let sweepRadius = 4 * unit  // 480
+
+    /// Straight lengths, the same doubling family.
+    public static let shortStraight = unit  // 120
+    public static let straight = 2 * unit  // 240
+    public static let longStraight = 4 * unit  // 480
 
     /// The whole v1 catalog, keyed by id.
     public static let all: [PieceID: Piece] = {
         var c: [PieceID: Piece] = [:]
         func add(_ p: Piece) { c[p.id] = p }
 
-        // 0–2 straights
-        add(Piece(id: 0, paths: [.straight(length: 150)]))
-        add(Piece(id: 1, paths: [.straight(length: 300)]))
-        add(Piece(id: 2, paths: [.straight(length: 600)]))
+        // Straights — 1U / 2U / 4U
+        add(Piece(id: ID.shortStraight, paths: [[.straight(length: shortStraight)]]))
+        add(Piece(id: ID.straight, paths: [[.straight(length: straight)]]))
+        add(Piece(id: ID.longStraight, paths: [[.straight(length: longStraight)]]))
 
         // Curves: the model's `left` is a math-CCW turn, which renders CLOCKWISE
         // on screen (y-down). So a piece the PLAYER calls "left" (screen-left =
         // counter-clockwise on screen) is `left: false` here. `screenLeft`
         // names it once so the catalog reads in player terms.
         let screenLeft = false, screenRight = true
+        func arc(_ r: Int, _ eighths: Int, _ left: Bool) -> Piece.Segment {
+            .arc(radius: r, eighths: eighths, left: left)
+        }
+        /// One curve family: the same shape mirrored, at one radius.
+        func addPair(_ leftID: PieceID, _ rightID: PieceID, _ shape: (Bool) -> [Piece.Segment]) {
+            add(Piece(id: leftID, paths: [shape(screenLeft)]))
+            add(Piece(id: rightID, paths: [shape(screenRight)]))
+        }
 
-        // 3–6 curve 45° · L/R × tight/sweep
-        add(Piece(id: 3, paths: [.arc(radius: tightRadius, eighths: 1, left: screenLeft)]))
-        add(Piece(id: 4, paths: [.arc(radius: tightRadius, eighths: 1, left: screenRight)]))
-        add(Piece(id: 5, paths: [.arc(radius: sweepRadius, eighths: 1, left: screenLeft)]))
-        add(Piece(id: 6, paths: [.arc(radius: sweepRadius, eighths: 1, left: screenRight)]))
+        // 45° and 90° curves × tight/medium/sweep.
+        addPair(ID.curve45TightLeft, ID.curve45TightRight) { [arc(tightRadius, 1, $0)] }
+        addPair(ID.curve45MediumLeft, ID.curve45MediumRight) { [arc(mediumRadius, 1, $0)] }
+        addPair(ID.curve45SweepLeft, ID.curve45SweepRight) { [arc(sweepRadius, 1, $0)] }
+        addPair(ID.curve90TightLeft, ID.curve90TightRight) { [arc(tightRadius, 2, $0)] }
+        addPair(ID.curve90MediumLeft, ID.curve90MediumRight) { [arc(mediumRadius, 2, $0)] }
+        addPair(ID.curve90SweepLeft, ID.curve90SweepRight) { [arc(sweepRadius, 2, $0)] }
 
-        // 7–10 curve 90° · L/R × tight/sweep
-        add(Piece(id: 7, paths: [.arc(radius: tightRadius, eighths: 2, left: screenLeft)]))
-        add(Piece(id: 8, paths: [.arc(radius: tightRadius, eighths: 2, left: screenRight)]))
-        add(Piece(id: 9, paths: [.arc(radius: sweepRadius, eighths: 2, left: screenLeft)]))
-        add(Piece(id: 10, paths: [.arc(radius: sweepRadius, eighths: 2, left: screenRight)]))
+        // 180° hairpins — tight and medium only (a sweep U-turn spans 9U).
+        addPair(ID.hairpinTightLeft, ID.hairpinTightRight) { [arc(tightRadius, 4, $0)] }
+        addPair(ID.hairpinMediumLeft, ID.hairpinMediumRight) { [arc(mediumRadius, 4, $0)] }
 
-        // 11–12 hairpin 180° · L/R (tight)
-        add(Piece(id: 11, paths: [.arc(radius: tightRadius, eighths: 4, left: screenLeft)]))
-        add(Piece(id: 12, paths: [.arc(radius: tightRadius, eighths: 4, left: screenRight)]))
+        // S-chicanes: two 45° arcs chained — the road bends one way and straight
+        // back, ending on the ENTRY heading, shifted sideways by r(2−√2). That
+        // shift is irrational (off-grid), so a chicane closes against its
+        // mirror, like every 45° piece.
+        addPair(ID.chicaneTightLeft, ID.chicaneTightRight) {
+            [arc(tightRadius, 1, $0), arc(tightRadius, 1, !$0)]
+        }
+        addPair(ID.chicaneMediumLeft, ID.chicaneMediumRight) {
+            [arc(mediumRadius, 1, $0), arc(mediumRadius, 1, !$0)]
+        }
+        addPair(ID.chicaneSweepLeft, ID.chicaneSweepRight) {
+            [arc(sweepRadius, 1, $0), arc(sweepRadius, 1, !$0)]
+        }
 
-        // 13–14 ramps (straight 300, layer change; up launches)
-        add(Piece(id: 13, paths: [.straight(length: 300)], heightDelta: 1, launches: true))
-        add(Piece(id: 14, paths: [.straight(length: 300)], heightDelta: -1))
+        // Lane jogs: two 90° arcs chained — out and back to the ENTRY heading,
+        // shifted sideways by r_a + r_b, a whole number of units. Unlike the
+        // chicane these are fully grid-clean, which makes them the radius
+        // bridges: the 240 jog re-lines a sweep corner as a medium, the 360 jog
+        // as a tight. (A 120 jog would need r=60, below the tight minimum —
+        // that gap is absorbed with a detour instead. Deliberate, see docs.)
+        addPair(ID.jog240Left, ID.jog240Right) {
+            [arc(tightRadius, 2, $0), arc(tightRadius, 2, !$0)]
+        }
+        addPair(ID.jog360Left, ID.jog360Right) {
+            [arc(tightRadius, 2, $0), arc(mediumRadius, 2, !$0)]
+        }
 
-        // 15 start grid (straight 300; the start/finish line is at its exit)
-        add(Piece(id: 15, paths: [.straight(length: 300)]))
-
-        // 16–17 crossable straights (at-grade intersections)
-        add(Piece(id: 16, kind: .crossing, paths: [.straight(length: 150)]))
-        add(Piece(id: 17, kind: .crossing, paths: [.straight(length: 300)]))
-
-        // 18–20 forks: one entry, two exits (straight + branch, or symmetric)
+        // Ramps (straight 2U, height change; up launches).
         add(
             Piece(
-                id: 18, kind: .fork,
-                paths: [.straight(length: 300), .arc(radius: sweepRadius, eighths: 2, left: true)]))
-        add(
-            Piece(
-                id: 19, kind: .fork,
-                paths: [
-                    .straight(length: 300), .arc(radius: sweepRadius, eighths: 2, left: false),
-                ]))
-        add(
-            Piece(
-                id: 20, kind: .fork,
-                paths: [
-                    .arc(radius: sweepRadius, eighths: 2, left: true),
-                    .arc(radius: sweepRadius, eighths: 2, left: false),
-                ]))
+                id: ID.rampUp, paths: [[.straight(length: straight)]], heightDelta: 1,
+                launches: true))
+        add(Piece(id: ID.rampDown, paths: [[.straight(length: straight)]], heightDelta: -1))
 
-        // 21–23 joins: mirrored forks (encoded as two entries → one exit). At
-        // the model level a join is walked as a fork in reverse; represented
-        // here by the same path shapes with `kind: .fork` and a reversed flag
-        // handled by the walker. Kept as distinct ids for the directional
-        // encoding.
-        add(
-            Piece(
-                id: 21, kind: .fork,
-                paths: [.straight(length: 300), .arc(radius: sweepRadius, eighths: 2, left: true)]))
-        add(
-            Piece(
-                id: 22, kind: .fork,
-                paths: [
-                    .straight(length: 300), .arc(radius: sweepRadius, eighths: 2, left: false),
-                ]))
-        add(
-            Piece(
-                id: 23, kind: .fork,
-                paths: [
-                    .arc(radius: sweepRadius, eighths: 2, left: true),
-                    .arc(radius: sweepRadius, eighths: 2, left: false),
-                ]))
+        // Start grid (straight 2U; the start/finish line is at its exit).
+        add(Piece(id: ID.startGrid, paths: [[.straight(length: straight)]]))
 
-        // 24 jump (launch lip · gap · landing) — one straight span, launches.
-        add(Piece(id: 24, kind: .jump, paths: [.straight(length: 300)], launches: true))
+        // Crossable straights (at-grade intersections): 1U covers a 90°
+        // crossing (shared zone = one width); a diagonal crossing needs 2U.
+        add(
+            Piece(
+                id: ID.crossingShort, kind: .crossing, paths: [[.straight(length: shortStraight)]]))
+        add(Piece(id: ID.crossing, kind: .crossing, paths: [[.straight(length: straight)]]))
+
+        // Forks: one entry, two exits (straight + branch, or symmetric).
+        // Branches use the medium radius so a fork's footprint stays modest.
+        // Joins are the mirrored pieces (two entries → one exit): at the model
+        // level a join walks as a fork in reverse, so it carries the same path
+        // shapes with `kind: .fork`; distinct ids keep the encoding directional.
+        for (straightLeft, straightRight, symmetric) in [
+            (ID.forkStraightLeft, ID.forkStraightRight, ID.forkSymmetric),
+            (ID.joinStraightLeft, ID.joinStraightRight, ID.joinSymmetric),
+        ] {
+            add(
+                Piece(
+                    id: straightLeft, kind: .fork,
+                    paths: [[.straight(length: straight)], [arc(mediumRadius, 2, screenLeft)]]))
+            add(
+                Piece(
+                    id: straightRight, kind: .fork,
+                    paths: [[.straight(length: straight)], [arc(mediumRadius, 2, screenRight)]]))
+            add(
+                Piece(
+                    id: symmetric, kind: .fork,
+                    paths: [
+                        [arc(mediumRadius, 2, screenLeft)], [arc(mediumRadius, 2, screenRight)],
+                    ]))
+        }
+
+        // Jump (launch lip · gap · landing) — one 2U span, launches.
+        add(Piece(id: ID.jump, kind: .jump, paths: [[.straight(length: straight)]], launches: true))
 
         // 128–130 decal variants: straights with a driving-direction arrow —
-        // identical geometry to 0–2, different look (two-byte id range).
-        add(Piece(id: 128, paths: [.straight(length: 150)]))
-        add(Piece(id: 129, paths: [.straight(length: 300)]))
-        add(Piece(id: 130, paths: [.straight(length: 600)]))
+        // identical geometry to the plain straights, different look (two-byte
+        // id range, so the compact range is never rationed).
+        add(Piece(id: 128, paths: [[.straight(length: shortStraight)]]))
+        add(Piece(id: 129, paths: [[.straight(length: straight)]]))
+        add(Piece(id: 130, paths: [[.straight(length: longStraight)]]))
 
         return c
     }()
 
+    /// Named ids for the pieces callers reach for by name (tests, the editor
+    /// palette, the context-aware ramp button). Ids themselves stay data — the
+    /// registry is frozen only at the format's first public release — so
+    /// nothing outside this file should hardcode a number.
+    public enum ID {
+        public static let shortStraight: PieceID = 0
+        public static let straight: PieceID = 1
+        public static let longStraight: PieceID = 2
+        /// 45° curves, screen-left / screen-right, per radius.
+        public static let curve45TightLeft: PieceID = 3
+        public static let curve45TightRight: PieceID = 4
+        public static let curve45MediumLeft: PieceID = 5
+        public static let curve45MediumRight: PieceID = 6
+        public static let curve45SweepLeft: PieceID = 7
+        public static let curve45SweepRight: PieceID = 8
+        /// 90° curves, screen-left / screen-right, per radius.
+        public static let curve90TightLeft: PieceID = 9
+        public static let curve90TightRight: PieceID = 10
+        public static let curve90MediumLeft: PieceID = 11
+        public static let curve90MediumRight: PieceID = 12
+        public static let curve90SweepLeft: PieceID = 13
+        public static let curve90SweepRight: PieceID = 14
+        /// 180° hairpins (tight + medium only).
+        public static let hairpinTightLeft: PieceID = 15
+        public static let hairpinTightRight: PieceID = 16
+        public static let hairpinMediumLeft: PieceID = 17
+        public static let hairpinMediumRight: PieceID = 18
+        /// S-chicanes: bend one way and back, ending on the entry heading.
+        public static let chicaneTightLeft: PieceID = 19
+        public static let chicaneTightRight: PieceID = 20
+        public static let chicaneMediumLeft: PieceID = 21
+        public static let chicaneMediumRight: PieceID = 22
+        public static let chicaneSweepLeft: PieceID = 23
+        public static let chicaneSweepRight: PieceID = 24
+        /// Lane jogs: 90° out and back, shifting sideways a whole number of U.
+        public static let jog240Left: PieceID = 25
+        public static let jog240Right: PieceID = 26
+        public static let jog360Left: PieceID = 27
+        public static let jog360Right: PieceID = 28
+        public static let rampUp: PieceID = 29
+        public static let rampDown: PieceID = 30
+        public static let startGrid: PieceID = 31
+        public static let crossingShort: PieceID = 32
+        public static let crossing: PieceID = 33
+        public static let forkStraightLeft: PieceID = 34
+        public static let forkStraightRight: PieceID = 35
+        public static let forkSymmetric: PieceID = 36
+        public static let joinStraightLeft: PieceID = 37
+        public static let joinStraightRight: PieceID = 38
+        public static let joinSymmetric: PieceID = 39
+        public static let jump: PieceID = 40
+    }
+
     /// The start-grid piece id — exactly one per track.
-    public static let startPieceID: PieceID = 15
+    public static let startPieceID: PieceID = ID.startGrid
 
     public static func piece(_ id: PieceID) -> Piece? { all[id] }
 }

@@ -8,17 +8,23 @@ import XCTest
 /// known drivable before the editor renders it. (Faithful Hairpin/Overpass
 /// rebuilds come with the editor, per the roadmap.)
 final class PieceModelAcceptanceTests: XCTestCase {
-    // Catalog ids: 15 start(300), 1 straight300, 2 straight600, 7/8 left/right
-    // 90° tight, 9/10 left/right 90° sweep, 11 hairpin-L, 13 ramp-up,
-    // 14 ramp-down, 16 crossable-150.
+    // Pieces are named through PieceCatalog.ID — ids are data and reshuffle
+    // freely until the format's first public release, so nothing here hardcodes
+    // a number.
+    private typealias Pieces = PieceCatalog.ID
 
     /// A plain closed loop that exercises straights + 90° curves and closes
     /// exactly, compiling to a drivable Track (grid on asphalt, gates span the
     /// ribbon), and round-trips through the share code unchanged.
     func testRepresentativeLoopCompilesAndRoundTrips() throws {
-        // Rounded square: start(300) then four [left-90, straight(300)]
-        // quarters — symmetric, so it closes exactly.
-        let pieces: [PieceID] = [15, 7, 1, 7, 1, 7, 1, 7]
+        // Rounded square: start then four [left-90, straight] quarters —
+        // symmetric, so it closes exactly. The start piece and the straight are
+        // both 2U, and a 90° tight arc advances 1U, so every side matches.
+        let pieces: [PieceID] = [
+            Pieces.startGrid, Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
+            Pieces.straight,
+            Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
+        ]
         let layout = TrackLayout(pieces: pieces, gateSeams: [0, 2, 4, 6])
 
         // 1. Saveable.
@@ -46,31 +52,36 @@ final class PieceModelAcceptanceTests: XCTestCase {
         XCTAssertEqual(back, layout)
     }
 
-    /// A ramp exercises the elevated layer: start, climb a ramp to the bridge
-    /// deck, run along it, descend, and close. Confirms elevatedSegments and
-    /// Ramp emission.
+    /// A ramp exercises elevation end to end: start, climb to the bridge deck,
+    /// run along it, descend, and close the loop — all on the unit grid, so it
+    /// closes exactly and compiles. Confirms height bookkeeping,
+    /// elevatedSegments, and Ramp emission.
     func testRampProducesAnElevatedBridge() throws {
-        // start + ramp-up + straight(on deck) + ramp-down, then curve home.
-        // Geometry: after the ramp/deck/ramp the car is back on layer 0 and
-        // we close with a big left loop.
-        let pieces: [PieceID] = [15, 13, 1, 14, 7, 1, 7, 1, 7]
+        // One side carries ramp-up(2U) + deck(2U) + ramp-down(2U); the rest is a
+        // rounded rectangle of straights and tight 90s sized to bring it home.
+        let pieces: [PieceID] = [
+            Pieces.startGrid, Pieces.rampUp, Pieces.straight, Pieces.rampDown,
+            Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
+            Pieces.longStraight, Pieces.straight, Pieces.straight,
+            Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
+        ]
         let layout = TrackLayout(pieces: pieces, gateSeams: [0, 4])
         let walk = layout.walk()
         XCTAssertNil(walk.failure)
+        XCTAssertTrue(walk.openEnds.isEmpty, "the bridge loop must close exactly")
 
-        // If it closes and is saveable, compile and check the deck is elevated.
-        if TrackValidator.validate(layout).isSaveable {
-            let track = try PieceCompiler.compile(layout, id: "accept-ramp")
-            XCTAssertFalse(track.elevatedSegments.isEmpty, "the deck should be elevated")
-            XCTAssertFalse(track.ramps.isEmpty, "ramps should be emitted")
-            XCTAssertTrue(track.ramps.contains { $0.launches }, "ramp-up launches")
-        } else {
-            // The mechanism (walk + height tracking) is what's under test; if
-            // this particular shape doesn't close, assert the height bookkeeping
-            // still ran: a ramp raised the running height onto the deck.
-            let onDeck = walk.placed.contains { $0.entryHeight > 0.5 || $0.exitHeight > 0.5 }
-            XCTAssertTrue(onDeck, "ramp should raise the running height onto the deck")
-        }
+        // Height bookkeeping: the deck run sits at height 1, and the loop
+        // returns to the ground before the start line.
+        XCTAssertTrue(
+            walk.placed.contains { $0.entryHeight > 0.5 && $0.exitHeight > 0.5 },
+            "the deck piece should sit at deck height")
+        XCTAssertEqual(walk.placed.last?.exitHeight, 0, "a closed loop returns to the ground")
+
+        XCTAssertTrue(TrackValidator.validate(layout).isSaveable)
+        let track = try PieceCompiler.compile(layout, id: "accept-ramp")
+        XCTAssertFalse(track.elevatedSegments.isEmpty, "the deck should be elevated")
+        XCTAssertFalse(track.ramps.isEmpty, "ramps should be emitted")
+        XCTAssertTrue(track.ramps.contains { $0.launches }, "ramp-up launches")
     }
 
     // MARK: - helpers

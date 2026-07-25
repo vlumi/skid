@@ -132,36 +132,10 @@ public enum TrackValidator {
 
     /// Coarse centerline samples of a piece's first path, as world `Vec2`.
     /// Enough for overlap/canvas checks; the compiler samples arcs finely.
+    /// Delegates to the shared sampler (which walks segment chains, so a
+    /// chicane or jog samples both of its arcs) at a coarse angular step.
     static func samplePoints(_ placed: PlacedPiece) -> [Vec2] {
-        guard let segment = placed.piece.paths.first else { return [placed.entry.position.vec2] }
-        switch segment {
-        case .straight:
-            return [placed.entry.position.vec2, placed.exits[0].position.vec2]
-        case .arc(let radius, let eighths, _):
-            // Sample the arc at ~1 point per 45° plus the endpoints.
-            let steps = max(2, eighths + 1)
-            return arcSamples(
-                entry: placed.entry, exit: placed.exits[0], radius: radius,
-                eighths: eighths, steps: steps)
-        }
-    }
-
-    private static func arcSamples(
-        entry: PiecePose, exit: PiecePose, radius: Int, eighths: Int, steps: Int
-    ) -> [Vec2] {
-        // Reconstruct the arc centre in float space and sweep it.
-        let start = entry.position.vec2
-        let startHeading = entry.heading.radians
-        // Centre is 90° to the turn side; infer side from the exit turn.
-        let left = exit.heading.step == Heading(entry.heading.step + eighths).step
-        let toCentre = startHeading + (left ? .pi / 2 : -.pi / 2)
-        let centre = start + Vec2(angle: toCentre) * Double(radius)
-        let startAngle = atan2(start.y - centre.y, start.x - centre.x)
-        let sweep = (left ? 1.0 : -1.0) * Double(eighths) * .pi / 4
-        return (0...steps).map { k in
-            let a = startAngle + sweep * Double(k) / Double(steps)
-            return centre + Vec2(angle: a) * Double(radius)
-        }
+        placed.centerlineSamples(degreesPerSample: 22.5)
     }
 
     /// Any sampled point of `a` within `minGap` of any of `b`.
