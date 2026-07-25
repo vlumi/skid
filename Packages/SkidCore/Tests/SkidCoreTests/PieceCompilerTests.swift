@@ -132,6 +132,82 @@ final class PieceCompilerTests: XCTestCase {
         }
     }
 
+    /// **A bridge needs barriers.** The editor draws blue guard rails along an
+    /// elevated piece's edges, but the compiler emitted no walls at all — so a
+    /// raced bridge had nothing stopping a car driving off the side. The only
+    /// thing catching you was the fall-off check in `Race.applyRamps`, which is
+    /// the consequence of leaving the deck rather than a wall preventing it.
+    func testElevatedPiecesGetGuardRails() throws {
+        let track = try compiledBridge()
+        XCTAssertFalse(track.walls.isEmpty, "an elevated piece needs guard rails")
+        // Rails belong to the deck, not the ground.
+        for wall in track.walls {
+            XCTAssertEqual(wall.layer, 1, "a deck rail guards the deck")
+        }
+        // Both edges are railed, so rails appear on both sides of the deck.
+        let deckSegment = try XCTUnwrap(track.elevatedSegments.min())
+        let deckPoint = track.centerline[deckSegment]
+        var sides = Set<Bool>()
+        for wall in track.walls {
+            let mid = Vec2((wall.a.x + wall.b.x) / 2, (wall.a.y + wall.b.y) / 2)
+            guard (mid - deckPoint).length < track.width * 3 else { continue }
+            // Which side of the centerline point this rail sits on.
+            sides.insert(mid.x + mid.y > deckPoint.x + deckPoint.y)
+        }
+        XCTAssertEqual(sides.count, 2, "a deck must be railed on both edges")
+    }
+
+    /// **The ramp road must not vanish under a car crossing between layers.**
+    ///
+    /// The reported symptom was the car jumping at the TOP of the ramp. Cause: a
+    /// ramp segment is neither elevated nor plain ground, so a per-layer surface
+    /// lookup found no same-layer asphalt for it. Once the layer flipped at the
+    /// top, the whole descending ramp read as GRASS to the physics — the car came
+    /// over the crest and lost grip as though it had landed in the rough. A ramp
+    /// belongs to both layers, being the connection between them.
+    func testRampRoadIsAsphaltOnBothLayers() throws {
+        let track = try compiledBridge()
+        XCTAssertFalse(track.rampSegments.isEmpty, "fixture must have ramps")
+        for segment in track.rampSegments.sorted() {
+            let a = track.centerline[segment]
+            let b = track.centerline[(segment + 1) % track.centerline.count]
+            for step in 0...4 {
+                let point = a + (b - a) * (Double(step) / 4)
+                for layer in [0, 1] {
+                    XCTAssertEqual(
+                        track.surface(at: point, layer: layer), .asphalt,
+                        "ramp segment \(segment) at t=\(Double(step) / 4) is not asphalt "
+                            + "on layer \(layer)")
+                }
+            }
+        }
+    }
+
+    /// …but the bridge must still BE a bridge: the road passing underneath is
+    /// ground-only, so a car down there can't grip the deck above it. (Without
+    /// this, widening layer membership could quietly turn a bridge into a
+    /// crossroads.)
+    func testDeckIsNotDrivableFromTheGroundLayer() throws {
+        let track = try compiledBridge()
+        // A deck point that isn't part of a ramp: ground layer must see grass
+        // there unless ground road genuinely runs beneath it.
+        var checked = 0
+        for segment in track.elevatedSegments.sorted() {
+            let point = track.centerline[segment]
+            guard track.distanceToCenterline(point, layer: 0) > track.width else { continue }
+            XCTAssertEqual(
+                track.surface(at: point, layer: 0), .grass,
+                "deck segment \(segment) must not be drivable from the ground")
+            checked += 1
+        }
+        XCTAssertGreaterThan(checked, 0, "fixture needs deck clear of the ground road")
+    }
+
+    /// A flat track has nothing to fall off, so it gets no rails.
+    func testGroundLevelTracksHaveNoGuardRails() throws {
+        XCTAssertTrue(try compiledSquare().walls.isEmpty)
+    }
+
     /// The deck itself: flat pieces the walk carries at height 1 become elevated
     /// road, and the ground-level remainder stays on layer 0.
     func testDeckPiecesAreElevatedAndTheRestIsNot() throws {

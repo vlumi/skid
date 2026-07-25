@@ -170,12 +170,25 @@ public struct Track: Equatable, Sendable, Codable {
         elevatedSegments.contains(index) ? 1 : 0
     }
 
+    /// Whether a segment is drivable while on `layer`.
+    ///
+    /// A **ramp segment belongs to BOTH layers**, because it is the connection
+    /// between them: a car climbing it is still on the ground, and a car that has
+    /// just crossed onto the deck is descending it. Treating a ramp as its own
+    /// single layer made the road vanish from under a car mid-transition — the
+    /// surface lookup found no same-layer asphalt and returned grass, so a car
+    /// coming over the top of a bridge lost grip as though it had landed in the
+    /// rough. Hence the union rather than an equality test.
+    private func segment(_ index: Int, isOn layer: Int) -> Bool {
+        rampSegments.contains(index) || segmentLayer(index) == layer
+    }
+
     /// Distance from `p` to the centerline loop — optionally only the
     /// segments of one layer (per-layer ribbon lookups).
     public func distanceToCenterline(_ p: Vec2, layer: Int? = nil) -> Double {
         var best = Double.greatestFiniteMagnitude
         for i in centerline.indices {
-            if let layer, segmentLayer(i) != layer { continue }
+            if let layer, !segment(i, isOn: layer) { continue }
             let a = centerline[i]
             let b = centerline[(i + 1) % centerline.count]
             best = min(best, p.distance(toSegment: a, b))
@@ -196,7 +209,7 @@ public struct Track: Equatable, Sendable, Codable {
             let b = centerline[(i + 1) % centerline.count]
             let closest = p.closestPoint(onSegment: a, b)
             var score = p.distance(to: closest)
-            if let preferLayer, segmentLayer(i) != preferLayer {
+            if let preferLayer, !segment(i, isOn: preferLayer) {
                 score += width  // other-layer segments lose ties decisively
             }
             if score < bestScore {
