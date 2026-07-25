@@ -28,7 +28,14 @@ public final class CouchGame: ObservableObject {
 
     /// The track being built in the editor. A piece list, live-previewed and
     /// compiled on save. Nil until the editor is opened.
-    @Published public var editorLayout: TrackLayout?
+    ///
+    /// This is also the **custom track slot**: one permanent place to build and
+    /// race your own design. It persists across launches as a share code, so
+    /// the track survives quitting the app — and the same code is what gets
+    /// pasted into the repo to promote a design to a built-in.
+    @Published public var editorLayout: TrackLayout? {
+        didSet { saveCustomTrack() }
+    }
 
     public enum Mode: CaseIterable {
         case race
@@ -76,6 +83,10 @@ public final class CouchGame: ObservableObject {
 
     public init() {
         hiscores = hiscoreFile.load()
+        // The custom track slot survives quitting: restore it before anything
+        // reads it. (Set the stored value, not the property — the property's
+        // observer would just re-save what we only read.)
+        editorLayout = Self.restoredCustomTrack()
         // Push persisted render knobs (elevation feel) into their globals
         // before the first frame draws.
         settings.applyRenderTuning()
@@ -248,7 +259,7 @@ public final class CouchGame: ObservableObject {
 
     private func makeSession(humans: Int, totalCars: Int) -> GameSession {
         let players = (0..<totalCars).map { PlayerID($0) }
-        let track = TrackLibrary.track(id: trackID)
+        let track = selectedTrack()
         let config: RaceConfig
         switch mode {
         case .race:
