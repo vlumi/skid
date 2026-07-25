@@ -50,9 +50,9 @@ extension KerbPlan {
     /// the renderer was densified independently.
     public static let degreesPerSample: Double = 3
 
-    /// How far past a corner's apex the exit kerb runs, as a fraction of the
-    /// following pieces' length. Corner exit is where a car runs wide under
-    /// power, so the kerb tapers off shortly after the turn ends.
+    /// How far past a corner the exit kerb runs, in road widths. Corner exit is
+    /// where a car runs wide under power, so the kerb stops shortly after the
+    /// turn ends.
     private static let exitRun = 1.5
 
     /// Work out the kerbs for a walked layout.
@@ -154,7 +154,8 @@ extension KerbPlan {
         paintExit(corner, insideIsRight: insideIsRight, into: &styles, placed: placed)
     }
 
-    /// The apex kerb: the middle stretch of the turn, on its inside.
+    /// The apex kerb: the inside of the turn, from just after the turn-in
+    /// through to the corner's end.
     private static func paintApex(
         _ corner: Corner, insideIsRight: Bool, into styles: inout [[(left: Edge, right: Edge)]]
     ) {
@@ -164,9 +165,11 @@ extension KerbPlan {
             guard styles.indices.contains(piece) else { continue }
             for sample in styles[piece].indices {
                 let along = total > 1 ? Double(seen) / Double(total - 1) : 0.5
-                // Middle 70% of the turn: enough to read as an apex kerb without
-                // lining the entire bend.
-                if along > 0.15, along < 0.85 {
+                // From just after the turn-in, all the way to the corner's end,
+                // where the exit kerb takes over on the other side. Stopping
+                // short of the end (it used to end at 85%) left a visible gap in
+                // the kerb line between the apex and the exit.
+                if along > 0.15 {
                     if insideIsRight {
                         styles[piece][sample].right = .kerb
                     } else {
@@ -176,7 +179,6 @@ extension KerbPlan {
                 seen += 1
             }
         }
-
     }
 
     /// The exit kerb: OUTSIDE, from the apex onward and continuing into what
