@@ -90,6 +90,42 @@ final class GateTests: XCTestCase {
             after.maxX - after.minX, before.maxX - before.minX, "the layout is rigid")
     }
 
+    /// Gates span the CORRIDOR, not just the asphalt: running wide onto the
+    /// grass still counts (the grass is its own penalty), only a gross cut
+    /// through the infield misses. Spanning just the road made checkpoints feel
+    /// unfairly strict — and inconsistent with the built-in tracks, which have
+    /// always used a corridor span.
+    func testGatesReachPastTheAsphaltOntoTheGrass() throws {
+        let layout = TrackLayout(pieces: userTrack, gateSeams: [0, 3, 6])
+        let track = try PieceCompiler.compile(layout, id: "corridor")
+        let asphalt = Double(PieceCatalog.width)
+        for gate in track.gates {
+            XCTAssertGreaterThan(
+                (gate.b - gate.a).length, asphalt,
+                "a gate should reach beyond the road, not stop at its edge")
+        }
+    }
+
+    /// ...but never more than halfway to another lane, or a gate could be
+    /// satisfied from the neighbouring road. A hairpin puts its legs 2r apart,
+    /// which is exactly where that cap has to bite.
+    func testGatesAreCappedHalfwayToANeighbouringLane() throws {
+        let hairpin: [PieceID] = [
+            Pieces.startGrid, Pieces.hairpinTightLeft, Pieces.straight,
+            Pieces.hairpinTightLeft, Pieces.straight,
+        ]
+        let layout = TrackLayout(pieces: hairpin, gateSeams: [0, 2])
+        guard let track = try? PieceCompiler.compile(layout, id: "hairpin") else { return }
+        // The legs' centrelines are 2 x tightRadius apart, so no gate may span
+        // far enough to touch the other one.
+        let laneGap = Double(2 * PieceCatalog.tightRadius)
+        for gate in track.gates {
+            XCTAssertLessThan(
+                (gate.b - gate.a).length, laneGap + Double(PieceCatalog.width),
+                "a gate must not reach into the return lane")
+        }
+    }
+
     /// Seam 0 is the start/finish and permanent; gates cap at 16.
     func testGateRules() {
         // Seam 0 must always be a gate.
