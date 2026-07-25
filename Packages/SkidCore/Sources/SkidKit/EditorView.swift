@@ -30,12 +30,6 @@ struct EditorView: View {
     @State private var closingOutcome: ClosureOutcome?
     @State private var closingRunKey: ClosingKey?
 
-    /// The suggested run, when the search found one.
-    private var closingRun: [PieceID]? {
-        guard case .found(let run) = closingOutcome, !run.isEmpty else { return nil }
-        return run
-    }
-
     /// What the cached suggestion was computed for.
     private struct ClosingKey: Equatable, Hashable {
         var pieces: [PieceID]
@@ -167,20 +161,7 @@ struct EditorView: View {
                             .background(.black.opacity(0.3), in: Capsule())
                             .foregroundStyle(.white)
                     }
-                    // When a short run of pieces would close the loop exactly,
-                    // offer it — the author doesn't have to work out what
-                    // cancels a diagonal, they can just take the suggestion.
-                    if let run = closingRun {
-                        Button {
-                            for id in run { game.editorAppend(id) }
-                        } label: {
-                            Text("Close it (\(run.count))", bundle: .module)
-                                .font(.callout.bold())
-                                .padding(.horizontal, 14).padding(.vertical, 10)
-                                .background(Color.yellow.opacity(0.85), in: Capsule())
-                                .foregroundStyle(.black)
-                        }
-                    }
+                    closeButton
                 }
             }
             .padding(.bottom, 24)
@@ -202,8 +183,10 @@ struct EditorView: View {
         let gap = layout.closureGap(from: end)
         guard let advice = advice(for: gap, facing: end.heading) else { return nil }
         let parts = gapParts(gap)
-        guard !parts.isEmpty else { return "Not closed — \(advice)\(searchNote)" }
-        return "Gap \(parts.joined(separator: " + ")) — \(advice)\(searchNote)"
+        // The search's verdict lives on the Close button, not here — this line
+        // just measures the gap and says which kind of edit closes it.
+        guard !parts.isEmpty else { return "Not closed — \(advice)" }
+        return "Gap \(parts.joined(separator: " + ")) — \(advice)"
     }
 
     /// The gap's components, in the currencies the unit system spends.
@@ -240,13 +223,30 @@ struct EditorView: View {
         }
     }
 
-    /// If the search looked and couldn't finish within its depth, say so —
-    /// silence reads as "impossible" when it only means "not in N pieces".
-    private var searchNote: String {
+    /// The search's verdict, as a button: tap to take a found run, or a disabled
+    /// label saying the search didn't find one within its depth. Showing the
+    /// limit here (rather than nothing) is the point — silence reads as "this
+    /// track can never close", when it only means "not in N pieces".
+    @ViewBuilder private var closeButton: some View {
         switch closingOutcome {
-        case .needsMorePieces(let searched): return " (over \(searched) pieces)"
-        case .impossible: return " (no way home from here)"
-        default: return ""
+        case .found(let run) where !run.isEmpty:
+            Button {
+                for id in run { game.editorAppend(id) }
+            } label: {
+                Text("Close it (\(run.count))", bundle: .module)
+                    .font(.callout.bold())
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(Color.yellow.opacity(0.85), in: Capsule())
+                    .foregroundStyle(.black)
+            }
+        case .needsMorePieces(let searched):
+            Text("No close in \(searched)", bundle: .module)
+                .font(.callout.bold())
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(.black.opacity(0.2), in: Capsule())
+                .foregroundStyle(.white.opacity(0.4))
+        default:
+            EmptyView()
         }
     }
 

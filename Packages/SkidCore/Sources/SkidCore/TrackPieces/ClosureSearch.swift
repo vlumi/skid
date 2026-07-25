@@ -90,15 +90,15 @@ struct ClosureSearch {
         var heightStep: Int
     }
 
-    /// Why a search came back empty — so the editor can distinguish "there is
-    /// no way to close this" from "it needs more pieces than I looked for".
+    /// Why a search came back empty — so the editor can say "not within N
+    /// pieces" instead of implying no answer exists.
     enum Outcome: Equatable {
         case found([PieceID])
-        /// Ran out of depth with live options remaining: a longer run may exist.
+        /// No run found within `searched` pieces. This is NOT proof that none
+        /// exists: the search also gives up when every continuation would touch
+        /// pavement already laid, which happens routinely near the loose end
+        /// itself. So the editor must never phrase this as "impossible".
         case needsMorePieces(searched: Int)
-        /// The frontier died out entirely — no run of any length closes from
-        /// here (every continuation crosses pavement or leads away).
-        case impossible
     }
 
     func search(from end: PiecePose, height: Double = 0) -> Outcome {
@@ -112,7 +112,9 @@ struct ClosureSearch {
                 extend(step, into: &next, best: &best, seen: &seen, remaining: maxPieces - depth)
             }
             if let best, confirmed(best.run) { return .found(best.run) }
-            if next.isEmpty { return .impossible }
+            // A dead frontier ends the search early, but proves nothing: it
+            // usually means every continuation grazed existing pavement.
+            if next.isEmpty { break }
             frontier = next
         }
         return .needsMorePieces(searched: maxPieces)
@@ -188,11 +190,10 @@ struct ClosureSearch {
 /// "needs more than N pieces" instead of staying silent.
 public enum ClosureOutcome: Equatable, Sendable {
     case found([PieceID])
-    /// Ran out of search depth with options still live: a longer run may exist.
+    /// No run found within `searched` pieces — which is NOT proof that none
+    /// exists (the search also stops when every continuation would touch
+    /// pavement already laid). Phrase it as a limit, never as "impossible".
     case needsMorePieces(searched: Int)
-    /// No run of any length closes from here — every continuation either crosses
-    /// pavement already laid or leads away for good.
-    case impossible
 }
 
 extension TrackLayout {
@@ -211,7 +212,6 @@ extension TrackLayout {
         switch search.search(from: end, height: height) {
         case .found(let run): return .found(run)
         case .needsMorePieces(let searched): return .needsMorePieces(searched: searched)
-        case .impossible: return .impossible
         }
     }
 
