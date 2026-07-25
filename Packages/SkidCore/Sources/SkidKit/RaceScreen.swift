@@ -43,7 +43,8 @@ struct RaceScreen: View {
                 let colors = game.carColors
                 let scene = WorldScene(
                     race: race, marks: session.marks, gateSpans: session.gateSpans,
-                    colors: colors, mapRect: mapRect, ghosts: session.ghost?.cars ?? []
+                    colors: colors, mapRect: mapRect, ghosts: session.ghost?.cars ?? [],
+                    debug: game.settings.debugOverlay
                 )
                 let pads = padOverlays()
                 let aims = aimOverlays()

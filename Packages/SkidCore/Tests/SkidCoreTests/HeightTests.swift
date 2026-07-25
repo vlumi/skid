@@ -256,6 +256,56 @@ final class HeightTests: XCTestCase {
         XCTAssertGreaterThan(starts, 50, "sweep must actually cover the infield")
     }
 
+    /// **Driving on the grass under a bridge must not put you on the bridge.**
+    /// Reported as "if I drive under the bridge on grass, the car appears on the
+    /// bridge, and I can also drive on the ramp".
+    ///
+    /// The car moves before its height is resolved, so testing only the position
+    /// it ARRIVED at let it cross from grass onto ramp asphalt within one tick and
+    /// inherit the slope's height. Height may only come from road the car was
+    /// ALREADY on, matched at its own height rather than within a whole level.
+    ///
+    /// Measured outcome-only, so it can't be fooled by the rule it's testing:
+    /// start on the grass beneath the deck, drive, and see where you end up. 20 of
+    /// 520 runs reached deck height before the fix.
+    func testGrassUnderTheBridgeDoesNotLeadOntoIt() throws {
+        let track = TrackLibrary.track(id: "eight")
+        var starts: [Vec2] = []
+        for gx in stride(from: 30.0, to: track.size.x - 30, by: 25) {
+            for gy in stride(from: 30.0, to: track.size.y - 30, by: 25) {
+                let point = Vec2(gx, gy)
+                guard track.surface(at: point, height: 0) == .grass,
+                    track.distanceToCenterline(point, height: 1) < track.width / 2
+                else { continue }
+                starts.append(point)
+            }
+        }
+        XCTAssertGreaterThan(starts.count, 10, "fixture needs grass under the deck")
+
+        var reachedDeck = 0
+        for start in starts {
+            for heading in stride(from: 0.0, to: 6.28, by: 0.785) {
+                var race = Race(track: track, players: [PlayerID(0)])
+                race.cars[0].state.position = start
+                race.cars[0].state.height = 0
+                race.cars[0].state.heading = heading
+                race.cars[0].state.velocity = Vec2(angle: heading) * 350
+                for _ in 0..<90 {
+                    race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
+                    if race.cars[0].state.height > 0.7 {
+                        reachedDeck += 1
+                        break
+                    }
+                }
+            }
+        }
+        // Not zero: a car can legitimately find the ramp's mouth and drive up it,
+        // which is the point of a ramp. It should be rare, not routine.
+        XCTAssertLessThanOrEqual(
+            reachedDeck, 3,
+            "\(reachedDeck) runs from the grass under the bridge ended up on it")
+    }
+
     /// **The road under a bridge stays open.** A deck rail must not wall off the
     /// road passing beneath it.
     ///

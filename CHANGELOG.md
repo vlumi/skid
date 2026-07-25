@@ -48,6 +48,12 @@ ships (see [AGENTS.md](AGENTS.md)).
   building a track or driving it, and there's no second renderer to drift out of
   step. Bridge rails sit exactly on the road edge now, all the way down to the
   foot of the ramp.
+- **A debug overlay for the dev loop.** Tuning → Debug → "Show sim overlay"
+  draws what the simulation believes on top of what you see: the centerline
+  colored by height (green at ground, red at deck), every wall with its height,
+  and each car's height, surface and on-road state. Elevation bugs are almost
+  always the drawing and the physics disagreeing, and this makes which one is
+  wrong obvious at a glance.
 - **You can't drive off the map any more.** Every track is bounded, so a spin
   at the edge no longer sends you out of the playfield.
 - **Painted edges and racing kerbs.** Every road now carries a thin white edge

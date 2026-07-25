@@ -14,6 +14,8 @@ struct WorldScene {
     var mapRect: CGRect
     /// PB-ghost cars to draw translucently (time trial), if any.
     var ghosts: [CarState] = []
+    /// Draw the sim's own view of the world on top (see `DebugOverlay`).
+    var debug = false
 }
 
 extension Track {
@@ -132,6 +134,10 @@ enum TrackRenderer {
         drawGates(gateChrome, elevated: false, into: &context)
         drawMarks(marks, into: &context)
         drawCars(scene: scene, gateChrome: gateChrome, colorAt: color, into: &context)
+        // Last, so it sits over everything it's describing.
+        if scene.debug {
+            DebugOverlay.draw(scene: scene, into: &context)
+        }
     }
 
     /// The ribbon at one height band, as contiguous runs of centerline segments
