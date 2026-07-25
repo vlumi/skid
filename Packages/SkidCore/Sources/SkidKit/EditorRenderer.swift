@@ -26,7 +26,7 @@ enum EditorRenderer {
     }
 
     static func draw(
-        walk: WalkResult, width: Double, selectedEnd: Int?,
+        walk: WalkResult, width: Double, selectedEnd: Int?, gateSeams: [Int] = [],
         transform t: Transform, into context: inout GraphicsContext
     ) {
         // Every piece is a width-varying RIBBON POLYGON: half-width at each
@@ -52,6 +52,12 @@ enum EditorRenderer {
         // Launch/ramp chevrons on top.
         for placed in walk.placed where placed.piece.heightDelta != 0 || placed.piece.launches {
             drawRampChevrons(placed, width: width, transform: t, into: &context)
+        }
+
+        // Checkpoint gates across the seams the author marked (seam 0 is the
+        // start/finish, drawn as its own line below).
+        for seam in gateSeams where seam != 0 && seam < walk.placed.count {
+            drawGate(walk.placed[seam], width: width, transform: t, into: &context)
         }
 
         // Grid-slot markings, then the start/finish line at the start piece's

@@ -50,7 +50,7 @@ struct EditorView: View {
                 Canvas { context, _ in
                     EditorRenderer.draw(
                         walk: walk, width: Double(PieceCatalog.width),
-                        selectedEnd: effectiveSelection(walk),
+                        selectedEnd: effectiveSelection(walk), gateSeams: layout.gateSeams,
                         transform: transform, into: &context)
                 }
                 .ignoresSafeArea()
@@ -126,6 +126,14 @@ struct EditorView: View {
                     resetView()
                 } label: {
                     Text("Fit", bundle: .module).pillStyle()
+                }
+                // Re-centre the layout on the canvas. Closing a loop does this
+                // automatically; the button is for tracks built before that, or
+                // reshaped since.
+                Button {
+                    game.editorCenterOnCanvas()
+                } label: {
+                    Text("Centre", bundle: .module).pillStyle()
                 }
                 // The share code — copy it out to make a design permanent (paste
                 // it into the repo as a built-in), or paste one in to load it.
@@ -219,14 +227,40 @@ struct EditorView: View {
     private func tapToSelect(walk: WalkResult, transform: EditorRenderer.Transform) -> some Gesture
     {
         SpatialTapGesture().onEnded { value in
-            // Tap a loose end to select it; tap elsewhere clears the selection
-            // (falling back to auto-select-last).
-            selectedEnd = walk.openEnds.firstIndex { end in
+            // Tap a loose end to select it.
+            if let end = walk.openEnds.firstIndex(where: { end in
                 let p = transform.screen(end.position.vec2)
                 return hypot(p.x - value.location.x, p.y - value.location.y)
                     < EditorRenderer.endHitRadius
+            }) {
+                selectedEnd = end
+                return
             }
+            // Otherwise, tapping a seam toggles it as a checkpoint — the gates
+            // are what make a lap have to be driven rather than cut.
+            if let seam = seam(near: value.location, walk: walk, transform: transform) {
+                game.editorToggleGate(seam: seam)
+                return
+            }
+            // A tap on nothing clears the selection (falling back to
+            // auto-select-last).
+            selectedEnd = nil
         }
+    }
+
+    /// The seam nearest a tap, if it's close enough to count. A seam sits at a
+    /// piece's entry port; seam 0 is the start/finish and can't be toggled.
+    private func seam(
+        near point: CGPoint, walk: WalkResult, transform: EditorRenderer.Transform
+    ) -> Int? {
+        var best: (seam: Int, distance: CGFloat)?
+        for (index, placed) in walk.placed.enumerated() where index != 0 {
+            let p = transform.screen(placed.entry.position.vec2)
+            let distance = hypot(p.x - point.x, p.y - point.y)
+            guard distance < EditorRenderer.endHitRadius else { continue }
+            if best == nil || distance < best!.distance { best = (index, distance) }
+        }
+        return best?.seam
     }
 
     private var panZoom: some Gesture {
