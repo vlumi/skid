@@ -89,6 +89,16 @@ public final class GameSettings: ObservableObject {
     /// Purely visual.
     @AppStorage("skid.elevation.deckScale") public var deckScale = 1.2
 
+    /// **Debug overlay**: draws the sim's own view of the world on top of the
+    /// race — the centerline, each car's height and surface, and where walls are.
+    ///
+    /// Worth having as a real feature rather than a scratch probe: the elevation
+    /// bugs in this area were all cases of the drawing and the physics disagreeing,
+    /// and every one of them was found on device by eye rather than by test.
+    /// Seeing what the sim thinks is true, while driving, is the fastest way to
+    /// tell those apart. Purely additive — it changes nothing about the sim.
+    @AppStorage("skid.debug.overlay") public var debugOverlay = false
+
     /// Push the live-tunable render knobs into their global sinks. Call at
     /// startup (persisted value before the first frame) and whenever a knob
     /// changes (the Tuning slider).

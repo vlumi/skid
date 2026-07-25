@@ -236,19 +236,35 @@ public struct Race: Equatable, Sendable {
         }
         guard !car.state.isAirborne else { return }
 
-        // Only road the car is genuinely ON can carry it. Off the road, the car
-        // stays at whatever height it has — on the ground that means it simply
-        // drives on the grass.
+        // **Only the road the car is physically standing on may carry it.**
         //
-        // This guard is why: without it, a car on the grass BESIDE a ramp picked
-        // up the nearby slope's height, drifted above the tolerance, was then
-        // declared "off the deck" by the check below, and got an 8-tick hop —
-        // land, creep up, hop again. That is the reported bouncing on grass, and
-        // the dotted tyre tracks it left.
-        let onRoad = track.distanceToCenterline(car.state.position, height: car.state.height)
-        let offRoad = onRoad > track.width / 2 + 6
-        if offRoad {
-            // Up high and off the road: that's a fall off the deck.
+        // The question has to be "which road am I on?", not "is there road near
+        // my height?". Asking it the second way is what let a car on the grass
+        // beside a ramp be judged on-road: it sat 60 units from the ground road
+        // but 47 from the ramp, and 47 was inside the generous margin, so it took
+        // the ramp's height, climbed, and arrived on the bridge without ever
+        // driving up anything. Reported as "if I drive under the bridge on grass,
+        // the car appears on the bridge".
+        //
+        // So: find the nearest road AT the car's own height, and require the car
+        // to be within the real asphalt half-width of it — no margin. Anything
+        // else is off-road, and off-road the car keeps the height it has, which on
+        // the ground simply means driving on the grass. (Sitting still on the
+        // grass must not creep upward either; that was the earlier bouncing bug.)
+        // Judged at BOTH ends of this tick's movement: a car must have been on the
+        // road it takes height from. The car moves before this runs, so testing only
+        // where it arrived let it cross from grass onto ramp asphalt within one tick
+        // and inherit the slope — how driving on the grass under the bridge put you
+        // on the bridge (20 of 520 such runs reached the deck).
+        let height = car.state.height
+        func onOwnRoad(_ position: Vec2) -> Bool {
+            track.distanceToCenterline(
+                position, height: height, heightTolerance: Self.surfaceGrip)
+                <= track.width / 2
+        }
+        guard onOwnRoad(car.state.position), onOwnRoad(from) else {
+            // Off the road. Up high, that's a fall off the deck; on the ground,
+            // it's just grass.
             if car.state.height > Track.heightTolerance {
                 car.state.height = 0
                 car.state.airborneTicks = 8
@@ -263,6 +279,13 @@ public struct Race: Equatable, Sendable {
         let step = Self.maxHeightChangePerTick
         car.state.height += max(-step, min(step, target - car.state.height))
     }
+
+    /// How closely a car's height must match a stretch of road for that road to
+    /// carry it. Deliberately tighter than `Track.heightTolerance` (which decides
+    /// whether two things are on the same *level*): a shade over one tick's climb,
+    /// so a car driving a ramp keeps hold of it while a car parked alongside at a
+    /// different height does not.
+    static let surfaceGrip = maxHeightChangePerTick * 1.5
 
     /// The most the car's height can change in one tick. A ramp climbs over many
     /// ticks, so this never limits legitimate driving; it exists so that no track,

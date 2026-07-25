@@ -237,16 +237,20 @@ public struct Track: Equatable, Sendable, Codable {
     /// "drive under the bridge and pop out on top of the ramp" impossible rather
     /// than merely guarded against — the car under the bridge is at height 0, the
     /// deck above it is at 1, and no comparison can confuse them.
-    public func segment(_ index: Int, isAt height: Double) -> Bool {
-        abs(self.height(ofSegment: index) - height) <= Self.heightTolerance
+    public func segment(
+        _ index: Int, isAt height: Double, tolerance: Double = Self.heightTolerance
+    ) -> Bool {
+        abs(self.height(ofSegment: index) - height) <= tolerance
     }
 
     /// Distance from `p` to the centerline loop — optionally only the road at
     /// roughly `height`, so a bridge and the road beneath it stay distinct.
-    public func distanceToCenterline(_ p: Vec2, height: Double? = nil) -> Double {
+    public func distanceToCenterline(
+        _ p: Vec2, height: Double? = nil, heightTolerance: Double = Self.heightTolerance
+    ) -> Double {
         var best = Double.greatestFiniteMagnitude
         for i in centerline.indices {
-            if let height, !segment(i, isAt: height) { continue }
+            if let height, !segment(i, isAt: height, tolerance: heightTolerance) { continue }
             let a = centerline[i]
             let b = centerline[(i + 1) % centerline.count]
             best = min(best, p.distance(toSegment: a, b))
