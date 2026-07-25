@@ -169,6 +169,40 @@ public struct ClosureGap: Equatable, Sendable {
     /// will — it needs diagonal travel to cancel (a mirrored chicane, a 45°
     /// dogleg).
     public var needsDiagonalTravel: Bool { diagonalX != 0 || diagonalY != 0 }
+
+    /// What kind of work a gap still needs — the useful question, since the two
+    /// currencies are repaid by completely different edits and one of them
+    /// (a stranded √2 debt) can't be fixed by adding length at all.
+    public enum Remedy: Equatable, Sendable {
+        /// Already home.
+        case closed
+        /// The end faces the wrong way; turns are still needed.
+        case turn(eighths: Int)
+        /// Pure axis offset ahead of the end: lengthen straights on axis runs.
+        case straights
+        /// The target is BEHIND the loose end and correctly aligned — the loop
+        /// overshot. No piece added here helps (you can't drive backwards);
+        /// the fix is to shorten or remove a piece earlier in the run.
+        case tooLong
+        /// A √2 debt with the heading already correct. Adding *one* more 45°
+        /// makes this worse, not better: the diagonal turns have to CANCEL —
+        /// opposite-handed pairs, or a symmetric set all the way round (eight
+        /// same-handed 45s cancel; two don't) — and the diagonal-facing runs
+        /// have to balance against their opposites.
+        case balanceDiagonals
+    }
+
+    /// Which edit closes the gap. `forward` is the loose end's heading, used to
+    /// tell "short of the target" from "overshot it".
+    public func remedy(facing forward: Heading) -> Remedy {
+        if isClosed { return .closed }
+        if headingEighths != 0 { return .turn(eighths: headingEighths) }
+        if needsDiagonalTravel { return .balanceDiagonals }
+        // Pure axis gap: is the target ahead of the end, or behind it?
+        let dir = forward.unitStep
+        let ahead = Double(dir.x.a) * axisX + Double(dir.y.a) * axisY
+        return ahead < 0 ? .tooLong : .straights
+    }
 }
 
 extension TrackLayout {
@@ -182,11 +216,16 @@ extension TrackLayout {
         let unit = Double(PieceCatalog.unit)
         let dx = goal.position.x - end.position.x
         let dy = goal.position.y - end.position.y
-        // A Coord is (a + b√2)/2, so the axis part is a/2 and the diagonal part
-        // is b/2 — each divided by the unit to read in whole units.
+        // A Coord is (a + b√2)/2. The AXIS part is `a/2` in world length, so
+        // dividing by the unit gives whole units. The DIAGONAL part is `b/2`
+        // world lengths of √2 — and a unit of diagonal *travel* moves `b` by
+        // `unit` (a 1U straight on a diagonal heading, or a tight 45's
+        // displacement), so the diagonal count is `b / unit`, NOT `b/2/unit`.
+        // Reporting it in the same currency the author spends is the whole
+        // point of the readout.
         return ClosureGap(
             axisX: Double(dx.a) / 2 / unit, axisY: Double(dy.a) / 2 / unit,
-            diagonalX: Double(dx.b) / 2 / unit, diagonalY: Double(dy.b) / 2 / unit,
+            diagonalX: Double(dx.b) / unit, diagonalY: Double(dy.b) / unit,
             headingEighths: ((goal.heading.step - end.heading.step) % 8 + 8) % 8)
     }
 }
