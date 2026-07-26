@@ -247,20 +247,22 @@ public enum PieceCompiler {
         return Ramp(from: position - side, to: position + side, forward: forward)
     }
 
-    /// The road cross-section (a span of `width`) at a seam, as a Gate. Seam N
-    /// is the entry pose of piece N — except **seam 0, the start/finish line,
-    /// sits at the start piece's EXIT** (where the grid lines up behind it).
+    /// The road cross-section (a span of `width`) at a seam, as a Gate.
+    ///
+    /// **Seam N is the boundary at piece N's EXIT** — uniformly, with no special
+    /// case. Seam 0 is therefore the start piece's exit, which is where the
+    /// start/finish line and the grid behind it already live, and seam N for every
+    /// other piece is the far end of that piece.
+    ///
+    /// This used to read "piece N's ENTRY, except seam 0 which is the start piece's
+    /// exit". Those two rules describe the same boundary for consecutive pieces, so
+    /// seam 0 and seam 1 aliased: marking both stacked two gates on the start line
+    /// and the runtime scored the lap twice. One rule for every seam removes the
+    /// alias by construction rather than by validation.
     private static func gate(at seam: Int, in placed: [PlacedPiece]) -> Gate {
-        let pose: PiecePose
-        let height: Double
-        if seam == 0 {
-            pose = placed[0].exits[0]
-            height = placed[0].exitHeight
-        } else {
-            let p = placed[seam % placed.count]
-            pose = p.entry
-            height = p.entryHeight
-        }
+        let piece = placed[seam % placed.count]
+        let pose = piece.exits[0]
+        let height = piece.exitHeight
         let pos = pose.position.vec2
         let fwd = Vec2(angle: pose.heading.radians)
         // A gate spans the whole CORRIDOR, not just the asphalt: running wide
