@@ -23,15 +23,31 @@ struct ClosureSearch {
     /// (exactly one per track), no forks/crossings/jumps (each carries rules of
     /// its own), no ramps (they change height).
     private let candidates: [(id: PieceID, piece: Piece)]
-    /// Centerline samples of pavement a new run must avoid. The pieces at each
-    /// END of the existing chain are legitimately adjacent to the run (it starts
-    /// at one and finishes at the other), so they're excluded — otherwise every
-    /// candidate is rejected for touching its own neighbors.
-    private let existing: [(point: Vec2, height: Double)]
-    private let clearanceSquared: Double
+    /// Pavement a new run must avoid, indexed under the one proximity rule
+    /// (`RoadProximity`). The WHOLE chain, ends included: the run legitimately
+    /// hugs the chain's end where it launches and the start piece where it
+    /// lands, and the arc metric knows that — where the old snapshot simply
+    /// dropped the first and last piece, which stopped being enough the moment
+    /// a primitive closing run spanned more pieces than that (measured: every
+    /// candidate on a real 41-piece design was rejected, so "Close it" never
+    /// appeared for a track one 90° from home).
+    private let mesh: RoadProximity
+    private let heights: [Double]
+    /// Own centerline length per candidate id, for the run's arc bookkeeping.
+    private let arcOf: [PieceID: Double]
+    /// Densified shape of every candidate at each of the eight headings, from
+    /// the origin. Poses live on the exact 45° ring, so these ~250 polylines
+    /// are ALL the geometry the search can ever place — a node just translates
+    /// one, instead of resampling arcs. (Resampling per node was most of the
+    /// search's cost once it genuinely explored.)
+    private let shapes: [ShapeKey: [Vec2]]
     /// The furthest a single piece can carry the road, for pruning runs that can
     /// no longer reach home.
     private let reach: Double
+    /// Where road may still go without the finished track leaving the fixed
+    /// canvas: the existing footprint already pins the window on each axis, so
+    /// any pose outside it can be pruned without testing anything else.
+    private let window: (low: Vec2, high: Vec2)
 
     init(layout: TrackLayout, goal: PiecePose, maxPieces: Int) {
         self.layout = layout
@@ -50,34 +66,60 @@ struct ClosureSearch {
             .filter { !$0.value.launches }
             .map { (id: $0.key, piece: $0.value) }
             .sorted { (Self.cost($0.piece), $0.id) < (Self.cost($1.piece), $1.id) }
-        existing = placed.dropFirst().dropLast(1).flatMap { piece in
-            // Densified along straights too: the angular sampler gives a long
-            // straight only its endpoints, which leaves a wide corridor the
-            // proximity test can't see into.
-            Self.densified(piece).map { (point: $0, height: piece.entryHeight) }
+        let gap = placed.last?.exits.first.map {
+            $0.position.vec2.distance(to: goal.position.vec2)
         }
-        let clearance = Double(PieceCatalog.width) * 0.95
-        clearanceSquared = clearance * clearance
+        mesh = RoadProximity(placed: placed, joinGap: gap ?? .infinity)
+        heights = placed.map(\.entryHeight)
+        shapes = Self.originShapes(of: candidates)
+        arcOf = shapes.reduce(into: [:]) { arcs, entry in
+            guard entry.key.heading == 0 else { return }
+            var arc = 0.0
+            let points = entry.value
+            for step in 1..<max(points.count, 1) {
+                arc += points[step].distance(to: points[step - 1])
+            }
+            arcs[entry.key.id] = arc
+        }
         reach = candidates.reduce(0) { longest, entry in
             max(longest, entry.piece.paths[0].exit(from: .origin).position.vec2.length)
         }
+        window = Self.canvasWindow(around: placed)
     }
 
-    /// Centerline samples with long spans subdivided, so no gap between
-    /// consecutive points is wide enough for a road to slip through unnoticed.
-    private static func densified(_ placed: PlacedPiece) -> [Vec2] {
-        let step = Double(PieceCatalog.width) * 0.6
-        let points = placed.centerlineSamples(degreesPerSample: 20)
-        guard points.count >= 2 else { return points }
-        var out: [Vec2] = [points[0]]
-        for i in 1..<points.count {
-            let span = points[i] - points[i - 1]
-            let pieces = max(1, Int((span.length / step).rounded(.up)))
-            for k in 1...pieces {
-                out.append(points[i - 1] + span * (Double(k) / Double(pieces)))
+    /// Each candidate sampled once per heading, from the origin.
+    private static func originShapes(
+        of candidates: [(id: PieceID, piece: Piece)]
+    ) -> [ShapeKey: [Vec2]] {
+        var shapes: [ShapeKey: [Vec2]] = [:]
+        for (id, piece) in candidates {
+            for heading in 0..<8 {
+                let entry = PiecePose(
+                    position: PiecePose.origin.position, heading: Heading(heading))
+                let placed = PlacedPiece(
+                    id: id, piece: piece, entry: entry,
+                    exits: [piece.paths[0].exit(from: entry)], entryHeight: 0, entrySeam: 0)
+                shapes[ShapeKey(id: id, heading: heading)] = RoadProximity.densified(placed)
             }
         }
-        return out
+        return shapes
+    }
+
+    /// The band each axis has left before the finished track outgrows the
+    /// canvas, from the existing footprint. Any sample outside it would make
+    /// the final track off-canvas, so poses out there are dead ends.
+    private static func canvasWindow(around placed: [PlacedPiece]) -> (low: Vec2, high: Vec2) {
+        var lowest = Vec2(Double.infinity, Double.infinity)
+        var highest = Vec2(-Double.infinity, -Double.infinity)
+        for piece in placed {
+            for point in TrackValidator.samplePoints(piece) {
+                lowest = Vec2(min(lowest.x, point.x), min(lowest.y, point.y))
+                highest = Vec2(max(highest.x, point.x), max(highest.y, point.y))
+            }
+        }
+        let room =
+            TrackValidator.canvas - Vec2(Double(PieceCatalog.width), Double(PieceCatalog.width))
+        return (low: highest - room, high: lowest + room)
     }
 
     /// Straights are free, arcs cost their sweep — so among equal-length runs
@@ -96,11 +138,14 @@ struct ClosureSearch {
     /// alone can't tell "on the deck" from "on the ground", and the ring only
     /// closes when BOTH match the target (the walk enforces the same rule when
     /// mating, so a run that ignored height would be offered and then refused).
+    /// Arc is the run's road laid so far, which is what positions each new
+    /// piece along the chain for the proximity rule.
     private struct Step {
         var pose: PiecePose
         var height: Double
         var run: [PieceID]
         var cost: Int
+        var arc: Double
     }
 
     /// Poses are compared with height, so `seen` can't collapse a deck pose onto
@@ -123,7 +168,7 @@ struct ClosureSearch {
 
     func search(from end: PiecePose, height: Double = 0) -> Outcome {
         if end == goal, abs(height) < 0.001 { return .found([]) }
-        var frontier = [Step(pose: end, height: height, run: [], cost: 0)]
+        var frontier = [Step(pose: end, height: height, run: [], cost: 0, arc: 0)]
         var seen: Set<Visited> = [Visited(pose: end, heightStep: Int(height.rounded()))]
         for depth in 0..<maxPieces {
             var next: [Step] = []
@@ -142,6 +187,10 @@ struct ClosureSearch {
 
     /// Try every candidate piece on `step`, recording goal hits in `best` and
     /// keeping viable continuations in `next`.
+    ///
+    /// Ordered cheap-to-dear on purpose: pose math, then the dedup/reach/canvas
+    /// prunes, and the clearance query only for nodes that survive them — the
+    /// clearance is the expensive test, and most nodes never reach it.
     private func extend(
         _ step: Step, into next: inout [Step], best: inout Step?, seen: inout Set<Visited>,
         remaining: Int
@@ -154,17 +203,13 @@ struct ClosureSearch {
             guard height >= -0.001, height <= 1.001 else { continue }
             let candidate = Step(
                 pose: pose, height: height, run: step.run + [id],
-                cost: step.cost + Self.cost(piece))
-            let placed = PlacedPiece(
-                id: id, piece: piece, entry: step.pose, exits: [pose],
-                entryHeight: step.height, entrySeam: 0)
-            // Only pavement at the SAME height can be in the way — that's what
-            // makes a bridge legal.
-            guard staysClear(placed, at: height) else { continue }
+                cost: step.cost + Self.cost(piece), arc: step.arc + (arcOf[id] ?? 0))
             if pose == goal && abs(height) < 0.001 {
                 // Keep looking at this depth for a gentler run of the same
                 // length — the first hit isn't always the tidiest.
-                if best.map({ candidate.cost < $0.cost }) ?? true { best = candidate }
+                guard best.map({ candidate.cost < $0.cost }) ?? true else { continue }
+                guard staysClear(id, from: step, to: pose, at: height) else { continue }
+                best = candidate
                 continue
             }
             let visited = Visited(pose: pose, heightStep: Int(height.rounded()))
@@ -173,27 +218,48 @@ struct ClosureSearch {
             // remaining pieces could carry the road, nothing downstream closes.
             guard (goal.position.vec2 - pose.position.vec2).length <= reach * Double(remaining)
             else { continue }
+            guard inWindow(id, from: step, to: pose) else { continue }
+            guard staysClear(id, from: step, to: pose, at: height) else { continue }
             seen.insert(visited)
             next.append(candidate)
         }
     }
 
+    /// Would this placement keep the finished track inside the canvas? Any
+    /// sample outside the remaining window is a dead end for every continuation.
+    private func inWindow(_ id: PieceID, from step: Step, to pose: PiecePose) -> Bool {
+        guard let shape = shapes[ShapeKey(id: id, heading: step.pose.heading.step)]
+        else { return true }
+        let offset = step.pose.position.vec2
+        for point in shape {
+            let world = point + offset
+            guard world.x >= window.low.x, world.x <= window.high.x,
+                world.y >= window.low.y, world.y <= window.high.y
+            else { return false }
+        }
+        return true
+    }
+
     /// Does a piece placed here stay clear of pavement already laid *at the same
     /// height*? Different heights pass freely — that's a bridge.
     ///
-    /// A cheap point-proximity test (this is called per search node), so it can
-    /// miss a crossing that happens between samples; the winning run is
-    /// re-checked by the real validator, which compares segments properly.
-    private func staysClear(_ placed: PlacedPiece, at height: Double) -> Bool {
-        for point in Self.densified(placed) {
-            for other in existing
-            where abs(other.height - height) < 0.5
-                && (point - other.point).lengthSquared < clearanceSquared
-            {
-                return false
-            }
+    /// Same rule as the validator: proximity is legal when near along the road,
+    /// with the straight-line rest-of-the-way-home standing in for the road the
+    /// run hasn't laid yet (never more than the real thing, so the search is at
+    /// worst slightly permissive here — `confirmed` re-checks the winner with
+    /// the true geometry).
+    private func staysClear(
+        _ id: PieceID, from step: Step, to pose: PiecePose, at height: Double
+    ) -> Bool {
+        guard let shape = shapes[ShapeKey(id: id, heading: step.pose.heading.step)]
+        else { return true }
+        let exitToGoal = pose.position.vec2.distance(to: goal.position.vec2)
+        return !mesh.conflicts(
+            shape: shape, at: step.pose.position.vec2, arcBefore: step.arc,
+            exitToGoal: exitToGoal
+        ) { index in
+            abs(heights[index] - height) >= 0.5
         }
-        return true
     }
 
     /// The run as **primitives**, which is what a layout may hold.
@@ -224,6 +290,13 @@ struct ClosureSearch {
             return true
         }
     }
+}
+
+/// A candidate piece at one of the eight headings — the key the cached origin
+/// shapes are stored under.
+private struct ShapeKey: Hashable {
+    var id: PieceID
+    var heading: Int
 }
 
 /// Why a closing search came back without an answer — so the editor can say

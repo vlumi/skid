@@ -34,6 +34,10 @@ ships (see [AGENTS.md](AGENTS.md)).
 - **A tidier editor.** Delete and Close-the-loop moved onto the map, right at the
   end you're building from, and the top bar is all icons — so the track gets the
   space the buttons used to take.
+- **The editor stays quick as the track grows.** Placement checks and the
+  close-the-loop suggestion used to re-measure the whole track against itself on
+  every tap, which dragged once a design ran long; they now share one indexed
+  proximity rule, so a forty-piece track edits as smoothly as a four-piece one.
 - **Track codes from earlier builds no longer load.** Checkpoints are numbered
   against the new smaller pieces, so an older code would come back the wrong
   shape. Copy your track out of the editor again to get a fresh code. (The
