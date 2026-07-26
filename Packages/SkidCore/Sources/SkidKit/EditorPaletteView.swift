@@ -9,6 +9,14 @@ import SwiftUI
 /// main buttons share one configuration (the corner's angle and radius, the
 /// straight's length), so left and right always mirror each other; a hotbar slot
 /// configures to any single one-off piece.
+/// A carousel's geometry: one row tall, plus a sliver of the neighbours above and
+/// below. That sliver is what says "drag me".
+struct CarouselMetrics {
+    var rowHeight: CGFloat = 64
+    var peek: CGFloat = 9
+    var spacing: CGFloat = 6
+}
+
 extension EditorView {
     /// **45L · 90L · 90R · 45R, then the straight.**
     ///
@@ -24,49 +32,94 @@ extension EditorView {
     func mainRow(walk: WalkResult) -> some View {
         HStack(spacing: 12) {
             carousel(
-                label: radius.label,
-                onNext: { cycleRadius(by: 1) }, onPrevious: { cycleRadius(by: -1) }
-            ) {
+                values: CurveRadius.allCases, current: radius,
+                select: { radiusRaw = $0.rawValue }
+            ) { value in
                 HStack(spacing: 6) {
-                    pieceButton(corner(left: true, angle: .degrees45), walk: walk, big: true)
-                    pieceButton(corner(left: true, angle: .degrees90), walk: walk, big: true)
-                    pieceButton(corner(left: false, angle: .degrees90), walk: walk, big: true)
-                    pieceButton(corner(left: false, angle: .degrees45), walk: walk, big: true)
+                    cornerTile(left: true, angle: .degrees45, radius: value, walk: walk)
+                    cornerTile(left: true, angle: .degrees90, radius: value, walk: walk)
+                    cornerTile(left: false, angle: .degrees90, radius: value, walk: walk)
+                    cornerTile(left: false, angle: .degrees45, radius: value, walk: walk)
                 }
             }
             carousel(
-                label: straightLength.label,
-                onNext: { cycleStraight(by: 1) }, onPrevious: { cycleStraight(by: -1) }
-            ) {
-                pieceButton(straight, walk: walk, big: true)
+                values: StraightLength.allCases, current: straightLength,
+                select: { straightRaw = $0.rawValue }
+            ) { value in
+                pieceButton(value.piece, walk: walk, big: true)
             }
         }
     }
 
-    /// A swipeable group: its contents, the current setting underneath, and dots
-    /// showing how many settings there are.
-    private func carousel<Content: View>(
-        label: LocalizedStringKey, onNext: @escaping () -> Void,
-        onPrevious: @escaping () -> Void, @ViewBuilder content: () -> Content
+    /// A corner tile at an explicit radius, so a carousel row can show the
+    /// neighbouring radii rather than only the selected one.
+    private func cornerTile(
+        left: Bool, angle: CurveAngle, radius: CurveRadius, walk: WalkResult
     ) -> some View {
-        VStack(spacing: 3) {
-            content()
-            Text(label, bundle: .module)
-                .font(.caption2.bold())
-                .foregroundColor(.white.opacity(0.8))
+        pieceButton(corner(left: left, angle: angle, radius: radius), walk: walk, big: true)
+    }
+
+    /// A **vertical** carousel that tracks your finger: the neighbouring values sit
+    /// just above and below, peeking out of a clipped window, and the whole strip
+    /// follows the drag before settling on the nearest one.
+    ///
+    /// Both details came from device feedback. The first version acted only on
+    /// `onEnded`, so nothing moved under your finger and there was no way to tell a
+    /// swipe had registered — it read as unreliable even when it worked. And
+    /// vertical beats horizontal here because these buttons sit in a horizontal row:
+    /// a sideways drag competes with the row, an up/down one doesn't. Seeing the
+    /// values move is also what makes the gesture discoverable, so the value names
+    /// are gone — the icons say it better.
+    private func carousel<Value: Hashable, Content: View>(
+        values: [Value], current: Value, metrics: CarouselMetrics = .init(),
+        select: @escaping (Value) -> Void,
+        @ViewBuilder content: @escaping (Value) -> Content
+    ) -> some View {
+        let (height, peek) = (metrics.rowHeight, metrics.peek)
+        let index = values.firstIndex(of: current) ?? 0
+        let step = height + metrics.spacing
+        // The window is a row PLUS a sliver of the neighbours above and below —
+        // that peek is what says "there's more here, drag me". A window exactly one
+        // row tall clips them away entirely and the carousel looks like a plain
+        // button again.
+        let window = height + peek * 2
+        // A window one row tall, with the strip pinned to its TOP and slid upward
+        // by the selected index. Ordering matters: `.frame` after `.offset` would
+        // re-centre the offset content and show the wrong row.
+        return VStack(spacing: metrics.spacing) {
+            ForEach(values, id: \.self) { value in
+                content(value)
+                    // Neighbours are dimmed and shrunk, so the live one is obvious
+                    // and the others read as "there's more this way".
+                    .opacity(value == current ? 1 : 0.35)
+                    .scaleEffect(value == current ? 1 : 0.86)
+            }
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .background(.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
+        .frame(width: nil, alignment: .top)
+        .offset(y: -CGFloat(index) * step + dragOffset + peek)
+        .frame(height: window, alignment: .top)
+        .clipped()
+        // A backing plate so the clipped neighbours read against something: dimmed
+        // dark tiles on dark grass were invisible, which defeated the peek.
+        .background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
+        .contentShape(Rectangle())
+        .animation(.spring(response: 0.28, dampingFraction: 0.8), value: index)
         .gesture(
-            DragGesture(minimumDistance: 24)
+            DragGesture(minimumDistance: 6)
+                .onChanged { value in
+                    // Follow the finger, but resist past the ends so the strip
+                    // can't be dragged off into nothing.
+                    let raw = value.translation.height
+                    let atTop = index == 0 && raw > 0
+                    let atEnd = index == values.count - 1 && raw < 0
+                    dragOffset = (atTop || atEnd) ? raw * 0.25 : raw
+                }
                 .onEnded { value in
-                    // Horizontal intent only — a vertical drag belongs to the
-                    // scroll/pan underneath, not to the carousel.
-                    guard abs(value.translation.width) > abs(value.translation.height) else {
-                        return
-                    }
-                    if value.translation.width < 0 { onNext() } else { onPrevious() }
+                    // Settle on whichever value the drag landed nearest.
+                    let moved = Int((-value.translation.height / step).rounded())
+                    let target = min(max(index + moved, 0), values.count - 1)
+                    dragOffset = 0
+                    if values[target] != current { select(values[target]) }
                 }
         )
     }
@@ -90,7 +143,8 @@ extension EditorView {
     func hotbarRow(walk: WalkResult) -> some View {
         HStack(spacing: 8) {
             ForEach(Array(hotbar.enumerated()), id: \.offset) { slot, piece in
-                pieceButton(piece, walk: walk, big: false, configures: .hotbar(slot))
+                pieceButton(
+                    tracking(piece), walk: walk, big: false, configures: .hotbar(slot))
             }
         }
     }
@@ -138,6 +192,22 @@ extension EditorView {
         .contentShape(Rectangle())
         .gesture(placeGesture(piece: piece, ramp: ramp, placeable: placeable, target: target))
         .accessibilityLabel(Text(EditorView.pieceLabel(piece), bundle: .module))
+    }
+
+    /// A hotbar piece, **following the corner radius** where its family has a
+    /// variant at that radius.
+    ///
+    /// So a slot holding a hairpin gives you the tight hairpin while you're building
+    /// tight corners, without reassigning it — the slot means "hairpin", not
+    /// "hairpin, medium". Where the family has no variant at the current radius
+    /// (there's no sweep hairpin) the slot keeps what it was given rather than going
+    /// blank. Jogs and the ramp never track: a jog's 240/360 is a lateral shift, not
+    /// a radius, and both use a tight first arc.
+    private func tracking(_ piece: PieceID) -> PieceID {
+        guard let match = EditorView.family(of: piece),
+            let tracked = match.family.piece(left: match.left, radius: radius)
+        else { return piece }
+        return tracked
     }
 
     /// Tap places; long-press (hotbar only) opens the picker. Declared as one

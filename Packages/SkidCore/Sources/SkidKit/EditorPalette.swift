@@ -17,55 +17,95 @@ import SwiftUI
 /// chicanes, jogs, ramps) is a **one-off**, and one-offs live on an assignable
 /// hotbar instead: still one tap to place, and it doesn't grow when the catalog
 /// does.
+/// A one-off family that has a variant per radius, so a hotbar slot holding it
+/// can follow the corner radius you're building with.
+///
+/// Only **chicane** has all three; **hairpin** has no sweep variant (the design
+/// doc argues against one), and **jog** isn't a radius family at all — 240 and
+/// 360 name a *lateral shift*, and both use a tight first arc. So a slot follows
+/// the radius when its family has that variant and keeps its own otherwise,
+/// rather than pretending every one-off has three sizes.
+enum CurveAngle: String, CaseIterable, Identifiable {
+    case degrees45, degrees90
+    var id: String { rawValue }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .degrees45: return "45°"
+        case .degrees90: return "90°"
+        }
+    }
+}
+
+enum CurveRadius: String, CaseIterable, Identifiable {
+    case tight, medium, sweep
+    var id: String { rawValue }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .tight: return "Tight"
+        case .medium: return "Medium"
+        case .sweep: return "Sweep"
+        }
+    }
+}
+
+enum StraightLength: String, CaseIterable, Identifiable {
+    case short, standard, long
+    var id: String { rawValue }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .short: return "Short"
+        case .standard: return "2U"
+        case .long: return "Long"
+        }
+    }
+
+    var piece: PieceID {
+        switch self {
+        case .short: return PieceCatalog.ID.shortStraight
+        case .standard: return PieceCatalog.ID.straight
+        case .long: return PieceCatalog.ID.longStraight
+        }
+    }
+}
+
+/// A one-off family with a variant per radius, so a hotbar slot holding it can
+/// follow the corner radius you are building with.
+///
+/// Only **chicane** has all three radii; **hairpin** has no sweep variant, and
+/// **jog** is not a radius family at all — 240/360 name a lateral shift and both
+/// use a tight first arc. So a slot follows the radius where its family has that
+/// variant and keeps its own otherwise.
+enum OneOffFamily {
+    case hairpin, chicane
+
+    func piece(left: Bool, radius: CurveRadius) -> PieceID? {
+        typealias Pieces = PieceCatalog.ID
+        switch (self, radius) {
+        case (.hairpin, .tight):
+            return left ? Pieces.hairpinTightLeft : Pieces.hairpinTightRight
+        case (.hairpin, .medium):
+            return left ? Pieces.hairpinMediumLeft : Pieces.hairpinMediumRight
+        case (.hairpin, .sweep):
+            return nil  // no sweep hairpin in the catalog
+        case (.chicane, .tight):
+            return left ? Pieces.chicaneTightLeft : Pieces.chicaneTightRight
+        case (.chicane, .medium):
+            return left ? Pieces.chicaneMediumLeft : Pieces.chicaneMediumRight
+        case (.chicane, .sweep):
+            return left ? Pieces.chicaneSweepLeft : Pieces.chicaneSweepRight
+        }
+    }
+}
+
 extension EditorView {
     /// The angle of the corner the left/right buttons build.
-    enum CurveAngle: String, CaseIterable, Identifiable {
-        case degrees45, degrees90
-        var id: String { rawValue }
-
-        var label: LocalizedStringKey {
-            switch self {
-            case .degrees45: return "45°"
-            case .degrees90: return "90°"
-            }
-        }
-    }
 
     /// The three catalog radii — how tight the corner the left/right buttons build.
-    enum CurveRadius: String, CaseIterable, Identifiable {
-        case tight, medium, sweep
-        var id: String { rawValue }
-
-        var label: LocalizedStringKey {
-            switch self {
-            case .tight: return "Tight"
-            case .medium: return "Medium"
-            case .sweep: return "Sweep"
-            }
-        }
-    }
 
     /// The length of the straight the middle button builds.
-    enum StraightLength: String, CaseIterable, Identifiable {
-        case short, standard, long
-        var id: String { rawValue }
-
-        var label: LocalizedStringKey {
-            switch self {
-            case .short: return "Short"
-            case .standard: return "2U"
-            case .long: return "Long"
-            }
-        }
-
-        var piece: PieceID {
-            switch self {
-            case .short: return PieceCatalog.ID.shortStraight
-            case .standard: return PieceCatalog.ID.straight
-            case .long: return PieceCatalog.ID.longStraight
-            }
-        }
-    }
 
     /// The corner a button places: its own handedness and angle, at the shared
     /// radius.
@@ -73,7 +113,7 @@ extension EditorView {
     /// Angle is a parameter rather than a setting because it's a button *position*
     /// now — 45L · 90L · 90R · 45R, mirrored around the centre — so both angles are
     /// always one tap away and nothing has to be toggled.
-    func corner(left: Bool, angle: CurveAngle) -> PieceID {
+    func corner(left: Bool, angle: CurveAngle, radius: CurveRadius) -> PieceID {
         typealias Pieces = PieceCatalog.ID
         switch (angle, radius) {
         case (.degrees45, .tight): return left ? Pieces.curve45TightLeft : Pieces.curve45TightRight
@@ -89,6 +129,21 @@ extension EditorView {
 
     /// The straight the middle button places, at the current length.
     var straight: PieceID { straightLength.piece }
+
+    /// Which family and handedness a piece belongs to, if it's one that tracks the
+    /// radius. Nil for pieces that don't (jogs, the ramp).
+    static func family(of piece: PieceID) -> (family: OneOffFamily, left: Bool)? {
+        typealias Pieces = PieceCatalog.ID
+        switch piece {
+        case Pieces.hairpinTightLeft, Pieces.hairpinMediumLeft: return (.hairpin, true)
+        case Pieces.hairpinTightRight, Pieces.hairpinMediumRight: return (.hairpin, false)
+        case Pieces.chicaneTightLeft, Pieces.chicaneMediumLeft, Pieces.chicaneSweepLeft:
+            return (.chicane, true)
+        case Pieces.chicaneTightRight, Pieces.chicaneMediumRight, Pieces.chicaneSweepRight:
+            return (.chicane, false)
+        default: return nil
+        }
+    }
 
     /// One-off pieces: everything that isn't "left / straight / right".
     ///
