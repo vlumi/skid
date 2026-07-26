@@ -36,12 +36,18 @@ extension CouchGame {
     /// Append the context-aware ramp: up from the ground, down from the deck —
     /// with only two elevations the one button does both.
     public func editorRamp() {
+        guard let piece = editorRampPiece() else { return }
+        editorAppend(piece)
+    }
+
+    /// Which ramp the context-aware ramp button would place right now: down from
+    /// the deck, up from the ground. Exposed so the palette can draw the icon for
+    /// the piece you'd actually get, and gray the button when it can't be placed.
+    public func editorRampPiece() -> PieceID? {
         guard let layout = editorLayout, let last = layout.walk().placed.last else {
-            editorAppend(PieceCatalog.ID.rampUp)
-            return
+            return PieceCatalog.ID.rampUp
         }
-        // On the deck (height up) → ramp down; on the ground → ramp up.
-        editorAppend(last.exitHeight > 0.5 ? PieceCatalog.ID.rampDown : PieceCatalog.ID.rampUp)
+        return last.exitHeight > 0.5 ? PieceCatalog.ID.rampDown : PieceCatalog.ID.rampUp
     }
 
     /// Move the whole layout so it sits centered on the canvas, by shifting the
