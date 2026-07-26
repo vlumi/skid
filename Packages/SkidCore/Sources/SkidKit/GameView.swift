@@ -37,6 +37,11 @@ public final class CouchGame: ObservableObject {
         didSet { saveCustomTrack() }
     }
 
+    /// Placement verdicts memoised for the current piece list — see
+    /// `editorCanAppend`. Not `@Published` on purpose: it's a cache, and
+    /// invalidating views over it would defeat its point.
+    var appendVerdicts: (pieces: [PieceID], byPiece: [PieceID: Bool]) = ([], [:])
+
     public enum Mode: CaseIterable {
         case race
         case timeTrial

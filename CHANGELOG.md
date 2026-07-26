@@ -23,14 +23,25 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 - **A rebuilt editor palette.** Picking a piece used to mean tabs, a radius row,
   and ten buttons that multiplied with every family added to the catalog. Now the
-  common move is four corner buttons — 45° and 90°, left and right, mirrored
-  around the centre — plus a straight, and you **swipe** the corners to change
-  radius or the straight to change length. Below them sits a row of five slots you
-  fill yourself with the pieces you use often (hairpins, chicanes, jogs, ramps):
-  long-press a slot to change it, and your arrangement is remembered.
+  top row is just turn left, turn right and go straight — **swipe the corners** to
+  change how tight they are, and your choice is remembered. Below it sit the slots
+  you fill yourself: long-press one to choose what it holds.
+- **Build any shape from the same few pieces.** Corners are 45°, so two make a
+  90° and four make a hairpin — which means you can put a checkpoint at a
+  hairpin's apex, or anywhere else you like, instead of only where a big
+  prefabricated piece happened to end. Share codes stay just as short: they pack
+  runs of corners back down as they're written.
 - **A tidier editor.** Delete and Close-the-loop moved onto the map, right at the
   end you're building from, and the top bar is all icons — so the track gets the
   space the buttons used to take.
+- **The editor stays quick as the track grows.** Placement checks and the
+  close-the-loop suggestion used to re-measure the whole track against itself on
+  every tap, which dragged once a design ran long; they now share one indexed
+  proximity rule, so a forty-piece track edits as smoothly as a four-piece one.
+- **Track codes from earlier builds no longer load.** Checkpoints are numbered
+  against the new smaller pieces, so an older code would come back the wrong
+  shape. Copy your track out of the editor again to get a fresh code. (The
+  built-in tracks are unchanged to drive — same corners, same start line.)
 - **Laps count properly on Big oval.** The track had two checkpoints stacked on
   the start/finish line, so after the first lap the finish had to be crossed
   twice before the lap registered. Checkpoint numbering is now uniform — each one

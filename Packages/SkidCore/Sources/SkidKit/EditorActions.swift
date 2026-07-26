@@ -9,28 +9,61 @@ extension CouchGame {
     /// **Refused** if the piece would pave over the track or leave the canvas —
     /// blocking the placement beats accepting it and showing a warning that's
     /// easy to miss. Returns whether it was placed.
+    ///
+    /// A compound (90°, hairpin, chicane, jog) goes in as the primitives it is
+    /// made of: still one tap and one undo step's worth of intent, but the layout
+    /// holds primitives so its seams are addressable — which is what puts a
+    /// checkpoint at a hairpin's apex — and the share code packs it back to a
+    /// single byte.
     @discardableResult
     public func editorAppend(_ id: PieceID) -> Bool {
         guard let layout = editorLayout else { return false }
         guard TrackValidator.canAppend(id, to: layout) else { return false }
-        editorLayout?.pieces.append(id)
-        // The moment the ring closes, finish the job: put default checkpoints in
-        // (a closed loop with only the start line marked is unsaveable, and
-        // nothing about that is the author's mistake) and center it on the
-        // canvas, since a layout that grew left or up sits at negative
-        // coordinates and would race letterboxed into a corner.
-        if editorLayout?.walk().openEnds.isEmpty == true {
-            if (editorLayout?.gateSeams.count ?? 0) < 2 { editorSeedGates() }
-            editorCenterOnCanvas()
-        }
+        editorLayout?.pieces += PieceExpansion.expand(id)
+        finishIfClosed()
         return true
+    }
+
+    /// Append a suggested closing run **atomically**. The run was validated as a
+    /// unit by the search, so it lands as a unit — applying it piece by piece
+    /// would re-judge every prefix and silently drop the tail if any single
+    /// step read as an overlap mid-run.
+    @discardableResult
+    public func editorAppendRun(_ run: [PieceID]) -> Bool {
+        guard let layout = editorLayout, !run.isEmpty else { return false }
+        guard TrackValidator.canAppend(run: run, to: layout) else { return false }
+        editorLayout?.pieces += run.flatMap { PieceExpansion.expand($0) }
+        finishIfClosed()
+        return true
+    }
+
+    /// The moment the ring closes, finish the job: put default checkpoints in
+    /// (a closed loop with only the start line marked is unsaveable, and
+    /// nothing about that is the author's mistake) and center it on the
+    /// canvas, since a layout that grew left or up sits at negative
+    /// coordinates and would race letterboxed into a corner.
+    private func finishIfClosed() {
+        guard editorLayout?.walk().openEnds.isEmpty == true else { return }
+        if (editorLayout?.gateSeams.count ?? 0) < 2 { editorSeedGates() }
+        editorCenterOnCanvas()
     }
 
     /// Whether a palette piece can be placed right now — so the editor can gray
     /// out the ones that would break the track instead of letting you tap them.
+    ///
+    /// Memoised per layout: SwiftUI re-renders the palette on ANY state change —
+    /// every frame of a carousel drag included — and each render asks this for
+    /// every button. The verdicts only change when the pieces do, so answering
+    /// from the memo keeps drag frames free of validation work.
     public func editorCanAppend(_ id: PieceID) -> Bool {
         guard let layout = editorLayout else { return false }
-        return TrackValidator.canAppend(id, to: layout)
+        if appendVerdicts.pieces != layout.pieces {
+            appendVerdicts = (layout.pieces, [:])
+        }
+        if let verdict = appendVerdicts.byPiece[id] { return verdict }
+        let verdict = TrackValidator.canAppend(id, to: layout)
+        appendVerdicts.byPiece[id] = verdict
+        return verdict
     }
 
     /// Append the context-aware ramp: up from the ground, down from the deck —
