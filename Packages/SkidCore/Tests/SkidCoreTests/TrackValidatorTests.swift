@@ -202,25 +202,28 @@ final class TrackValidatorTests: XCTestCase {
         XCTAssertFalse(v.isSaveable)
     }
 
-    /// **Seam 1 can't be a checkpoint.** Seam 0 is the start piece's EXIT while
-    /// every other seam N is piece N's ENTRY, so on a closed ring seam 1 is the
-    /// same boundary as seam 0. Marking both puts two gates on the start line, and
-    /// the runtime scores it twice: you cross, the next gate is at your wheels, and
-    /// it counts again.
-    ///
-    /// This shipped in the Big oval, where the first lap ran normally and every lap
-    /// after it needed the finish line crossed twice.
-    func testSeamOneIsRejectedAsADuplicateOfSeamZero() {
+    /// **Every seam is a distinct boundary.** Seam numbering used to mean piece
+    /// N's *entry*, except seam 0 which meant the start piece's *exit* — so seams 0
+    /// and 1 were the same place, and marking both stacked two gates on the start
+    /// line. The runtime then scored the lap twice: cross the line, and the next
+    /// gate is already at your wheels. Seam N now uniformly means piece N's exit.
+    func testAdjacentSeamsAreDistinctBoundaries() throws {
         let ring: [PieceID] = [
             Pieces.startGrid, Pieces.curve90MediumLeft, Pieces.curve90MediumLeft,
             Pieces.straight, Pieces.curve90MediumLeft, Pieces.curve90MediumLeft,
         ]
-        // Same ring, gates differing only in whether seam 1 is marked.
-        XCTAssertTrue(
-            TrackValidator.validate(TrackLayout(pieces: ring, gateSeams: [0, 3])).isSaveable)
-        XCTAssertFalse(
-            TrackValidator.validate(TrackLayout(pieces: ring, gateSeams: [0, 1, 3])).isSaveable,
-            "seam 1 duplicates seam 0 and must not be accepted")
+        // Seam 1 is legal now, and must produce a gate of its own.
+        let layout = TrackLayout(pieces: ring, gateSeams: [0, 1])
+        XCTAssertTrue(TrackValidator.validate(layout).isSaveable)
+        let track = try PieceCompiler.compile(layout, id: "adjacent")
+        XCTAssertEqual(track.gates.count, 2)
+        let first = track.gates[0]
+        let second = track.gates[1]
+        let midA = Vec2((first.a.x + first.b.x) / 2, (first.a.y + first.b.y) / 2)
+        let midB = Vec2((second.a.x + second.b.x) / 2, (second.a.y + second.b.y) / 2)
+        XCTAssertGreaterThan(
+            midA.distance(to: midB), track.width,
+            "consecutive seams must be different boundaries, not the same one twice")
     }
 
     /// No built-in may carry two gates in the same place — the shipped Big oval

@@ -23,8 +23,9 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 - **Laps count properly on Big oval.** The track had two checkpoints stacked on
   the start/finish line, so after the first lap the finish had to be crossed
-  twice before the lap registered. The editor now refuses to place a checkpoint
-  there at all: it's the same boundary as the start line, not a separate one.
+  twice before the lap registered. Checkpoint numbering is now uniform — each one
+  marks the end of a piece — so no two can land on the same spot. The start line
+  and grid are exactly where they were.
 
 ### build 7 — 2026-07-26
 
