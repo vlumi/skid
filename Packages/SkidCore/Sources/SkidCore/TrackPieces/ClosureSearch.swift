@@ -32,7 +32,6 @@ struct ClosureSearch {
     /// candidate on a real 41-piece design was rejected, so "Close it" never
     /// appeared for a track one 90° from home).
     private let mesh: RoadProximity
-    private let heights: [Double]
     /// Own centerline length per candidate id, for the run's arc bookkeeping.
     private let arcOf: [PieceID: Double]
     /// Densified shape of every candidate at each of the eight headings, from
@@ -70,7 +69,6 @@ struct ClosureSearch {
             $0.position.vec2.distance(to: goal.position.vec2)
         }
         mesh = RoadProximity(placed: placed, joinGap: gap ?? .infinity)
-        heights = placed.map(\.entryHeight)
         shapes = Self.originShapes(of: candidates)
         arcOf = shapes.reduce(into: [:]) { arcs, entry in
             guard entry.key.heading == 0 else { return }
@@ -208,7 +206,7 @@ struct ClosureSearch {
                 // Keep looking at this depth for a gentler run of the same
                 // length — the first hit isn't always the tidiest.
                 guard best.map({ candidate.cost < $0.cost }) ?? true else { continue }
-                guard staysClear(id, from: step, to: pose, at: height) else { continue }
+                guard staysClear(id, piece, from: step, to: pose) else { continue }
                 best = candidate
                 continue
             }
@@ -219,7 +217,7 @@ struct ClosureSearch {
             guard (goal.position.vec2 - pose.position.vec2).length <= reach * Double(remaining)
             else { continue }
             guard inWindow(id, from: step, to: pose) else { continue }
-            guard staysClear(id, from: step, to: pose, at: height) else { continue }
+            guard staysClear(id, piece, from: step, to: pose) else { continue }
             seen.insert(visited)
             next.append(candidate)
         }
@@ -249,17 +247,16 @@ struct ClosureSearch {
     /// worst slightly permissive here — `confirmed` re-checks the winner with
     /// the true geometry).
     private func staysClear(
-        _ id: PieceID, from step: Step, to pose: PiecePose, at height: Double
+        _ id: PieceID, _ piece: Piece, from step: Step, to pose: PiecePose
     ) -> Bool {
         guard let shape = shapes[ShapeKey(id: id, heading: step.pose.heading.step)]
         else { return true }
         let exitToGoal = pose.position.vec2.distance(to: goal.position.vec2)
         return !mesh.conflicts(
-            shape: shape, at: step.pose.position.vec2, arcBefore: step.arc,
-            exitToGoal: exitToGoal
-        ) { index in
-            abs(heights[index] - height) >= 0.5
-        }
+            shape: shape, at: step.pose.position.vec2,
+            run: RunContext(
+                arcBefore: step.arc, exitToGoal: exitToGoal,
+                entryHeight: step.height, heightDelta: piece.heightDelta))
     }
 
     /// The run as **primitives**, which is what a layout may hold.
