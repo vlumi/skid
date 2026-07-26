@@ -55,13 +55,15 @@ struct RoadProximity {
         var built: [RoadSegment] = []
         var arc = 0.0
         for (index, piece) in placed.enumerated() {
-            let points = RoadProximity.densified(piece)
-            for step in 1..<max(points.count, 1) {
-                let length = points[step].distance(to: points[step - 1])
+            let samples = RoadProximity.densifiedHeighted(piece)
+            for step in 1..<max(samples.count, 1) {
+                let length = samples[step].point.distance(to: samples[step - 1].point)
+                let height = (samples[step - 1].height + samples[step].height) / 2
                 built.append(
                     RoadSegment(
-                        piece: index, a: points[step - 1], b: points[step],
-                        arcMid: arc + length / 2))
+                        piece: index, a: samples[step - 1].point, b: samples[step].point,
+                        arcMid: arc + length / 2, top: height,
+                        solidLow: RoadProximity.solidFloor(under: height)))
                 arc += length
             }
         }
@@ -86,6 +88,7 @@ struct RoadProximity {
             forEachNearby(segment.a, segment.b) { other in
                 guard !hit, segments[other].piece > segment.piece else { return }
                 let candidate = segments[other]
+                guard !clearVertically(segment, candidate) else { return }
                 guard
                     segmentDistance(segment.a, segment.b, candidate.a, candidate.b)
                         < Self.minGap
@@ -106,10 +109,7 @@ struct RoadProximity {
     /// the chain's end, and the run is heading for the start entry —
     /// `exitToGoal` (straight-line, so never more than the road that will
     /// actually be laid) stands in for the rest of the way home.
-    func conflicts(
-        shape points: [Vec2], at offset: Vec2, arcBefore: Double, exitToGoal: Double,
-        exempt: (Int) -> Bool
-    ) -> Bool {
+    func conflicts(shape points: [Vec2], at offset: Vec2, run: RunContext) -> Bool {
         let pieceArc = polylineLength(points)
         var inPiece = 0.0
         for step in 1..<max(points.count, 1) {
@@ -117,20 +117,44 @@ struct RoadProximity {
             let b = points[step] + offset
             let length = a.distance(to: b)
             let mid = inPiece + length / 2
+            // Linear height along the arc — the real profile is smoothstepped,
+            // but the search only prunes; `confirmed` re-checks the winner with
+            // true geometry.
+            let top = run.entryHeight + run.heightDelta * (pieceArc > 0 ? mid / pieceArc : 0)
+            let low = Self.solidFloor(under: top)
             var hit = false
             forEachNearby(a, b) { other in
-                guard !hit, !exempt(segments[other].piece) else { return }
+                guard !hit else { return }
                 let existing = segments[other]
+                guard max(low - existing.top, existing.solidLow - top, 0) <= 0.5
+                else { return }
                 guard segmentDistance(a, b, existing.a, existing.b) < Self.minGap
                 else { return }
-                let along = (totalArc + arcBefore + mid) - existing.arcMid
-                let through = (pieceArc - mid) + exitToGoal + existing.arcMid
+                let along = (totalArc + run.arcBefore + mid) - existing.arcMid
+                let through = (pieceArc - mid) + run.exitToGoal + existing.arcMid
                 if min(along, through) > Self.allowance { hit = true }
             }
             if hit { return true }
             inPiece += length
         }
         return false
+    }
+
+    /// Vertical clearance between two segments' SOLID ranges — the same rule
+    /// `Race.blocks` applies to walls: road at height h is solid from
+    /// `trunc(h)` down, so a ramp is embankment all the way to the ground while
+    /// a deck at 1 is thin air below itself. Ground under a deck clears by a
+    /// full level; nothing clears a ramp, at either end — which is exactly how
+    /// the compiled track drives (side rails + the mouth cap).
+    private func clearVertically(_ a: RoadSegment, _ b: RoadSegment) -> Bool {
+        max(a.solidLow - b.top, b.solidLow - a.top, 0) > 0.5
+    }
+
+    /// Where the solid fill under road at `height` starts. `trunc`, with a hair
+    /// of tolerance so a deck sample at 0.999… still counts as level 1 (thin),
+    /// clamped so the interval can never invert.
+    static func solidFloor(under height: Double) -> Double {
+        min((height + 0.001).rounded(.down), height)
     }
 
     /// The exemption itself: are these two arc positions close along the road,
@@ -171,15 +195,28 @@ struct RoadProximity {
     /// Centerline samples with long spans subdivided, so no straight leaves a
     /// corridor the proximity test can't see into.
     static func densified(_ placed: PlacedPiece) -> [Vec2] {
+        densifiedHeighted(placed).map(\.point)
+    }
+
+    /// The same, carrying each sample's height (lerped across subdivisions —
+    /// `heightedSamples` already refines sloped spans, so the lerp only fills
+    /// the flat-distance subdivisions).
+    static func densifiedHeighted(_ placed: PlacedPiece) -> [(point: Vec2, height: Double)] {
         let step = Double(PieceCatalog.width) * 0.6
-        let points = placed.centerlineSamples(degreesPerSample: 20)
-        guard points.count >= 2 else { return points }
-        var out: [Vec2] = [points[0]]
-        for index in 1..<points.count {
-            let span = points[index] - points[index - 1]
+        let samples = placed.heightedSamples(degreesPerSample: 20)
+        guard samples.count >= 2 else { return samples }
+        var out = [samples[0]]
+        for index in 1..<samples.count {
+            let span = samples[index].point - samples[index - 1].point
+            let rise = samples[index].height - samples[index - 1].height
             let parts = max(1, Int((span.length / step).rounded(.up)))
             for part in 1...parts {
-                out.append(points[index - 1] + span * (Double(part) / Double(parts)))
+                let f = Double(part) / Double(parts)
+                out.append(
+                    (
+                        point: samples[index - 1].point + span * f,
+                        height: samples[index - 1].height + rise * f
+                    ))
             }
         }
         return out
@@ -204,13 +241,26 @@ struct RoadProximity {
     }
 }
 
-/// One densified centerline segment, tagged with which piece it belongs to and
-/// how far along the whole chain its midpoint sits.
+/// Where a candidate piece sits relative to the run being searched: how much
+/// run precedes it, how far its exit still is from the goal, and its height
+/// profile (entry plus delta, lerped along the piece).
+struct RunContext {
+    var arcBefore: Double
+    var exitToGoal: Double
+    var entryHeight: Double
+    var heightDelta: Double
+}
+
+/// One densified centerline segment: which piece it belongs to, how far along
+/// the whole chain its midpoint sits, and the vertical range it is solid over
+/// (`solidLow…top` — see `solidFloor`).
 private struct RoadSegment {
     var piece: Int
     var a: Vec2
     var b: Vec2
     var arcMid: Double
+    var top: Double
+    var solidLow: Double
 }
 
 /// A cell in the spatial grid the segments are bucketed into. Cell size is one
