@@ -457,11 +457,26 @@ That cannot happen at current track sizes but primitives make long tracks
 ordinary. The 16-gate cap stays — it is a reasonable limit and cheap to raise
 later, since gates are a length-prefixed section.
 
-**Track length is capped at 127 primitives for now** (the current decode cap is
-64). For scale: real tracks are 15–21 primitives, and 127 shorts end to end is
-15,240 units against a 5,866-unit canvas perimeter — roughly 2.6 laps of the
-outer edge. Generous today; if the bigger-screen canvases land, re-measure rather
-than assume, and revisit the QR budget honestly at the same time.
+**Two separate caps, and they must not be confused.** Compounds make the encoded
+count and the track length different numbers — a hairpin is one id but four
+primitives — so:
+
+- **Max encoded elements** bounds the *decode work*: how many ids a hostile code
+  may contain before it is rejected. This is what today's `maxPieces = 64`
+  actually checks.
+- **Max length** bounds the *track*: primitives after expansion, and it must stay
+  **under 128**, because a seam index addresses a primitive and a varint's first
+  byte carries 7 bits.
+
+Today's check is on the encoded count only, applied *before* expansion — so with
+compounds, 64 ids could expand past any length limit unnoticed. The length must be
+checked **after** expanding, and expansion must be bounded as it goes rather than
+expanded-then-measured, or a small code can allocate a large layout.
+
+For scale: real tracks are 15–21 primitives, and 127 shorts end to end is 15,240
+units against a 5,866-unit canvas perimeter — roughly 2.6 laps of the outer edge.
+Generous today; if the bigger-screen canvases land, re-measure rather than assume,
+and revisit the QR budget honestly at the same time.
 
 Also still to do when this lands: **"Close it" must propose compound runs**, not
 just primitives — a 3-piece search budget cannot turn 90° in primitives, where
