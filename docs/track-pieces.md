@@ -411,6 +411,78 @@ compile. Built-ins migrate to this model **only if** the forcing-function
 rebuild proves the catalog expressive enough — decided with the editor in
 hand, per the roadmap.
 
+## Planned: primitives in the model, compounds in the code
+
+**Decided, not yet built.** The catalog reduces to primitives — a short straight
+and 45° corners at each radius — because everything else composes from them
+*exactly* (measured: 2U = two shorts, long = four, 90° = two 45s, hairpin = four
+45s, all with identical end poses). That reduction is worth having for reasons
+that have nothing to do with bytes:
+
+- **A checkpoint anywhere.** A hairpin built from four 45s has seams at the apex;
+  as a single piece it has none, and a gate at the apex is what you usually want.
+- **No variant holes.** No missing sweep hairpin, no jog-named-by-lateral-shift,
+  and the "should a compound follow the selected radius?" question dissolves.
+- **A far smaller palette.** 44 catalog entries become ~10, which is what let the
+  editor's palette shrink to a corner carousel plus a straight.
+
+The cost is code length: the oval goes from 8 pieces to 15 primitives. So the
+compounds move into the **encoding** as virtual elements — one id meaning "four
+45° medium lefts" — which is strictly better than run-length encoding, because a
+compound id *is* the run and costs one byte where RLE costs two (id + count).
+
+Measured on the real built-ins, pieces section only:
+
+| track | primitives (1 B each) | RLE | virtual compounds |
+|---|---:|---:|---:|
+| small | 16 B | 12 B | **7 B** |
+| oval | 15 B | 9 B | **5 B** |
+| eight | 21 B | 17 B | **11 B** |
+
+Compounds roughly halve it; RLE manages 19–40%. Both are decoded to primitives
+before anything else sees the layout, so the model stays uniform and there is
+exactly one canonical byte form (the encoder always prefers the longest compound,
+so a given piece list encodes one way — byte-stability is what makes a code an
+identity).
+
+**Decals are sparse `pos:decalId` pairs**, both varint, indexed against the
+*expanded* primitive list so either half of a hairpin can be decorated
+independently. A parallel array (one entry per piece) was rejected: for the oval
+that is 15 B, three times the whole 5-byte piece section, even with nothing
+decorated. Sparse wins until roughly half the track carries a decal.
+
+**Seam indices become varint**, one byte up to 127. Today they are a single raw
+byte, which silently truncates: a gate at seam 260 decodes as seam 4, verified.
+That cannot happen at current track sizes but primitives make long tracks
+ordinary. The 16-gate cap stays — it is a reasonable limit and cheap to raise
+later, since gates are a length-prefixed section.
+
+**Two separate caps, and they must not be confused.** Compounds make the encoded
+count and the track length different numbers — a hairpin is one id but four
+primitives — so:
+
+- **Max encoded elements** bounds the *decode work*: how many ids a hostile code
+  may contain before it is rejected. This is what today's `maxPieces = 64`
+  actually checks.
+- **Max length** bounds the *track*: primitives after expansion, and it must stay
+  **under 128**, because a seam index addresses a primitive and a varint's first
+  byte carries 7 bits.
+
+Today's check is on the encoded count only, applied *before* expansion — so with
+compounds, 64 ids could expand past any length limit unnoticed. The length must be
+checked **after** expanding, and expansion must be bounded as it goes rather than
+expanded-then-measured, or a small code can allocate a large layout.
+
+For scale: real tracks are 15–21 primitives, and 127 shorts end to end is 15,240
+units against a 5,866-unit canvas perimeter — roughly 2.6 laps of the outer edge.
+Generous today; if the bigger-screen canvases land, re-measure rather than assume,
+and revisit the QR budget honestly at the same time.
+
+Also still to do when this lands: **"Close it" must propose compound runs**, not
+just primitives — a 3-piece search budget cannot turn 90° in primitives, where
+today it can find a whole hairpin. And the budget table below must be re-derived
+from measurements, since every row changes.
+
 ## Encoding & the URL/QR budget
 
 Share codes are **base64url** (no padding) of a small binary blob at

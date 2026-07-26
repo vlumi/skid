@@ -1,165 +1,212 @@
 import SkidCore
 import SwiftUI
 
-/// The editor palette's contents: which tabs exist, which radius the Curves row
-/// is tuned to, and the pieces each tab shows. Split out of `EditorView` to
-/// keep both files inside the length budget — and because this is the part that
-/// grows as catalog families land (decals, decorations).
+/// What the editor palette offers, and how it's organised.
+///
+/// **The shape of this is deliberate.** The catalog is a cross-product — every
+/// shape × every radius × both handednesses — and listing it produced ten
+/// buttons per radius tab that multiplied with every family added. But building a
+/// track isn't really a choice among forty pieces; almost every move is "go left,
+/// go straight, or go right", with the corner's angle and radius changing only
+/// occasionally.
+///
+/// So the palette is three fixed buttons — **left corner / straight / right
+/// corner** — fed by shared selectors for angle, radius and straight length. The
+/// left and right buttons are visibly the same corner mirrored, which is what
+/// makes them read as a pair. Everything that isn't part of that triple (hairpins,
+/// chicanes, jogs, ramps) is a **one-off**, and one-offs live on an assignable
+/// hotbar instead: still one tap to place, and it doesn't grow when the catalog
+/// does.
+/// A one-off family that has a variant per radius, so a hotbar slot holding it
+/// can follow the corner radius you're building with.
+///
+/// Only **chicane** has all three; **hairpin** has no sweep variant (the design
+/// doc argues against one), and **jog** isn't a radius family at all — 240 and
+/// 360 name a *lateral shift*, and both use a tight first arc. So a slot follows
+/// the radius when its family has that variant and keeps its own otherwise,
+/// rather than pretending every one-off has three sizes.
+enum CurveAngle: String, CaseIterable, Identifiable {
+    case degrees45, degrees90
+    var id: String { rawValue }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .degrees45: return "45°"
+        case .degrees90: return "90°"
+        }
+    }
+}
+
+enum CurveRadius: String, CaseIterable, Identifiable {
+    case tight, medium, sweep
+    var id: String { rawValue }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .tight: return "Tight"
+        case .medium: return "Medium"
+        case .sweep: return "Sweep"
+        }
+    }
+}
+
+enum StraightLength: String, CaseIterable, Identifiable {
+    case short, standard, long
+    var id: String { rawValue }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .short: return "Short"
+        case .standard: return "2U"
+        case .long: return "Long"
+        }
+    }
+
+    var piece: PieceID {
+        switch self {
+        case .short: return PieceCatalog.ID.shortStraight
+        case .standard: return PieceCatalog.ID.straight
+        case .long: return PieceCatalog.ID.longStraight
+        }
+    }
+}
+
+/// A one-off family with a variant per radius, so a hotbar slot holding it can
+/// follow the corner radius you are building with.
+///
+/// Only **chicane** has all three radii; **hairpin** has no sweep variant, and
+/// **jog** is not a radius family at all — 240/360 name a lateral shift and both
+/// use a tight first arc. So a slot follows the radius where its family has that
+/// variant and keeps its own otherwise.
+enum OneOffFamily {
+    case hairpin, chicane
+
+    func piece(left: Bool, radius: CurveRadius) -> PieceID? {
+        typealias Pieces = PieceCatalog.ID
+        switch (self, radius) {
+        case (.hairpin, .tight):
+            return left ? Pieces.hairpinTightLeft : Pieces.hairpinTightRight
+        case (.hairpin, .medium):
+            return left ? Pieces.hairpinMediumLeft : Pieces.hairpinMediumRight
+        case (.hairpin, .sweep):
+            return nil  // no sweep hairpin in the catalog
+        case (.chicane, .tight):
+            return left ? Pieces.chicaneTightLeft : Pieces.chicaneTightRight
+        case (.chicane, .medium):
+            return left ? Pieces.chicaneMediumLeft : Pieces.chicaneMediumRight
+        case (.chicane, .sweep):
+            return left ? Pieces.chicaneSweepLeft : Pieces.chicaneSweepRight
+        }
+    }
+}
+
 extension EditorView {
-    enum PaletteTab: String, CaseIterable, Identifiable {
-        case straights, curves, elevation
-        var id: String { rawValue }
+    /// The angle of the corner the left/right buttons build.
 
-        var label: LocalizedStringKey {
-            switch self {
-            case .straights: return "Straights"
-            case .curves: return "Curves"
-            case .elevation: return "Elevation"
-            }
+    /// The three catalog radii — how tight the corner the left/right buttons build.
+
+    /// The length of the straight the middle button builds.
+
+    /// The corner a button places: its own handedness and angle, at the shared
+    /// radius.
+    ///
+    /// Angle is a parameter rather than a setting because it's a button *position*
+    /// now — 45L · 90L · 90R · 45R, mirrored around the centre — so both angles are
+    /// always one tap away and nothing has to be toggled.
+    func corner(left: Bool, angle: CurveAngle, radius: CurveRadius) -> PieceID {
+        typealias Pieces = PieceCatalog.ID
+        switch (angle, radius) {
+        case (.degrees45, .tight): return left ? Pieces.curve45TightLeft : Pieces.curve45TightRight
+        case (.degrees45, .medium):
+            return left ? Pieces.curve45MediumLeft : Pieces.curve45MediumRight
+        case (.degrees45, .sweep): return left ? Pieces.curve45SweepLeft : Pieces.curve45SweepRight
+        case (.degrees90, .tight): return left ? Pieces.curve90TightLeft : Pieces.curve90TightRight
+        case (.degrees90, .medium):
+            return left ? Pieces.curve90MediumLeft : Pieces.curve90MediumRight
+        case (.degrees90, .sweep): return left ? Pieces.curve90SweepLeft : Pieces.curve90SweepRight
         }
     }
 
-    /// The three catalog radii, as a picker dimension for the Curves tab.
-    enum CurveRadius: String, CaseIterable, Identifiable {
-        case tight, medium, sweep
-        var id: String { rawValue }
+    /// The straight the middle button places, at the current length.
+    var straight: PieceID { straightLength.piece }
 
-        var label: LocalizedStringKey {
-            switch self {
-            case .tight: return "Tight"
-            case .medium: return "Medium"
-            case .sweep: return "Sweep"
-            }
+    /// Which family and handedness a piece belongs to, if it's one that tracks the
+    /// radius. Nil for pieces that don't (jogs, the ramp).
+    static func family(of piece: PieceID) -> (family: OneOffFamily, left: Bool)? {
+        typealias Pieces = PieceCatalog.ID
+        switch piece {
+        case Pieces.hairpinTightLeft, Pieces.hairpinMediumLeft: return (.hairpin, true)
+        case Pieces.hairpinTightRight, Pieces.hairpinMediumRight: return (.hairpin, false)
+        case Pieces.chicaneTightLeft, Pieces.chicaneMediumLeft, Pieces.chicaneSweepLeft:
+            return (.chicane, true)
+        case Pieces.chicaneTightRight, Pieces.chicaneMediumRight, Pieces.chicaneSweepRight:
+            return (.chicane, false)
+        default: return nil
         }
     }
 
-    struct PaletteItem: Identifiable {
-        let id: PieceID
-        let label: LocalizedStringKey
-        /// A sentinel id meaning "the context-aware ramp" (up from ground,
-        /// down from the deck) — resolved to a real piece id on tap.
-        static let rampSentinel = -1
+    /// One-off pieces: everything that isn't "left / straight / right".
+    ///
+    /// These are the hotbar's contents, and the full list a long-press offers.
+    /// Crossings, jumps and forks are **absent on purpose** — the catalog has
+    /// their geometry but the Phase-A compiler can't build them, so placing one
+    /// could only ever produce a track that fails to compile. They join this list
+    /// with the compiler work (see docs/track-pieces.md "Beyond the ring").
+    static var oneOffPieces: [PieceID] {
+        typealias Pieces = PieceCatalog.ID
+        return [
+            Pieces.hairpinTightLeft, Pieces.hairpinTightRight,
+            Pieces.hairpinMediumLeft, Pieces.hairpinMediumRight,
+            Pieces.chicaneTightLeft, Pieces.chicaneTightRight,
+            Pieces.chicaneMediumLeft, Pieces.chicaneMediumRight,
+            Pieces.chicaneSweepLeft, Pieces.chicaneSweepRight,
+            Pieces.jog240Left, Pieces.jog240Right,
+            Pieces.jog360Left, Pieces.jog360Right,
+            HotbarSlot.rampSentinel,
+        ]
     }
 
-    /// The pieces on show, for the current tab (and radius, in Curves).
-    /// Curves covers everything that bends — plain corners, hairpins, and the
-    /// S families (chicane and lane jog) — since those are curves too.
-    var visiblePieces: [PaletteItem] {
-        switch tab {
-        case .straights:
-            return [
-                .init(id: PieceCatalog.ID.shortStraight, label: "Short"),
-                .init(id: PieceCatalog.ID.straight, label: "Straight"),
-                .init(id: PieceCatalog.ID.longStraight, label: "Long"),
-            ]
-        case .curves:
-            return curvePieces
-        case .elevation:
-            // "Ramp" is a single button: with only two elevations it picks up
-            // from the ground and down from the deck automatically (see
-            // `game.editorRamp`).
-            //
-            // Crossings and jumps are NOT offered yet: the catalog has their
-            // geometry, but the Phase-A compiler doesn't handle either kind
-            // (a track containing one fails to compile), so placing them could
-            // only ever build something broken. They return with the compiler
-            // work — see docs/track-pieces.md "Beyond the ring".
-            return [.init(id: PaletteItem.rampSentinel, label: "Ramp")]
-        }
+    /// A hotbar slot's contents: a catalog piece, or the context-aware ramp.
+    enum HotbarSlot {
+        /// Not a real catalog id — "the ramp that knows which way to go", resolved
+        /// on tap (up from the ground, down from the deck). Negative so it can
+        /// never collide with a real `PieceID`.
+        static let rampSentinel: PieceID = -1
+
+        /// What the hotbar holds on a fresh install: both hairpins, both medium
+        /// chicanes, and the ramp — the one-offs a track most often wants.
+        static let defaults: [PieceID] = [
+            PieceCatalog.ID.hairpinMediumLeft, PieceCatalog.ID.hairpinMediumRight,
+            PieceCatalog.ID.chicaneMediumLeft, PieceCatalog.ID.chicaneMediumRight,
+            rampSentinel,
+        ]
+
+        static let count = 5
     }
 
-    /// Curves at the selected radius: 45°, 90°, chicane — plus the hairpin and
-    /// lane jog at the radii that have them (no sweep hairpin; jogs are the
-    /// two fixed radius-bridging shifts).
-    var curvePieces: [PaletteItem] {
-        var items: [PaletteItem] = []
-        switch radius {
-        case .tight:
-            items += [
-                .init(id: PieceCatalog.ID.curve45TightLeft, label: "Left 45"),
-                .init(id: PieceCatalog.ID.curve45TightRight, label: "Right 45"),
-                .init(id: PieceCatalog.ID.curve90TightLeft, label: "Left 90"),
-                .init(id: PieceCatalog.ID.curve90TightRight, label: "Right 90"),
-                .init(id: PieceCatalog.ID.hairpinTightLeft, label: "Hairpin L"),
-                .init(id: PieceCatalog.ID.hairpinTightRight, label: "Hairpin R"),
-                .init(id: PieceCatalog.ID.chicaneTightLeft, label: "Chicane L"),
-                .init(id: PieceCatalog.ID.chicaneTightRight, label: "Chicane R"),
-                .init(id: PieceCatalog.ID.jog240Left, label: "Jog L"),
-                .init(id: PieceCatalog.ID.jog240Right, label: "Jog R"),
-            ]
-        case .medium:
-            items += [
-                .init(id: PieceCatalog.ID.curve45MediumLeft, label: "Left 45"),
-                .init(id: PieceCatalog.ID.curve45MediumRight, label: "Right 45"),
-                .init(id: PieceCatalog.ID.curve90MediumLeft, label: "Left 90"),
-                .init(id: PieceCatalog.ID.curve90MediumRight, label: "Right 90"),
-                .init(id: PieceCatalog.ID.hairpinMediumLeft, label: "Hairpin L"),
-                .init(id: PieceCatalog.ID.hairpinMediumRight, label: "Hairpin R"),
-                .init(id: PieceCatalog.ID.chicaneMediumLeft, label: "Chicane L"),
-                .init(id: PieceCatalog.ID.chicaneMediumRight, label: "Chicane R"),
-                .init(id: PieceCatalog.ID.jog360Left, label: "Jog L"),
-                .init(id: PieceCatalog.ID.jog360Right, label: "Jog R"),
-            ]
-        case .sweep:
-            items += [
-                .init(id: PieceCatalog.ID.curve45SweepLeft, label: "Left 45"),
-                .init(id: PieceCatalog.ID.curve45SweepRight, label: "Right 45"),
-                .init(id: PieceCatalog.ID.curve90SweepLeft, label: "Left 90"),
-                .init(id: PieceCatalog.ID.curve90SweepRight, label: "Right 90"),
-                .init(id: PieceCatalog.ID.chicaneSweepLeft, label: "Chicane L"),
-                .init(id: PieceCatalog.ID.chicaneSweepRight, label: "Chicane R"),
-            ]
-        }
-        return items
+    /// A short label for any piece, for the hotbar's picker.
+    ///
+    /// A table rather than a switch: one arm per piece tripped the complexity
+    /// limit, and a lookup reads better for what is simply a name list.
+    static func pieceLabel(_ id: PieceID) -> LocalizedStringKey {
+        pieceLabels[id] ?? "Piece"
     }
 
-    /// Whether this palette entry can be placed on the current loose end. The
-    /// ramp button resolves to whichever ramp direction applies.
-    func canPlace(_ item: PaletteItem) -> Bool {
-        guard let layout = game.editorLayout else { return false }
-        let id: PieceID
-        if item.id == PaletteItem.rampSentinel {
-            let elevated = (layout.walk().placed.last?.exitHeight ?? 0) > 0.5
-            id = elevated ? PieceCatalog.ID.rampDown : PieceCatalog.ID.rampUp
-        } else {
-            id = item.id
-        }
-        return game.editorCanAppend(id)
-    }
-
-    /// The scrollable row of piece buttons for the current tab. Each icon
-    /// renders the piece as it will land on the selected loose end (rotated to
-    /// its heading, in the deck look when building elevated).
-    func pieceRow(walk: WalkResult) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(visiblePieces) { item in
-                    // A piece that would pave over the track or run off the
-                    // canvas is DISABLED — being blocked beats placing it and
-                    // then reading a warning that's easy to miss.
-                    let placeable = canPlace(item)
-                    Button {
-                        if item.id == PaletteItem.rampSentinel {
-                            game.editorRamp()
-                        } else {
-                            game.editorAppend(item.id)
-                        }
-                    } label: {
-                        PieceIcon(
-                            id: item.id, entryHeading: appendHeading(walk),
-                            entryHeight: appendHeight(walk)
-                        )
-                        .frame(width: 56, height: 56)
-                        .background(
-                            Color.black.opacity(0.3), in: RoundedRectangle(cornerRadius: 12)
-                        )
-                        .opacity(placeable ? 1 : 0.25)
-                        .accessibilityLabel(Text(item.label, bundle: .module))
-                    }
-                    .disabled(!placeable)
-                }
-            }
-            .padding(.horizontal)
-        }
-    }
+    private static let pieceLabels: [PieceID: LocalizedStringKey] = [
+        HotbarSlot.rampSentinel: "Ramp",
+        PieceCatalog.ID.hairpinTightLeft: "Hairpin L (tight)",
+        PieceCatalog.ID.hairpinTightRight: "Hairpin R (tight)",
+        PieceCatalog.ID.hairpinMediumLeft: "Hairpin L",
+        PieceCatalog.ID.hairpinMediumRight: "Hairpin R",
+        PieceCatalog.ID.chicaneTightLeft: "Chicane L (tight)",
+        PieceCatalog.ID.chicaneTightRight: "Chicane R (tight)",
+        PieceCatalog.ID.chicaneMediumLeft: "Chicane L",
+        PieceCatalog.ID.chicaneMediumRight: "Chicane R",
+        PieceCatalog.ID.chicaneSweepLeft: "Chicane L (sweep)",
+        PieceCatalog.ID.chicaneSweepRight: "Chicane R (sweep)",
+        PieceCatalog.ID.jog240Left: "Jog L",
+        PieceCatalog.ID.jog240Right: "Jog R",
+        PieceCatalog.ID.jog360Left: "Jog L (wide)",
+        PieceCatalog.ID.jog360Right: "Jog R (wide)",
+    ]
 }
