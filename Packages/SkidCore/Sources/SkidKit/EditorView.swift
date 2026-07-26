@@ -34,6 +34,8 @@ struct EditorView: View {
 
     /// Which button's configuration sheet is open, if any.
     @State var configuring: PaletteTarget?
+    /// Live drag offset for the palette carousels, so they follow the finger.
+    @State var dragOffset: CGFloat = 0
 
     /// Which hotbar slot's picker is open. Only the hotbar has one — the corner
     /// and straight buttons are carousels now, configured by swiping them.
