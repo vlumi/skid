@@ -44,9 +44,20 @@ public enum TrackValidator {
     /// Deliberately ignores the rules a work-in-progress is *expected* to break:
     /// loose ends, the gate count, and standing on the deck are all normal
     /// mid-build states, not reasons to block a piece.
+    /// `id` may be a **compound** (the palette offers one-tap hairpins and 90s);
+    /// it is expanded here, because what actually lands in the layout is
+    /// primitives, and validating the compound would test a piece the layout will
+    /// never hold.
     public static func canAppend(_ id: PieceID, to layout: TrackLayout) -> Bool {
+        canAppend(run: [id], to: layout)
+    }
+
+    /// The same verdict for a whole run at once — what "Close it" applies. A
+    /// run validated as a unit must also land as a unit; judging it piece by
+    /// piece would re-litigate each prefix.
+    public static func canAppend(run: [PieceID], to layout: TrackLayout) -> Bool {
         var candidate = layout
-        candidate.pieces.append(id)
+        candidate.pieces += run.flatMap { PieceExpansion.expand($0) }
         let problems = validate(candidate).problems
         return !problems.contains { problem in
             switch problem {
@@ -76,7 +87,7 @@ public enum TrackValidator {
         }
 
         // 2. No disallowed same-layer overlap.
-        if hasIllegalOverlap(walk.placed, ringClosed: walk.openEnds.isEmpty) {
+        if hasIllegalOverlap(walk) {
             problems.append(.overlap)
         }
 
@@ -124,52 +135,29 @@ public enum TrackValidator {
         return layout.gateSeams.allSatisfy { (0..<placedCount).contains($0) }
     }
 
-    /// Sample each piece's centerline to world points and check that no two
-    /// non-adjacent pieces on the **same layer** actually cross — their
-    /// centerlines coming within ~half a road width, which means the paved
-    /// surfaces genuinely overlap (mere closeness between neighboring corners
-    /// stays outside this). Legal crossable pairs and jump-gap unders are
-    /// exempt.
-    private static func hasIllegalOverlap(_ placed: [PlacedPiece], ringClosed: Bool) -> Bool {
-        // Two ribbons touch when their centerlines are a FULL width apart (half
-        // from each side) and overlap below that — so the threshold is the road
-        // width, not half of it. (It was half, which let a lap sit half-on-top
-        // of another and still validate.) A hair under, so ribbons that merely
-        // graze aren't rejected.
-        // **What counts as overlap (decided):** the ASPHALT only. Two ribbons
-        // must not pave over each other, but their kerbs may abut or share
-        // space — roads exactly 1U apart are legal and read as a shared kerb
-        // between them, which is a real track feature and the tightest fit the
-        // unit grid naturally produces (hairpin legs land exactly there).
-        // Requiring kerb clearance instead would outlaw those fits. The
-        // Consequences for the kerb pass: a kerb must never cover another
-        // piece's asphalt (drivable surface beats decoration, so the band is
-        // clipped by every other ribbon), and overlapping kerbs must merge into
-        // one shared band rather than double-drawing. See docs/track-pieces.md.
-        let minGap = Double(PieceCatalog.width) * 0.95
-        // Sampled points + layer per piece (first path only; forks sample the
-        // trunk — branch overlap gets full treatment in Phase B).
-        let samples = placed.map { samplePoints($0) }
-
-        let n = placed.count
-        for i in placed.indices {
-            for j in placed.indices where j > i {
-                // Sequence-adjacent pieces share a port, so they always touch.
-                if j == i + 1 { continue }
-                // The first/last pair share the start seam ONLY once the ring
-                // has closed. While it's still open, the last piece running up
-                // alongside the start piece is a real overlap — and it's exactly
-                // the placement that should have been refused, so exempting it
-                // unconditionally let the offending piece land and then blamed
-                // everything placed after it.
-                if ringClosed && i == 0 && j == n - 1 { continue }
-                // Different heights can't collide — that's a bridge crossing.
-                if abs(placed[i].entryHeight - placed[j].entryHeight) > 0.5 { continue }
-                if legallyCrossing(placed[i], placed[j]) { continue }
-                if tooClose(samples[i], samples[j], minGap: minGap) { return true }
-            }
+    /// Sample-level overlap under the one proximity rule (`RoadProximity`):
+    /// near in space is illegal only when far along the road, with the join gap
+    /// counted as road-to-be. Same-height layers and legal crossings are the
+    /// only piece-level exemptions left; everything positional — neighbours
+    /// touching at ports, a tight curve crowding itself, the closing corner
+    /// hugging the start on its way home — falls out of the arc metric.
+    private static func hasIllegalOverlap(_ walk: WalkResult) -> Bool {
+        let placed = walk.placed
+        let mesh = RoadProximity(placed: placed, joinGap: joinGap(walk))
+        return mesh.hasIllegalPair { i, j in
+            abs(placed[i].entryHeight - placed[j].entryHeight) > 0.5
+                || legallyCrossing(placed[i], placed[j])
         }
-        return false
+    }
+
+    /// The straight-line gap from the loose end back to the start entry — zero
+    /// once the ring is closed (exit and entry coincide exactly), infinite when
+    /// there is nothing to close.
+    private static func joinGap(_ walk: WalkResult) -> Double {
+        guard let first = walk.placed.first, let last = walk.placed.last,
+            let exit = last.exits.first
+        else { return .infinity }
+        return exit.position.vec2.distance(to: first.entry.position.vec2)
     }
 
     /// A crossable/crossable pair meeting at a shared point, or a jump gap a
@@ -201,46 +189,4 @@ public enum TrackValidator {
         placed.centerlineSamples(degreesPerSample: 22.5)
     }
 
-    /// Do two sampled centerlines come within `minGap` anywhere along them?
-    ///
-    /// This compares **segments**, not just sample points. Comparing points
-    /// missed the obvious case: two straights crossing at right angles have
-    /// their nearest *endpoints* far apart (339 units on a 4U crossing) even
-    /// though the ribbons plainly intersect — so a figure-8 whose lobes met at
-    /// the waist validated happily.
-    private static func tooClose(_ a: [Vec2], _ b: [Vec2], minGap: Double) -> Bool {
-        guard a.count >= 2, b.count >= 2 else {
-            // Degenerate: fall back to point distance.
-            for p in a where b.contains(where: { (p - $0).length < minGap }) { return true }
-            return false
-        }
-        for i in 0..<(a.count - 1) {
-            for j in 0..<(b.count - 1)
-            where segmentDistance(a[i], a[i + 1], b[j], b[j + 1]) < minGap {
-                return true
-            }
-        }
-        return false
-    }
-
-    /// Shortest distance between two line segments. Segments that intersect
-    /// return 0; otherwise the closest approach is from one segment's endpoint
-    /// to the other segment (a standard property of convex shapes).
-    private static func segmentDistance(_ p1: Vec2, _ p2: Vec2, _ q1: Vec2, _ q2: Vec2) -> Double {
-        if segmentsIntersect(p1, p2, q1, q2) { return 0 }
-        return min(
-            min(p1.distance(toSegment: q1, q2), p2.distance(toSegment: q1, q2)),
-            min(q1.distance(toSegment: p1, p2), q2.distance(toSegment: p1, p2)))
-    }
-
-    /// Proper segment intersection, by the sign of the four orientation tests.
-    private static func segmentsIntersect(
-        _ p1: Vec2, _ p2: Vec2, _ q1: Vec2, _ q2: Vec2
-    ) -> Bool {
-        let d1 = (p2 - p1).cross(q1 - p1)
-        let d2 = (p2 - p1).cross(q2 - p1)
-        let d3 = (q2 - q1).cross(p1 - q1)
-        let d4 = (q2 - q1).cross(p2 - q1)
-        return d1 * d2 < 0 && d3 * d4 < 0
-    }
 }

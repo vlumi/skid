@@ -411,9 +411,9 @@ compile. Built-ins migrate to this model **only if** the forcing-function
 rebuild proves the catalog expressive enough — decided with the editor in
 hand, per the roadmap.
 
-## Planned: primitives in the model, compounds in the code
+## Primitives in the model, compounds in the code
 
-**Decided, not yet built.** The catalog reduces to primitives — a short straight
+**Built.** The catalog reduces to primitives — a short straight
 and 45° corners at each radius — because everything else composes from them
 *exactly* (measured: 2U = two shorts, long = four, 90° = two 45s, hairpin = four
 45s, all with identical end poses). That reduction is worth having for reasons
@@ -423,8 +423,13 @@ that have nothing to do with bytes:
   as a single piece it has none, and a gate at the apex is what you usually want.
 - **No variant holes.** No missing sweep hairpin, no jog-named-by-lateral-shift,
   and the "should a compound follow the selected radius?" question dissolves.
-- **A far smaller palette.** 44 catalog entries become ~10, which is what let the
-  editor's palette shrink to a corner carousel plus a straight.
+- **A far smaller palette.** 44 catalog entries become ~10, and the main row now
+  offers *exactly* the building vocabulary: a left/right 45° pair on a radius
+  carousel plus the short straight. The 90° buttons are gone — a compound button
+  was only ever taps saved, and it cost a row that grew with the catalog plus a
+  placement that took several presses to undo. The assignable hotbar stays, for
+  what isn't corner-or-straight: the ramp today, then jumps/gaps/landings and
+  decorations.
 
 The cost is code length: the oval goes from 8 pieces to 15 primitives. So the
 compounds move into the **encoding** as virtual elements — one id meaning "four
@@ -468,20 +473,31 @@ primitives — so:
   **under 128**, because a seam index addresses a primitive and a varint's first
   byte carries 7 bits.
 
-Today's check is on the encoded count only, applied *before* expansion — so with
-compounds, 64 ids could expand past any length limit unnoticed. The length must be
-checked **after** expanding, and expansion must be bounded as it goes rather than
-expanded-then-measured, or a small code can allocate a large layout.
+Both are now enforced: `maxPieces = 64` on the encoded ids, and `maxLength = 127`
+on the primitives, bounded **during** expansion (`PieceExpansion.expand(all:limit:)`
+returns nil past the limit) rather than expanded-then-measured, so a small hostile
+code cannot allocate a large layout.
 
 For scale: real tracks are 15–21 primitives, and 127 shorts end to end is 15,240
 units against a 5,866-unit canvas perimeter — roughly 2.6 laps of the outer edge.
 Generous today; if the bigger-screen canvases land, re-measure rather than assume,
 and revisit the QR budget honestly at the same time.
 
-Also still to do when this lands: **"Close it" must propose compound runs**, not
-just primitives — a 3-piece search budget cannot turn 90° in primitives, where
-today it can find a whole hairpin. And the budget table below must be re-derived
-from measurements, since every row changes.
+**"Close it" searches in compounds and returns primitives.** The search step stays
+a compound — a hairpin is one step, not four — so a small depth budget can still
+find a run that turns 180°; the winning run is expanded on the way out, since a
+layout holds primitives. Same for the editor: one tap places a piece, and what
+lands is whatever primitives it expands to.
+
+**The ramp cap is a property of the elevated run, not of a piece.** Sealing the air
+under a ramp's raised end used to be decided per piece, from whichever of its ends
+sampled higher — so once a deck became two short straights, every deck piece
+claimed a "high end" and dropped a cap across the middle of the bridge, blocking
+the road underneath (a cap at 0.9 has floor `trunc(0.9)` = 0). Only a piece that
+actually changes height owns a mouth to seal. The old one-piece deck hid this.
+
+Still to do: the budget table below must be re-derived from measurements, since
+every row changes.
 
 ## Encoding & the URL/QR budget
 

@@ -20,12 +20,17 @@ final class PieceModelAcceptanceTests: XCTestCase {
         // Rounded square: start then four [left-90, straight] quarters —
         // symmetric, so it closes exactly. The start piece and the straight are
         // both 2U, and a 90° tight arc advances 1U, so every side matches.
-        let pieces: [PieceID] = [
-            Pieces.startGrid, Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
-            Pieces.straight,
-            Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
-        ]
-        let layout = TrackLayout(pieces: pieces, gateSeams: [0, 2, 4, 6])
+        //
+        // Spelled in **primitives** (45s and short straights), since that is what a
+        // layout holds; the quarter is written as a compound and expanded here so
+        // the intent stays readable and the fixture stays honest about the model.
+        let quarter =
+            PieceExpansion.expand(Pieces.curve90TightLeft)
+            + PieceExpansion.expand(Pieces.straight)
+        let pieces: [PieceID] =
+            [Pieces.startGrid] + Array(repeating: quarter, count: 4).flatMap { $0 }
+        // One gate per quarter — 4 primitives each, so they land 4 apart.
+        let layout = TrackLayout(pieces: pieces, gateSeams: [0, 4, 8, 12])
 
         // 1. Saveable.
         XCTAssertTrue(TrackValidator.validate(layout).isSaveable)

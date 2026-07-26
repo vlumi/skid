@@ -5,8 +5,12 @@ import XCTest
 /// The share code: canonical round-trip, CRC-guarded typos, varint ids, and
 /// the byte/URL budget the design doc promises stays QR-fit.
 final class TrackCodeTests: XCTestCase {
+    /// A layout is always **primitives** — short straights and 45° corners. The
+    /// codec packs them into compounds on the way out and expands them on the way
+    /// in, so a round trip returns primitives, not the compounds it was stored as.
     private let square = TrackLayout(
-        pieces: [15, 7, 1, 7, 1, 7, 1, 7], gateSeams: [0, 2, 4, 6])
+        pieces: PieceExpansion.expand(all: [15, 7, 1, 7, 1, 7, 1, 7], limit: 127)!,
+        gateSeams: [0, 2, 4, 6])
 
     func testRoundTrip() throws {
         let code = TrackCode.encode(square)
@@ -30,10 +34,14 @@ final class TrackCodeTests: XCTestCase {
     }
 
     func testTwoByteVarintID() throws {
-        // A decal id (128) round-trips through the varint path.
-        let layout = TrackLayout(pieces: [15, 128, 7, 1, 7, 1, 7, 1, 7], gateSeams: [0, 4])
+        // A decal id (128) round-trips through the varint path. Primitive layout,
+        // and 128 is itself primitive (a decal variant of the short straight), so it
+        // survives packing untouched.
+        let pieces = PieceExpansion.expand(all: [15, 128, 7, 1, 7, 1, 7, 1, 7], limit: 127)!
+        let layout = TrackLayout(pieces: pieces, gateSeams: [0, 4])
         let back = try TrackCode.decode(TrackCode.encode(layout))
         XCTAssertEqual(back.pieces, layout.pieces)
+        XCTAssertTrue(back.pieces.contains(128), "the two-byte id must survive")
     }
 
     func testCorruptCodeIsRejected() {

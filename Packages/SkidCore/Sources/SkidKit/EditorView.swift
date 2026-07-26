@@ -16,34 +16,27 @@ struct EditorView: View {
     /// Index into the walk's `openEnds`; nil = none selected.
     @State private var selectedEnd: Int?
 
-    /// What the palette builds. Persisted, so the corner radius and straight length
-    /// you were using are still there next time — these are settings, not transient
-    /// UI state.
+    /// The corner radius the palette builds with. Persisted — it's a setting, not
+    /// transient UI state — and **changed by swiping the corner pair**.
     ///
-    /// **Swipe a carousel to change it**; there are no selector chips. Long-press
-    /// survives only on the hotbar, where the choice is "which of these many
-    /// one-off pieces" and has no natural axis to swipe along.
-    ///
-    /// There is no stored angle: 45° and 90° are separate buttons, not a setting.
+    /// It's the only stored palette choice left. Angle isn't one (45° is the only
+    /// primitive corner) and neither is straight length (the short straight is the
+    /// only primitive straight); both used to be, back when the palette offered
+    /// compounds.
     @AppStorage("skid.editor.curveRadius") var radiusRaw = CurveRadius.medium.rawValue
-    @AppStorage("skid.editor.straightLength") var straightRaw = StraightLength.standard.rawValue
-    /// The hotbar's five slots, as a comma-separated id list (AppStorage can't
-    /// hold an array).
+
+    /// The hotbar's slots, as a comma-separated id list (AppStorage can't hold an
+    /// array).
     @AppStorage("skid.editor.hotbar") var hotbarRaw = HotbarSlot.defaults.map(String.init)
         .joined(separator: ",")
 
-    /// Which button's configuration sheet is open, if any.
+    /// Which hotbar slot's picker is open, if any.
     @State var configuring: PaletteTarget?
-    /// Live drag offset for the palette carousels, so they follow the finger.
-    ///
-    /// **Known fault, parked:** this is SHARED by both carousels, so dragging the
-    /// corner group visibly slides the straight too. Its value doesn't change (the
-    /// settle logic is per-carousel) but it moves, which looks wrong. Needs to be
-    /// per-carousel state — see the carousel-polish item in ROADMAP.md.
+    /// Live drag offset for the corner carousel, so it follows the finger.
     @State var dragOffset: CGFloat = 0
 
-    /// Which hotbar slot's picker is open. Only the hotbar has one — the corner
-    /// and straight buttons are carousels now, configured by swiping them.
+    /// Which hotbar slot's picker is open. Only the hotbar has one — the corners are
+    /// a carousel, configured by swiping, and the straight has nothing to configure.
     enum PaletteTarget: Identifiable, Equatable {
         case hotbar(Int)
 
@@ -55,14 +48,14 @@ struct EditorView: View {
     }
 
     var radius: CurveRadius { CurveRadius(rawValue: radiusRaw) ?? .medium }
-    var straightLength: StraightLength { StraightLength(rawValue: straightRaw) ?? .standard }
 
-    /// The hotbar's contents, padded/truncated to the slot count so a corrupt or
-    /// outgrown stored value can never crash or shrink the bar.
+    /// The hotbar's contents, padded to the slot count so a corrupt or outgrown
+    /// stored value can never crash or shrink the bar. Slots past the defaults read
+    /// as empty rather than being filled with something arbitrary.
     var hotbar: [PieceID] {
         let stored = hotbarRaw.split(separator: ",").compactMap { PieceID($0) }
         return (0..<HotbarSlot.count).map { index in
-            index < stored.count ? stored[index] : HotbarSlot.defaults[index]
+            index < stored.count ? stored[index] : HotbarSlot.empty
         }
     }
 
@@ -120,10 +113,10 @@ struct EditorView: View {
                 refreshClosingRun(walk)
             }
             .onChangeCompat(of: selectedEnd) { _ in refreshClosingRun(walk) }
-            // Long-pressing a palette button opens its configuration. A `sheet`
-            // rather than `fullScreenCover` (that one is iOS-only, and this package
-            // also builds for macOS), driven by `isPresented` rather than `item:`
-            // (iOS 17+, and the package targets 16).
+            // Long-pressing a hotbar slot opens its picker. A `sheet` rather than
+            // `fullScreenCover` (that one is iOS-only, and this package also builds
+            // for macOS), driven by `isPresented` rather than `item:` (iOS 17+,
+            // and the package targets 16).
             .sheet(
                 isPresented: .init(
                     get: { configuring != nil }, set: { if !$0 { configuring = nil } }

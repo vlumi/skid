@@ -18,13 +18,17 @@ public enum TrackLibrary {
         public var code: String
     }
 
-    /// Codes are under the **current seam numbering** (seam N = piece N's exit).
-    /// They were re-encoded when seams were renumbered; an older code still
-    /// decodes, but its gates land one piece further along than intended.
+    /// Codes are under the **primitive layout** (seam N = primitive N's exit).
+    ///
+    /// Re-encoded when the layout became primitives: the pieces section still packs
+    /// into compounds, but a decoded layout is primitives, so seam indices address
+    /// primitives. An older code decodes to the wrong shape — its compound ids
+    /// expand while its seams stay put — so codes from before this change must be
+    /// re-copied out of the editor.
     public static let builtins: [Builtin] = [
-        Builtin(id: "small", name: "Small track", code: "AXgBCh8MDAwJAAAKDBoCAwACBwMFA0gCWAA"),
-        Builtin(id: "oval", name: "Big oval", code: "AWQBCB8NDQEBDQ0BAgQAAQMFAwUEsAYYAA"),
-        Builtin(id: "eight", name: "Eight", code: "AeMBDR8LAAsLHQEeDAwADAECBAACBQgDBQNIAtAB"),
+        Builtin(id: "small", name: "Small track", code: "AUwBCB8SDAkBCgwaAgMABAwDBQNIAlgA"),
+        Builtin(id: "oval", name: "Big oval", code: "Af8BBx8NDQINDQECBAACBgoDBQSwBhgA"),
+        Builtin(id: "eight", name: "Eight", code: "ASkBCx8LABEdAR4SAAwBAgQAAwgNAwUDSALQAQ"),
     ]
 
     /// Every built-in, compiled once. A code that doesn't compile is a broken
