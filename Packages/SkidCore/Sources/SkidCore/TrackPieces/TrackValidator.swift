@@ -144,9 +144,11 @@ public enum TrackValidator {
     private static func hasIllegalOverlap(_ walk: WalkResult) -> Bool {
         let placed = walk.placed
         let mesh = RoadProximity(placed: placed, joinGap: joinGap(walk))
+        // Heights are the mesh's own business now (per-segment solidity — a
+        // ramp's two ends are at different levels, so piece-level heights were
+        // wrong at one of them). Only the crossing-kind policy stays out here.
         return mesh.hasIllegalPair { i, j in
-            abs(placed[i].entryHeight - placed[j].entryHeight) > 0.5
-                || legallyCrossing(placed[i], placed[j])
+            legallyCrossing(placed[i], placed[j])
         }
     }
 
