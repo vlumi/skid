@@ -201,4 +201,43 @@ final class TrackValidatorTests: XCTestCase {
         // assert it's not saveable and, if closed, that overlap is flagged.
         XCTAssertFalse(v.isSaveable)
     }
+
+    /// **Seam 1 can't be a checkpoint.** Seam 0 is the start piece's EXIT while
+    /// every other seam N is piece N's ENTRY, so on a closed ring seam 1 is the
+    /// same boundary as seam 0. Marking both puts two gates on the start line, and
+    /// the runtime scores it twice: you cross, the next gate is at your wheels, and
+    /// it counts again.
+    ///
+    /// This shipped in the Big oval, where the first lap ran normally and every lap
+    /// after it needed the finish line crossed twice.
+    func testSeamOneIsRejectedAsADuplicateOfSeamZero() {
+        let ring: [PieceID] = [
+            Pieces.startGrid, Pieces.curve90MediumLeft, Pieces.curve90MediumLeft,
+            Pieces.straight, Pieces.curve90MediumLeft, Pieces.curve90MediumLeft,
+        ]
+        // Same ring, gates differing only in whether seam 1 is marked.
+        XCTAssertTrue(
+            TrackValidator.validate(TrackLayout(pieces: ring, gateSeams: [0, 3])).isSaveable)
+        XCTAssertFalse(
+            TrackValidator.validate(TrackLayout(pieces: ring, gateSeams: [0, 1, 3])).isSaveable,
+            "seam 1 duplicates seam 0 and must not be accepted")
+    }
+
+    /// No built-in may carry two gates in the same place — the shipped Big oval
+    /// did, which is what made its laps need the finish line twice.
+    func testBuiltInsHaveNoCoincidentGates() {
+        for track in TrackLibrary.all {
+            for i in track.gates.indices {
+                for j in (i + 1)..<track.gates.count {
+                    let a = track.gates[i]
+                    let b = track.gates[j]
+                    let midA = Vec2((a.a.x + a.b.x) / 2, (a.a.y + a.b.y) / 2)
+                    let midB = Vec2((b.a.x + b.b.x) / 2, (b.a.y + b.b.y) / 2)
+                    XCTAssertGreaterThan(
+                        midA.distance(to: midB), track.width,
+                        "\(track.id): gates \(i) and \(j) sit on the same spot")
+                }
+            }
+        }
+    }
 }

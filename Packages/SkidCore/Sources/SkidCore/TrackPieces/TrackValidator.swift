@@ -105,12 +105,28 @@ public enum TrackValidator {
 
     // MARK: - Rule helpers
 
-    /// Seam 0 marked, 2…16 gates, all in range. (The "every route crosses
-    /// gates in the same cyclic order" rule only bites once forks compile —
-    /// Phase B — since Phase A tracks are single-route by construction.)
+    /// The seam that duplicates seam 0, and so can never be a checkpoint of its
+    /// own.
+    ///
+    /// Seam numbering has a quirk at the ring's join: seam 0 is the start piece's
+    /// **exit** (where the start line and the grid sit), while every other seam N
+    /// is piece N's **entry**. On a closed ring the start piece's exit *is* piece
+    /// 1's entry — the same boundary — so marking seam 1 puts a second gate
+    /// exactly on the start line.
+    ///
+    /// The runtime then counts it twice: you cross the line, the next gate is at
+    /// your wheels, and it scores again immediately. That shipped in the Big oval
+    /// built-in, where the first lap ran normally and every lap after it needed
+    /// the finish line crossed twice.
+    public static let aliasedSeam = 1
+
+    /// Seam 0 marked, `aliasedSeam` not, 2…16 gates, all in range. (The "every
+    /// route crosses gates in the same cyclic order" rule only bites once forks
+    /// compile — Phase B — since Phase A tracks are single-route by construction.)
     private static func gatesValid(_ layout: TrackLayout, placedCount: Int) -> Bool {
         let seams = Set(layout.gateSeams)
         guard seams.contains(0) else { return false }
+        guard !seams.contains(Self.aliasedSeam) else { return false }
         guard (2...16).contains(seams.count) else { return false }
         return layout.gateSeams.allSatisfy { (0..<placedCount).contains($0) }
     }
