@@ -75,6 +75,12 @@ What's left:
 - [ ] **A real track library.** Many named tracks with stable identity (UUID),
       not one "My track" slot — plus import by link/QR, and signing so a shared
       track carries its author. See docs/track-pieces.md for the settled plan.
+- [ ] **Carousel polish** (parked mid-round; it works, it just isn't nice yet).
+      Two known faults: the motion isn't smooth, and **both carousels share one
+      `dragOffset`**, so dragging the corner group visibly slides the straight too
+      (its value doesn't change — the settle logic is per-carousel — but it moves).
+      The state has to be per-carousel, and the animation wants a proper
+      interactive spring rather than a spring applied only to the settled index.
 - [ ] **Editor conveniences.** Build from either end of a chain, not just the
       last loose end. Longer term: undo.
 

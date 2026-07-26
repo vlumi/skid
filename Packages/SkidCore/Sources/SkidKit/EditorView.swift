@@ -35,6 +35,11 @@ struct EditorView: View {
     /// Which button's configuration sheet is open, if any.
     @State var configuring: PaletteTarget?
     /// Live drag offset for the palette carousels, so they follow the finger.
+    ///
+    /// **Known fault, parked:** this is SHARED by both carousels, so dragging the
+    /// corner group visibly slides the straight too. Its value doesn't change (the
+    /// settle logic is per-carousel) but it moves, which looks wrong. Needs to be
+    /// per-carousel state — see the carousel-polish item in ROADMAP.md.
     @State var dragOffset: CGFloat = 0
 
     /// Which hotbar slot's picker is open. Only the hotbar has one — the corner
