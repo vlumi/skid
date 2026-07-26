@@ -47,7 +47,9 @@ What's left:
       palette. Compounds survive as *encoding* virtual elements — one id per run,
       roughly halving the pieces section, better than RLE. Comes with: varint seam
       indices (today's single byte silently truncates past 255), sparse varint
-      `pos:decalId` decal pairs, a 127-primitive cap, and "Close it" proposing
+      `pos:decalId` decal pairs, two distinct caps (encoded elements vs expanded
+      length — a hairpin is one id but four primitives, and the length must stay
+      under 128 since a seam index addresses a primitive), and "Close it" proposing
       compound runs rather than single primitives. One format version bump; spec
       settled in [docs/track-pieces.md](docs/track-pieces.md).
 - [ ] **Decal variants on laid pieces.** Long-press a piece already on the track to
