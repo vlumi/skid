@@ -10,13 +10,23 @@ final class CustomTrackTests: XCTestCase {
     private typealias Pieces = PieceCatalog.ID
 
     /// A closed rounded square: the simplest thing a player can build and race.
-    private let square: [PieceID] = [
-        Pieces.startGrid, Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
-        Pieces.straight, Pieces.curve90TightLeft, Pieces.straight, Pieces.curve90TightLeft,
-    ]
+    ///
+    /// Written in **primitives**, because that is what a layout holds — each 90°
+    /// corner is two 45s and each 2U straight is two shorts. The editor lets you
+    /// place a 90° in one tap and the code packs it back into one byte, but neither
+    /// of those is the layout, and a fixture written in compounds would only be
+    /// testing the expansion round-trip instead of the code round-trip.
+    private let square: [PieceID] =
+        [Pieces.startGrid]
+        + Array(
+            repeating: [
+                Pieces.curve45TightLeft, Pieces.curve45TightLeft,
+                Pieces.shortStraight, Pieces.shortStraight,
+            ], count: 4
+        ).flatMap { $0 }
 
     func testABuiltTrackCompilesToSomethingDrivable() throws {
-        let layout = TrackLayout(pieces: square, gateSeams: [0, 2, 4, 6])
+        let layout = TrackLayout(pieces: square, gateSeams: [0, 4, 8, 12])
         XCTAssertTrue(TrackValidator.validate(layout).isSaveable)
         let track = try PieceCompiler.compile(layout, id: "my-track")
         // Drivable means: grid on asphalt, gates on the ribbon, a closed loop.
@@ -31,7 +41,7 @@ final class CustomTrackTests: XCTestCase {
     /// The code must survive the trip out and back unchanged — otherwise a
     /// design pasted into the repo isn't the one that was built.
     func testShareCodeRoundTripsTheExactLayout() throws {
-        let layout = TrackLayout(pieces: square, gateSeams: [0, 2, 4, 6])
+        let layout = TrackLayout(pieces: square, gateSeams: [0, 4, 8, 12])
         let code = TrackCode.encode(layout)
         XCTAssertEqual(try TrackCode.decode(code), layout)
         // And the track compiled from the decoded copy matches the original's

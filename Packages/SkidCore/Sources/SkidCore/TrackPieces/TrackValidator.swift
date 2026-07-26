@@ -44,9 +44,13 @@ public enum TrackValidator {
     /// Deliberately ignores the rules a work-in-progress is *expected* to break:
     /// loose ends, the gate count, and standing on the deck are all normal
     /// mid-build states, not reasons to block a piece.
+    /// `id` may be a **compound** (the palette offers one-tap hairpins and 90s);
+    /// it is expanded here, because what actually lands in the layout is
+    /// primitives, and validating the compound would test a piece the layout will
+    /// never hold.
     public static func canAppend(_ id: PieceID, to layout: TrackLayout) -> Bool {
         var candidate = layout
-        candidate.pieces.append(id)
+        candidate.pieces += PieceExpansion.expand(id)
         let problems = validate(candidate).problems
         return !problems.contains { problem in
             switch problem {
@@ -124,6 +128,25 @@ public enum TrackValidator {
         return layout.gateSeams.allSatisfy { (0..<placedCount).contains($0) }
     }
 
+    /// How far apart two stretches of road may be **along the track** and still be
+    /// allowed to touch in space.
+    ///
+    /// Arc length, not sequence distance, and the difference matters. A hairpin's two
+    /// ends legitimately sit a road-width apart; under the old compound catalog that
+    /// was internal to one piece, but a primitive layout makes it four pieces, so a
+    /// naive check called every hairpin a self-overlap.
+    ///
+    /// Widening the exemption by *piece count* cannot work: measured on a
+    /// self-crossing figure-eight, genuine overlaps occur 3–9 pieces apart — the same
+    /// range a hairpin needs — so any window wide enough for the hairpin lets real
+    /// crossings through. Along the track those same overlaps are 2,259–5,751 units
+    /// apart, where a medium hairpin's ends are ~750. Arc length separates them by
+    /// more than 3×; sequence distance doesn't separate them at all.
+    ///
+    /// Set to a medium hairpin's own length with margin, since that is the longest
+    /// legitimately self-touching shape.
+    static let selfTouchArcLimit = Double(PieceCatalog.mediumRadius) * 4.5
+
     /// Sample each piece's centerline to world points and check that no two
     /// non-adjacent pieces on the **same layer** actually cross — their
     /// centerlines coming within ~half a road width, which means the paved
@@ -154,15 +177,25 @@ public enum TrackValidator {
         let n = placed.count
         for i in placed.indices {
             for j in placed.indices where j > i {
-                // Sequence-adjacent pieces share a port, so they always touch.
+                // Immediate neighbours share a port, so they always touch.
                 if j == i + 1 { continue }
-                // The first/last pair share the start seam ONLY once the ring
-                // has closed. While it's still open, the last piece running up
-                // alongside the start piece is a real overlap — and it's exactly
-                // the placement that should have been refused, so exempting it
-                // unconditionally let the offending piece land and then blamed
-                // everything placed after it.
-                if ringClosed && i == 0 && j == n - 1 { continue }
+                // Beyond that, exemption is by ARC LENGTH along the track (see
+                // `selfTouchArcLimit`): a shape may curve back on itself, but road
+                // that has travelled a long way before coming alongside road is a
+                // genuine overlap.
+                if arcLength(from: i, to: j, in: placed) <= Self.selfTouchArcLimit {
+                    continue
+                }
+                // The ring's join wraps, so short arc length the OTHER way round
+                // also exempts — but only once the ring is closed. While it's open,
+                // the last piece running up alongside the start piece is a real
+                // overlap, and exactly the placement that should have been refused.
+                if ringClosed {
+                    let wrapped =
+                        arcLength(from: j, to: n, in: placed)
+                        + arcLength(from: 0, to: i, in: placed)
+                    if wrapped <= Self.selfTouchArcLimit { continue }
+                }
                 // Different heights can't collide — that's a bridge crossing.
                 if abs(placed[i].entryHeight - placed[j].entryHeight) > 0.5 { continue }
                 if legallyCrossing(placed[i], placed[j]) { continue }
@@ -170,6 +203,18 @@ public enum TrackValidator {
             }
         }
         return false
+    }
+
+    /// Centerline length of pieces `from..<to`.
+    private static func arcLength(from: Int, to: Int, in placed: [PlacedPiece]) -> Double {
+        var total = 0.0
+        for index in from..<min(to, placed.count) {
+            let points = placed[index].centerlineSamples(degreesPerSample: 20)
+            for step in 1..<max(points.count, 1) {
+                total += points[step].distance(to: points[step - 1])
+            }
+        }
+        return total
     }
 
     /// A crossable/crossable pair meeting at a shared point, or a jump gap a

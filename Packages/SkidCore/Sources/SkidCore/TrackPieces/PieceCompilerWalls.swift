@@ -21,7 +21,7 @@ extension PieceCompiler {
     /// a ramp from its flank, and you can't drive *under* it from the ground
     /// while it climbs. (Before this, a ramp's road was reachable from any
     /// direction: its sides were unwalled and its ends open on both layers.)
-    static func deckRails(of placed: PlacedPiece) -> [Wall] {
+    static func deckRails(of placed: PlacedPiece, capHighEnd: Bool = true) -> [Wall] {
         let samples = placed.heightedSamples(degreesPerSample: degreesPerSample)
         guard samples.count >= 2 else { return [] }
         let entryDir = Vec2(angle: placed.entry.heading.radians)
@@ -60,8 +60,30 @@ extension PieceCompiler {
                 rails.append(Wall(from: edge[index - 1], to: edge[index], height: height))
             }
         }
-        rails.append(contentsOf: rampEndCaps(left: left, right: right, samples: samples))
+        if capHighEnd {
+            rails.append(contentsOf: rampEndCaps(left: left, right: right, samples: samples))
+        }
         return rails
+    }
+
+    /// Whether this elevated piece owns the **high end of a climb**, and so should be
+    /// capped underneath.
+    ///
+    /// The cap belongs to the elevated RUN, not to each piece in it. A ramp climbs,
+    /// then flat deck carries on at the same height, then another ramp descends — and
+    /// only where the slope meets the deck is there a mouth with open air beneath it.
+    ///
+    /// Deciding this per piece was wrong the moment a deck could be more than one
+    /// piece. With primitives it always is (a 2U deck is two short straights), so
+    /// every deck piece claimed its own "high end" and dropped a 0.9 cap straight
+    /// across the bridge — walling off the road below at each seam. The old catalog
+    /// hid the fault behind a one-piece deck.
+    ///
+    /// So: only a piece that actually rises or falls has a mouth to seal. Flat deck
+    /// is high along its whole length — there is no "high end" of it, and the air
+    /// beneath it is already sealed by the ramps at either end of the run.
+    static func capsHighEnd(_ piece: PlacedPiece) -> Bool {
+        abs(piece.exitHeight - piece.entryHeight) > Track.heightEpsilon
     }
 
     /// The end caps that make a ramp a closed embankment you cannot drive under.

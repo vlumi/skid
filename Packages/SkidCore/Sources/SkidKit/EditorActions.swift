@@ -9,11 +9,17 @@ extension CouchGame {
     /// **Refused** if the piece would pave over the track or leave the canvas —
     /// blocking the placement beats accepting it and showing a warning that's
     /// easy to miss. Returns whether it was placed.
+    ///
+    /// A compound (90°, hairpin, chicane, jog) goes in as the primitives it is
+    /// made of: still one tap and one undo step's worth of intent, but the layout
+    /// holds primitives so its seams are addressable — which is what puts a
+    /// checkpoint at a hairpin's apex — and the share code packs it back to a
+    /// single byte.
     @discardableResult
     public func editorAppend(_ id: PieceID) -> Bool {
         guard let layout = editorLayout else { return false }
         guard TrackValidator.canAppend(id, to: layout) else { return false }
-        editorLayout?.pieces.append(id)
+        editorLayout?.pieces += PieceExpansion.expand(id)
         // The moment the ring closes, finish the job: put default checkpoints in
         // (a closed loop with only the start line marked is unsaveable, and
         // nothing about that is the author's mistake) and center it on the
