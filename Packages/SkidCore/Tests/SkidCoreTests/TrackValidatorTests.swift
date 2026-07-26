@@ -201,4 +201,46 @@ final class TrackValidatorTests: XCTestCase {
         // assert it's not saveable and, if closed, that overlap is flagged.
         XCTAssertFalse(v.isSaveable)
     }
+
+    /// **Every seam is a distinct boundary.** Seam numbering used to mean piece
+    /// N's *entry*, except seam 0 which meant the start piece's *exit* — so seams 0
+    /// and 1 were the same place, and marking both stacked two gates on the start
+    /// line. The runtime then scored the lap twice: cross the line, and the next
+    /// gate is already at your wheels. Seam N now uniformly means piece N's exit.
+    func testAdjacentSeamsAreDistinctBoundaries() throws {
+        let ring: [PieceID] = [
+            Pieces.startGrid, Pieces.curve90MediumLeft, Pieces.curve90MediumLeft,
+            Pieces.straight, Pieces.curve90MediumLeft, Pieces.curve90MediumLeft,
+        ]
+        // Seam 1 is legal now, and must produce a gate of its own.
+        let layout = TrackLayout(pieces: ring, gateSeams: [0, 1])
+        XCTAssertTrue(TrackValidator.validate(layout).isSaveable)
+        let track = try PieceCompiler.compile(layout, id: "adjacent")
+        XCTAssertEqual(track.gates.count, 2)
+        let first = track.gates[0]
+        let second = track.gates[1]
+        let midA = Vec2((first.a.x + first.b.x) / 2, (first.a.y + first.b.y) / 2)
+        let midB = Vec2((second.a.x + second.b.x) / 2, (second.a.y + second.b.y) / 2)
+        XCTAssertGreaterThan(
+            midA.distance(to: midB), track.width,
+            "consecutive seams must be different boundaries, not the same one twice")
+    }
+
+    /// No built-in may carry two gates in the same place — the shipped Big oval
+    /// did, which is what made its laps need the finish line twice.
+    func testBuiltInsHaveNoCoincidentGates() {
+        for track in TrackLibrary.all {
+            for i in track.gates.indices {
+                for j in (i + 1)..<track.gates.count {
+                    let a = track.gates[i]
+                    let b = track.gates[j]
+                    let midA = Vec2((a.a.x + a.b.x) / 2, (a.a.y + a.b.y) / 2)
+                    let midB = Vec2((b.a.x + b.b.x) / 2, (b.a.y + b.b.y) / 2)
+                    XCTAssertGreaterThan(
+                        midA.distance(to: midB), track.width,
+                        "\(track.id): gates \(i) and \(j) sit on the same spot")
+                }
+            }
+        }
+    }
 }

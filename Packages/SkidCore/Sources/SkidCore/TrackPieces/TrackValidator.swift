@@ -105,9 +105,18 @@ public enum TrackValidator {
 
     // MARK: - Rule helpers
 
-    /// Seam 0 marked, 2…16 gates, all in range. (The "every route crosses
-    /// gates in the same cyclic order" rule only bites once forks compile —
-    /// Phase B — since Phase A tracks are single-route by construction.)
+    /// Seam 0 marked, 2…16 gates, all in range.
+    ///
+    /// No seam needs excluding any more. Seam numbering used to have a quirk at the
+    /// ring's join — seam 0 meant the start piece's *exit* while every other seam N
+    /// meant piece N's *entry* — which made seams 0 and 1 the same boundary, so
+    /// marking both stacked two gates on the start line and the runtime scored the
+    /// lap twice. Seam N now uniformly means piece N's exit, so the alias is gone by
+    /// construction and every seam in range is a distinct boundary.
+    ///
+    /// (The "every route crosses gates in the same cyclic order" rule only bites
+    /// once forks compile — Phase B — since Phase A tracks are single-route by
+    /// construction.)
     private static func gatesValid(_ layout: TrackLayout, placedCount: Int) -> Bool {
         let seams = Set(layout.gateSeams)
         guard seams.contains(0) else { return false }
