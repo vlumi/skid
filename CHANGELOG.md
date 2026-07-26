@@ -21,6 +21,16 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **A rebuilt editor palette.** Picking a piece used to mean tabs, a radius row,
+  and ten buttons that multiplied with every family added to the catalog. Now the
+  common move is four corner buttons — 45° and 90°, left and right, mirrored
+  around the centre — plus a straight, and you **swipe** the corners to change
+  radius or the straight to change length. Below them sits a row of five slots you
+  fill yourself with the pieces you use often (hairpins, chicanes, jogs, ramps):
+  long-press a slot to change it, and your arrangement is remembered.
+- **A tidier editor.** Delete and Close-the-loop moved onto the map, right at the
+  end you're building from, and the top bar is all icons — so the track gets the
+  space the buttons used to take.
 - **Laps count properly on Big oval.** The track had two checkpoints stacked on
   the start/finish line, so after the first lap the finish had to be crossed
   twice before the lap registered. Checkpoint numbering is now uniform — each one

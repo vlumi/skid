@@ -25,10 +25,18 @@ extension EditorView {
         let gap = layout.closureGap(from: end)
         guard let advice = advice(for: gap, facing: end.heading) else { return nil }
         let parts = gapParts(gap)
-        // The search's verdict lives on the Close button, not here — this line
-        // just measures the gap and says which kind of edit closes it.
-        guard !parts.isEmpty else { return "Not closed — \(advice)" }
-        return "Gap \(parts.joined(separator: " + ")) — \(advice)"
+        // The search's verdict now belongs here. It used to sit on the Close
+        // button, which has moved onto the map and only appears when there IS a
+        // run to take — so without this the "searched N pieces and found nothing"
+        // limit would go unreported, and silence reads as "this can never close"
+        // when it only means "not within N".
+        var line =
+            parts.isEmpty
+            ? "Not closed — \(advice)" : "Gap \(parts.joined(separator: " + ")) — \(advice)"
+        if case .needsMorePieces(let searched) = closingOutcome {
+            line += " · no close in \(searched)"
+        }
+        return line
     }
 
     /// Why the palette is grayed out, when the reason is SIZE rather than shape.
@@ -100,35 +108,8 @@ extension EditorView {
         }
     }
 
-    /// The search's verdict, as a button: tap to take a found run, or a disabled
-    /// label saying the search didn't find one within its depth. Showing the
-    /// limit here (rather than nothing) is the point — silence reads as "this
-    /// track can never close", when it only means "not in N pieces".
-    @ViewBuilder var closeButton: some View {
-        switch closingOutcome {
-        case .found(let run) where !run.isEmpty:
-            Button {
-                for id in run { game.editorAppend(id) }
-            } label: {
-                Text("Close it (\(run.count))", bundle: .module)
-                    .font(.callout.bold())
-                    .padding(.horizontal, 14).padding(.vertical, 10)
-                    .background(Color.yellow.opacity(0.85), in: Capsule())
-                    .foregroundStyle(.black)
-            }
-        case .needsMorePieces(let searched):
-            Text("No close in \(searched)", bundle: .module)
-                .font(.callout.bold())
-                .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(.black.opacity(0.2), in: Capsule())
-                .foregroundStyle(.white.opacity(0.4))
-        default:
-            EmptyView()
-        }
-    }
-
     /// Load a track from a share code on the clipboard — the interim way to keep
-    /// a handful of designs before there's a real track library. Shows "Bad code"
+    /// a handful of designs before there's a real track library. Shows a warning icon
     /// briefly if the clipboard doesn't hold a readable one, rather than
     /// silently doing nothing.
     func pasteCode() {

@@ -16,13 +16,55 @@ struct EditorView: View {
     /// Index into the walk's `openEnds`; nil = none selected.
     @State private var selectedEnd: Int?
 
-    /// Which palette tab is showing, and (in Curves) which radius the row is
-    /// tuned to. Tabs exist from the start because the catalog only grows:
-    /// decal variants and, later, decorations group naturally into their own
-    /// tabs rather than lengthening one scroll. (The exact grouping is expected
-    /// to be revisited as those families land.)
-    @State var tab: PaletteTab = .curves
-    @State var radius: CurveRadius = .medium
+    /// What the palette builds. Persisted, so the corner radius and straight length
+    /// you were using are still there next time — these are settings, not transient
+    /// UI state.
+    ///
+    /// **Swipe a carousel to change it**; there are no selector chips. Long-press
+    /// survives only on the hotbar, where the choice is "which of these many
+    /// one-off pieces" and has no natural axis to swipe along.
+    ///
+    /// There is no stored angle: 45° and 90° are separate buttons, not a setting.
+    @AppStorage("skid.editor.curveRadius") var radiusRaw = CurveRadius.medium.rawValue
+    @AppStorage("skid.editor.straightLength") var straightRaw = StraightLength.standard.rawValue
+    /// The hotbar's five slots, as a comma-separated id list (AppStorage can't
+    /// hold an array).
+    @AppStorage("skid.editor.hotbar") var hotbarRaw = HotbarSlot.defaults.map(String.init)
+        .joined(separator: ",")
+
+    /// Which button's configuration sheet is open, if any.
+    @State var configuring: PaletteTarget?
+
+    /// Which hotbar slot's picker is open. Only the hotbar has one — the corner
+    /// and straight buttons are carousels now, configured by swiping them.
+    enum PaletteTarget: Identifiable, Equatable {
+        case hotbar(Int)
+
+        var id: String {
+            switch self {
+            case .hotbar(let slot): return "hotbar\(slot)"
+            }
+        }
+    }
+
+    var radius: CurveRadius { CurveRadius(rawValue: radiusRaw) ?? .medium }
+    var straightLength: StraightLength { StraightLength(rawValue: straightRaw) ?? .standard }
+
+    /// The hotbar's contents, padded/truncated to the slot count so a corrupt or
+    /// outgrown stored value can never crash or shrink the bar.
+    var hotbar: [PieceID] {
+        let stored = hotbarRaw.split(separator: ",").compactMap { PieceID($0) }
+        return (0..<HotbarSlot.count).map { index in
+            index < stored.count ? stored[index] : HotbarSlot.defaults[index]
+        }
+    }
+
+    func assign(_ piece: PieceID, toSlot slot: Int) {
+        var slots = hotbar
+        guard slots.indices.contains(slot) else { return }
+        slots[slot] = piece
+        hotbarRaw = slots.map(String.init).joined(separator: ",")
+    }
 
     /// Brief confirmation that the share code went to the clipboard.
     @State var copiedCode = false
@@ -57,6 +99,8 @@ struct EditorView: View {
                 }
                 .ignoresSafeArea()
 
+                // Delete and Close sit ON the map, at the end they act on.
+                mapActions(walk: walk, transform: transform)
                 topBar
                 paletteBar(walk: walk)
             }
@@ -69,6 +113,17 @@ struct EditorView: View {
                 refreshClosingRun(walk)
             }
             .onChangeCompat(of: selectedEnd) { _ in refreshClosingRun(walk) }
+            // Long-pressing a palette button opens its configuration. A `sheet`
+            // rather than `fullScreenCover` (that one is iOS-only, and this package
+            // also builds for macOS), driven by `isPresented` rather than `item:`
+            // (iOS 17+, and the package targets 16).
+            .sheet(
+                isPresented: .init(
+                    get: { configuring != nil }, set: { if !$0 { configuring = nil } }
+                )
+            ) {
+                configurationSheet
+            }
         }
         .statusBarHiddenIfAvailable()
     }
@@ -113,21 +168,17 @@ struct EditorView: View {
     private var topBar: some View {
         VStack {
             HStack {
-                Button {
+                // EVERY top-bar button is an icon. Text pills wrapped to
+                // "Ce/nte/r" and "Co/pie/d" on a small phone, and adding more only
+                // made it worse — seven words never fit one row. Icons do, and the
+                // accessibility label carries the meaning.
+                iconButton("checkmark", "Done") {
                     game.backToSetup()
-                } label: {
-                    Text("Done", bundle: .module).pillStyle()
                 }
                 Spacer()
-                Button {
+                iconButton("doc.badge.plus", "New track") {
                     game.editorReset()
-                } label: {
-                    Text("New", bundle: .module).pillStyle()
                 }
-                // The three view/layout tools are ICONS, not words: seven
-                // full-width text pills overflow a small phone (they wrapped to
-                // "Ce/nte/r"), and these three are a different class of thing
-                // from Done/New/Copy/Paste anyway.
                 iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
                     resetView()
                 }
@@ -144,18 +195,19 @@ struct EditorView: View {
                     game.editorRotate()
                 }
                 // Copy the share code out — how a design becomes a built-in, or
-                // gets kept somewhere until there's a real track library.
-                Button {
+                // gets kept somewhere until there's a real track library. The icon
+                // flips to a tick to confirm, since there's no text to change.
+                iconButton(copiedCode ? "checkmark.circle.fill" : "doc.on.doc", "Copy code") {
                     copyCode()
-                } label: {
-                    Text(copiedCode ? "Copied" : "Copy", bundle: .module).pillStyle()
                 }
                 // …and paste one back in to load it. Separate buttons on purpose:
                 // one that did both could silently replace the track you're on.
-                Button {
+                // A failed paste shows a warning icon rather than "Bad code".
+                iconButton(
+                    pasteFailed ? "exclamationmark.triangle.fill" : "doc.on.clipboard",
+                    "Paste code"
+                ) {
                     pasteCode()
-                } label: {
-                    Text(pasteFailed ? "Bad code" : "Paste", bundle: .module).pillStyle()
                 }
             }
             .padding()
@@ -198,59 +250,10 @@ struct EditorView: View {
                         .font(.footnote)
                         .foregroundStyle(.white.opacity(0.75))
                 }
-                tabRow
-                if tab == .curves { radiusRow }
-                pieceRow(walk: walk)
-                HStack(spacing: 10) {
-                    Button(role: .destructive) {
-                        game.editorDeleteLast()
-                    } label: {
-                        Text("Delete last", bundle: .module)
-                            .font(.callout.bold())
-                            .padding(.horizontal, 14).padding(.vertical, 10)
-                            .background(.black.opacity(0.3), in: Capsule())
-                            .foregroundStyle(.white)
-                    }
-                    closeButton
-                }
+                mainRow(walk: walk)
+                hotbarRow(walk: walk)
             }
             .padding(.bottom, 24)
-        }
-    }
-
-    /// Which family of pieces the row below shows.
-    private var tabRow: some View {
-        HStack(spacing: 8) {
-            ForEach(PaletteTab.allCases) { item in
-                chip(item.label, selected: tab == item) { tab = item }
-            }
-        }
-    }
-
-    /// Which radius the Curves row is tuned to — the second tier, so one row of
-    /// shapes covers all three radii instead of tripling the row.
-    private var radiusRow: some View {
-        HStack(spacing: 8) {
-            ForEach(CurveRadius.allCases) { item in
-                chip(item.label, selected: radius == item, small: true) { radius = item }
-            }
-        }
-    }
-
-    /// A pill toggle shared by both selector rows.
-    private func chip(
-        _ label: LocalizedStringKey, selected: Bool, small: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Text(label, bundle: .module)
-                .font(small ? .caption.bold() : .footnote.bold())
-                .padding(.horizontal, small ? 10 : 13)
-                .padding(.vertical, small ? 5 : 7)
-                .background(
-                    selected ? Color.white.opacity(0.9) : .black.opacity(0.3), in: Capsule()
-                )
-                .foregroundStyle(selected ? .black : .white)
         }
     }
 
