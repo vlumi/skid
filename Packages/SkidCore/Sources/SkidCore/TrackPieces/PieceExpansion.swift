@@ -23,6 +23,13 @@ import Foundation
 public enum PieceExpansion {
     /// The primitives a piece expands to, or `[id]` for something already
     /// primitive (or with no expansion, like the start grid and ramps).
+    ///
+    /// "Primitive" means **not decomposable**, not "1U long". The start grid and the
+    /// ramps are 2U and stay whole: a 2U straight splits into two shorts that are
+    /// geometrically identical to it, but half a start grid has no meaning (the grid
+    /// is its slot layout plus the finish line at its exit), and half a ramp would be
+    /// a 0.5-height climb — a new height state needing its own cap rules, on twice
+    /// the slope, when 2U is what makes the climb drivable at all.
     public static func expand(_ id: PieceID) -> [PieceID] {
         table[id] ?? [id]
     }

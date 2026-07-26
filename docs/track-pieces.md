@@ -423,11 +423,13 @@ that have nothing to do with bytes:
   as a single piece it has none, and a gate at the apex is what you usually want.
 - **No variant holes.** No missing sweep hairpin, no jog-named-by-lateral-shift,
   and the "should a compound follow the selected radius?" question dissolves.
-- **A far smaller palette.** 44 catalog entries become ~10, and the palette now
-  offers *exactly* the primitive set: a left/right 45° pair on a radius carousel,
-  the short straight, and the context-aware ramp. No 90° buttons and no one-off
-  hotbar — a compound button was only ever taps saved, and it cost a palette that
-  grew with the catalog plus a placement that took several presses to undo.
+- **A far smaller palette.** 44 catalog entries become ~10, and the main row now
+  offers *exactly* the building vocabulary: a left/right 45° pair on a radius
+  carousel plus the short straight. The 90° buttons are gone — a compound button
+  was only ever taps saved, and it cost a row that grew with the catalog plus a
+  placement that took several presses to undo. The assignable hotbar stays, for
+  what isn't corner-or-straight: the ramp today, then jumps/gaps/landings and
+  decorations.
 
 The cost is code length: the oval goes from 8 pieces to 15 primitives. So the
 compounds move into the **encoding** as virtual elements — one id meaning "four

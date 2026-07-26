@@ -56,18 +56,29 @@ final class BuiltinCodeTests: XCTestCase {
         }
     }
 
-    /// Flat deck gets side rails but no cap; a slope gets both. Stated against the
+    /// Deck gets side rails but no cap; a ramp gets both. Stated against the
     /// predicate itself so the rule is pinned independently of any one track.
-    func testOnlyASlopeOwnsAHighEnd() throws {
+    ///
+    /// A deck piece is an ordinary straight or corner sitting at height 1 — same
+    /// ids as on the ground — so what marks a ramp is the piece's own
+    /// `heightDelta`, not anything about where it happens to be.
+    func testOnlyARampOwnsAHighEnd() throws {
         let layout = try XCTUnwrap(TrackLibrary.layout(id: "eight"))
         let placed = layout.walk().placed
         let elevated = placed.filter { $0.entryHeight > 0.5 || $0.exitHeight > 0.5 }
         XCTAssertFalse(elevated.isEmpty, "the eight should have an elevated run")
         for piece in elevated {
-            let level = abs(piece.exitHeight - piece.entryHeight) <= Track.heightEpsilon
             XCTAssertEqual(
-                PieceCompiler.capsHighEnd(piece), !level,
-                "level deck must not cap; a slope must")
+                PieceCompiler.capsHighEnd(piece), piece.piece.heightDelta != 0,
+                "only a ramp caps; deck pieces are ordinary road at height 1")
+        }
+        // And the deck really is built from the same ids used on the ground.
+        let deck = elevated.filter { $0.piece.heightDelta == 0 }
+        XCTAssertFalse(deck.isEmpty, "the eight should have level deck")
+        for piece in deck {
+            XCTAssertTrue(
+                PieceExpansion.isPrimitive(piece.id),
+                "deck piece \(piece.id) should be an ordinary primitive")
         }
     }
 }

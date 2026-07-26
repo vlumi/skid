@@ -22,9 +22,10 @@ ships (see [AGENTS.md](AGENTS.md)).
 ### Unreleased (next build)
 
 - **A rebuilt editor palette.** Picking a piece used to mean tabs, a radius row,
-  and ten buttons that multiplied with every family added to the catalog. Now
-  there are four: turn left, turn right, go straight, and the ramp. **Swipe the
-  corners** to change how tight they are, and your choice is remembered.
+  and ten buttons that multiplied with every family added to the catalog. Now the
+  top row is just turn left, turn right and go straight — **swipe the corners** to
+  change how tight they are, and your choice is remembered. Below it sit the slots
+  you fill yourself: long-press one to choose what it holds.
 - **Build any shape from the same few pieces.** Corners are 45°, so two make a
   90° and four make a hairpin — which means you can put a checkpoint at a
   hairpin's apex, or anywhere else you like, instead of only where a big
