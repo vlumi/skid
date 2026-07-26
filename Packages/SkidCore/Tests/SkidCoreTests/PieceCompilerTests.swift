@@ -340,7 +340,7 @@ final class PieceCompilerTests: XCTestCase {
             pieces: [
                 Pieces.startGrid, Pieces.curve90MediumLeft, Pieces.curve90MediumLeft,
                 Pieces.straight, Pieces.curve90MediumLeft, Pieces.curve90MediumLeft,
-            ], gateSeams: [0, 1, 2])
+            ], gateSeams: [0, 2, 3])
         let track = try PieceCompiler.compile(layout, id: "lopsided")
         let half = track.width / 2
         let xs = track.centerline.map { $0.x }

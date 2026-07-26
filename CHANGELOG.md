@@ -21,6 +21,11 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Laps count properly on Big oval.** The track had two checkpoints stacked on
+  the start/finish line, so after the first lap the finish had to be crossed
+  twice before the lap registered. The editor now refuses to place a checkpoint
+  there at all: it's the same boundary as the start line, not a separate one.
+
 ### build 7 — 2026-07-26
 
 - **Build your own tracks.** A new track editor lets you lay a course piece by

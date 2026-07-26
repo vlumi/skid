@@ -20,7 +20,10 @@ public enum TrackLibrary {
 
     public static let builtins: [Builtin] = [
         Builtin(id: "small", name: "Small track", code: "AQcBCh8MDAwJAAAKDBoCAwAIAwMFA0gCWAA"),
-        Builtin(id: "oval", name: "Big oval", code: "AdcBCB8NDQEBDQ0BAgUAAQIEBgMFBLAGGAA"),
+        // Seams [0, 2, 4, 6]. The original code marked seam 1 too, which is the
+        // same boundary as seam 0 (see `TrackValidator.aliasedSeam`) — so the lap
+        // needed the finish line crossed twice.
+        Builtin(id: "oval", name: "Big oval", code: "AYEBCB8NDQEBDQ0BAgQAAgQGAwUEsAYYAA"),
         Builtin(id: "eight", name: "Eight", code: "ARMBDR8LAAsLHQEeDAwADAECBAADBgkDBQNIAtAB"),
     ]
 
