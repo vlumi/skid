@@ -79,11 +79,17 @@ extension PieceCompiler {
     /// across the bridge — walling off the road below at each seam. The old catalog
     /// hid the fault behind a one-piece deck.
     ///
-    /// So: only a piece that actually rises or falls has a mouth to seal. Flat deck
-    /// is high along its whole length — there is no "high end" of it, and the air
-    /// beneath it is already sealed by the ramps at either end of the run.
+    /// So: **only a ramp has a mouth**, and a ramp is a piece that says so —
+    /// `heightDelta != 0`. Deck pieces are ordinary straights and corners that
+    /// happen to sit at height 1; there is no separate deck piece, and nothing
+    /// about a deck piece marks it as the end of anything.
+    ///
+    /// Asking the piece beats inferring from its sampled endpoint heights. The
+    /// sampled difference is only ever an echo of `heightDelta` for a ramp, but it
+    /// also picks up floating-point drift on level pieces, and it would answer
+    /// "yes" for any future piece that changes height for some other reason.
     static func capsHighEnd(_ piece: PlacedPiece) -> Bool {
-        abs(piece.exitHeight - piece.entryHeight) > Track.heightEpsilon
+        piece.piece.heightDelta != 0
     }
 
     /// The end caps that make a ramp a closed embankment you cannot drive under.

@@ -25,10 +25,46 @@ struct EditorView: View {
     /// compounds.
     @AppStorage("skid.editor.curveRadius") var radiusRaw = CurveRadius.medium.rawValue
 
+    /// The hotbar's slots, as a comma-separated id list (AppStorage can't hold an
+    /// array).
+    @AppStorage("skid.editor.hotbar") var hotbarRaw = HotbarSlot.defaults.map(String.init)
+        .joined(separator: ",")
+
+    /// Which hotbar slot's picker is open, if any.
+    @State var configuring: PaletteTarget?
     /// Live drag offset for the corner carousel, so it follows the finger.
     @State var dragOffset: CGFloat = 0
 
+    /// Which hotbar slot's picker is open. Only the hotbar has one — the corners are
+    /// a carousel, configured by swiping, and the straight has nothing to configure.
+    enum PaletteTarget: Identifiable, Equatable {
+        case hotbar(Int)
+
+        var id: String {
+            switch self {
+            case .hotbar(let slot): return "hotbar\(slot)"
+            }
+        }
+    }
+
     var radius: CurveRadius { CurveRadius(rawValue: radiusRaw) ?? .medium }
+
+    /// The hotbar's contents, padded to the slot count so a corrupt or outgrown
+    /// stored value can never crash or shrink the bar. Slots past the defaults read
+    /// as empty rather than being filled with something arbitrary.
+    var hotbar: [PieceID] {
+        let stored = hotbarRaw.split(separator: ",").compactMap { PieceID($0) }
+        return (0..<HotbarSlot.count).map { index in
+            index < stored.count ? stored[index] : HotbarSlot.empty
+        }
+    }
+
+    func assign(_ piece: PieceID, toSlot slot: Int) {
+        var slots = hotbar
+        guard slots.indices.contains(slot) else { return }
+        slots[slot] = piece
+        hotbarRaw = slots.map(String.init).joined(separator: ",")
+    }
 
     /// Brief confirmation that the share code went to the clipboard.
     @State var copiedCode = false
@@ -77,6 +113,17 @@ struct EditorView: View {
                 refreshClosingRun(walk)
             }
             .onChangeCompat(of: selectedEnd) { _ in refreshClosingRun(walk) }
+            // Long-pressing a hotbar slot opens its picker. A `sheet` rather than
+            // `fullScreenCover` (that one is iOS-only, and this package also builds
+            // for macOS), driven by `isPresented` rather than `item:` (iOS 17+,
+            // and the package targets 16).
+            .sheet(
+                isPresented: .init(
+                    get: { configuring != nil }, set: { if !$0 { configuring = nil } }
+                )
+            ) {
+                configurationSheet
+            }
         }
         .statusBarHiddenIfAvailable()
     }
@@ -204,6 +251,7 @@ struct EditorView: View {
                         .foregroundStyle(.white.opacity(0.75))
                 }
                 mainRow(walk: walk)
+                hotbarRow(walk: walk)
             }
             .padding(.bottom, 24)
         }

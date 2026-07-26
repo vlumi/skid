@@ -11,7 +11,7 @@ struct CarouselMetrics {
 }
 
 extension EditorView {
-    /// **Left · right, then the straight and the ramp.**
+    /// **Left · right, then the straight.**
     ///
     /// Left and right sit next to each other so they read as one mirrored pair, and
     /// **swiping them changes radius** (tight → medium → sweep) — the one axis a
@@ -29,7 +29,6 @@ extension EditorView {
                 }
             }
             pieceButton(straight, walk: walk, big: true)
-            pieceButton(EditorView.rampSentinel, walk: walk, big: true)
         }
     }
 
@@ -110,16 +109,30 @@ extension EditorView {
         radiusRaw = all[(index + step + all.count) % all.count].rawValue
     }
 
-    /// One palette button. Tapping places its piece. Greyed out when the piece can't
-    /// be placed here — being refused with a reason beats a placement that breaks the
-    /// track.
+    /// The hotbar: slots you fill yourself, for the pieces that aren't "corner or
+    /// straight". Tap places; **long-press opens the picker**.
     ///
-    /// Tap is the only gesture now. Long-press used to open a picker for the hotbar
-    /// slots, and on device it fired unreliably; with a primitives-only palette there
-    /// is nothing left to configure, so it's gone rather than fixed.
+    /// The main row is a fixed vocabulary, so it needs no configuration; this row is
+    /// open-ended and does. Today the ramp is the only thing to put here, and the
+    /// rest sit empty — jumps, gaps, landings and decorations join as they land,
+    /// which is exactly why the row stays assignable rather than becoming a button
+    /// per family.
+    func hotbarRow(walk: WalkResult) -> some View {
+        HStack(spacing: 8) {
+            ForEach(Array(hotbar.enumerated()), id: \.offset) { slot, piece in
+                pieceButton(piece, walk: walk, big: false, configures: .hotbar(slot))
+            }
+        }
+    }
+
+    /// One palette button. Tapping places its piece; long-pressing a hotbar slot
+    /// opens the picker that changes what it holds. Greyed out when the piece can't
+    /// be placed here — being refused beats a placement that breaks the track.
     @ViewBuilder
-    func pieceButton(_ piece: PieceID, walk: WalkResult, big: Bool) -> some View {
-        let ramp = piece == EditorView.rampSentinel
+    func pieceButton(
+        _ piece: PieceID, walk: WalkResult, big: Bool, configures target: PaletteTarget? = nil
+    ) -> some View {
+        let ramp = piece == EditorView.HotbarSlot.rampSentinel
         let resolved = ramp ? game.editorRampPiece() : piece
         let placeable = resolved.map { game.editorCanAppend($0) } ?? false
         let side: CGFloat = big ? 64 : 44
@@ -137,11 +150,98 @@ extension EditorView {
         }
         .frame(width: side, height: side)
         .contentShape(Rectangle())
-        .onTapGesture {
-            guard placeable else { return }
-            if ramp { game.editorRamp() } else { game.editorAppend(piece) }
-        }
+        .gesture(placeGesture(piece: piece, ramp: ramp, placeable: placeable, target: target))
         .accessibilityLabel(Text(EditorView.pieceLabel(piece), bundle: .module))
+    }
+
+    /// Tap places; long-press (hotbar only) opens the picker. Declared as one
+    /// gesture so precedence is defined: on a plain `Button` the two competed and
+    /// the long press only fired sometimes, which is how it behaved on device.
+    private func placeGesture(
+        piece: PieceID, ramp: Bool, placeable: Bool, target: PaletteTarget?
+    ) -> some Gesture {
+        let tap = TapGesture().onEnded {
+            guard placeable else { return }
+            if ramp {
+                game.editorRamp()
+            } else {
+                game.editorAppend(piece)
+            }
+        }
+        // `exclusively(before:)` gives the long press priority when there is one to
+        // give; without a target there's nothing to configure, so tap stands alone.
+        return LongPressGesture(minimumDuration: 0.4)
+            .onEnded { _ in if let target { configuring = target } }
+            .exclusively(before: tap)
+    }
+
+    /// The picker a hotbar long-press opens. Includes **Empty**, so a slot can be
+    /// cleared rather than only swapped.
+    @ViewBuilder
+    var configurationSheet: some View {
+        switch configuring {
+        case .hotbar(let slot):
+            configurationBody(Text("Assign to slot", bundle: .module)) {
+                let columns = [GridItem(.adaptive(minimum: 64), spacing: 10)]
+                let options = EditorView.hotbarPieces + [EditorView.HotbarSlot.empty]
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(options, id: \.self) { piece in
+                        Button {
+                            assign(piece, toSlot: slot)
+                            configuring = nil
+                        } label: {
+                            slotOption(piece, chosen: hotbar[slot] == piece)
+                        }
+                    }
+                }
+            }
+        case nil:
+            EmptyView()
+        }
+    }
+
+    /// One option in the slot picker.
+    private func slotOption(_ piece: PieceID, chosen: Bool) -> some View {
+        VStack(spacing: 4) {
+            if piece == EditorView.HotbarSlot.empty {
+                Image(systemName: "slash.circle")
+                    .font(.system(size: 22))
+                    .foregroundColor(.white.opacity(0.6))
+                    .frame(width: 44, height: 44)
+            } else {
+                PieceIcon(
+                    id: piece == EditorView.HotbarSlot.rampSentinel
+                        ? PieceCatalog.ID.rampUp : piece
+                )
+                .frame(width: 44, height: 44)
+            }
+            Text(EditorView.pieceLabel(piece), bundle: .module)
+                .font(.caption2)
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(
+            chosen ? Color.white.opacity(0.18) : .black.opacity(0.25),
+            in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func configurationBody<Content: View>(
+        _ title: Text, @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(spacing: 16) {
+            title.font(.headline).foregroundColor(.white)
+            content()
+            Button {
+                configuring = nil
+            } label: {
+                Text("Done", bundle: .module).pillStyle()
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(red: 0.18, green: 0.34, blue: 0.15).ignoresSafeArea())
     }
 
     /// **Delete-last and Close-it, overlaid on the map where they act.**
