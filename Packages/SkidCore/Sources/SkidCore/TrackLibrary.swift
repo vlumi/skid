@@ -18,10 +18,13 @@ public enum TrackLibrary {
         public var code: String
     }
 
+    /// Codes are under the **current seam numbering** (seam N = piece N's exit).
+    /// They were re-encoded when seams were renumbered; an older code still
+    /// decodes, but its gates land one piece further along than intended.
     public static let builtins: [Builtin] = [
-        Builtin(id: "small", name: "Small track", code: "AQcBCh8MDAwJAAAKDBoCAwAIAwMFA0gCWAA"),
-        Builtin(id: "oval", name: "Big oval", code: "AdcBCB8NDQEBDQ0BAgUAAQIEBgMFBLAGGAA"),
-        Builtin(id: "eight", name: "Eight", code: "ARMBDR8LAAsLHQEeDAwADAECBAADBgkDBQNIAtAB"),
+        Builtin(id: "small", name: "Small track", code: "AXgBCh8MDAwJAAAKDBoCAwACBwMFA0gCWAA"),
+        Builtin(id: "oval", name: "Big oval", code: "AWQBCB8NDQEBDQ0BAgQAAQMFAwUEsAYYAA"),
+        Builtin(id: "eight", name: "Eight", code: "AeMBDR8LAAsLHQEeDAwADAECBAACBQgDBQNIAtAB"),
     ]
 
     /// Every built-in, compiled once. A code that doesn't compile is a broken
