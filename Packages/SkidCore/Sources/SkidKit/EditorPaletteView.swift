@@ -286,7 +286,7 @@ extension EditorView {
         switch closingOutcome {
         case .found(let run) where !run.isEmpty:
             mapAction("flag.checkered", tint: .yellow, label: "Close the loop") {
-                for id in run { game.editorAppend(id) }
+                game.editorAppendRun(run)
             }
         default:
             // Nothing when there's no run to take: the reason already shows in the
