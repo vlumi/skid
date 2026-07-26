@@ -41,6 +41,18 @@ continuous-height bridges, and the built-ins rebuilt from pieces (the old
 free-form `TrackDesign` path is gone, so there is now exactly one track engine).
 What's left:
 
+- [ ] **Primitives in the model, compounds in the code.** Reduce the catalog to a
+      short straight + 45° corners (everything else composes exactly), which buys a
+      checkpoint at a hairpin's apex, removes the variant holes, and shrinks the
+      palette. Compounds survive as *encoding* virtual elements — one id per run,
+      roughly halving the pieces section, better than RLE. Comes with: varint seam
+      indices (today's single byte silently truncates past 255), sparse varint
+      `pos:decalId` decal pairs, a 127-primitive cap, and "Close it" proposing
+      compound runs rather than single primitives. One format version bump; spec
+      settled in [docs/track-pieces.md](docs/track-pieces.md).
+- [ ] **Decal variants on laid pieces.** Long-press a piece already on the track to
+      cycle its decal variants, rather than choosing a variant when placing. Needs
+      the decal section above.
 - [ ] **Catalog beyond road pieces.** More road pieces (the palette is still
       small), plus **decorations**: on-road arrows, trees, buildings, walls
       (scenery + directional markers, not just track segments). Placed in the
