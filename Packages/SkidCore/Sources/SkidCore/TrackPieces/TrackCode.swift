@@ -26,7 +26,15 @@ public enum TrackCode {
     /// worst-case design budget, so a giant string is rejected up front.
     public static let maxCodeLength = 512
     /// Max pieces (also the layout cap); max gates per the design.
+    /// Cap on **encoded** ids — the decode-work bound for hostile input.
     public static let maxPieces = 64
+    /// Cap on **expanded** primitives — the track-length bound.
+    ///
+    /// Under 128 on purpose: a seam index addresses a primitive, and a varint's
+    /// first byte carries 7 bits. For scale, real tracks are 15–21 primitives, and
+    /// 127 short straights end to end is 15,240 units against a canvas perimeter of
+    /// 5,866 — about 2.6 laps of the outer edge.
+    public static let maxLength = 127
     public static let maxGates = 16
 
     private enum Tag: UInt8 {
@@ -40,7 +48,9 @@ public enum TrackCode {
 
     public static func encode(_ layout: TrackLayout) -> String {
         var body: [UInt8] = []
-        appendSection(&body, .pieces, encodeVarintIDs(layout.pieces))
+        // Packed into compounds at the byte boundary only — the layout itself is
+        // always primitives (see `PiecePacking`).
+        appendSection(&body, .pieces, encodeVarintIDs(PiecePacking.pack(layout.pieces)))
         appendSection(&body, .gates, layout.gateSeams.map { UInt8(truncatingIfNeeded: $0) })
         appendSection(&body, .origin, encodeOrigin(layout.origin))
         if layout.theme != .normal {
@@ -76,8 +86,17 @@ public enum TrackCode {
             let originPayload = sections[.origin]
         else { throw DecodeError.missingSection }
 
-        let pieces = try decodeVarintIDs(piecesPayload)
-        guard pieces.count <= maxPieces else { throw DecodeError.tooLarge }
+        // Two DISTINCT caps, and conflating them is a real hazard. `maxPieces`
+        // bounds the ENCODED ids — how much decode work a hostile code may demand.
+        // `maxLength` bounds the TRACK after expansion, and it's the one that must
+        // hold, since a seam index addresses a primitive. Checking only the encoded
+        // count would let 64 compounds expand to 256 primitives unnoticed, which is
+        // why the expansion is bounded as it proceeds rather than measured after.
+        let encoded = try decodeVarintIDs(piecesPayload)
+        guard encoded.count <= maxPieces else { throw DecodeError.tooLarge }
+        guard let pieces = PiecePacking.unpack(encoded, limit: maxLength) else {
+            throw DecodeError.tooLarge
+        }
         let gates = gatesPayload.map { Int($0) }
         guard gates.count <= maxGates else { throw DecodeError.tooLarge }
         let origin = try decodeOrigin(originPayload)

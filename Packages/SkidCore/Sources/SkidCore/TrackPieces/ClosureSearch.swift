@@ -131,7 +131,7 @@ struct ClosureSearch {
             for step in frontier {
                 extend(step, into: &next, best: &best, seen: &seen, remaining: maxPieces - depth)
             }
-            if let best, confirmed(best.run) { return .found(best.run) }
+            if let best, confirmed(best.run) { return .found(Self.primitives(best.run)) }
             // A dead frontier ends the search early, but proves nothing: it
             // usually means every continuation grazed existing pavement.
             if next.isEmpty { break }
@@ -196,12 +196,24 @@ struct ClosureSearch {
         return true
     }
 
+    /// The run as **primitives**, which is what a layout may hold.
+    ///
+    /// The search itself works in compounds on purpose: a hairpin is one step
+    /// instead of four, so the frontier stays small and a closure that needs a
+    /// 180° comes back within the depth limit. But a layout is always primitives
+    /// (seam indices address them), so the run is expanded on the way out — one
+    /// tap still places the whole shape, and it still packs back to one byte per
+    /// compound when encoded.
+    private static func primitives(_ run: [PieceID]) -> [PieceID] {
+        run.flatMap { PieceExpansion.expand($0) }
+    }
+
     /// The local clearance test is an approximation, so the winning run goes
     /// through the real validator before it's offered. Height must come home
     /// too: a run that closes the ring while still on the deck isn't a closure.
     private func confirmed(_ run: [PieceID]) -> Bool {
         var candidate = layout
-        candidate.pieces += run
+        candidate.pieces += Self.primitives(run)
         let problems = TrackValidator.validate(candidate).problems
         // Everything except the gate rule, which is a separate one-tap step the
         // author does afterwards (and is present on every editor track, so

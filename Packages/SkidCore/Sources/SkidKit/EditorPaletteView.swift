@@ -1,14 +1,7 @@
 import SkidCore
 import SwiftUI
 
-/// The palette's buttons: three for the common move, five assignable for
-/// one-offs.
-///
-/// **Tap places, long-press configures** — one gesture rule for every button
-/// here, which is why there are no selector chips in the resting state. The three
-/// main buttons share one configuration (the corner's angle and radius, the
-/// straight's length), so left and right always mirror each other; a hotbar slot
-/// configures to any single one-off piece.
+/// The palette's buttons: the primitive set, and nothing else.
 /// A carousel's geometry: one row tall, plus a sliver of the neighbours above and
 /// below. That sliver is what says "drag me".
 struct CarouselMetrics {
@@ -18,17 +11,12 @@ struct CarouselMetrics {
 }
 
 extension EditorView {
-    /// **45L · 90L · 90R · 45R, then the straight.**
+    /// **Left · right, then the straight and the ramp.**
     ///
-    /// Angle is a *position*, not a mode: the four corner buttons mirror around the
-    /// centre, so both angles are always one tap away and there's no toggle to
-    /// remember or to pay screen for. Their adjacency is also what makes left and
-    /// right read as one pair.
-    ///
-    /// **Swipe the corner group to change radius** (tight → medium → sweep), and
-    /// swipe the straight to change its length. One axis per carousel, which is why
-    /// this replaced long-press-to-configure: a swipe is discoverable and fires
-    /// reliably, where long-press on these did neither.
+    /// Left and right sit next to each other so they read as one mirrored pair, and
+    /// **swiping them changes radius** (tight → medium → sweep) — the one axis a
+    /// corner still has now that 45° is the only primitive angle. The straight has
+    /// no axis left to swipe, so it's a plain button.
     func mainRow(walk: WalkResult) -> some View {
         HStack(spacing: 12) {
             carousel(
@@ -36,27 +24,19 @@ extension EditorView {
                 select: { radiusRaw = $0.rawValue }
             ) { value in
                 HStack(spacing: 6) {
-                    cornerTile(left: true, angle: .degrees45, radius: value, walk: walk)
-                    cornerTile(left: true, angle: .degrees90, radius: value, walk: walk)
-                    cornerTile(left: false, angle: .degrees90, radius: value, walk: walk)
-                    cornerTile(left: false, angle: .degrees45, radius: value, walk: walk)
+                    cornerTile(left: true, radius: value, walk: walk)
+                    cornerTile(left: false, radius: value, walk: walk)
                 }
             }
-            carousel(
-                values: StraightLength.allCases, current: straightLength,
-                select: { straightRaw = $0.rawValue }
-            ) { value in
-                pieceButton(value.piece, walk: walk, big: true)
-            }
+            pieceButton(straight, walk: walk, big: true)
+            pieceButton(EditorView.rampSentinel, walk: walk, big: true)
         }
     }
 
     /// A corner tile at an explicit radius, so a carousel row can show the
     /// neighbouring radii rather than only the selected one.
-    private func cornerTile(
-        left: Bool, angle: CurveAngle, radius: CurveRadius, walk: WalkResult
-    ) -> some View {
-        pieceButton(corner(left: left, angle: angle, radius: radius), walk: walk, big: true)
+    private func cornerTile(left: Bool, radius: CurveRadius, walk: WalkResult) -> some View {
+        pieceButton(corner(left: left, radius: radius), walk: walk, big: true)
     }
 
     /// A **vertical** carousel that tracks your finger: the neighbouring values sit
@@ -130,43 +110,19 @@ extension EditorView {
         radiusRaw = all[(index + step + all.count) % all.count].rawValue
     }
 
-    private func cycleStraight(by step: Int) {
-        let all = StraightLength.allCases
-        guard let index = all.firstIndex(of: straightLength) else { return }
-        straightRaw = all[(index + step + all.count) % all.count].rawValue
-    }
-
-    /// The hotbar: five slots you assign yourself, for the pieces that aren't part
-    /// of "corner or straight". Tap places; **long-press opens the picker** — the
-    /// one place that gesture remains, since assigning from a catalog of one-offs
-    /// has no natural carousel axis.
-    func hotbarRow(walk: WalkResult) -> some View {
-        HStack(spacing: 8) {
-            ForEach(Array(hotbar.enumerated()), id: \.offset) { slot, piece in
-                pieceButton(
-                    tracking(piece), walk: walk, big: false, configures: .hotbar(slot))
-            }
-        }
-    }
-
-    /// One palette button. Tapping places its piece; long-pressing opens the sheet
-    /// that changes what it places. Greyed out when the piece can't be placed here
-    /// — being refused with a reason beats a placement that breaks the track.
+    /// One palette button. Tapping places its piece. Greyed out when the piece can't
+    /// be placed here — being refused with a reason beats a placement that breaks the
+    /// track.
+    ///
+    /// Tap is the only gesture now. Long-press used to open a picker for the hotbar
+    /// slots, and on device it fired unreliably; with a primitives-only palette there
+    /// is nothing left to configure, so it's gone rather than fixed.
     @ViewBuilder
-    func pieceButton(
-        _ piece: PieceID, walk: WalkResult, big: Bool, configures target: PaletteTarget? = nil
-    ) -> some View {
-        let ramp = piece == HotbarSlot.rampSentinel
+    func pieceButton(_ piece: PieceID, walk: WalkResult, big: Bool) -> some View {
+        let ramp = piece == EditorView.rampSentinel
         let resolved = ramp ? game.editorRampPiece() : piece
         let placeable = resolved.map { game.editorCanAppend($0) } ?? false
         let side: CGFloat = big ? 64 : 44
-        // NOT a Button. A Button consumes the press for its own tap handling, so a
-        // `.onLongPressGesture` attached alongside it only fires sometimes — which
-        // is exactly how it behaved on device. And `.disabled` would have killed the
-        // long press outright, leaving an unplaceable button impossible to
-        // reconfigure. So: a plain view, with the tap and the long press declared
-        // together as an explicit gesture so their precedence is defined rather
-        // than emergent.
         ZStack {
             RoundedRectangle(cornerRadius: 10)
                 .fill(.black.opacity(placeable ? 0.3 : 0.12))
@@ -178,113 +134,14 @@ extension EditorView {
                 .frame(width: side - 8, height: side - 8)
                 .opacity(placeable ? 1 : 0.3)
             }
-            // Only the hotbar is long-pressable, so only it advertises it.
-            if target != nil {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 8, weight: .black))
-                    .foregroundColor(.white.opacity(0.5))
-                    .frame(width: side, height: side, alignment: .bottomTrailing)
-                    .padding(.trailing, 3)
-                    .padding(.bottom, 1)
-            }
         }
         .frame(width: side, height: side)
         .contentShape(Rectangle())
-        .gesture(placeGesture(piece: piece, ramp: ramp, placeable: placeable, target: target))
-        .accessibilityLabel(Text(EditorView.pieceLabel(piece), bundle: .module))
-    }
-
-    /// A hotbar piece, **following the corner radius** where its family has a
-    /// variant at that radius.
-    ///
-    /// So a slot holding a hairpin gives you the tight hairpin while you're building
-    /// tight corners, without reassigning it — the slot means "hairpin", not
-    /// "hairpin, medium". Where the family has no variant at the current radius
-    /// (there's no sweep hairpin) the slot keeps what it was given rather than going
-    /// blank. Jogs and the ramp never track: a jog's 240/360 is a lateral shift, not
-    /// a radius, and both use a tight first arc.
-    private func tracking(_ piece: PieceID) -> PieceID {
-        guard let match = EditorView.family(of: piece),
-            let tracked = match.family.piece(left: match.left, radius: radius)
-        else { return piece }
-        return tracked
-    }
-
-    /// Tap places; long-press (hotbar only) opens the picker. Declared as one
-    /// gesture so precedence is defined: on a plain `Button` the two competed and
-    /// the long press only fired sometimes, which is how it behaved on device.
-    private func placeGesture(
-        piece: PieceID, ramp: Bool, placeable: Bool, target: PaletteTarget?
-    ) -> some Gesture {
-        let tap = TapGesture().onEnded {
+        .onTapGesture {
             guard placeable else { return }
-            if ramp {
-                game.editorRamp()
-            } else {
-                game.editorAppend(piece)
-            }
+            if ramp { game.editorRamp() } else { game.editorAppend(piece) }
         }
-        // `exclusively(before:)` gives the long press priority when there is one to
-        // give; without a target there's nothing to configure, so tap stands alone.
-        return LongPressGesture(minimumDuration: 0.4)
-            .onEnded { _ in if let target { configuring = target } }
-            .exclusively(before: tap)
-    }
-
-    /// The picker a hotbar long-press opens.
-    @ViewBuilder
-    var configurationSheet: some View {
-        switch configuring {
-        case .hotbar(let slot):
-            configurationBody(Text("Assign to slot", bundle: .module)) {
-                let columns = [GridItem(.adaptive(minimum: 64), spacing: 10)]
-                LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(EditorView.oneOffPieces, id: \.self) { piece in
-                        Button {
-                            assign(piece, toSlot: slot)
-                            configuring = nil
-                        } label: {
-                            VStack(spacing: 4) {
-                                PieceIcon(
-                                    id: piece == HotbarSlot.rampSentinel
-                                        ? PieceCatalog.ID.rampUp : piece
-                                )
-                                .frame(width: 44, height: 44)
-                                Text(EditorView.pieceLabel(piece), bundle: .module)
-                                    .font(.caption2)
-                                    .foregroundColor(.white)
-                                    .multilineTextAlignment(.center)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
-                            .background(
-                                hotbar[slot] == piece
-                                    ? Color.white.opacity(0.18) : .black.opacity(0.25),
-                                in: RoundedRectangle(cornerRadius: 8))
-                        }
-                    }
-                }
-            }
-        case nil:
-            EmptyView()
-        }
-    }
-
-    private func configurationBody<Content: View>(
-        _ title: Text, @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(spacing: 16) {
-            title.font(.headline).foregroundColor(.white)
-            content()
-            Button {
-                configuring = nil
-            } label: {
-                Text("Done", bundle: .module).pillStyle()
-            }
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(red: 0.18, green: 0.34, blue: 0.15).ignoresSafeArea())
+        .accessibilityLabel(Text(EditorView.pieceLabel(piece), bundle: .module))
     }
 
     /// **Delete-last and Close-it, overlaid on the map where they act.**

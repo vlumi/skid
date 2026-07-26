@@ -144,15 +144,22 @@ final class TrackValidatorTests: XCTestCase {
 
     /// The editor blocks placements instead of accepting them and warning: a
     /// piece that would pave over the track is refused up front.
+    ///
+    /// The candidates here are **compounds**, which `canAppend` expands — so the
+    /// expectation has to expand too, or the two sides would be judging different
+    /// tracks. (The palette only offers primitives now, but `canAppend` still takes
+    /// a compound for the closure search's benefit, so that path stays tested.)
     func testCanAppendRefusesAPieceThatWouldOverlap() {
         // A tight ring, one piece short of lapping back over its own start.
         let ring: [PieceID] =
-            [Pieces.startGrid] + Array(repeating: Pieces.curve90TightLeft, count: 4)
+            [Pieces.startGrid]
+            + Array(repeating: PieceExpansion.expand(Pieces.curve90TightLeft), count: 4)
+            .flatMap { $0 }
         let base = TrackLayout(pieces: ring)
         // Whatever the validator would flag as an overlap, canAppend must refuse.
         for candidate in [Pieces.curve90TightLeft, Pieces.straight, Pieces.hairpinTightLeft] {
             var next = base
-            next.pieces.append(candidate)
+            next.pieces += PieceExpansion.expand(candidate)
             let overlaps = TrackValidator.validate(next).problems.contains(.overlap)
             XCTAssertEqual(
                 TrackValidator.canAppend(candidate, to: base), !overlaps,
