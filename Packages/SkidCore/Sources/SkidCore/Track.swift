@@ -12,6 +12,12 @@ public struct Wall: Equatable, Sendable, Codable {
         /// The map boundary. Enforced, never drawn: a painted rectangle around
         /// the whole playfield would look like scenery that isn't there.
         case boundary
+        /// A one-way level seal: blocks every car BELOW its height, passes
+        /// everyone at or above — the wall under a raised road's mouth. Its
+        /// whole job is "you may not enter from a level below this one", so
+        /// unlike a rail it has no top a car could be over. (A tunnel mouth
+        /// will want the mirror image as its own case.)
+        case gate
     }
 
     public var a: Vec2
