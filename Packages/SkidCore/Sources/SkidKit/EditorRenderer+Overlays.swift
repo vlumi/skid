@@ -66,7 +66,8 @@ extension EditorRenderer {
         _ placed: PlacedPiece, width: Double, transform t: Transform,
         into context: inout GraphicsContext
     ) {
-        let pose = placed.entry
+        // Seam N = piece N's EXIT; the marker belongs on the seam it names.
+        let pose = placed.exits[0]
         let across = Vec2(angle: pose.heading.radians).perpendicular
         let center = pose.position.vec2
         let edge = across * (width / 2)
