@@ -107,14 +107,28 @@ What's left:
         thing you tap, the separate hazard-striped "construction" marker on the
         loose end may be redundant — try dropping it.
       - **Delete anywhere, not just at the end.** Remove a piece from the
-        middle of a finished track. Note this is more than a UI change: pieces
-        are a sequence walked from the origin, so removing one from the middle
-        leaves the rest translated and rotated — the track after it swings. The
-        honest options are to reopen the ring at that point (leaving two loose
-        ends to rejoin, which the closure search can help with) or to refuse the
-        removal unless the neighbours still mate. Decide which before building
-        it; silently reshaping the whole track is the one thing to avoid.
-        Checkpoint seams also shift, exactly as they did in the primitives
+        middle of a finished track. More than a UI change: pieces are a sequence
+        walked from the origin, so naively dropping one leaves everything after
+        it translated and rotated — the track swings.
+
+        *The maintainer's framing, which resolves this:* **re-anchor instead of
+        re-walking.** Cutting a ring at a piece leaves an open chain; make one
+        cut end the layout's new origin (with its pose and height baked in) and
+        the remaining geometry is unchanged by construction, with two loose ends
+        to rejoin — which the closure search already helps with. **While
+        building, the origin need not be the start line at all**: it's just
+        where the walk begins.
+
+        That separation is most of the work, and the code is closer to it than
+        it looks — three places weld the two together today: the compiler takes
+        the grid from `walk.placed[0]`, treats seam 0 as the finish, and the
+        validator requires seam 0 to be marked. Splitting "where the walk
+        starts" from "where the lap starts" would also let the author MOVE the
+        start line on a finished track, which is a want in its own right.
+        Rotating the piece list to put the start piece first at save time keeps
+        the share code's meaning unchanged.
+
+        Checkpoint seams shift under any of this, exactly as in the primitives
         round.
       - **Anchor delete to what it deletes.** The delete button sits at the
         chain's end and the map re-frames after every removal, so deleting a
