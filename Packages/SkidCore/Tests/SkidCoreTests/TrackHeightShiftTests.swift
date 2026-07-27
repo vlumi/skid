@@ -115,6 +115,22 @@ final class TrackHeightShiftTests: XCTestCase {
             })
     }
 
+    /// **Cars spawn on the road, not under it.** The grid's height comes from
+    /// the layout's baseline; a hardcoded 0 put every car below a raised track,
+    /// which then read as off-road at the start line.
+    func testCarsSpawnAtTheTracksOwnHeight() throws {
+        let raised = flatRing(originHeight: 0.5)
+        let track = try PieceCompiler.compile(raised, id: "raised")
+        XCTAssertEqual(track.startHeight, 0.5, accuracy: 1e-9)
+        let race = Race(track: track, players: [PlayerID(0), PlayerID(1)])
+        for car in race.cars {
+            XCTAssertEqual(car.state.height, 0.5, accuracy: 1e-9, "car spawned off its road")
+            XCTAssertEqual(
+                track.surface(at: car.state.position, height: car.state.height), .asphalt,
+                "a car at the grid must be on asphalt")
+        }
+    }
+
     /// The same range rule the buttons use, without a view: mirrors
     /// `CouchGame.canShiftHeight`.
     private func canShift(_ layout: TrackLayout, steps: Int) -> Bool {
