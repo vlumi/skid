@@ -62,9 +62,9 @@ public enum TrackValidator {
     /// The same verdict for a whole run at once — what "Close it" applies. A
     /// run validated as a unit must also land as a unit; judging it piece by
     /// piece would re-litigate each prefix.
-    public static func canAppend(run: [PieceID], to layout: TrackLayout) -> Bool {
+    public static func canAppend(run: [PlannedPiece], to layout: TrackLayout) -> Bool {
         var candidate = layout
-        candidate.append(contentsOf: run.flatMap { PieceExpansion.expand($0) })
+        candidate.append(contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
         return placeable(candidate)
     }
 

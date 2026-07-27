@@ -162,7 +162,7 @@ extension EditorView {
             if !empty {
                 PieceIcon(
                     id: icon ?? piece, entryHeading: appendHeading(walk),
-                    entryHeight: appendHeight(walk)
+                    entryHeight: appendHeight(walk), pitch: buildPitch
                 )
                 .frame(width: side - 8, height: side - 8)
                 .opacity(placeable ? 1 : 0.3)

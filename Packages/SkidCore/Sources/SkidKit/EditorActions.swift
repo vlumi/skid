@@ -29,10 +29,11 @@ extension CouchGame {
     /// would re-judge every prefix and silently drop the tail if any single
     /// step read as an overlap mid-run.
     @discardableResult
-    public func editorAppendRun(_ run: [PieceID]) -> Bool {
+    public func editorAppendRun(_ run: [PlannedPiece]) -> Bool {
         guard let layout = editorLayout, !run.isEmpty else { return false }
         guard TrackValidator.canAppend(run: run, to: layout) else { return false }
-        editorLayout?.append(contentsOf: run.flatMap { PieceExpansion.expand($0) })
+        editorLayout?.append(
+            contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
         finishIfClosed()
         return true
     }
