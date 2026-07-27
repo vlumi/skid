@@ -246,10 +246,11 @@ enum TrackRenderer {
             else {
                 continue
             }
+            // The start/finish's checkerboard comes from the shared renderer —
+            // it's paint on the start piece, drawn with the road — so only the
+            // CHECKPOINT lines are chrome here.
             let isStartFinish = index == chrome.spans.count - 1
-            if isStartFinish {
-                drawCheckers(span: span, into: &context)
-            } else {
+            if !isStartFinish {
                 var path = Path()
                 path.move(to: CGPoint(x: span.a.x, y: span.a.y))
                 path.addLine(to: CGPoint(x: span.b.x, y: span.b.y))
@@ -310,37 +311,6 @@ enum TrackRenderer {
         }
     }
 
-    private static func drawCheckers(
-        span: (a: Vec2, b: Vec2), into context: inout GraphicsContext
-    ) {
-        let start = span
-        // Two rows of checkers across the ribbon.
-        let along = (start.b - start.a).normalized
-        let across = along.perpendicular
-        let squares = max(6, Int((start.b - start.a).length / 13))
-        let side = (start.b - start.a).length / Double(squares)
-        for row in 0..<2 {
-            for i in 0..<squares where (i + row) % 2 == 0 {
-                let corner = start.a + along * (Double(i) * side) + across * (Double(row) * side)
-                var path = Path()
-                let points = [
-                    corner,
-                    corner + along * side,
-                    corner + along * side + across * side,
-                    corner + across * side,
-                ]
-                path.move(to: CGPoint(x: points[0].x, y: points[0].y))
-                for p in points.dropFirst() {
-                    path.addLine(to: CGPoint(x: p.x, y: p.y))
-                }
-                path.closeSubpath()
-                context.fill(path, with: .color(.black.opacity(0.8)))
-            }
-        }
-    }
-}
-
-extension TrackRenderer {
     static func drawMarks(
         _ marks: MarkStore, elevated: Bool = false, into context: inout GraphicsContext
     ) {
