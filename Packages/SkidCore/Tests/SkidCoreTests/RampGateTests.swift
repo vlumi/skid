@@ -52,6 +52,31 @@ final class RampGateTests: XCTestCase {
         }
     }
 
+    /// **The gate's vertical extent is one storey.** It hangs from its road
+    /// down to the ground beneath it — not into the earth — so a tunnel car a
+    /// full level further down must pass beneath it exactly like a ground car
+    /// passes beneath a deck. There are no sub-ground tracks to drive yet, so
+    /// this is pinned at the rule itself.
+    func testAGateSealsExactlyOneStorey() {
+        let race = Race(track: TrackLibrary.track(id: "eight"), players: [PlayerID(0)])
+        let gate = Wall(from: Vec2(0, -60), to: Vec2(0, 60), height: 0.8, kind: .gate)
+        var car = race.cars[0].state
+        for (height, blocked) in [
+            (-1.0, false),  // tunnel storey: passes underneath
+            (-0.3, false),  // more than a car's reach below the floor: storey below
+            (-0.1, true),  // within reach of the sealed storey's floor
+            (0.0, true),  // ground car: the case the gate exists for
+            (0.5, true),  // half-climbed from the wrong side
+            (0.8, false),  // at the threshold: of the level, admitted
+            (1.0, false),  // deck car
+        ] {
+            car.height = height
+            XCTAssertEqual(
+                race.blocks(gate, car: car), blocked,
+                "gate at 0.8 vs car at \(height)")
+        }
+    }
+
     /// **Behavioural:** actually drive it. A car at full speed and full throttle
     /// runs straight over up-ramp, deck, and down-ramp; it must touch nothing,
     /// genuinely climb, and come back down. Full speed is the worst case (fewest
