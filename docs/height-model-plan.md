@@ -168,9 +168,16 @@ ramp buttons, heights bounded 0…1 this round. Implementation order:
    threshold; the lattice sits on the safe side of every comparison. Pinned
    by tests (half-level road may cross nothing; interval arithmetic at the
    lattice points).
-4. Gates/rails per half-mouth (should be automatic); extend RampGateTests'
-   drive fixtures to bending climbs.
-5. Palette: pitch selector; the ramp sentinel retires.
+4. DONE — gates/rails per half-mouth proved automatic (mouth-height
+   thresholds; suite covers both mouths on the eight). Bending-climb drive
+   fixtures remain future test hardening.
+5. DONE — up/level/down pitch carousel on the main row; every shape
+   button places at the selected pitch and greys through the same validation
+   as everything else; the ramp sentinel and its context logic retired; the
+   hotbar row hides until it has contents again. Mode-switch bytes (2b)
+   landed with it: ids 120–122 reserved (block 112–127), emitted only where
+   a bare primitive's pitch differs from the running state — full climbs
+   still pack as their one compound byte, so existing codes are unchanged.
 6. Renderer: wedges/scale are already continuous in height; verify half-level
    resting roads draw sanely.
 

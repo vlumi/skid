@@ -34,6 +34,11 @@ struct EditorView: View {
     @State var configuring: PaletteTarget?
     /// Live drag offset for the corner carousel, so it follows the finger.
     @State var dragOffset: CGFloat = 0
+    /// The pitch the next pieces are laid at. Session state, not persisted:
+    /// every editing session starts on level ground. Sticky across placements
+    /// (a climb is usually more than one piece); whether it should auto-reset
+    /// is a device-feel question, deliberately left for testing.
+    @State var buildPitch: Pitch = .flat
 
     /// Which hotbar slot's picker is open. Only the hotbar has one — the corners are
     /// a carousel, configured by swiping, and the straight has nothing to configure.
@@ -251,7 +256,11 @@ struct EditorView: View {
                         .foregroundStyle(.white.opacity(0.75))
                 }
                 mainRow(walk: walk)
-                hotbarRow(walk: walk)
+                // The hotbar returns when it has something to hold (jumps,
+                // gaps, decorations); five empty slots are dead space.
+                if !EditorView.hotbarPieces.isEmpty {
+                    hotbarRow(walk: walk)
+                }
             }
             .padding(.bottom, 24)
         }

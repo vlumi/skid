@@ -170,6 +170,9 @@ public enum PieceCatalog {
     /// palette, the context-aware ramp button). Ids themselves stay data — the
     /// registry is frozen only at the format's first public release — so
     /// nothing outside this file should hardcode a number.
+    /// Catalog ids grow upward from 0. **112–127 are reserved for the byte
+    /// stream's mode switches** (`PiecePacking`) and may never name a piece;
+    /// 128+ are decal variants. A test pins the reservation.
     public enum ID {
         public static let shortStraight: PieceID = 0
         public static let straight: PieceID = 1
