@@ -30,53 +30,90 @@ final class RenderBandTests: XCTestCase {
         }
     }
 
-    /// **At a crossing, the higher seam wins the tap.** Two seams can sit at
-    /// the same screen point where a bridge crosses a road; the deck one is
-    /// drawn on top, so it's what the author is pointing at. Flat 2D distance
-    /// alone gave it to whichever came first in the piece list — the road
-    /// underneath — which made a gate on the bridge impossible to toggle.
+    /// **Only a coincident pair is decided by height; otherwise nearest wins.**
+    ///
+    /// Where a bridge crosses a road, two seams can sit at the same screen point
+    /// — distance can't choose, so the one drawn on top does. But a tap plainly
+    /// nearer the lower seam must toggle THAT one: a wide tie-break window made
+    /// the bridge win everywhere, and the gate underneath became unremovable.
     ///
     /// Mirrors `EditorView.seam(near:)`'s rule without a view.
-    func testTheHigherSeamWinsAtACrossing() throws {
+    func testHeightBreaksOnlyExactTies() throws {
         let layout = try XCTUnwrap(TrackLibrary.layout(id: "eight"))
         let placed = layout.walk().placed
-        // Find two seams (piece exits) that share a spot at different heights.
-        var overlapping: (low: Int, high: Int)?
+        var pair: (low: Int, high: Int)?
         for (i, a) in placed.enumerated() where i != 0 {
             for (j, b) in placed.enumerated() where j != 0 && j != i {
                 let apart = a.exits[0].position.vec2.distance(to: b.exits[0].position.vec2)
-                guard apart < 40, abs(a.exitHeight - b.exitHeight) > 0.4 else { continue }
-                overlapping =
-                    a.exitHeight < b.exitHeight ? (low: i, high: j) : (low: j, high: i)
+                guard apart < 1, abs(a.exitHeight - b.exitHeight) > 0.4 else { continue }
+                pair = a.exitHeight < b.exitHeight ? (low: i, high: j) : (low: j, high: i)
             }
         }
-        let pair = try XCTUnwrap(overlapping, "the eight should cross itself at two heights")
-        // Run the tie-break itself, in the order that used to lose: the lower
-        // seam offered first, so "whichever came first" would pick it.
-        let hitRadius = 30.0
-        let ordered = [pair.low, pair.high]
+        let crossing = try XCTUnwrap(pair, "the eight should cross itself at one point")
+
+        // Tapping the shared point: the bridge wins, even offered second.
+        XCTAssertEqual(
+            pick(among: [crossing.low, crossing.high], tapping: crossing.high, in: placed),
+            crossing.high, "at the same spot, the higher seam wins")
+
+        // Tapping a DIFFERENT seam nearby: nearest wins, height notwithstanding.
+        let other = try XCTUnwrap(
+            placed.indices.first {
+                $0 != 0 && $0 != crossing.low && $0 != crossing.high
+                    && placed[$0].exitHeight < 0.4
+            }, "the eight should have ground seams elsewhere")
+        XCTAssertEqual(
+            pick(among: [crossing.high, other], tapping: other, in: placed), other,
+            "a tap aimed at a ground seam must not be stolen by the bridge")
+    }
+
+    /// The hit-test's choice among candidate seams, given a tap at `tapping`'s
+    /// own position — the same rule `EditorView.seam(near:)` applies.
+    private func pick(among seams: [Int], tapping: Int, in placed: [PlacedPiece]) -> Int? {
+        let tap = placed[tapping].exits[0].position.vec2
         var best: (seam: Int, distance: Double)?
         var bestHeight = -Double.infinity
-        let tap = placed[pair.high].exits[0].position.vec2
-        for index in ordered {
+        for index in seams {
             let distance = placed[index].exits[0].position.vec2.distance(to: tap)
-            guard distance < hitRadius else { continue }
+            guard distance < 26 else { continue }
             let height = placed[index].exitHeight
             guard let current = best else {
                 best = (index, distance)
                 bestHeight = height
                 continue
             }
-            let muchNearer = distance < current.distance - hitRadius / 2
-            let higher = height > bestHeight + 0.001 && distance < current.distance + hitRadius / 2
-            if muchNearer || higher {
+            let coincident = abs(distance - current.distance) < 1
+            let takes = coincident ? height > bestHeight + 0.001 : distance < current.distance
+            if takes {
                 best = (index, distance)
                 bestHeight = height
             }
         }
-        XCTAssertEqual(
-            best?.seam, pair.high,
-            "the seam on the bridge must win the tap, not the road underneath")
+        return best?.seam
+    }
+
+    /// **A ground car under a bridge is never drawn on top of it.** A slope
+    /// begins at ground height, so its first sliver is a ramp segment at ~0 and
+    /// a car near the foot matched it — promoting a car driving UNDER the bridge
+    /// into the elevated pass, where it appeared over the deck. Being off the
+    /// ground is the precondition the promotion was missing.
+    ///
+    /// Mirrors `drawCars`' `onRamp` rule: off the ground, on a ramp, on its road.
+    func testGroundCarsAreNeverPromotedToTheDeckPass() {
+        let track = TrackLibrary.track(id: "eight")
+        var checked = 0
+        for index in track.centerline.indices where track.heights[index] <= 0.05 {
+            let point = track.centerline[index]
+            let height = track.heights[index]
+            let promoted =
+                height > Track.surfaceTolerance
+                && track.isOnRamp(point, height: height)
+                && track.distanceToCenterline(point, height: height) <= track.width / 2
+            XCTAssertFalse(
+                promoted, "ground point \(index) would draw over the bridge")
+            checked += 1
+        }
+        XCTAssertGreaterThan(checked, 20, "the eight should have plenty of ground road")
     }
 
     /// A crossing exists on the eight at both heights — the case where a

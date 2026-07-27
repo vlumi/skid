@@ -320,17 +320,20 @@ struct EditorView: View {
                 best = candidate
                 continue
             }
-            // Where a bridge crosses a road, two seams answer to the same tap.
-            // Prefer the HIGHER one: it's the one drawn on top, so it's what the
-            // author is pointing at — and without this the lower road always won
-            // (the flat 2D distance decided it, and near-ties fell to whichever
-            // came first, which is the piece underneath). A seam clearly nearer
-            // still wins, so this only decides genuine overlaps.
-            let muchNearer = distance < current.distance - EditorRenderer.endHitRadius / 2
-            let higher =
-                candidate.height > current.height + 0.001
-                && distance < current.distance + EditorRenderer.endHitRadius / 2
-            if muchNearer || higher { best = candidate }
+            // Nearest wins — except between seams at the SAME SPOT, where
+            // distance can't choose and height does: the one drawn on top is
+            // the one being pointed at.
+            //
+            // "Same spot" is literal. Measured on a crossing built in the
+            // editor, the ambiguous pair is exactly coincident (0 units apart),
+            // while any two seams you can aim between are a piece-length away —
+            // so the tie-break needs only a float-noise window, not a share of
+            // the hit radius. A wider window (half the radius) was the bug: a
+            // tap plainly on the lower seam still fell inside it, and the
+            // bridge won every time.
+            let coincident = abs(distance - current.distance) < 1
+            let higher = candidate.height > current.height + 0.001
+            if coincident ? higher : distance < current.distance { best = candidate }
         }
         return best?.seam
     }
