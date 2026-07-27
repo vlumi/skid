@@ -11,12 +11,20 @@ extension EditorView {
     /// no axis left to swipe, so it's a plain button.
     func mainRow(walk: WalkResult) -> some View {
         HStack(spacing: 12) {
+            // Adjacency implies scope, so position is meaning here. PITCH
+            // leads, set apart: it's the mode everything is laid in — trailing
+            // beside the straight, it read as a straight-only setting. The
+            // RADIUS picker sits against the corner pair, the one thing it
+            // modifies. Both pickers are direct: three fixed options, a tap
+            // beats a swipe.
+            triStack(values: [Pitch.up, .flat, .down], current: buildPitch) {
+                buildPitch = $0
+            } content: { value in
+                pitchGlyph(value)
+            }
+            .padding(.trailing, 8)
             pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
             pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
-            // Direct pickers, all options visible: with exactly three values
-            // each — and no more coming — a tap beats a swipe. The radius
-            // picker sits AGAINST the corner pair it modifies; pitch applies
-            // to everything, so it closes the row.
             triStack(values: CurveRadius.allCases, current: radius) {
                 radiusRaw = $0.rawValue
             } content: { value in
@@ -25,11 +33,6 @@ extension EditorView {
             // The straight places the 1U short, but ICONS as the longer road:
             // a 1U ribbon is as wide as it is long and reads as a stub tile.
             pieceButton(straight, icon: PieceCatalog.ID.straight, walk: walk, big: true)
-            triStack(values: [Pitch.up, .flat, .down], current: buildPitch) {
-                buildPitch = $0
-            } content: { value in
-                pitchGlyph(value)
-            }
         }
     }
 
