@@ -13,7 +13,9 @@ extension EditorView {
         HStack(spacing: 12) {
             pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
             pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
-            pieceButton(straight, walk: walk, big: true)
+            // The straight places the 1U short, but ICONS as the longer road:
+            // a 1U ribbon is as wide as it is long and reads as a stub tile.
+            pieceButton(straight, icon: PieceCatalog.ID.straight, walk: walk, big: true)
             // Direct pickers, all options visible: with exactly three values
             // each — and no more coming — a tap beats a swipe. The carousels
             // this replaces needed drag state, and shared drag state is what
@@ -21,8 +23,7 @@ extension EditorView {
             triStack(values: CurveRadius.allCases, current: radius) {
                 radiusRaw = $0.rawValue
             } content: { value in
-                PieceIcon(id: corner(left: false, radius: value))
-                    .frame(width: 26, height: 26)
+                radiusGlyph(value)
             }
             triStack(values: [Pitch.up, .flat, .down], current: buildPitch) {
                 buildPitch = $0
@@ -56,14 +57,42 @@ extension EditorView {
         }
     }
 
-    /// The glyph for one pitch option.
+    /// One radius option, as an abstract arc: the tighter the option, the
+    /// harder the bend — no piece rendering, just curvature.
+    private func radiusGlyph(_ value: CurveRadius) -> some View {
+        let bend: CGFloat = value == .tight ? 11 : value == .medium ? 20 : 44
+        return Path { path in
+            path.addArc(
+                center: CGPoint(x: 2, y: 20 + bend - 4), radius: bend,
+                startAngle: .degrees(-90),
+                endAngle: .degrees(value == .tight ? 0 : -35), clockwise: false)
+        }
+        .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+        .frame(width: 26, height: 22)
+        .accessibilityLabel(Text(value.label, bundle: .module))
+    }
+
+    /// The glyph for one pitch option, as a tiny SIDE view of the road: a hill
+    /// rising or falling, and a low bar for level ground.
     private func pitchGlyph(_ value: Pitch) -> some View {
-        Image(
-            systemName: value == .up
-                ? "arrow.up.right" : value == .down ? "arrow.down.right" : "arrow.right"
-        )
-        .font(.system(size: 16, weight: .bold))
-        .foregroundColor(.white)
+        Path { path in
+            switch value {
+            case .up:
+                path.move(to: CGPoint(x: 0, y: 14))
+                path.addLine(to: CGPoint(x: 22, y: 14))
+                path.addLine(to: CGPoint(x: 22, y: 0))
+                path.closeSubpath()
+            case .down:
+                path.move(to: CGPoint(x: 0, y: 0))
+                path.addLine(to: CGPoint(x: 22, y: 14))
+                path.addLine(to: CGPoint(x: 0, y: 14))
+                path.closeSubpath()
+            case .flat:
+                path.addRect(CGRect(x: 0, y: 7, width: 22, height: 7))
+            }
+        }
+        .fill(.white)
+        .frame(width: 22, height: 14)
         .accessibilityLabel(
             Text(
                 value == .up ? "Climb" : value == .down ? "Descend" : "Level",
@@ -91,7 +120,8 @@ extension EditorView {
     /// be placed here — being refused beats a placement that breaks the track.
     @ViewBuilder
     func pieceButton(
-        _ piece: PieceID, walk: WalkResult, big: Bool, configures target: PaletteTarget? = nil
+        _ piece: PieceID, icon: PieceID? = nil, walk: WalkResult, big: Bool,
+        configures target: PaletteTarget? = nil
     ) -> some View {
         let empty = piece == EditorView.HotbarSlot.empty
         let placeable = !empty && game.editorCanAppend(piece, pitch: buildPitch)
@@ -101,7 +131,7 @@ extension EditorView {
                 .fill(.black.opacity(placeable ? 0.3 : 0.12))
             if !empty {
                 PieceIcon(
-                    id: piece, entryHeading: appendHeading(walk),
+                    id: icon ?? piece, entryHeading: appendHeading(walk),
                     entryHeight: appendHeight(walk)
                 )
                 .frame(width: side - 8, height: side - 8)
