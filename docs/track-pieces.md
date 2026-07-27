@@ -574,6 +574,63 @@ packs ~45% more characters per version than byte mode — a base32-uppercase
 code (with an uppercased share path) would exploit it if the budget ever
 tightens. Not needed at current sizes.
 
+## Planned: pitch and the half-height lattice
+
+**Decided direction (2026-07-27), supersedes the earlier curved-ramp idea.**
+Bounded to heights 0…1 this round; the unbounded "rollercoaster" version is
+the same geometry later, gated on reveal-beneath rendering.
+
+### Pitch, not ramp pieces
+
+The palette gains a **pitch** — up / level / down — and the ordinary
+straight/corner buttons place the climbing variant of themselves. There is no
+ramp button: a ramp isn't a shape, it's a road with pitch. The dedicated
+context-aware ramp sentinel retires with this.
+
+### Climbs on the same units as roads
+
+A pitched piece climbs **±half a level** and keeps the level pieces' sizes:
+the 1U straight and the 45° corners at every radius — sweep included, since
+physics restricts nothing (a flat-out car gains half a level in ~54 units of
+road; the shortest pitched piece is 94). Level road may rest at 0.5, so a
+climb is two taps and can pause mid-way.
+
+This dissolves the old "half a ramp is meaningless" argument by making 0.5 a
+legitimate resting height — and with it, today's 2U full-climb ramp becomes a
+**compound of two halves with a seam at the apex**, so checkpoints work
+mid-climb like everywhere else. The old `rampUp`/`rampDown` ids stay as
+compounds in the expansion table; the built-ins re-encode, and older codes
+stop loading (pre-release, as before).
+
+### Rules that follow
+
+- **Bounds are a validator rule now.** Nothing today forbids climbing past
+  the deck or digging below ground — the single ramp button was the only
+  shield, and pitch removes it. `Track.withinLevels` becomes part of
+  validation (and `canAppend`), clamping 0…1 this round; tunnels later lower
+  `lowestLevel`, the rollercoaster later raises `highestLevel`.
+- **Crossing needs a full level of air, regardless of the lattice.** A car
+  cannot duck under half a storey, so road at 0.5 may not cross road at 0 or
+  1 — only at a full level away. The proximity rule's vertical clearance is
+  restated as "a storey of air, less car headroom" instead of the current
+  half-level threshold, which would otherwise sit exactly on the new lattice
+  (a float knife-edge). The editor should expect "but I'm above it!"
+  confusion and gray with the usual honesty.
+- **Solidity is unchanged.** Road at height h stays solid from `trunc(h)` to
+  h. Whether a 0.5 road is drawn as an embankment shelf or a flying deck is
+  purely visual: sub-full-level overlap is illegal anyway, so no car is ever
+  beneath one.
+- **Mouths at half heights** reuse the gate as-is (threshold = mouth level −
+  `reachTolerance`; the one-storey band already generalizes). Rails, caps and
+  the drive-over/analytic ramp tests extend per new piece — the tests iterate
+  the catalog, so they pick the new ids up automatically, but bending climbs
+  need drive fixtures.
+
+### Open (device feel, not design)
+
+Whether pitch auto-resets to level after each placement or stays sticky, and
+how the pitch control shares the palette with the radius carousel.
+
 ## Planned: tunnels (level −1)
 
 The mirror of the bridge, one storey down. Decided so far; **the rest of this
