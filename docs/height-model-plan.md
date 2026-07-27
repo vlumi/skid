@@ -68,7 +68,13 @@ hit their own exit cap.
 - Keep 0.9 as the value if the asserts hold; the point is the pinning, not a
   new number.
 
-## 3. Level-aware helpers to replace the two-level idioms
+## 3. Level-aware helpers to replace the two-level idioms — DONE
+
+`Track.level(of:)`, `isOffGround(_:)`, `withinLevels(_:)`, `lowestLevel` /
+`highestLevel`, `levelSeparation` (TrackLevel.swift); eleven sites converted
+across SkidCore and SkidKit, zero behaviour change (suite untouched). Tunnels
+start by lowering `lowestLevel`. `Race.blocks`' rail trunc stays, commented as
+embankment-only per step 4. Original notes:
 
 **Fault.** "There are exactly two levels" is baked in as scattered idioms:
 `trunc(wall.height)` as which-level-owns-this-wall (RaceWalls.swift:66),
