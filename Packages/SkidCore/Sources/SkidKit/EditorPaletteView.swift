@@ -23,12 +23,19 @@ extension EditorView {
                 pitchGlyph(value)
             }
             .padding(.trailing, 8)
-            pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
-            pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
-            triStack(values: CurveRadius.allCases, current: radius) {
-                radiusRaw = $0.rawValue
-            } content: { value in
-                radiusGlyph(value)
+            // Radius UNDER the corner pair, exactly their width: the setting
+            // visually belongs to the buttons it sits beneath, and the whole
+            // group stands the same height as the pitch stack.
+            VStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
+                    pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
+                }
+                triStack(values: CurveRadius.allCases, current: radius, horizontal: true) {
+                    radiusRaw = $0.rawValue
+                } content: { value in
+                    radiusGlyph(value)
+                }
             }
             // The straight places the 1U short, but ICONS as the longer road:
             // a 1U ribbon is as wide as it is long and reads as a stub tile.
@@ -40,10 +47,14 @@ extension EditorView {
     /// on its outer corners only, hairline seams between the segments — so it
     /// reads as a toggle with three positions, not three unrelated buttons.
     private func triStack<Value: Hashable, Content: View>(
-        values: [Value], current: Value, select: @escaping (Value) -> Void,
+        values: [Value], current: Value, horizontal: Bool = false,
+        select: @escaping (Value) -> Void,
         @ViewBuilder content: @escaping (Value) -> Content
     ) -> some View {
-        VStack(spacing: 1) {
+        let layout =
+            horizontal
+            ? AnyLayout(HStackLayout(spacing: 1)) : AnyLayout(VStackLayout(spacing: 1))
+        return layout {
             ForEach(values, id: \.self) { value in
                 Button {
                     select(value)
@@ -54,7 +65,7 @@ extension EditorView {
                         content(value)
                             .opacity(value == current ? 1 : 0.55)
                     }
-                    .frame(width: 44, height: 32)
+                    .frame(width: horizontal ? 44 : 44, height: horizontal ? 28 : 32)
                     // A transparent fill is not hit-testable, so unselected
                     // segments were tappable only on their glyph strokes —
                     // which read as "the selected one hogs the touch area".
