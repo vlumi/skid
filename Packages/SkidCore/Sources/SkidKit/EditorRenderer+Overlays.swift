@@ -3,57 +3,6 @@ import SwiftUI
 
 /// Overlays drawn on top of the ribbons: ramp climb-markers and the start line.
 extension EditorRenderer {
-    /// A tight ladder of uniform chevrons up the middle of a ramp, all pointing
-    /// UPHILL (toward the higher end) — like a road "steep grade" sign, so a
-    /// ramp reads as a climb at a glance. A launch piece uses yellow, a plain
-    /// ramp white.
-    static func drawRampChevrons(
-        _ placed: PlacedPiece, width: Double, transform t: Transform,
-        into context: inout GraphicsContext
-    ) {
-        let poly = placed.centerlineSamples()
-        guard poly.count >= 2 else { return }
-        let color: Color = placed.piece.launches ? .yellow : .white
-        // Uphill = direction of increasing height. On a flat launch (no
-        // heightDelta) fall back to forward.
-        let uphill = placed.piece.heightDelta >= 0
-        // A tight LADDER of uniform chevrons EVENLY spaced by arc-length up the
-        // ramp center, all pointing uphill — like a road "steep grade" sign.
-        // (A straight ramp has only 2 centerline points, so pick positions by
-        // interpolating along the polyline, not by sample index — otherwise
-        // they'd all collapse onto one point.)
-        let count = 3
-        // World-scaled to the on-screen road width, so the ladder zooms with
-        // the ramp and always reads proportionate.
-        let span = max(3, width * t.scale * 0.2)
-        for c in 1...count {
-            let frac = Double(c) / Double(count + 1)
-            let (pt, tangent) = pointOnPolyline(poly, atFraction: frac)
-            let along = uphill ? tangent : Vec2(-tangent.x, -tangent.y)
-            let base = t.screen(pt)
-            // FLAT & WIDE: shallow forward depth, wider sideways reach, so it
-            // reads as a grade marking on the road rather than a "go this way"
-            // arrow. The tip still nods uphill just enough to show the slope.
-            let depth = span * 0.5
-            let halfW = span * 1.3
-            let fx = CGFloat(along.x) * depth
-            let fy = CGFloat(along.y) * depth
-            let sx = CGFloat(-along.y) * halfW
-            let sy = CGFloat(along.x) * halfW
-            // Chevron tip points uphill; the two legs trail behind it.
-            let tip = CGPoint(x: base.x + fx, y: base.y + fy)
-            let lg = CGPoint(x: base.x - fx + sx, y: base.y - fy + sy)
-            let rg = CGPoint(x: base.x - fx - sx, y: base.y - fy - sy)
-            var chev = Path()
-            chev.move(to: lg)
-            chev.addLine(to: tip)
-            chev.addLine(to: rg)
-            context.stroke(
-                chev, with: .color(color.opacity(0.85)),
-                style: StrokeStyle(
-                    lineWidth: max(1.5, span * 0.35), lineCap: .round, lineJoin: .round))
-        }
-    }
 
     /// Point + unit tangent at `frac` (0…1) of a polyline's total length.
     private static func pointOnPolyline(_ poly: [Vec2], atFraction frac: Double)
