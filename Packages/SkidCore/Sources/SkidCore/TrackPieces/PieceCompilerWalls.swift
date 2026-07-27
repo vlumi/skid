@@ -92,30 +92,31 @@ extension PieceCompiler {
         piece.piece.heightDelta != 0
     }
 
-    /// The end caps that make a ramp a closed embankment you cannot drive under.
+    /// The seal under a ramp's raised end, as a **gate**: a one-way level wall
+    /// that blocks entering from a road below this level, and nothing else.
     ///
-    /// **The high end is the important one.** A ramp rises off the ground, so the
-    /// space beneath its upper reaches is open air — driving in there is driving
-    /// *through* the embankment. Sealing it needs a wall across the ramp's mouth at
-    /// a height just BELOW the deck: high enough to stop everything underneath,
-    /// low enough that a car arriving along the ramp at deck height passes over it
-    /// and onto the bridge.
+    /// A ramp rises off the ground, so the space beneath its upper reaches is
+    /// open air — driving in there is driving *through* the embankment. The seal
+    /// used to be an ordinary rail at a tuned height (0.9): tall enough that only
+    /// a car nearly at deck height cleared its top, short enough that the
+    /// arriving climber did clear it — a coupling to the climb physics that had
+    /// already broken once (a 0.99 cap blocked the legitimate climb, because the
+    /// per-tick height clamp lands the climber at ~0.99, not 1.0). A gate says
+    /// what was always meant: you must effectively BE of the upper level to pass.
     ///
-    /// That height also has to be picked with the wall rule in mind
-    /// (`Race.blocks`): a wall blocks from `trunc(height)` up to `height`, so a cap
-    /// at 0.99 blocks 0…0.99 — everything under the deck — while the deck itself
-    /// (1.0) is clear. A cap at exactly 1.0 would have floor 1 and stop nothing
-    /// below, which is why it can't simply sit at deck height.
+    /// The threshold is `level − reachTolerance` — the same "within a car's own
+    /// reach of a level" tolerance the rail floor rule uses — so there is no
+    /// bespoke constant left to tune. It still must sit below the worst-case
+    /// arrival height of a flat-out climber; `RampGateTests` pins that for every
+    /// ramp in the catalog, so a steeper future ramp or a slower climb clamp
+    /// fails a test instead of a player.
     ///
-    /// The caps span the full width between the side rails' endpoints, so they meet
-    /// the sides exactly and leave no gap at the corners.
+    /// The gate spans the full width between the side rails' endpoints, so it
+    /// meets the sides exactly and leaves no gap at the corners.
     ///
-    /// The low end gets NO cap. It's the way in, and a wall there would have to
-    /// claim deck height to let ground cars through — which puts a "height 1" wall
-    /// 192 units from any deck-height road, misrepresenting where the deck is (a
-    /// test flagged exactly that). A car on the deck can't reach the ramp's foot
-    /// anyway: it would have to descend the slope to get there, which means it is
-    /// no longer at deck height.
+    /// The low end gets NO seal. It's the way in, and a car of the upper level
+    /// can't reach the foot anyway: it would have to descend the slope to get
+    /// there, which means it is no longer at that level.
     private static func rampEndCaps(
         left: [Vec2], right: [Vec2], samples: [(point: Vec2, height: Double)]
     ) -> [Wall] {
@@ -125,23 +126,13 @@ extension PieceCompiler {
         else { return [] }
         // The high end: a climb ends high, a descent starts high.
         let high = lastHeight > firstHeight ? (leftLast, rightLast) : (leftFirst, rightFirst)
-        // Under the raised end: solid to everyone below the deck.
-        return [Wall(from: high.0, to: high.1, height: underDeckCapHeight)]
+        let level = max(firstHeight, lastHeight).rounded()
+        return [
+            Wall(
+                from: high.0, to: high.1, height: level - Track.reachTolerance,
+                kind: .gate)
+        ]
     }
-
-    /// The cap height under a ramp's raised end.
-    ///
-    /// It has to clear the highest a car climbing the ramp actually reaches, and
-    /// that is NOT 1.0: the per-tick height clamp means the car approaches deck
-    /// height asymptotically, so it arrives at the mouth around 0.99. A cap at
-    /// 0.99 therefore blocked the legitimate climb — the car hit its own exit
-    /// (measured: heights near the cap ran 0.939…0.993).
-    ///
-    /// So it sits at 0.9: high enough that the only way past is to be nearly at
-    /// deck height (which means having climbed the ramp), low enough to clear the
-    /// arriving climber. With floor = trunc(0.9) = 0 it blocks 0…0.9 — everything
-    /// meaningfully below the deck.
-    private static let underDeckCapHeight = 0.9
 
     /// The map fence: a rectangle just inside the track's own bounds, on both
     /// layers, so a car can't drive off into the surrounding void.

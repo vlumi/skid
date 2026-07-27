@@ -37,7 +37,16 @@ the crossing samples' actual heights BEFORE writing the assertion. (b) The
 eight (ground road under mid-deck) must stay exempt. (c) All built-ins still
 validate (existing tests cover this — they must stay green untouched).
 
-## 2. Derive the under-deck cap; pin the cap↔climb coupling
+## 2. Derive the under-deck cap; pin the cap↔climb coupling — DONE
+
+Done differently (and better) than planned below: the cap is now a **gate**
+wall kind — "blocks every car below my height, passes everyone at or above" —
+at `level − reachTolerance`, so the bespoke 0.9 constant is gone entirely and
+the seal says what it means: you may not enter from a road below this level.
+`RampGateTests` pins the remaining physics coupling both ways (analytic
+inequality over every catalog ramp + a flat-out drive-over per ramp pairing).
+A tunnel mouth will want the mirrored kind (blocking from above) in step 4.
+Original notes:
 
 **Fault.** `underDeckCapHeight = 0.9` (PieceCompilerWalls.swift) works only
 because a flat-out climber on a 240-unit ramp arrives at ~0.99, an artifact of
