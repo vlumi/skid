@@ -41,8 +41,8 @@ final class BuiltinCodeTests: XCTestCase {
     /// fault appears, which is why this is pinned by count.
     func testTheDeckBetweenRampsCarriesNoCap() throws {
         let track = TrackLibrary.track(id: "eight")
-        let caps = track.walls.filter { abs($0.height - 0.9) < 1e-9 }
-        XCTAssertEqual(caps.count, 2, "expected exactly one cap per ramp")
+        let caps = track.walls.filter { $0.kind == .gate }
+        XCTAssertEqual(caps.count, 2, "expected exactly one gate per ramp")
 
         // And the decisive part: no cap may block the ground road under the bridge.
         for cap in caps {

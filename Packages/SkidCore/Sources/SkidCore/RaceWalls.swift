@@ -61,10 +61,24 @@ extension Race {
     /// per-tick clamp means the climb approaches deck height asymptotically.)
     /// The floor keeps a tolerance — that end is about which level the wall belongs
     /// to, and a car's own size matters there.
-    private func blocks(_ wall: Wall, car: CarState) -> Bool {
-        guard wall.kind != .boundary else { return true }
-        let floor = wall.height.rounded(.down)
-        return car.height >= floor - Track.reachTolerance && car.height <= wall.height
+    func blocks(_ wall: Wall, car: CarState) -> Bool {
+        switch wall.kind {
+        case .boundary:
+            return true
+        case .gate:
+            // One-way level seal: stops what comes from below, and only what
+            // comes from the ONE storey below. The gate hangs from its road
+            // down to the ground beneath it, not into the earth — a tunnel car
+            // a full level further down passes under it exactly like a ground
+            // car passes under a deck. No top rule either: a gate isn't a
+            // structure with a height a car could clear, it's a threshold
+            // ("be of this level, or stay out").
+            return car.height < wall.height
+                && car.height >= wall.height - Track.levelHeight
+        case .rail:
+            let floor = wall.height.rounded(.down)
+            return car.height >= floor - Track.reachTolerance && car.height <= wall.height
+        }
     }
 
     /// The point on `wall` nearest the car's swept path this tick — treating the
