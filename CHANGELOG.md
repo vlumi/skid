@@ -26,6 +26,20 @@ ships (see [AGENTS.md](AGENTS.md)).
   top row is just turn left, turn right and go straight — **swipe the corners** to
   change how tight they are, and your choice is remembered. Below it sit the slots
   you fill yourself: long-press one to choose what it holds.
+- **A smoother Eight.** The built-in figure-eight was rebuilt in the editor
+  with the new pitch tools — gentle sweeping climbs instead of straight ramps.
+- **Skid marks on bridges.** Rubber, mud and scuffs now print at every height,
+  each drawn on its own level — deck marks on the deck, ground marks under it.
+- **Direct pickers instead of swipe-carousels.** Corner radius and pitch are
+  three always-visible buttons each: tap what you want. The carousels' shared
+  drag glitch goes with them.
+- **Gate taps land where you aim.** Tapping to set a checkpoint used to need
+  the piece before the seam you meant; now the tap targets the seam itself.
+- **Lay road uphill and downhill.** A pitch selector (up / level / down)
+  joins the palette: every straight and corner can climb or descend half a
+  level, so ramps stop being a special button — build a bridge from any shape,
+  at any radius, pause a climb halfway, and put a checkpoint at its apex. The
+  under-bridge rules follow automatically: embankments seal, decks stay open.
 - **Build any shape from the same few pieces.** Corners are 45°, so two make a
   90° and four make a hairpin — which means you can put a checkpoint at a
   hairpin's apex, or anywhere else you like, instead of only where a big

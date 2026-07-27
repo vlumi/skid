@@ -22,7 +22,7 @@ struct ClosureSearch {
     /// Pieces the search may use: plain drivable road only — no start piece
     /// (exactly one per track), no forks/crossings/jumps (each carries rules of
     /// its own), no ramps (they change height).
-    private let candidates: [(id: PieceID, piece: Piece)]
+    private let candidates: [Candidate]
     /// Pavement a new run must avoid, indexed under the one proximity rule
     /// (`RoadProximity`). The WHOLE chain, ends included: the run legitimately
     /// hugs the chain's end where it launches and the start piece where it
@@ -53,18 +53,31 @@ struct ClosureSearch {
         self.goal = goal
         self.maxPieces = maxPieces
         let placed = layout.walk().placed
-        // Ramps are offered only when the road is currently ELEVATED — it then
-        // has to come down before the ring can close, and a ramp is the only
-        // piece that does that. On the ground they'd just build a bridge to
-        // nowhere, so they stay out.
-        let elevated = Track.isOffGround(placed.last?.exitHeight ?? 0)
-        candidates =
+        // Level pieces, the descending compounds, and pitched-DOWN variants of
+        // the primitives — a run may need to come down (including from a HALF
+        // level, which only a pitched piece can do), but never up: closing
+        // means returning to the ground, and per-node height bounds prune any
+        // descent below it, so nothing descends on the ground anyway.
+        let level =
             PieceCatalog.all
             .filter { $0.key != PieceCatalog.startPieceID && $0.value.kind == .road }
-            .filter { elevated ? $0.value.heightDelta <= 0 : $0.value.heightDelta == 0 }
             .filter { !$0.value.launches }
-            .map { (id: $0.key, piece: $0.value) }
-            .sorted { (Self.cost($0.piece), $0.id) < (Self.cost($1.piece), $1.id) }
+        candidates =
+            (level.filter { $0.value.heightDelta == 0 }
+            .flatMap { entry -> [Candidate] in
+                PieceExpansion.isPrimitive(entry.key)
+                    ? [
+                        Candidate(id: entry.key, piece: entry.value, pitch: .flat),
+                        Candidate(id: entry.key, piece: entry.value, pitch: .down),
+                    ]
+                    : [Candidate(id: entry.key, piece: entry.value, pitch: .flat)]
+            }
+            + level.filter { $0.value.heightDelta < 0 }
+            .map { Candidate(id: $0.key, piece: $0.value, pitch: .flat) })
+            .sorted {
+                (Self.cost($0.piece), $0.id, $0.pitch.rawValue)
+                    < (Self.cost($1.piece), $1.id, $1.pitch.rawValue)
+            }
         let gap = placed.last?.exits.first.map {
             $0.position.vec2.distance(to: goal.position.vec2)
         }
@@ -86,11 +99,10 @@ struct ClosureSearch {
     }
 
     /// Each candidate sampled once per heading, from the origin.
-    private static func originShapes(
-        of candidates: [(id: PieceID, piece: Piece)]
-    ) -> [ShapeKey: [Vec2]] {
+    private static func originShapes(of candidates: [Candidate]) -> [ShapeKey: [Vec2]] {
         var shapes: [ShapeKey: [Vec2]] = [:]
-        for (id, piece) in candidates {
+        for candidate in candidates {
+            let (id, piece) = (candidate.id, candidate.piece)
             for heading in 0..<8 {
                 let entry = PiecePose(
                     position: PiecePose.origin.position, heading: Heading(heading))
@@ -141,7 +153,7 @@ struct ClosureSearch {
     private struct Step {
         var pose: PiecePose
         var height: Double
-        var run: [PieceID]
+        var run: [PlannedPiece]
         var cost: Int
         var arc: Double
     }
@@ -156,7 +168,7 @@ struct ClosureSearch {
     /// Why a search came back empty — so the editor can say "not within N
     /// pieces" instead of implying no answer exists.
     enum Outcome: Equatable {
-        case found([PieceID])
+        case found([PlannedPiece])
         /// No run found within `searched` pieces. This is NOT proof that none
         /// exists: the search also gives up when every continuation would touch
         /// pavement already laid, which happens routinely near the loose end
@@ -167,7 +179,7 @@ struct ClosureSearch {
     func search(from end: PiecePose, height: Double = 0) -> Outcome {
         if end == goal, abs(height) < 0.001 { return .found([]) }
         var frontier = [Step(pose: end, height: height, run: [], cost: 0, arc: 0)]
-        var seen: Set<Visited> = [Visited(pose: end, heightStep: Track.level(of: height))]
+        var seen: Set<Visited> = [Visited(pose: end, heightStep: Int((height * 2).rounded()))]
         for depth in 0..<maxPieces {
             var next: [Step] = []
             var best: Step?
@@ -193,31 +205,38 @@ struct ClosureSearch {
         _ step: Step, into next: inout [Step], best: inout Step?, seen: inout Set<Visited>,
         remaining: Int
     ) {
-        for (id, piece) in candidates {
+        for entry in candidates {
+            let (id, piece, pitch) = (entry.id, entry.piece, entry.pitch)
             let pose = piece.paths[0].exit(from: step.pose)
-            let height = step.height + piece.heightDelta
+            let height = step.height + piece.heightDelta + pitch.delta
             // Height must stay within the world's storeys, and it has to be
-            // back at 0 to close.
+            // back at 0 to close. (This is also what keeps descent off the
+            // ground: one step below 0 is out of the world.)
             guard Track.withinLevels(height) else { continue }
             let candidate = Step(
-                pose: pose, height: height, run: step.run + [id],
+                pose: pose, height: height,
+                run: step.run + [PlannedPiece(id: id, pitch: pitch)],
                 cost: step.cost + Self.cost(piece), arc: step.arc + (arcOf[id] ?? 0))
             if pose == goal && abs(height) < 0.001 {
                 // Keep looking at this depth for a gentler run of the same
                 // length — the first hit isn't always the tidiest.
                 guard best.map({ candidate.cost < $0.cost }) ?? true else { continue }
-                guard staysClear(id, piece, from: step, to: pose) else { continue }
+                guard staysClear(id, piece, pitch: pitch, from: step, to: pose) else {
+                    continue
+                }
                 best = candidate
                 continue
             }
-            let visited = Visited(pose: pose, heightStep: Track.level(of: height))
+            // Half-LEVEL granularity: rounding 0.5 into a whole storey would
+            // collapse distinct heights into one visited state.
+            let visited = Visited(pose: pose, heightStep: Int((height * 2).rounded()))
             guard !seen.contains(visited) else { continue }
             // Prune what can no longer get home: if the goal is further than the
             // remaining pieces could carry the road, nothing downstream closes.
             guard (goal.position.vec2 - pose.position.vec2).length <= reach * Double(remaining)
             else { continue }
             guard inWindow(id, from: step, to: pose) else { continue }
-            guard staysClear(id, piece, from: step, to: pose) else { continue }
+            guard staysClear(id, piece, pitch: pitch, from: step, to: pose) else { continue }
             seen.insert(visited)
             next.append(candidate)
         }
@@ -247,7 +266,7 @@ struct ClosureSearch {
     /// worst slightly permissive here — `confirmed` re-checks the winner with
     /// the true geometry).
     private func staysClear(
-        _ id: PieceID, _ piece: Piece, from step: Step, to pose: PiecePose
+        _ id: PieceID, _ piece: Piece, pitch: Pitch, from step: Step, to pose: PiecePose
     ) -> Bool {
         guard let shape = shapes[ShapeKey(id: id, heading: step.pose.heading.step)]
         else { return true }
@@ -256,15 +275,15 @@ struct ClosureSearch {
             shape: shape, at: step.pose.position.vec2,
             run: RunContext(
                 arcBefore: step.arc, exitToGoal: exitToGoal,
-                entryHeight: step.height, heightDelta: piece.heightDelta))
+                entryHeight: step.height, heightDelta: piece.heightDelta + pitch.delta))
     }
 
     /// The local clearance test is an approximation, so the winning run goes
     /// through the real validator before it's offered. Height must come home
     /// too: a run that closes the ring while still on the deck isn't a closure.
-    private func confirmed(_ run: [PieceID]) -> Bool {
+    private func confirmed(_ run: [PlannedPiece]) -> Bool {
         var candidate = layout
-        candidate.append(contentsOf: run.flatMap { PieceExpansion.expand($0) })
+        candidate.append(contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
         let problems = TrackValidator.validate(candidate).problems
         // Everything except the gate rule, which is a separate one-tap step the
         // author does afterwards (and is present on every editor track, so
@@ -274,6 +293,25 @@ struct ClosureSearch {
             if case .openEnds = problem { return false }  // the run closes them
             return true
         }
+    }
+}
+
+/// A piece the search may lay, at a pitch.
+private struct Candidate {
+    var id: PieceID
+    var piece: Piece
+    var pitch: Pitch
+}
+
+/// One step of a suggested run: which piece, laid at what pitch. What the
+/// closure search returns and what applying a suggestion expands.
+public struct PlannedPiece: Equatable, Sendable {
+    public var id: PieceID
+    public var pitch: Pitch
+
+    public init(id: PieceID, pitch: Pitch = .flat) {
+        self.id = id
+        self.pitch = pitch
     }
 }
 
@@ -291,7 +329,7 @@ private struct ShapeKey: Hashable {
 /// expands per piece (`canAppend`/`editorAppendRun` already do), which is also
 /// what carries each half-climb's pitch into the layout.
 public enum ClosureOutcome: Equatable, Sendable {
-    case found([PieceID])
+    case found([PlannedPiece])
     /// No run found within `searched` pieces — which is NOT proof that none
     /// exists (the search also stops when every continuation would touch
     /// pavement already laid). Phrase it as a limit, never as "impossible".
@@ -320,7 +358,7 @@ extension TrackLayout {
     /// The closing run if one was found within `maxPieces`, else nil.
     public func closingRun(
         from end: PiecePose, to target: PiecePose? = nil, maxPieces: Int = 4
-    ) -> [PieceID]? {
+    ) -> [PlannedPiece]? {
         guard case .found(let run) = closingOutcome(from: end, to: target, maxPieces: maxPieces)
         else { return nil }
         return run
