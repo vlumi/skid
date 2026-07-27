@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 8 — 2026-07-27
+
 - **A rebuilt editor palette.** Picking a piece used to mean tabs, a radius row,
   and ten buttons that multiplied with every family added to the catalog. Now the
   top row is just turn left, turn right and go straight — **swipe the corners** to
