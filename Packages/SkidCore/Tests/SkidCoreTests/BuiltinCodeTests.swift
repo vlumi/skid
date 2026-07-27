@@ -27,6 +27,28 @@ final class BuiltinCodeTests: XCTestCase {
         }
     }
 
+    /// **Every built-in is lappable by the AI.** A shipped track that the AI
+    /// can't complete is broken for single-player and for filling a grid, and
+    /// the raised-baseline clover is exactly the kind of track where height
+    /// handling could silently strand it.
+    func testEveryBuiltinIsLappableByTheAI() {
+        for track in TrackLibrary.all {
+            var race = Race(
+                track: track, players: [PlayerID(0)], config: RaceConfig(laps: 1))
+            var driver = AIDriver()
+            var ticks = 0
+            while race.cars[0].progress.finishedAt == nil, ticks < 120 * Race.tickRate {
+                race.advance(
+                    inputs: [PlayerID(0): driver.input(car: race.cars[0].state, track: track)])
+                ticks += 1
+            }
+            let progress = race.cars[0].progress
+            XCTAssertNotNil(
+                progress.finishedAt,
+                "AI never lapped \(track.id) (gate \(progress.nextGate), lap \(progress.lap))")
+        }
+    }
+
     /// **One cap per ramp, and none on the deck between them.**
     ///
     /// The under-deck cap seals the open air beneath a ramp's raised end. It is a

@@ -308,8 +308,45 @@ extension EditorView {
         }
     }
 
+    /// **Whole-track transforms: turn either way, raise, lower.**
+    ///
+    /// These act on the track as a whole, so they don't belong among the top
+    /// bar's file actions (Done / New / Copy / Paste) — and that row is already
+    /// tight on a small phone. One row of four, laid out above the hint line
+    /// rather than floated over the map: a 2×2 pad anchored to a map corner sat
+    /// right on top of the palette on an SE, and a second row of buttons costs
+    /// the vertical space that screen is short of.
+    ///
+    /// Raise/lower gray out when the shift would push any part of the track out
+    /// of the world's storeys — most of the time, once a track climbs a full
+    /// level.
+    @ViewBuilder
+    var transformPad: some View {
+        HStack(spacing: 6) {
+            mapAction("rotate.left", tint: .white, label: "Rotate 45° left") {
+                game.editorRotate(eighths: 1)
+            }
+            mapAction("rotate.right", tint: .white, label: "Rotate 45° right") {
+                game.editorRotate(eighths: -1)
+            }
+            mapAction(
+                "arrow.up.to.line", tint: .white, label: "Raise track",
+                enabled: game.canShiftHeight(steps: 1)
+            ) {
+                game.editorShiftHeight(steps: 1)
+            }
+            mapAction(
+                "arrow.down.to.line", tint: .white, label: "Lower track",
+                enabled: game.canShiftHeight(steps: -1)
+            ) {
+                game.editorShiftHeight(steps: -1)
+            }
+        }
+    }
+
     private func mapAction(
-        _ symbol: String, tint: Color, label: LocalizedStringKey, action: @escaping () -> Void
+        _ symbol: String, tint: Color, label: LocalizedStringKey, enabled: Bool = true,
+        action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
@@ -321,7 +358,9 @@ extension EditorView {
                     in: Circle()
                 )
                 .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
+                .opacity(enabled ? 1 : 0.35)
         }
+        .disabled(!enabled)
         .accessibilityLabel(Text(label, bundle: .module))
     }
 }

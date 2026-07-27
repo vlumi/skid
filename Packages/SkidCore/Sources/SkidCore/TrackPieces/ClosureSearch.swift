@@ -17,6 +17,9 @@ import Foundation
 struct ClosureSearch {
     let layout: TrackLayout
     let goal: PiecePose
+    /// The height the ring has to come home to — the layout's baseline, which a
+    /// raised track puts off the ground.
+    let goalHeight: Double
     let maxPieces: Int
 
     /// Pieces the search may use: plain drivable road only — no start piece
@@ -51,13 +54,15 @@ struct ClosureSearch {
     init(layout: TrackLayout, goal: PiecePose, maxPieces: Int) {
         self.layout = layout
         self.goal = goal
+        self.goalHeight = layout.originHeight
         self.maxPieces = maxPieces
         let placed = layout.walk().placed
-        // Level pieces, the descending compounds, and pitched-DOWN variants of
-        // the primitives — a run may need to come down (including from a HALF
-        // level, which only a pitched piece can do), but never up: closing
-        // means returning to the ground, and per-node height bounds prune any
-        // descent below it, so nothing descends on the ground anyway.
+        // Level pieces, the climbing/descending compounds, and BOTH pitched
+        // variants of the primitives. A run may need to come down — or up: home
+        // is the layout's baseline, and a raised track's loose end can sit
+        // below it (drop half a level mid-loop and you must climb back). The
+        // per-node height bounds keep everything inside the world's storeys, so
+        // offering both directions can't wander out of range.
         let level =
             PieceCatalog.all
             .filter { $0.key != PieceCatalog.startPieceID && $0.value.kind == .road }
@@ -69,10 +74,11 @@ struct ClosureSearch {
                     ? [
                         Candidate(id: entry.key, piece: entry.value, pitch: .flat),
                         Candidate(id: entry.key, piece: entry.value, pitch: .down),
+                        Candidate(id: entry.key, piece: entry.value, pitch: .up),
                     ]
                     : [Candidate(id: entry.key, piece: entry.value, pitch: .flat)]
             }
-            + level.filter { $0.value.heightDelta < 0 }
+            + level.filter { $0.value.heightDelta != 0 }
             .map { Candidate(id: $0.key, piece: $0.value, pitch: .flat) })
             .sorted {
                 (Self.cost($0.piece), $0.id, $0.pitch.rawValue)
@@ -177,7 +183,7 @@ struct ClosureSearch {
     }
 
     func search(from end: PiecePose, height: Double = 0) -> Outcome {
-        if end == goal, abs(height) < 0.001 { return .found([]) }
+        if end == goal, abs(height - goalHeight) < 0.001 { return .found([]) }
         var frontier = [Step(pose: end, height: height, run: [], cost: 0, arc: 0)]
         var seen: Set<Visited> = [Visited(pose: end, heightStep: Int((height * 2).rounded()))]
         for depth in 0..<maxPieces {
@@ -217,7 +223,7 @@ struct ClosureSearch {
                 pose: pose, height: height,
                 run: step.run + [PlannedPiece(id: id, pitch: pitch)],
                 cost: step.cost + Self.cost(piece), arc: step.arc + (arcOf[id] ?? 0))
-            if pose == goal && abs(height) < 0.001 {
+            if pose == goal && abs(height - goalHeight) < 0.001 {
                 // Keep looking at this depth for a gentler run of the same
                 // length — the first hit isn't always the tidiest.
                 guard best.map({ candidate.cost < $0.cost }) ?? true else { continue }

@@ -26,17 +26,35 @@ extension TrackRenderer {
         // into the elevated pass and drawn up on the deck. The debug overlay caught
         // it — a car reading "h 0.00 / grass / off road 101" drawn on the bridge.
         //
-        // Being on the ramp means: at the ramp's height AND on its asphalt.
-        func onRamp(_ car: Car) -> Bool {
-            let state = car.state
-            guard track.isOnRamp(state.position, height: state.height) else { return false }
-            return track.distanceToCenterline(state.position, height: state.height)
-                <= track.width / 2
+        // Which pass a car draws in follows its HEIGHT alone. The general
+        // rule: a ribbon may cover only cars a FULL LEVEL below it (that's the
+        // clearance road-over-road requires), so a car draws under exactly the
+        // ribbon passes that are a storey above it. With today's two storeys
+        // that collapses to one split: only true GROUND cars can have road
+        // above them, and everything even slightly off the ground draws after
+        // the elevated ribbons. Splitting cars at the shelf (0.5) instead
+        // clipped a descending car whose tail still overlapped the upper half
+        // while its height had already reached the shelf.
+        //
+        // More storeys need per-storey interleaving of ribbon and car passes,
+        // not a wider version of this split — `RenderBandTests` trips the day
+        // `Track.highestLevel` rises, per the rollercoaster plan.
+        //
+        // Measured at the BODY'S CORNERS, not the centre: a car is a
+        // rectangle, and deciding by one point clipped whichever end still
+        // hung over road of the other pass at a band seam. Corners rather than
+        // tires because the drawn nose and tail overhang the axles — the tail
+        // could clear on all four tires and still get painted over. It stays a
+        // ground car only when all of it is over ground-height road.
+        func onGround(_ car: Car) -> Bool {
+            guard car.state.height <= Track.surfaceTolerance else { return false }
+            return car.state.bodyCorners.allSatisfy { corner in
+                track.height(at: corner, preferHeight: car.state.height)
+                    <= Track.surfaceTolerance
+            }
         }
-        // "On the ground" is now a height comparison, not a layer test.
-        func onGround(_ car: Car) -> Bool { car.state.height <= 0.5 }
         for (index, car) in race.cars.enumerated()
-        where onGround(car) && !car.state.isAirborne && !onRamp(car) {
+        where onGround(car) && !car.state.isAirborne {
             draw(
                 car: car.state, color: colorAt(index),
                 opacity: translucent.contains(index) ? 0.55 : 1,
@@ -51,9 +69,13 @@ extension TrackRenderer {
             if let layout = track.layout {
                 // The race's gate display is the white chrome — no editor
                 // markers here either (they were also a seam off).
+                // 0.75, not 0.5: piece heights sit on the half-level
+                // lattice, so maxima are 0, 0.5 or 1 — and 0.5 belonged to BOTH
+                // bands, double-drawing every climb's lower half over the cars
+                // on it. Anything that stays at or below the shelf is ground.
                 EditorRenderer.drawTrack(
                     walk: layout.walk(), width: track.width, gateSeams: [],
-                    transform: track.layoutTransform, heightRange: 0.5...2, into: &context)
+                    transform: track.layoutTransform, heightRange: 0.75...2, into: &context)
             } else {
                 drawRibbon(track: track, elevated: true, into: &context)
             }
@@ -66,7 +88,7 @@ extension TrackRenderer {
             // shows through as a bubble in its color. Ramp climbers are
             // fully visible on their slope — no bubble.
             for (index, car) in race.cars.enumerated()
-            where onGround(car) && !onRamp(car)
+            where onGround(car)
                 && track.distanceToCenterline(car.state.position, height: 1)
                     < track.width / 2 + 8
             {
@@ -77,7 +99,7 @@ extension TrackRenderer {
             // Elevation.scale factor the road width uses), so a car grows as it
             // climbs and reads as elevated on the deck — no discrete pop.
             for (index, car) in race.cars.enumerated()
-            where !car.state.isAirborne && (!onGround(car) || onRamp(car)) {
+            where !car.state.isAirborne && !onGround(car) {
                 // The car's own height IS the scale now — no reconstruction.
                 draw(
                     car: car.state, color: colorAt(index),
