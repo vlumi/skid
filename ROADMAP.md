@@ -177,6 +177,20 @@ What's left:
       road at all. Fixing it in the current scheme means one more clause, which
       is the argument for doing this properly.
 
+- [ ] **BUG: hairline gaps at piece seams** (iPhone 13 mini, worst at the
+      two-piece ramp's mid-climb seam). Abutting pieces are already overlapped
+      to hide this — `extendEnds(by: 0.6)` on the road fill and the deck rails —
+      but the extension is applied in the CURRENT coordinate space and then
+      scaled: measured, 0.6 units becomes 0.60 screen points in the race view
+      (world space, scale 1) but only ~0.28 on a whole canvas on an SE and
+      ~0.18 zoomed out, while one device pixel is 0.33 points at 3×. So the
+      fudge is sub-pixel exactly where the gaps appear. Kerbs get no extension
+      at all, and the ramp seam is the most visible case because both halves are
+      height-shaded, so the gap shows against a gradient rather than flat grey.
+      Fix direction (the maintainer's, and it matches what the code already
+      attempts): size the overlap in SCREEN points — at least ~1 point after
+      scaling — and apply it to kerbs and walls as well as the fill.
+
 - [ ] **BUG: on notched phones the stick clamps but the input doesn't.** The
       floating stick's origin is clamped to the player's safe-area-inset zone
       (`clampStick`, margin = radius + 18) while touches are still accepted
