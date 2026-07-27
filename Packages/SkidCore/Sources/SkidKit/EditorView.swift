@@ -104,6 +104,12 @@ struct EditorView: View {
 
                 // Delete and Close sit ON the map, at the end they act on.
                 mapActions(walk: walk, transform: transform)
+                // Whole-track transforms, bottom-left of the map area: clear of
+                // the top bar and of the palette's own map actions.
+                transformPad
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .padding(.leading, 12)
+                    .padding(.bottom, 12)
                 topBar
                 paletteBar(walk: walk)
             }
@@ -190,12 +196,6 @@ struct EditorView: View {
                 // reshaped since.
                 iconButton("scope", "Center on canvas") {
                     game.editorCenterOnCanvas()
-                }
-                // Turn the whole track 45°. Also the fix when the size limit
-                // blocks a piece: a diagonal run spends its length on both axes
-                // at once, so squaring it up shrinks the bounding box.
-                iconButton("rotate.right", "Rotate 45°") {
-                    game.editorRotate()
                 }
                 // Copy the share code out — how a design becomes a built-in, or
                 // gets kept somewhere until there's a real track library. The icon
