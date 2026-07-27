@@ -129,7 +129,12 @@ public enum TrackValidator {
         // inlet, so a ring closing onto the origin could sneak through elevated.)
         // Only meaningful once the ring IS closed: mid-build, standing on the
         // deck is exactly what you'd expect.
-        if walk.openEnds.isEmpty, let last = walk.placed.last, abs(last.exitHeight) > 0.001 {
+        // A ring must come home to the height it STARTED at — which is the
+        // layout's baseline now, not necessarily the ground: a whole track may
+        // sit on the deck.
+        if walk.openEnds.isEmpty, let last = walk.placed.last,
+            abs(last.exitHeight - layout.originHeight) > 0.001
+        {
             problems.append(.unclosedHeight(last.exitHeight))
         }
 
