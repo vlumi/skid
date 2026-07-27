@@ -96,6 +96,19 @@ final class RenderBandTests: XCTestCase {
         return best?.seam
     }
 
+    /// **The car interleave assumes two storeys — this trips when that ends.**
+    /// The race view draws ground ribbons, ground cars, elevated ribbons, then
+    /// everything else; the general rule (a ribbon covers only cars a full
+    /// level below it) collapses to that single split ONLY while the world has
+    /// storeys 0 and 1. Raising `highestLevel` (the rollercoaster) needs
+    /// per-storey interleaving of ribbon and car passes first — see the plan in
+    /// docs/track-pieces.md.
+    func testTheCarInterleaveMatchesTheWorldsStoreys() {
+        XCTAssertEqual(
+            Track.highestLevel, 1,
+            "add per-storey render passes before raising the world's ceiling")
+    }
+
     /// **Every piece draws in exactly one pass.** In both is a double-draw
     /// whose second copy buries the cars on that piece; in neither is a hole in
     /// the road. This is the invariant behind two shipped artifacts: a ground
