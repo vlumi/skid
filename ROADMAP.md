@@ -148,6 +148,62 @@ What's left:
       - **Rethink the delete icon.** The undo-arrow reads as "undo last action"
         rather than "remove this piece".
       Longer term: real undo.
+- [ ] **Draw by z-order, not by two hardcoded passes.** *(Replaces a growing
+      pile of per-case rules — the maintainer's call, and the right one.)*
+
+      The renderer draws in two fixed passes (`heightRange -1...0.5`, then
+      `0.5...2`), so every object needs a rule deciding which pass it belongs
+      to: ribbons by their max height, cars by their body corners over
+      ground-height road, marks by a height threshold, gates by their own. Each
+      new situation adds a clause, and the passes have already leaked into the
+      structure — the bridge is currently drawn *inside* `drawCars`, because
+      "when" and "what" got conflated.
+
+      Instead: give every drawable a **height** and a **kind**, sort by
+      `(height, kind)` with a fixed kind order — ground < kerb < road < wall <
+      mark < car — and draw the sorted list. Then "a bridge covers the car
+      beneath it" and "a car sits on its own road" are the same fact, one
+      comparison, no special cases. It also generalizes to the levels that are
+      coming (tunnels below, the rollercoaster above), where per-pass rules
+      would multiply.
+
+      **This subsumes the open bug it replaces:** a car on the GRASS under a
+      bridge draws on top of it (reported again on build 8). The pass rule asks
+      whether the car's corners are over ground-height *road*, and grass answers
+      "no road here" — indistinguishable from "road above the ground" — so an
+      off-ribbon car under a deck lands in the elevated group. Debug overlay
+      reads `h 0.00 / grass / off road 148` while the car is drawn on the deck.
+      Under a z-order its height (0) places it correctly without asking about
+      road at all. Fixing it in the current scheme means one more clause, which
+      is the argument for doing this properly.
+
+- [ ] **BUG: hairline gaps at piece seams** (iPhone 13 mini, worst at the
+      two-piece ramp's mid-climb seam). Abutting pieces are already overlapped
+      to hide this — `extendEnds(by: 0.6)` on the road fill and the deck rails —
+      but the extension is applied in the CURRENT coordinate space and then
+      scaled: measured, 0.6 units becomes 0.60 screen points in the race view
+      (world space, scale 1) but only ~0.28 on a whole canvas on an SE and
+      ~0.18 zoomed out, while one device pixel is 0.33 points at 3×. So the
+      fudge is sub-pixel exactly where the gaps appear. Kerbs get no extension
+      at all, and the ramp seam is the most visible case because both halves are
+      height-shaded, so the gap shows against a gradient rather than flat grey.
+      Fix direction (the maintainer's, and it matches what the code already
+      attempts): size the overlap in SCREEN points — at least ~1 point after
+      scaling — and apply it to kerbs and walls as well as the fill.
+
+- [ ] **BUG: on notched phones the stick clamps but the input doesn't.** The
+      floating stick's origin is clamped to the player's safe-area-inset zone
+      (`clampStick`, margin = radius + 18) while touches are still accepted
+      from outside it, so a finger out in the inset area produces a knob that
+      can't travel any further: pulling "down" (toward the zone) works, but
+      moving sideways just slides the origin along the clamp edge instead of
+      deflecting the stick — turning becomes nearly impossible. Fix direction:
+      an out-of-zone finger should still AIM (point the stick at the finger,
+      full deflection along that bearing) rather than drag the origin; the
+      clamp should bound where the stick is DRAWN, not what the input means.
+      Also worth checking per side: the notch side genuinely has no touchable
+      area, but the opposite side's inset may not need reserving at all.
+
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
