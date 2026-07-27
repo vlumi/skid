@@ -85,6 +85,7 @@ public enum PieceCompiler {
             layout: layout,
             startSlots: slots,
             startHeading: heading,
+            startHeight: layout.originHeight,
             size: TrackValidator.canvas)
         return framed(unframed)
     }

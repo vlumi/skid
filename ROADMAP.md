@@ -83,6 +83,9 @@ What's left:
       interactive spring rather than a spring applied only to the settled index.
 - [ ] **Editor conveniences.** Build from either end of a chain, not just the
       last loose end. Longer term: undo.
+- [ ] **Height readout on the map.** A tiny label on each piece showing its
+      height, behind a show/hide toggle — building in three dimensions from a
+      top-down view means the numbers are otherwise only inferable from shading.
 
 ## v0.7.0 — Mac, physical controls & orientation
 

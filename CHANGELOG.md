@@ -26,6 +26,13 @@ ships (see [AGENTS.md](AGENTS.md)).
   top row is just turn left, turn right and go straight — **swipe the corners** to
   change how tight they are, and your choice is remembered. Below it sit the slots
   you fill yourself: long-press one to choose what it holds.
+- **A new built-in: Clover.** Four sweeping loops that cross themselves at two
+  heights, and the first track whose start line sits up on the deck — the lap
+  dips down to ground level and climbs back.
+- **Raise and lower a whole track.** New corner controls on the map turn the
+  track either way and lift or drop it half a level at a time — so a start line
+  can sit up on the deck, and a bridge can cross under itself. The height
+  buttons gray out when there's no room left to move.
 - **A smoother Eight.** The built-in figure-eight was rebuilt in the editor
   with the new pitch tools — gentle sweeping climbs instead of straight ramps.
 - **Skid marks on bridges.** Rubber, mud and scuffs now print at every height,

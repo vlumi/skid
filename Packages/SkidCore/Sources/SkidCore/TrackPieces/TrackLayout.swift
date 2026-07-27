@@ -33,15 +33,21 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     public var pitches: [Pitch]
     /// Where piece 0 begins — the start line's pose on the canvas.
     public var origin: PiecePose
+    /// The height piece 0 begins at, so a whole track can sit off the ground —
+    /// a start line on the deck, a bridge that crosses under itself. Every
+    /// other height derives from it by pitch, exactly as before; this is only
+    /// the baseline the walk starts from.
+    public var originHeight: Double
     /// Seam indices that are checkpoint gates (0 = the start/finish, always).
     public var gateSeams: [Int]
     public var theme: Theme
 
     public init(
         pieces: [PieceID], pitches: [Pitch] = [], origin: PiecePose = .origin,
-        gateSeams: [Int] = [0], theme: Theme = .normal
+        originHeight: Double = 0, gateSeams: [Int] = [0], theme: Theme = .normal
     ) {
         self.pieces = pieces
+        self.originHeight = originHeight
         // Normalized to the piece count so equality is structural: trailing
         // flats and an absent array mean the same layout.
         self.pitches = TrackLayout.trimmed(pitches)
@@ -349,9 +355,9 @@ extension TrackLayout {
         // continued exit. A loose end "mates" when it lands on an inlet exactly
         // and head-on. The origin inlet stays available the whole walk so a
         // ring closes onto it.
-        var inlets: [(pose: PiecePose, height: Double)] = [(origin, 0)]
+        var inlets: [(pose: PiecePose, height: Double)] = [(origin, originHeight)]
         // Loose ends still to be extended (LIFO stack). Start at the origin.
-        var ends: [(pose: PiecePose, height: Double)] = [(origin, 0)]
+        var ends: [(pose: PiecePose, height: Double)] = [(origin, originHeight)]
         var seam = 0
 
         for (index, id) in pieces.enumerated() {

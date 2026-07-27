@@ -49,7 +49,12 @@ struct SetupView: View {
                 }
             }
 
-            HStack(spacing: 10) {
+            // Wraps, because the built-ins outgrew one row on a small phone
+            // (four tracks plus the custom slot). Fixed-width columns so the
+            // chips line up rather than staggering by name length.
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 96), spacing: 10)], spacing: 10
+            ) {
                 ForEach(TrackLibrary.all, id: \.id) { track in
                     choice(trackName(track.id), selected: game.trackID == track.id) {
                         game.trackID = track.id

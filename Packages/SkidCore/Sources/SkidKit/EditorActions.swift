@@ -139,6 +139,36 @@ extension CouchGame {
         return true
     }
 
+    /// Raise or lower the WHOLE track by half a level — the lattice step, so
+    /// every height stays on it.
+    ///
+    /// Nothing but the baseline moves: each piece's height derives from it by
+    /// pitch, so the shape is untouched and loop closure can't drift. Refused
+    /// when any part of the track would leave the world's storeys, which is
+    /// what `canShiftHeight` reports so the buttons can gray out instead of
+    /// failing silently — in practice a track that already climbs a full level
+    /// cannot move at all.
+    @discardableResult
+    public func editorShiftHeight(steps: Int) -> Bool {
+        guard let layout = editorLayout, canShiftHeight(steps: steps) else { return false }
+        editorLayout?.originHeight = layout.originHeight + Double(steps) * Track.levelHeight / 2
+        return true
+    }
+
+    /// Whether shifting by `steps` half-levels keeps every piece in range.
+    public func canShiftHeight(steps: Int) -> Bool {
+        guard let layout = editorLayout else { return false }
+        let delta = Double(steps) * Track.levelHeight / 2
+        let placed = layout.walk().placed
+        guard !placed.isEmpty else { return false }
+        // Both ends of every piece: a climb's low end can hit the floor while
+        // its high end is still short of the ceiling.
+        return placed.allSatisfy {
+            Track.withinLevels($0.entryHeight + delta)
+                && Track.withinLevels($0.exitHeight + delta)
+        }
+    }
+
     /// Toggle a seam as a checkpoint gate. Seam 0 is the start/finish and is
     /// permanent; the rest are the author's choice, up to the 16-gate cap.
     ///

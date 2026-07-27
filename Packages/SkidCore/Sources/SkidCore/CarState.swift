@@ -72,4 +72,17 @@ public struct CarState: Equatable, Sendable, Codable {
         let side = fwd.perpendicular
         return CarGeometry.tireOffsets.map { position + fwd * $0.x + side * $0.y }
     }
+
+    /// The drawn body's four corners in world coordinates. The tires are inset
+    /// from the body (the nose and tail overhang the axles), so anything that
+    /// cares about the car's visual extent — like which render pass may paint
+    /// over it — has to ask the corners, not the tires.
+    public var bodyCorners: [Vec2] {
+        let fwd = forward * (CarGeometry.length / 2)
+        let side = forward.perpendicular * (CarGeometry.width / 2)
+        return [
+            position + fwd + side, position + fwd - side,
+            position - fwd + side, position - fwd - side,
+        ]
+    }
 }

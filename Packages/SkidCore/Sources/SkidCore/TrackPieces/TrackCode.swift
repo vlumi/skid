@@ -42,6 +42,10 @@ public enum TrackCode {
         case gates = 2
         case origin = 3
         case theme = 4
+        /// The layout's baseline height, in HALF levels (the lattice step), as
+        /// a signed byte. Omitted when the track starts on the ground, so every
+        /// ground-level code keeps its exact bytes.
+        case baseHeight = 5
     }
 
     // MARK: - Encode
@@ -59,6 +63,10 @@ public enum TrackCode {
         appendSection(&body, .origin, encodeOrigin(layout.origin))
         if layout.theme != .normal {
             appendSection(&body, .theme, [UInt8(layout.theme.rawValue)])
+        }
+        if layout.originHeight != 0 {
+            let halves = Int((layout.originHeight / (Track.levelHeight / 2)).rounded())
+            appendSection(&body, .baseHeight, [UInt8(bitPattern: Int8(halves))])
         }
 
         var blob: [UInt8] = [UInt8(version), crc8(body)]
@@ -108,9 +116,17 @@ public enum TrackCode {
         let origin = try decodeOrigin(originPayload)
         let themeByte = sections[.theme].flatMap { $0.first }
         let theme = themeByte.flatMap { TrackLayout.Theme(rawValue: Int($0)) } ?? .normal
+        let baseHalves = sections[.baseHeight].flatMap { $0.first }.map {
+            Int(Int8(bitPattern: $0))
+        }
+        let originHeight = Double(baseHalves ?? 0) * (Track.levelHeight / 2)
+        // Hostile input: a baseline outside the world's storeys is refused here,
+        // before anything walks or allocates.
+        guard Track.withinLevels(originHeight) else { throw DecodeError.tooLarge }
 
         return TrackLayout(
-            pieces: pieces, pitches: pitches, origin: origin, gateSeams: gates, theme: theme)
+            pieces: pieces, pitches: pitches, origin: origin, originHeight: originHeight,
+            gateSeams: gates, theme: theme)
     }
 
     /// Parse the TLV body into known sections, bounds-checking every step.
