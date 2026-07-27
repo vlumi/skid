@@ -24,14 +24,13 @@ ships (see [AGENTS.md](AGENTS.md)).
 ### build 8 — 2026-07-27
 
 - **A rebuilt editor palette.** Picking a piece used to mean tabs, a radius row,
-  and ten buttons that multiplied with every family added to the catalog. Now the
-  top row is just turn left, turn right and go straight — **swipe the corners** to
-  change how tight they are, and your choice is remembered. Below it sit the slots
-  you fill yourself: long-press one to choose what it holds.
+  and ten buttons that multiplied with every family added to the catalog. Now
+  it's turn left, turn right and go straight, with how-tight and uphill/downhill
+  as small three-way pickers beside them — everything visible, one tap each.
 - **A new built-in: Clover.** Four sweeping loops that cross themselves at two
   heights, and the first track whose start line sits up on the deck — the lap
   dips down to ground level and climbs back.
-- **Raise and lower a whole track.** New corner controls on the map turn the
+- **Raise and lower a whole track.** New controls above the palette turn the
   track either way and lift or drop it half a level at a time — so a start line
   can sit up on the deck, and a bridge can cross under itself. The height
   buttons gray out when there's no room left to move.
@@ -39,9 +38,6 @@ ships (see [AGENTS.md](AGENTS.md)).
   with the new pitch tools — gentle sweeping climbs instead of straight ramps.
 - **Skid marks on bridges.** Rubber, mud and scuffs now print at every height,
   each drawn on its own level — deck marks on the deck, ground marks under it.
-- **Direct pickers instead of swipe-carousels.** Corner radius and pitch are
-  three always-visible buttons each: tap what you want. The carousels' shared
-  drag glitch goes with them.
 - **Gate taps land where you aim.** Tapping to set a checkpoint used to need
   the piece before the seam you meant; now the tap targets the seam itself.
 - **Lay road uphill and downhill.** A pitch selector (up / level / down)
