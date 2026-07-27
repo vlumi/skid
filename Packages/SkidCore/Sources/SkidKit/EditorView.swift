@@ -240,19 +240,26 @@ struct EditorView: View {
             Spacer()
             VStack(spacing: 10) {
                 // Save state, or how far the selected end is from closing.
-                if game.editorIsSaveable() {
-                    Text("Track complete", bundle: .module)
-                        .font(.footnote.bold())
-                        .foregroundStyle(.white)
-                } else if let gap = closureHint(walk) {
-                    Text(verbatim: gap)
-                        .font(.footnote.monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.75))
-                } else {
-                    Text("Extend the loose end to close the loop", bundle: .module)
-                        .font(.footnote)
-                        .foregroundStyle(.white.opacity(0.75))
+                Group {
+                    if game.editorIsSaveable() {
+                        Text("Track complete", bundle: .module)
+                            .font(.footnote.bold())
+                            .foregroundStyle(.white)
+                    } else if let gap = closureHint(walk) {
+                        Text(verbatim: gap)
+                            .font(.footnote.monospacedDigit())
+                            .foregroundStyle(.white.opacity(0.9))
+                    } else {
+                        Text("Extend the loose end to close the loop", bundle: .module)
+                            .font(.footnote)
+                            .foregroundStyle(.white.opacity(0.9))
+                    }
                 }
+                // A backdrop, because the canvas-bounds dashes run right where
+                // this line sits and made it hard to read.
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .background(.black.opacity(0.35), in: Capsule())
                 mainRow(walk: walk)
                 // The hotbar returns when it has something to hold (jumps,
                 // gaps, decorations); five empty slots are dead space.

@@ -44,7 +44,7 @@ final class EditorRegressionTests: XCTestCase {
         let run = try XCTUnwrap(
             layout.closingRun(from: end), "a tight 90° right closes this exactly")
         var closed = layout
-        closed.pieces += run
+        closed.append(contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
         let walk = closed.walk()
         XCTAssertTrue(walk.openEnds.isEmpty, "the suggested run must actually close")
         XCTAssertFalse(
@@ -62,6 +62,25 @@ final class EditorRegressionTests: XCTestCase {
         XCTAssertFalse(TrackValidator.validate(layout).problems.contains(.overlap))
     }
 
+    /// **The solver descends now.** A clover built on device ended half a
+    /// level up, one straight from home; the search used to have no pitched
+    /// candidates, so it reported "no close in 3" while a single pitched-down
+    /// straight closed it. The run must find that piece — and applying it must
+    /// land the ring closed on the ground.
+    func testTheSolverClosesFromAHalfLevel() throws {
+        let layout = try TrackCode.decode(
+            "ASEBGh8PeQMDAR4BDwMDAR4BDwMDAR4BDwMDAXoAAgEAAwUAAAAAAA")
+        let end = try XCTUnwrap(layout.walk().openEnds.first)
+        let run = try XCTUnwrap(
+            layout.closingRun(from: end), "one pitched-down short closes this")
+        XCTAssertTrue(run.contains { $0.pitch == .down }, "the run must descend: \(run)")
+        var closed = layout
+        closed.append(contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
+        XCTAssertTrue(closed.walk().openEnds.isEmpty)
+        XCTAssertEqual(closed.walk().placed.last?.exitHeight, 0)
+        XCTAssertFalse(TrackValidator.validate(closed).problems.contains(.overlap))
+    }
+
     /// Every prefix of a suggested closing run must itself be appendable — the
     /// editor applies the run one piece at a time, and each placement re-checks
     /// `canAppend`. If a mid-run step were refused, pieces would silently drop.
@@ -69,11 +88,11 @@ final class EditorRegressionTests: XCTestCase {
         var layout = try TrackCode.decode(Self.openCode)
         let end = try XCTUnwrap(layout.walk().openEnds.first)
         let run = try XCTUnwrap(layout.closingRun(from: end))
-        for id in run {
+        for planned in run {
             XCTAssertTrue(
-                TrackValidator.canAppend(id, to: layout),
-                "mid-run piece \(id) must be placeable on the growing prefix")
-            layout.append(contentsOf: PieceExpansion.expand(id))
+                TrackValidator.canAppend(planned.id, pitch: planned.pitch, to: layout),
+                "mid-run piece \(planned) must be placeable on the growing prefix")
+            layout.append(contentsOf: PieceExpansion.expand(planned.id, mode: planned.pitch))
         }
         XCTAssertTrue(layout.walk().openEnds.isEmpty)
     }

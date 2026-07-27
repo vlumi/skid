@@ -300,7 +300,8 @@ final class PieceGeometryTests: XCTestCase {
         guard let run = layout.closingRun(from: end, maxPieces: 3), !run.isEmpty else {
             return XCTFail("a run should exist within 3 pieces")
         }
-        let closed = TrackLayout(pieces: open + run)
+        var closed = TrackLayout(pieces: open)
+        closed.append(contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
         XCTAssertTrue(
             closed.walk().openEnds.isEmpty,
             "the suggested run \(run) must close the loop exactly")
@@ -320,7 +321,9 @@ final class PieceGeometryTests: XCTestCase {
         let layout = TrackLayout(pieces: snake)
         guard let end = layout.walk().openEnds.first else { return }
         if let run = layout.closingRun(from: end, maxPieces: 3), !run.isEmpty {
-            let closed = TrackLayout(pieces: snake + run, gateSeams: [0, 2])
+            var closed = TrackLayout(pieces: snake, gateSeams: [0, 2])
+            closed.append(
+                contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
             let problems = TrackValidator.validate(closed).problems
             XCTAssertFalse(
                 problems.contains(.overlap),
@@ -340,10 +343,11 @@ final class PieceGeometryTests: XCTestCase {
         XCTAssertEqual(walk.placed.last?.exitHeight, 1, "the end sits on the deck")
         guard let run = layout.closingRun(from: end, maxPieces: 4) else { return }
         XCTAssertTrue(
-            run.contains(PieceCatalog.ID.rampDown),
+            run.contains { $0.id == PieceCatalog.ID.rampDown || $0.pitch == .down },
             "a run home from the deck must descend; got \(run)")
         // And the finished ring is genuinely closed at ground level.
-        let closed = TrackLayout(pieces: onDeck + run)
+        var closed = TrackLayout(pieces: onDeck)
+        closed.append(contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
         XCTAssertTrue(closed.walk().openEnds.isEmpty, "the run must actually close the ring")
         XCTAssertEqual(closed.walk().placed.last?.exitHeight, 0, "and close on the ground")
     }
