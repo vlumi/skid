@@ -8,9 +8,12 @@ final class TrackCodeTests: XCTestCase {
     /// A layout is always **primitives** — short straights and 45° corners. The
     /// codec packs them into compounds on the way out and expands them on the way
     /// in, so a round trip returns primitives, not the compounds it was stored as.
-    private let square = TrackLayout(
-        pieces: PieceExpansion.expand(all: [15, 7, 1, 7, 1, 7, 1, 7], limit: 127)!,
-        gateSeams: [0, 2, 4, 6])
+    private let square: TrackLayout = {
+        let resolved = PieceExpansion.expand(all: [15, 7, 1, 7, 1, 7, 1, 7], limit: 127)!
+        return TrackLayout(
+            pieces: resolved.map(\.id), pitches: resolved.map(\.pitch),
+            gateSeams: [0, 2, 4, 6])
+    }()
 
     func testRoundTrip() throws {
         let code = TrackCode.encode(square)
@@ -37,8 +40,8 @@ final class TrackCodeTests: XCTestCase {
         // A decal id (128) round-trips through the varint path. Primitive layout,
         // and 128 is itself primitive (a decal variant of the short straight), so it
         // survives packing untouched.
-        let pieces = PieceExpansion.expand(all: [15, 128, 7, 1, 7, 1, 7, 1, 7], limit: 127)!
-        let layout = TrackLayout(pieces: pieces, gateSeams: [0, 4])
+        let resolved = PieceExpansion.expand(all: [15, 128, 7, 1, 7, 1, 7, 1, 7], limit: 127)!
+        let layout = TrackLayout(pieces: resolved.map(\.id), gateSeams: [0, 4])
         let back = try TrackCode.decode(TrackCode.encode(layout))
         XCTAssertEqual(back.pieces, layout.pieces)
         XCTAssertTrue(back.pieces.contains(128), "the two-byte id must survive")

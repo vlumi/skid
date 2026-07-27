@@ -25,8 +25,8 @@ final class PieceModelAcceptanceTests: XCTestCase {
         // layout holds; the quarter is written as a compound and expanded here so
         // the intent stays readable and the fixture stays honest about the model.
         let quarter =
-            PieceExpansion.expand(Pieces.curve90TightLeft)
-            + PieceExpansion.expand(Pieces.straight)
+            PieceExpansion.expand(Pieces.curve90TightLeft).map(\.id)
+            + PieceExpansion.expand(Pieces.straight).map(\.id)
         let pieces: [PieceID] =
             [Pieces.startGrid] + Array(repeating: quarter, count: 4).flatMap { $0 }
         // One gate per quarter — 4 primitives each, so they land 4 apart.

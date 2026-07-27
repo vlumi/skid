@@ -158,7 +158,12 @@ final class WallTests: XCTestCase {
                 var reached = false
                 for _ in 0..<90 {
                     race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
-                    if race.cars[0].state.position.distance(to: point) < track.width / 2 {
+                    // "Reached" means OCCUPYING the raised road, one car radius.
+                    // Half a road width read as reached before, which failed a
+                    // car legitimately parked nose-first against the mouth seal
+                    // just outside it — the seal sits ON the road's footprint,
+                    // so a blocked car stops well inside that radius.
+                    if race.cars[0].state.position.distance(to: point) < CarGeometry.radius {
                         reached = true
                         break
                     }
