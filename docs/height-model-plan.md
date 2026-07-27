@@ -162,8 +162,12 @@ ramp buttons, heights bounded 0…1 this round. Implementation order:
    precondition until the mode-switch bytes land (2b); the eight re-encoded
    with migrated seams. Gate thresholds come from each mouth's own height, so
    half-mouths seal at 0.3 and full at 0.8.
-3. Proximity clearance restated: a full storey of air minus car headroom,
-   replacing the half-level threshold that would sit on the new lattice.
+3. DONE without code: full-storey clearance already falls out of the
+   solidity intervals — road at 0.5 is solid [0, 0.5], so its gap to ground
+   is zero and to a deck exactly half a level, both inside the separation
+   threshold; the lattice sits on the safe side of every comparison. Pinned
+   by tests (half-level road may cross nothing; interval arithmetic at the
+   lattice points).
 4. Gates/rails per half-mouth (should be automatic); extend RampGateTests'
    drive fixtures to bending climbs.
 5. Palette: pitch selector; the ramp sentinel retires.
