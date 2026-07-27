@@ -172,6 +172,9 @@ public struct Track: Equatable, Sendable, Codable {
     /// Grid slots in start order (pole first), with the heading cars face.
     public var startSlots: [Vec2]
     public var startHeading: Double
+    /// The height the grid sits at — the layout's baseline, so cars spawn ON the
+    /// road when a whole track is raised rather than under it.
+    public var startHeight: Double
     /// World bounds, for the renderer's letterboxing.
     public var size: Vec2
     /// The "pit": an authored infield point, clear of the racing line, that
@@ -193,6 +196,7 @@ public struct Track: Equatable, Sendable, Codable {
         layoutOffset: Vec2 = .zero,
         startSlots: [Vec2] = [],
         startHeading: Double = 0,
+        startHeight: Double = 0,
         size: Vec2,
         pit: Vec2? = nil
     ) {
@@ -209,54 +213,10 @@ public struct Track: Equatable, Sendable, Codable {
         self.layoutOffset = layoutOffset
         self.startSlots = startSlots
         self.startHeading = startHeading
+        self.startHeight = startHeight
         self.size = size
         self.pit = pit ?? size * 0.5
     }
-
-    /// The gap between one level and the next. Ground is 0 and the bridge deck is
-    /// 1, so a level is one unit tall; everything below is derived from this rather
-    /// than picked.
-    public static let levelHeight = 1.0
-
-    /// A hair, for comparing two heights that should be equal. Float noise only —
-    /// nothing physical.
-    ///
-    /// This replaced a 0.35 "tolerance" I invented and then justified after the
-    /// fact. It was doing four unrelated jobs at once and was far too generous for
-    /// most of them, which caused a run of bugs: a car at height 0 counted as
-    /// standing on a ramp 0.22 above it, and a wall at 0.8 blocked a car at 1.15.
-    /// Each job now names the scale it actually needs — this one, `surfaceTolerance`
-    /// for standing on a road, `reachTolerance` where a car's own size matters, and
-    /// no tolerance at all for a wall's top edge.
-    public static let heightEpsilon = 0.001
-
-    /// How far apart two things can be in height and still interact physically —
-    /// roughly a car's own vertical presence.
-    ///
-    /// Needed where the question isn't "same level?" but "close enough to touch or
-    /// count": two cars colliding, or a car crossing a checkpoint gate. A car
-    /// part-way up a ramp must still be able to cross a gate near the top of it,
-    /// and must not phase through a car on the deck beside it, so this can't shrink
-    /// to an epsilon. A fifth of a level keeps ground and deck firmly distinct.
-    public static let reachTolerance = levelHeight / 5
-
-    /// How closely a car's height must match a stretch of road to be standing
-    /// **on** it. Much tighter than `heightTolerance`, and deliberately so.
-    ///
-    /// Derived from the sim: a climbing car's height moves at most
-    /// `Race.maxHeightChangePerTick` per tick, so a car genuinely driving a slope
-    /// is always within about one tick's climb of it. A shade over that keeps hold
-    /// of the road under the car and nothing else.
-    ///
-    /// These were the same number, and that single fact produced a family of
-    /// bugs. At 0.35 a car at height 0 counted as standing on a ramp that was
-    /// already 0.22 above it — measured as "asphalt / on road" from 50 units away
-    /// while the car was in fact underneath the slope. It got asphalt grip there,
-    /// and could then take the ramp's height and ride up onto the bridge from the
-    /// grass. Being *on* a surface is a much stricter question than being *at* a
-    /// level, so it gets its own, tighter answer: a shade over one tick's climb,
-    /// so a car driving a ramp keeps hold of it and nothing else does.
-    public static let surfaceTolerance = 0.12  // ≈1.5 ticks of climb
 
     /// The height of a centerline point (0 = ground, 1 = deck).
     public func height(ofPoint index: Int) -> Double {

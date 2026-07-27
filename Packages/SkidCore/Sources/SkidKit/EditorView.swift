@@ -305,16 +305,32 @@ struct EditorView: View {
     private func seam(
         near point: CGPoint, walk: WalkResult, transform: EditorRenderer.Transform
     ) -> Int? {
-        var best: (seam: Int, distance: CGFloat)?
         // Seam N is piece N's EXIT, so that exit is where the tap must land —
         // matching entries made every gate tap one piece early (the same
         // off-by-one the gate markers had). Piece 0's exit is the start line,
         // which is always a gate and not toggleable.
+        var best: SeamHit?
         for (index, placed) in walk.placed.enumerated() where index != 0 {
             let p = transform.screen(placed.exits[0].position.vec2)
             let distance = hypot(p.x - point.x, p.y - point.y)
             guard distance < EditorRenderer.endHitRadius else { continue }
-            if best == nil || distance < best!.distance { best = (index, distance) }
+            let candidate = SeamHit(
+                seam: index, distance: distance, height: placed.exitHeight)
+            guard let current = best else {
+                best = candidate
+                continue
+            }
+            // Where a bridge crosses a road, two seams answer to the same tap.
+            // Prefer the HIGHER one: it's the one drawn on top, so it's what the
+            // author is pointing at — and without this the lower road always won
+            // (the flat 2D distance decided it, and near-ties fell to whichever
+            // came first, which is the piece underneath). A seam clearly nearer
+            // still wins, so this only decides genuine overlaps.
+            let muchNearer = distance < current.distance - EditorRenderer.endHitRadius / 2
+            let higher =
+                candidate.height > current.height + 0.001
+                && distance < current.distance + EditorRenderer.endHitRadius / 2
+            if muchNearer || higher { best = candidate }
         }
         return best?.seam
     }
@@ -370,4 +386,12 @@ struct EditorView: View {
             height: view.height / 2 - cy * scale + pan.height)
         return EditorRenderer.Transform(scale: scale, offset: offset)
     }
+}
+
+/// A seam a tap could have meant: which one, how far off, and how high — the
+/// height breaks ties where a bridge crosses a road.
+private struct SeamHit {
+    var seam: Int
+    var distance: CGFloat
+    var height: Double
 }

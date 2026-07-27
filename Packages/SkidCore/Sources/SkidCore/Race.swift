@@ -108,7 +108,10 @@ public struct Race: Equatable, Sendable {
             let slot =
                 slotIndex < track.startSlots.count
                 ? track.startSlots[slotIndex] : track.startSlots.last ?? Vec2.zero
-            return Car(id: id, state: CarState(position: slot, heading: track.startHeading))
+            return Car(
+                id: id,
+                state: CarState(
+                    position: slot, heading: track.startHeading, height: track.startHeight))
         }
     }
 
@@ -263,6 +266,8 @@ public struct Race: Equatable, Sendable {
         guard onOwnRoad(car.state.position), onOwnRoad(from) else {
             // Off the road. Up high, that's a fall off the deck; on the ground,
             // it's just grass.
+            // Falling off the deck drops to the GROUND, which is a real floor
+            // regardless of where the track's grid sits.
             if car.state.height > Track.heightEpsilon {
                 car.state.height = 0
                 car.state.airborneTicks = 8
