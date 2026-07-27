@@ -68,11 +68,13 @@ public struct MarkStore {
         let state = car.state
         // Mid-air prints nothing; everything else marks its own level — the
         // elevated bucket draws after the bridge ribbon, so deck rubber shows.
+        // Same split as the cars: anything off the ground can't have road above
+        // it, so only true ground marks need to go under the bridge's paint.
         guard !state.isAirborne else {
             lastTirePositions[car.id] = nil
             return
         }
-        let elevated = state.height > 0.5
+        let elevated = state.height > Track.surfaceTolerance
         let tires = state.tirePositions
         defer { lastTirePositions[car.id] = tires }
         guard let previous = lastTirePositions[car.id], previous.count == tires.count else {

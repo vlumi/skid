@@ -26,17 +26,31 @@ extension TrackRenderer {
         // into the elevated pass and drawn up on the deck. The debug overlay caught
         // it — a car reading "h 0.00 / grass / off road 101" drawn on the bridge.
         //
-        // Which pass a car draws in follows its HEIGHT alone, because the
-        // ribbon bands PARTITION at the same boundary: at or below the
-        // half-level shelf a car stands on ground-band road (drawn before
-        // ground cars), above it on elevated-band road (drawn before elevated
-        // cars). The old scheme promoted "climbing" cars between groups by
-        // sniffing for nearby slopes, and both of its failure modes shipped:
-        // a ground car under the bridge sniffed the ramp's eased foot and rode
-        // on top, then the fix for that left a real climber buried under the
-        // foot piece's second copy — which existed only because the bands
-        // OVERLAPPED at exactly 0.5.
-        func onGround(_ car: Car) -> Bool { car.state.height <= 0.5 }
+        // Which pass a car draws in follows its HEIGHT alone. The general
+        // rule: a ribbon may cover only cars a FULL LEVEL below it (that's the
+        // clearance road-over-road requires), so a car draws under exactly the
+        // ribbon passes that are a storey above it. With today's two storeys
+        // that collapses to one split: only true GROUND cars can have road
+        // above them, and everything even slightly off the ground draws after
+        // the elevated ribbons. Splitting cars at the shelf (0.5) instead
+        // clipped a descending car whose tail still overlapped the upper half
+        // while its height had already reached the shelf.
+        //
+        // More storeys need per-storey interleaving of ribbon and car passes,
+        // not a wider version of this split — `RenderBandTests` trips the day
+        // `Track.highestLevel` rises, per the rollercoaster plan.
+        //
+        // Measured at every TIRE, not just the centre: a car is a rectangle,
+        // and deciding by one point clipped whichever end still hung over road
+        // of the other pass at a band seam. It stays a ground car only when
+        // all of it is on ground-height road.
+        func onGround(_ car: Car) -> Bool {
+            guard car.state.height <= Track.surfaceTolerance else { return false }
+            return car.state.tirePositions.allSatisfy { tire in
+                track.height(at: tire, preferHeight: car.state.height)
+                    <= Track.surfaceTolerance
+            }
+        }
         for (index, car) in race.cars.enumerated()
         where onGround(car) && !car.state.isAirborne {
             draw(
