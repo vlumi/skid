@@ -26,13 +26,7 @@ extension TrackRenderer {
         // into the elevated pass and drawn up on the deck. The debug overlay caught
         // it — a car reading "h 0.00 / grass / off road 101" drawn on the bridge.
         //
-        // Being on the ramp means: at the ramp's height AND on its asphalt.
-        func onRamp(_ car: Car) -> Bool {
-            let state = car.state
-            guard track.isOnRamp(state.position, height: state.height) else { return false }
-            return track.distanceToCenterline(state.position, height: state.height)
-                <= track.width / 2
-        }
+        func onRamp(_ car: Car) -> Bool { car.state.isClimbing(on: track) }
         // "On the ground" is now a height comparison, not a layer test.
         func onGround(_ car: Car) -> Bool { car.state.height <= 0.5 }
         for (index, car) in race.cars.enumerated()
@@ -189,5 +183,23 @@ extension TrackRenderer {
         // Cockpit dot behind the midpoint.
         let cockpit = CGRect(x: -4, y: -3.2, width: 6.4, height: 6.4)
         car2D.fill(Path(ellipseIn: cockpit), with: .color(.black.opacity(0.65)))
+    }
+}
+
+extension CarState {
+    /// Whether this car should draw in the ELEVATED pass: at a ramp's height, on
+    /// its asphalt, and meaningfully off the ground.
+    ///
+    /// The off-the-ground clause is what a ramp's foot needs. A slope starts at
+    /// ground height, so its first sliver is a "ramp segment at height ~0" — and
+    /// a ground car near the foot (measured: 47 units away, beside a segment
+    /// climbing 0.000→0.004) matched it and was promoted into the elevated pass,
+    /// showing ON TOP of the bridge it was driving under. A car still on the
+    /// ground has nothing to be lifted above; the promotion exists so a CLIMBING
+    /// car isn't swallowed by the deck edge.
+    func isClimbing(on track: Track) -> Bool {
+        guard height > Track.surfaceTolerance else { return false }
+        guard track.isOnRamp(position, height: height) else { return false }
+        return track.distanceToCenterline(position, height: height) <= track.width / 2
     }
 }
