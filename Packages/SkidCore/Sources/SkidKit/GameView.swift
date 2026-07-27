@@ -40,7 +40,7 @@ public final class CouchGame: ObservableObject {
     /// Placement verdicts memoised for the current piece list — see
     /// `editorCanAppend`. Not `@Published` on purpose: it's a cache, and
     /// invalidating views over it would defeat its point.
-    var appendVerdicts: (pieces: [PieceID], byPiece: [PieceID: Bool]) = ([], [:])
+    var appendVerdicts: (pieces: [PieceID], byPiece: [VerdictKey: Bool]) = ([], [:])
 
     public enum Mode: CaseIterable {
         case race

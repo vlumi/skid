@@ -60,15 +60,10 @@ extension EditorView {
     /// decorations — none of which is a compound. Keeping it assignable is what
     /// stops the palette growing a button per catalog family again.
     enum HotbarSlot {
-        /// Not a real catalog id — "the ramp that knows which way to go", resolved
-        /// on tap (up from the ground, down from the deck). Negative so it can
-        /// never collide with a real `PieceID`.
-        static let rampSentinel: PieceID = -1
-
-        /// What the hotbar holds on a fresh install. Only the ramp exists to put
-        /// here today; the remaining slots stay empty rather than being padded with
-        /// something arbitrary, and they fill in as pieces land.
-        static let defaults: [PieceID] = [rampSentinel]
+        /// What the hotbar holds on a fresh install: nothing. The ramp button
+        /// retired with the pitch selector (a ramp is a road with pitch, not a
+        /// shape); the slots fill in when jumps, gaps and decorations land.
+        static let defaults: [PieceID] = []
 
         /// An empty slot — draws as a placeholder and places nothing.
         static let empty: PieceID = -2
@@ -84,7 +79,7 @@ extension EditorView {
     /// can't build it, so offering it would only produce tracks that fail to
     /// compile (see docs/track-pieces.md "Beyond the ring").
     static var hotbarPieces: [PieceID] {
-        [HotbarSlot.rampSentinel]
+        []
     }
 
     /// A short label for any piece the palette can show.
@@ -93,7 +88,6 @@ extension EditorView {
     }
 
     private static let pieceLabels: [PieceID: LocalizedStringKey] = [
-        HotbarSlot.rampSentinel: "Ramp",
         HotbarSlot.empty: "Empty slot",
         PieceCatalog.ID.shortStraight: "Straight",
         PieceCatalog.ID.curve45TightLeft: "Left (tight)",

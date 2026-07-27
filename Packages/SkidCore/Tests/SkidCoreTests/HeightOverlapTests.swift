@@ -76,6 +76,51 @@ final class HeightOverlapTests: XCTestCase {
             "a road at half height crossing the ground is a collision, not a bridge")
     }
 
+    /// **The join zone is not a landing pad.** Proximity to the start entry
+    /// exempts a forming join from the overlap rule — but the join forms at
+    /// ground height, so the exemption must not admit road HOVERING there.
+    /// Found on device: a flat run at 0.5 could be parked halfway across the
+    /// start grid, because the through-join exemption was height-blind.
+    func testHalfLevelRoadCannotCoverTheStartGrid() {
+        typealias Catalog = PieceCatalog.ID
+        var layout = TrackLayout(pieces: [Catalog.startGrid], gateSeams: [0])
+        layout.append(contentsOf: PieceExpansion.expand(Catalog.shortStraight, mode: .up))
+        // A flat 0.5 loop whose next corner would sweep over the grid start.
+        for id in [
+            Catalog.curve45TightLeft, Catalog.curve45TightLeft, Catalog.curve45TightLeft,
+            Catalog.curve45TightLeft, Catalog.shortStraight, Catalog.shortStraight,
+            Catalog.curve45TightLeft, Catalog.curve45TightLeft,
+        ] {
+            layout.append(contentsOf: PieceExpansion.expand(id, mode: .flat))
+        }
+        XCTAssertFalse(
+            TrackValidator.canAppend(Catalog.curve45TightLeft, to: layout),
+            "hovering over the join zone at half height is a cover, not an approach")
+    }
+
+    /// **A descending closure is an approach, not a cover.** A clover built on
+    /// device ended half a level up, one short straight from home; the pitched-
+    /// down straight that lands exactly on the entry must be placeable — its
+    /// mid-segments sit half a level above the grid, a road-width away across
+    /// the forming join, which is precisely what road descending through a
+    /// join looks like. (The flat straight at 0.5 stays refused: it can't mate
+    /// and would butt a step-shelf against the start line.)
+    func testADescendingClosureIsPlaceable() throws {
+        let layout = try TrackCode.decode(
+            "ASEBGh8PeQMDAR4BDwMDAR4BDwMDAR4BDwMDAXoAAgEAAwUAAAAAAA")
+        typealias Catalog = PieceCatalog.ID
+        XCTAssertFalse(
+            TrackValidator.canAppend(Catalog.shortStraight, to: layout),
+            "a flat short at 0.5 is a shelf against the grid, not a closure")
+        XCTAssertTrue(
+            TrackValidator.canAppend(Catalog.shortStraight, pitch: .down, to: layout),
+            "the descending short lands on the entry and must close")
+        var closed = layout
+        closed.append(contentsOf: PieceExpansion.expand(Catalog.shortStraight, mode: .down))
+        XCTAssertTrue(closed.walk().openEnds.isEmpty)
+        XCTAssertFalse(TrackValidator.validate(closed).problems.contains(.overlap))
+    }
+
     /// The interval arithmetic at the lattice points, stated directly: the
     /// solid floor is the storey below, except exactly ON a storey where road
     /// is thin.

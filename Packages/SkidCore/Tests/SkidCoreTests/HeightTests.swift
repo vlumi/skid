@@ -275,7 +275,7 @@ final class HeightTests: XCTestCase {
     /// now means at the ramp's height AND on its asphalt: 113 grass positions
     /// qualified before, none do now, while all 24 real ramp points still do.
     func testGrassCarsAreNotTreatedAsClimbing() {
-        let track = TrackLibrary.track(id: "eight")
+        let track = TestTracks.steepBridge()
         func climbing(_ point: Vec2, height: Double) -> Bool {
             track.isOnRamp(point, height: height)
                 && track.distanceToCenterline(point, height: height) <= track.width / 2

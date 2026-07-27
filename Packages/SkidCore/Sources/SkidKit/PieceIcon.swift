@@ -12,6 +12,9 @@ struct PieceIcon: View {
     /// The height the piece will enter at — so an icon previews the elevated
     /// (deck) look when building on the bridge, matching what you'll get.
     var entryHeight: Double = 0
+    /// The pitch it will be laid at — a climbing piece previews walled even
+    /// from the ground, because that is what will land.
+    var pitch: Pitch = .flat
 
     var body: some View {
         Canvas { context, size in
@@ -38,7 +41,8 @@ struct PieceIcon: View {
         let entry = PiecePose(position: .zero, heading: entryHeading)
         let placed = PlacedPiece(
             id: id, piece: piece, entry: entry,
-            exits: piece.paths.map { $0.exit(from: entry) }, entryHeight: entryHeight, entrySeam: 0)
+            exits: piece.paths.map { $0.exit(from: entry) }, entryHeight: entryHeight,
+            entrySeam: 0, pitch: pitch)
         let pts = placed.piece.paths.indices.flatMap { placed.centerlineSamples(path: $0) }
         guard pts.count >= 2 else { return }
         // Shared reference scale so a tight curve reads tighter than a sweeper;
@@ -58,31 +62,20 @@ struct PieceIcon: View {
             path.move(to: first)
             for pt in seg.dropFirst() { path.addLine(to: pt) }
         }
-        // Render like a real road tile: kerb band, red/white dashes, asphalt —
-        // a mini version of what the piece draws on the canvas, so the icon
-        // matches the actual piece. Elevated (ramp) uses the blue rail.
+        // Plain road with thin light edges — no kerbs in the palette (kerbs
+        // are decoration, and decoration is a later, author-controlled thing).
+        // What varies honestly: a piece that will climb or sit off the ground
+        // shows the walled (blue-railed) look it will actually land with.
         let roadW: CGFloat = 13
-        // Elevated look for ramps AND for flat pieces laid on the deck.
-        let elevated = placed.piece.heightDelta != 0 || placed.exitHeight > 0.5
-        if elevated {
-            context.stroke(
-                path, with: .color(Color(red: 0.55, green: 0.78, blue: 0.95)),
-                style: StrokeStyle(lineWidth: roadW + 6, lineCap: .butt, lineJoin: .round))
-            context.stroke(
-                path, with: .color(Color(white: 0.72)),
-                style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
-        } else {
-            context.stroke(
-                path, with: .color(Color(white: 0.95)),
-                style: StrokeStyle(lineWidth: roadW + 5, lineCap: .butt, lineJoin: .round))
-            context.stroke(
-                path, with: .color(Color(red: 0.82, green: 0.16, blue: 0.14)),
-                style: StrokeStyle(
-                    lineWidth: roadW + 5, lineCap: .butt, lineJoin: .round, dash: [5, 5]))
-            context.stroke(
-                path, with: .color(Color(white: 0.62)),
-                style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
-        }
+        let elevated = placed.climb != 0 || placed.exitHeight > 0.5
+        context.stroke(
+            path,
+            with: .color(
+                elevated ? Color(red: 0.55, green: 0.78, blue: 0.95) : Color(white: 0.95)),
+            style: StrokeStyle(lineWidth: roadW + 4, lineCap: .butt, lineJoin: .round))
+        context.stroke(
+            path, with: .color(Color(white: elevated ? 0.72 : 0.62)),
+            style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
         drawEntryMarker(placed, screen: screen, into: &context)
     }
 

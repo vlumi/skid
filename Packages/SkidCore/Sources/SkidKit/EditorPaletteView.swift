@@ -2,14 +2,6 @@ import SkidCore
 import SwiftUI
 
 /// The palette's buttons: the primitive set, and nothing else.
-/// A carousel's geometry: one row tall, plus a sliver of the neighbours above and
-/// below. That sliver is what says "drag me".
-struct CarouselMetrics {
-    var rowHeight: CGFloat = 64
-    var peek: CGFloat = 9
-    var spacing: CGFloat = 6
-}
-
 extension EditorView {
     /// **Left · right, then the straight.**
     ///
@@ -19,94 +11,122 @@ extension EditorView {
     /// no axis left to swipe, so it's a plain button.
     func mainRow(walk: WalkResult) -> some View {
         HStack(spacing: 12) {
-            carousel(
-                values: CurveRadius.allCases, current: radius,
-                select: { radiusRaw = $0.rawValue }
-            ) { value in
+            // Adjacency implies scope, so position is meaning here. PITCH
+            // leads, set apart: it's the mode everything is laid in — trailing
+            // beside the straight, it read as a straight-only setting. The
+            // RADIUS picker sits against the corner pair, the one thing it
+            // modifies. Both pickers are direct: three fixed options, a tap
+            // beats a swipe.
+            triStack(values: [Pitch.up, .flat, .down], current: buildPitch) {
+                buildPitch = $0
+            } content: { value in
+                pitchGlyph(value)
+            }
+            .padding(.trailing, 8)
+            // Radius UNDER the corner pair, exactly their width: the setting
+            // visually belongs to the buttons it sits beneath, and the whole
+            // group stands the same height as the pitch stack.
+            VStack(spacing: 6) {
                 HStack(spacing: 6) {
-                    cornerTile(left: true, radius: value, walk: walk)
-                    cornerTile(left: false, radius: value, walk: walk)
+                    pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
+                    pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
+                }
+                triStack(values: CurveRadius.allCases, current: radius, horizontal: true) {
+                    radiusRaw = $0.rawValue
+                } content: { value in
+                    radiusGlyph(value)
                 }
             }
-            pieceButton(straight, walk: walk, big: true)
+            // The straight places the 1U short, but ICONS as the longer road:
+            // a 1U ribbon is as wide as it is long and reads as a stub tile.
+            pieceButton(straight, icon: PieceCatalog.ID.straight, walk: walk, big: true)
         }
     }
 
-    /// A corner tile at an explicit radius, so a carousel row can show the
-    /// neighbouring radii rather than only the selected one.
-    private func cornerTile(left: Bool, radius: CurveRadius, walk: WalkResult) -> some View {
-        pieceButton(corner(left: left, radius: radius), walk: walk, big: true)
-    }
-
-    /// A **vertical** carousel that tracks your finger: the neighbouring values sit
-    /// just above and below, peeking out of a clipped window, and the whole strip
-    /// follows the drag before settling on the nearest one.
-    ///
-    /// Both details came from device feedback. The first version acted only on
-    /// `onEnded`, so nothing moved under your finger and there was no way to tell a
-    /// swipe had registered — it read as unreliable even when it worked. And
-    /// vertical beats horizontal here because these buttons sit in a horizontal row:
-    /// a sideways drag competes with the row, an up/down one doesn't. Seeing the
-    /// values move is also what makes the gesture discoverable, so the value names
-    /// are gone — the icons say it better.
-    private func carousel<Value: Hashable, Content: View>(
-        values: [Value], current: Value, metrics: CarouselMetrics = .init(),
+    /// A three-option picker as ONE segmented control: a single body, rounded
+    /// on its outer corners only, hairline seams between the segments — so it
+    /// reads as a toggle with three positions, not three unrelated buttons.
+    private func triStack<Value: Hashable, Content: View>(
+        values: [Value], current: Value, horizontal: Bool = false,
         select: @escaping (Value) -> Void,
         @ViewBuilder content: @escaping (Value) -> Content
     ) -> some View {
-        let (height, peek) = (metrics.rowHeight, metrics.peek)
-        let index = values.firstIndex(of: current) ?? 0
-        let step = height + metrics.spacing
-        // The window is a row PLUS a sliver of the neighbours above and below —
-        // that peek is what says "there's more here, drag me". A window exactly one
-        // row tall clips them away entirely and the carousel looks like a plain
-        // button again.
-        let window = height + peek * 2
-        // A window one row tall, with the strip pinned to its TOP and slid upward
-        // by the selected index. Ordering matters: `.frame` after `.offset` would
-        // re-centre the offset content and show the wrong row.
-        return VStack(spacing: metrics.spacing) {
+        let layout =
+            horizontal
+            ? AnyLayout(HStackLayout(spacing: 1)) : AnyLayout(VStackLayout(spacing: 1))
+        return layout {
             ForEach(values, id: \.self) { value in
-                content(value)
-                    // Neighbours are dimmed and shrunk, so the live one is obvious
-                    // and the others read as "there's more this way".
-                    .opacity(value == current ? 1 : 0.35)
-                    .scaleEffect(value == current ? 1 : 0.86)
+                Button {
+                    select(value)
+                } label: {
+                    ZStack {
+                        Rectangle()
+                            .fill(.black.opacity(value == current ? 0.5 : 0))
+                        content(value)
+                            .opacity(value == current ? 1 : 0.55)
+                    }
+                    .frame(width: horizontal ? 44 : 44, height: horizontal ? 28 : 32)
+                    // A transparent fill is not hit-testable, so unselected
+                    // segments were tappable only on their glyph strokes —
+                    // which read as "the selected one hogs the touch area".
+                    // Every segment owns its full rectangle.
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
-        .frame(width: nil, alignment: .top)
-        .offset(y: -CGFloat(index) * step + dragOffset + peek)
-        .frame(height: window, alignment: .top)
-        .clipped()
-        // A backing plate so the clipped neighbours read against something: dimmed
-        // dark tiles on dark grass were invisible, which defeated the peek.
-        .background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
-        .contentShape(Rectangle())
-        .animation(.spring(response: 0.28, dampingFraction: 0.8), value: index)
-        .gesture(
-            DragGesture(minimumDistance: 6)
-                .onChanged { value in
-                    // Follow the finger, but resist past the ends so the strip
-                    // can't be dragged off into nothing.
-                    let raw = value.translation.height
-                    let atTop = index == 0 && raw > 0
-                    let atEnd = index == values.count - 1 && raw < 0
-                    dragOffset = (atTop || atEnd) ? raw * 0.25 : raw
-                }
-                .onEnded { value in
-                    // Settle on whichever value the drag landed nearest.
-                    let moved = Int((-value.translation.height / step).rounded())
-                    let target = min(max(index + moved, 0), values.count - 1)
-                    dragOffset = 0
-                    if values[target] != current { select(values[target]) }
-                }
-        )
+        .background(.black.opacity(0.2))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    private func cycleRadius(by step: Int) {
-        let all = CurveRadius.allCases
-        guard let index = all.firstIndex(of: radius) else { return }
-        radiusRaw = all[(index + step + all.count) % all.count].rawValue
+    /// One radius option, as how much turning the radius buys: a full circle
+    /// for tight, a half-circle (open down) for medium, a quarter arc from
+    /// bottom-left to top-right for sweep.
+    private func radiusGlyph(_ value: CurveRadius) -> some View {
+        Path { path in
+            switch value {
+            case .tight:
+                path.addEllipse(in: CGRect(x: 5, y: 3, width: 16, height: 16))
+            case .medium:
+                path.addArc(
+                    center: CGPoint(x: 13, y: 16), radius: 10,
+                    startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
+            case .sweep:
+                path.addArc(
+                    center: CGPoint(x: 24, y: 20), radius: 20,
+                    startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+            }
+        }
+        .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+        .frame(width: 26, height: 22)
+        .accessibilityLabel(Text(value.label, bundle: .module))
+    }
+
+    /// The glyph for one pitch option, as a tiny SIDE view of the road: a hill
+    /// rising or falling, and a low bar for level ground.
+    private func pitchGlyph(_ value: Pitch) -> some View {
+        Path { path in
+            switch value {
+            case .up:
+                path.move(to: CGPoint(x: 0, y: 14))
+                path.addLine(to: CGPoint(x: 22, y: 14))
+                path.addLine(to: CGPoint(x: 22, y: 0))
+                path.closeSubpath()
+            case .down:
+                path.move(to: CGPoint(x: 0, y: 0))
+                path.addLine(to: CGPoint(x: 22, y: 14))
+                path.addLine(to: CGPoint(x: 0, y: 14))
+                path.closeSubpath()
+            case .flat:
+                path.addRect(CGRect(x: 0, y: 7, width: 22, height: 7))
+            }
+        }
+        .fill(.white)
+        .frame(width: 22, height: 14)
+        .accessibilityLabel(
+            Text(
+                value == .up ? "Climb" : value == .down ? "Descend" : "Level",
+                bundle: .module))
     }
 
     /// The hotbar: slots you fill yourself, for the pieces that aren't "corner or
@@ -130,19 +150,19 @@ extension EditorView {
     /// be placed here — being refused beats a placement that breaks the track.
     @ViewBuilder
     func pieceButton(
-        _ piece: PieceID, walk: WalkResult, big: Bool, configures target: PaletteTarget? = nil
+        _ piece: PieceID, icon: PieceID? = nil, walk: WalkResult, big: Bool,
+        configures target: PaletteTarget? = nil
     ) -> some View {
-        let ramp = piece == EditorView.HotbarSlot.rampSentinel
-        let resolved = ramp ? game.editorRampPiece() : piece
-        let placeable = resolved.map { game.editorCanAppend($0) } ?? false
+        let empty = piece == EditorView.HotbarSlot.empty
+        let placeable = !empty && game.editorCanAppend(piece, pitch: buildPitch)
         let side: CGFloat = big ? 64 : 44
         ZStack {
             RoundedRectangle(cornerRadius: 10)
                 .fill(.black.opacity(placeable ? 0.3 : 0.12))
-            if let resolved {
+            if !empty {
                 PieceIcon(
-                    id: resolved, entryHeading: appendHeading(walk),
-                    entryHeight: appendHeight(walk)
+                    id: icon ?? piece, entryHeading: appendHeading(walk),
+                    entryHeight: appendHeight(walk), pitch: buildPitch
                 )
                 .frame(width: side - 8, height: side - 8)
                 .opacity(placeable ? 1 : 0.3)
@@ -150,7 +170,7 @@ extension EditorView {
         }
         .frame(width: side, height: side)
         .contentShape(Rectangle())
-        .gesture(placeGesture(piece: piece, ramp: ramp, placeable: placeable, target: target))
+        .gesture(placeGesture(piece: piece, placeable: placeable, target: target))
         .accessibilityLabel(Text(EditorView.pieceLabel(piece), bundle: .module))
     }
 
@@ -158,15 +178,11 @@ extension EditorView {
     /// gesture so precedence is defined: on a plain `Button` the two competed and
     /// the long press only fired sometimes, which is how it behaved on device.
     private func placeGesture(
-        piece: PieceID, ramp: Bool, placeable: Bool, target: PaletteTarget?
+        piece: PieceID, placeable: Bool, target: PaletteTarget?
     ) -> some Gesture {
         let tap = TapGesture().onEnded {
             guard placeable else { return }
-            if ramp {
-                game.editorRamp()
-            } else {
-                game.editorAppend(piece)
-            }
+            game.editorAppend(piece, pitch: buildPitch)
         }
         // `exclusively(before:)` gives the long press priority when there is one to
         // give; without a target there's nothing to configure, so tap stands alone.
@@ -209,11 +225,8 @@ extension EditorView {
                     .foregroundColor(.white.opacity(0.6))
                     .frame(width: 44, height: 44)
             } else {
-                PieceIcon(
-                    id: piece == EditorView.HotbarSlot.rampSentinel
-                        ? PieceCatalog.ID.rampUp : piece
-                )
-                .frame(width: 44, height: 44)
+                PieceIcon(id: piece)
+                    .frame(width: 44, height: 44)
             }
             Text(EditorView.pieceLabel(piece), bundle: .module)
                 .font(.caption2)

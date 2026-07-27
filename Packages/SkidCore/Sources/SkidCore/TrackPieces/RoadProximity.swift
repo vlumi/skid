@@ -93,7 +93,7 @@ struct RoadProximity {
                     segmentDistance(segment.a, segment.b, candidate.a, candidate.b)
                         < Self.minGap
                 else { return }
-                guard !nearAlongRoad(segment.arcMid, candidate.arcMid) else { return }
+                guard !nearAlongRoad(segment, candidate) else { return }
                 if !exempt(segment.piece, candidate.piece) { hit = true }
             }
             if hit { return true }
@@ -134,7 +134,14 @@ struct RoadProximity {
                 else { return }
                 let along = (totalArc + run.arcBefore + mid) - existing.arcMid
                 let through = (pieceArc - mid) + run.exitToGoal + existing.arcMid
-                if min(along, through) > Self.allowance { hit = true }
+                // Same two-tier rule as the validator's through-join side.
+                let dh = abs(top - existing.top)
+                let joinable =
+                    dh <= Track.reachTolerance
+                    || (through <= Self.allowance / 2 && dh <= through * Self.steepestSlope)
+                if along > Self.allowance, through > Self.allowance || !joinable {
+                    hit = true
+                }
             }
             if hit { return true }
             inPiece += length
@@ -159,13 +166,38 @@ struct RoadProximity {
         min((height + 0.001).rounded(.down), height)
     }
 
-    /// The exemption itself: are these two arc positions close along the road,
-    /// counting the short way round through the (forming) join?
-    private func nearAlongRoad(_ x: Double, _ y: Double) -> Bool {
-        let along = abs(x - y)
+    /// The exemption itself: are these two segments close along the road —
+    /// forward, or the short way round through the (forming) join?
+    ///
+    /// The through side carries height conditions the forward side doesn't
+    /// need: continuity along the road implies height continuity by itself,
+    /// but the join zone is just PROXIMITY to the start entry. Two tiers,
+    /// both measured on real tracks:
+    ///
+    /// - **Same level** (within a car's reach): the full approach window —
+    ///   the closing corner legitimately sweeps beside the start from ~250
+    ///   units out.
+    /// - **Different heights**: only the tight continuity range, and only a
+    ///   difference the road could actually climb over that distance at the
+    ///   catalog's steepest pitch — a descending straight landing on the
+    ///   entry has mid-segments half a level up, a road-width from the grid
+    ///   (measured 0.25–0.48 over 60–120 through-units; must close). A flat
+    ///   0.5 run PARKED across the grid pairs at ~240 through-units (must
+    ///   not): the distance tier separates them, the slope bound backs it up.
+    private func nearAlongRoad(_ a: RoadSegment, _ b: RoadSegment) -> Bool {
+        let along = abs(a.arcMid - b.arcMid)
+        if along <= Self.allowance { return true }
         let through = totalArc - along + joinGap
-        return min(along, through) <= Self.allowance
+        guard through <= Self.allowance else { return false }
+        let dh = abs(a.top - b.top)
+        if dh <= Track.reachTolerance { return true }
+        return through <= Self.allowance / 2 && dh <= through * Self.steepestSlope
     }
+
+    /// The catalog's steepest climb: half a level over the shortest pitched
+    /// piece (a tight 45°).
+    static let steepestSlope: Double =
+        (Track.levelHeight / 2) / (Double(PieceCatalog.tightRadius) * .pi / 4)
 
     /// Visit stored segments near the given one (by grid cells, padded by the
     /// overlap threshold; may repeat — harmless, the checks are cheap). A

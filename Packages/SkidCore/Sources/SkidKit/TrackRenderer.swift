@@ -341,12 +341,15 @@ enum TrackRenderer {
 }
 
 extension TrackRenderer {
-    static func drawMarks(_ marks: MarkStore, into context: inout GraphicsContext) {
+    static func drawMarks(
+        _ marks: MarkStore, elevated: Bool = false, into context: inout GraphicsContext
+    ) {
         // Marks arrive pre-batched into chunked paths — a few dozen stroke
         // calls total, whatever the segment count.
         let style = StrokeStyle(lineWidth: 4, lineCap: .round)
         for bucket in MarkStore.Bucket.allCases {
-            guard let chunkList = marks.chunks[bucket] else { continue }
+            guard let chunkList = (elevated ? marks.elevatedChunks : marks.chunks)[bucket]
+            else { continue }
             let color: Color
             switch bucket {
             case .rubberLight: color = rubber.opacity(0.25)

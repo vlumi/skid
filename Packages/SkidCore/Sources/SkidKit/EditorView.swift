@@ -32,8 +32,11 @@ struct EditorView: View {
 
     /// Which hotbar slot's picker is open, if any.
     @State var configuring: PaletteTarget?
-    /// Live drag offset for the corner carousel, so it follows the finger.
-    @State var dragOffset: CGFloat = 0
+    /// The pitch the next pieces are laid at. Session state, not persisted:
+    /// every editing session starts on level ground. Sticky across placements
+    /// (a climb is usually more than one piece); whether it should auto-reset
+    /// is a device-feel question, deliberately left for testing.
+    @State var buildPitch: Pitch = .flat
 
     /// Which hotbar slot's picker is open. Only the hotbar has one — the corners are
     /// a carousel, configured by swiping, and the straight has nothing to configure.
@@ -237,21 +240,32 @@ struct EditorView: View {
             Spacer()
             VStack(spacing: 10) {
                 // Save state, or how far the selected end is from closing.
-                if game.editorIsSaveable() {
-                    Text("Track complete", bundle: .module)
-                        .font(.footnote.bold())
-                        .foregroundStyle(.white)
-                } else if let gap = closureHint(walk) {
-                    Text(verbatim: gap)
-                        .font(.footnote.monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.75))
-                } else {
-                    Text("Extend the loose end to close the loop", bundle: .module)
-                        .font(.footnote)
-                        .foregroundStyle(.white.opacity(0.75))
+                Group {
+                    if game.editorIsSaveable() {
+                        Text("Track complete", bundle: .module)
+                            .font(.footnote.bold())
+                            .foregroundStyle(.white)
+                    } else if let gap = closureHint(walk) {
+                        Text(verbatim: gap)
+                            .font(.footnote.monospacedDigit())
+                            .foregroundStyle(.white.opacity(0.9))
+                    } else {
+                        Text("Extend the loose end to close the loop", bundle: .module)
+                            .font(.footnote)
+                            .foregroundStyle(.white.opacity(0.9))
+                    }
                 }
+                // A backdrop, because the canvas-bounds dashes run right where
+                // this line sits and made it hard to read.
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .background(.black.opacity(0.35), in: Capsule())
                 mainRow(walk: walk)
-                hotbarRow(walk: walk)
+                // The hotbar returns when it has something to hold (jumps,
+                // gaps, decorations); five empty slots are dead space.
+                if !EditorView.hotbarPieces.isEmpty {
+                    hotbarRow(walk: walk)
+                }
             }
             .padding(.bottom, 24)
         }
@@ -289,8 +303,12 @@ struct EditorView: View {
         near point: CGPoint, walk: WalkResult, transform: EditorRenderer.Transform
     ) -> Int? {
         var best: (seam: Int, distance: CGFloat)?
+        // Seam N is piece N's EXIT, so that exit is where the tap must land —
+        // matching entries made every gate tap one piece early (the same
+        // off-by-one the gate markers had). Piece 0's exit is the start line,
+        // which is always a gate and not toggleable.
         for (index, placed) in walk.placed.enumerated() where index != 0 {
-            let p = transform.screen(placed.entry.position.vec2)
+            let p = transform.screen(placed.exits[0].position.vec2)
             let distance = hypot(p.x - point.x, p.y - point.y)
             guard distance < EditorRenderer.endHitRadius else { continue }
             if best == nil || distance < best!.distance { best = (index, distance) }
