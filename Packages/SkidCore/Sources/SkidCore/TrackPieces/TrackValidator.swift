@@ -51,8 +51,12 @@ public enum TrackValidator {
     /// it is expanded here, because what actually lands in the layout is
     /// primitives, and validating the compound would test a piece the layout will
     /// never hold.
-    public static func canAppend(_ id: PieceID, to layout: TrackLayout) -> Bool {
-        canAppend(run: [id], to: layout)
+    public static func canAppend(
+        _ id: PieceID, pitch: Pitch = .flat, to layout: TrackLayout
+    ) -> Bool {
+        var candidate = layout
+        candidate.append(contentsOf: PieceExpansion.expand(id, mode: pitch))
+        return placeable(candidate)
     }
 
     /// The same verdict for a whole run at once — what "Close it" applies. A
@@ -61,8 +65,13 @@ public enum TrackValidator {
     public static func canAppend(run: [PieceID], to layout: TrackLayout) -> Bool {
         var candidate = layout
         candidate.append(contentsOf: run.flatMap { PieceExpansion.expand($0) })
-        let problems = validate(candidate).problems
-        return !problems.contains { problem in
+        return placeable(candidate)
+    }
+
+    /// The placement verdict: ignore what a work-in-progress is expected to
+    /// break, refuse what can never become a track.
+    private static func placeable(_ candidate: TrackLayout) -> Bool {
+        !validate(candidate).problems.contains { problem in
             switch problem {
             case .overlap, .offCanvas, .walk, .heightOutOfBounds: return true
             case .openEnds, .gates, .startCount, .unclosedHeight: return false

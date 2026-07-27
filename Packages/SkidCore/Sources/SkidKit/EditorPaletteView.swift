@@ -29,6 +29,15 @@ extension EditorView {
                 }
             }
             pieceButton(straight, walk: walk, big: true)
+            // The PITCH the next pieces are laid at — the ramp button's
+            // replacement: a ramp isn't a shape, it's a road with pitch.
+            // Sticky on purpose: a climb is usually more than one piece.
+            carousel(
+                values: [Pitch.up, .flat, .down], current: buildPitch,
+                select: { buildPitch = $0 }
+            ) { value in
+                pitchTile(value)
+            }
         }
     }
 
@@ -36,6 +45,24 @@ extension EditorView {
     /// neighbouring radii rather than only the selected one.
     private func cornerTile(left: Bool, radius: CurveRadius, walk: WalkResult) -> some View {
         pieceButton(corner(left: left, radius: radius), walk: walk, big: true)
+    }
+
+    /// One pitch option: climbing, level, or descending road.
+    private func pitchTile(_ value: Pitch) -> some View {
+        let symbol =
+            value == .up ? "arrow.up.right" : value == .down ? "arrow.down.right" : "arrow.right"
+        return ZStack {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(.black.opacity(value == buildPitch ? 0.3 : 0.15))
+            Image(systemName: symbol)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.white.opacity(value == buildPitch ? 1 : 0.6))
+        }
+        .frame(width: 44, height: 64)
+        .accessibilityLabel(
+            Text(
+                value == .up ? "Climb" : value == .down ? "Descend" : "Level",
+                bundle: .module))
     }
 
     /// A **vertical** carousel that tracks your finger: the neighbouring values sit
@@ -132,16 +159,15 @@ extension EditorView {
     func pieceButton(
         _ piece: PieceID, walk: WalkResult, big: Bool, configures target: PaletteTarget? = nil
     ) -> some View {
-        let ramp = piece == EditorView.HotbarSlot.rampSentinel
-        let resolved = ramp ? game.editorRampPiece() : piece
-        let placeable = resolved.map { game.editorCanAppend($0) } ?? false
+        let empty = piece == EditorView.HotbarSlot.empty
+        let placeable = !empty && game.editorCanAppend(piece, pitch: buildPitch)
         let side: CGFloat = big ? 64 : 44
         ZStack {
             RoundedRectangle(cornerRadius: 10)
                 .fill(.black.opacity(placeable ? 0.3 : 0.12))
-            if let resolved {
+            if !empty {
                 PieceIcon(
-                    id: resolved, entryHeading: appendHeading(walk),
+                    id: piece, entryHeading: appendHeading(walk),
                     entryHeight: appendHeight(walk)
                 )
                 .frame(width: side - 8, height: side - 8)
@@ -150,7 +176,7 @@ extension EditorView {
         }
         .frame(width: side, height: side)
         .contentShape(Rectangle())
-        .gesture(placeGesture(piece: piece, ramp: ramp, placeable: placeable, target: target))
+        .gesture(placeGesture(piece: piece, placeable: placeable, target: target))
         .accessibilityLabel(Text(EditorView.pieceLabel(piece), bundle: .module))
     }
 
@@ -158,15 +184,11 @@ extension EditorView {
     /// gesture so precedence is defined: on a plain `Button` the two competed and
     /// the long press only fired sometimes, which is how it behaved on device.
     private func placeGesture(
-        piece: PieceID, ramp: Bool, placeable: Bool, target: PaletteTarget?
+        piece: PieceID, placeable: Bool, target: PaletteTarget?
     ) -> some Gesture {
         let tap = TapGesture().onEnded {
             guard placeable else { return }
-            if ramp {
-                game.editorRamp()
-            } else {
-                game.editorAppend(piece)
-            }
+            game.editorAppend(piece, pitch: buildPitch)
         }
         // `exclusively(before:)` gives the long press priority when there is one to
         // give; without a target there's nothing to configure, so tap stands alone.
@@ -209,11 +231,8 @@ extension EditorView {
                     .foregroundColor(.white.opacity(0.6))
                     .frame(width: 44, height: 44)
             } else {
-                PieceIcon(
-                    id: piece == EditorView.HotbarSlot.rampSentinel
-                        ? PieceCatalog.ID.rampUp : piece
-                )
-                .frame(width: 44, height: 44)
+                PieceIcon(id: piece)
+                    .frame(width: 44, height: 44)
             }
             Text(EditorView.pieceLabel(piece), bundle: .module)
                 .font(.caption2)

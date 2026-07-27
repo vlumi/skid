@@ -26,6 +26,11 @@ ships (see [AGENTS.md](AGENTS.md)).
   top row is just turn left, turn right and go straight — **swipe the corners** to
   change how tight they are, and your choice is remembered. Below it sit the slots
   you fill yourself: long-press one to choose what it holds.
+- **Lay road uphill and downhill.** A pitch selector (up / level / down)
+  joins the palette: every straight and corner can climb or descend half a
+  level, so ramps stop being a special button — build a bridge from any shape,
+  at any radius, pause a climb halfway, and put a checkpoint at its apex. The
+  under-bridge rules follow automatically: embankments seal, decks stay open.
 - **Build any shape from the same few pieces.** Corners are 45°, so two make a
   90° and four make a hairpin — which means you can put a checkpoint at a
   hairpin's apex, or anywhere else you like, instead of only where a big

@@ -52,6 +52,14 @@ public enum PieceExpansion {
         return out
     }
 
+    /// A piece as placed under a pitch mode: a bare primitive takes the mode,
+    /// a compound keeps its expansion's explicit pitches — the same rule the
+    /// byte stream's switches follow on decode.
+    public static func expand(_ id: PieceID, mode: Pitch) -> [(id: PieceID, pitch: Pitch)] {
+        guard isPrimitive(id) else { return expand(id) }
+        return expand(id).map { ($0.id, mode) }
+    }
+
     /// Whether an id is a primitive — something a layout may contain.
     public static func isPrimitive(_ id: PieceID) -> Bool {
         table[id] == nil
