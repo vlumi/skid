@@ -93,7 +93,7 @@ struct RoadProximity {
                     segmentDistance(segment.a, segment.b, candidate.a, candidate.b)
                         < Self.minGap
                 else { return }
-                guard !nearAlongRoad(segment.arcMid, candidate.arcMid) else { return }
+                guard !nearAlongRoad(segment, candidate) else { return }
                 if !exempt(segment.piece, candidate.piece) { hit = true }
             }
             if hit { return true }
@@ -134,7 +134,12 @@ struct RoadProximity {
                 else { return }
                 let along = (totalArc + run.arcBefore + mid) - existing.arcMid
                 let through = (pieceArc - mid) + run.exitToGoal + existing.arcMid
-                if min(along, through) > Self.allowance { hit = true }
+                // Same rule as the validator: the through-join side only
+                // exempts at joinable height.
+                let joinable = abs(top - existing.top) <= Track.reachTolerance
+                if along > Self.allowance, through > Self.allowance || !joinable {
+                    hit = true
+                }
             }
             if hit { return true }
             inPiece += length
@@ -159,12 +164,21 @@ struct RoadProximity {
         min((height + 0.001).rounded(.down), height)
     }
 
-    /// The exemption itself: are these two arc positions close along the road,
-    /// counting the short way round through the (forming) join?
-    private func nearAlongRoad(_ x: Double, _ y: Double) -> Bool {
-        let along = abs(x - y)
+    /// The exemption itself: are these two segments close along the road —
+    /// forward, or the short way round through the (forming) join?
+    ///
+    /// The through side carries a height condition the forward side doesn't
+    /// need: continuity along the road implies height continuity by itself,
+    /// but the join zone is just PROXIMITY to the start entry — and the join
+    /// forms at one height. Road hugging the entry at joinable height is an
+    /// approach; road half a level up is a cover (measured: a flat 0.5 run
+    /// could be parked across the start grid because this exemption was
+    /// height-blind).
+    private func nearAlongRoad(_ a: RoadSegment, _ b: RoadSegment) -> Bool {
+        let along = abs(a.arcMid - b.arcMid)
+        if along <= Self.allowance { return true }
         let through = totalArc - along + joinGap
-        return min(along, through) <= Self.allowance
+        return through <= Self.allowance && abs(a.top - b.top) <= Track.reachTolerance
     }
 
     /// Visit stored segments near the given one (by grid cells, padded by the

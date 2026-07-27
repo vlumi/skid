@@ -133,7 +133,7 @@ final class WallTests: XCTestCase {
     /// (`Race.blocks`, floor = trunc(height)) that blocks 0…0.99 — everything below
     /// the deck — while a car arriving along the ramp at deck height passes.
     func testYouCannotDriveUnderARamp() {
-        let track = TrackLibrary.track(id: "eight")
+        let track = TestTracks.steepBridge()
         let count = track.centerline.count
         var blockedFromOutside = 0
         var allowedUpTheRamp = 0

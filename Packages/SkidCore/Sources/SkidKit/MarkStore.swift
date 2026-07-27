@@ -25,6 +25,9 @@ public struct MarkStore {
     }
 
     public private(set) var chunks: [Bucket: [Chunk]] = [:]
+    /// Marks laid above ground level, drawn after the elevated ribbon so they
+    /// sit ON the bridge instead of vanishing underneath it.
+    public private(set) var elevatedChunks: [Bucket: [Chunk]] = [:]
 
     private var lastTirePositions: [PlayerID: [Vec2]] = [:]
     /// Mud/water clinging to a car's tires: what it drove through and for
@@ -53,6 +56,7 @@ public struct MarkStore {
 
     public mutating func reset() {
         chunks.removeAll()
+        elevatedChunks.removeAll()
         lastTirePositions.removeAll()
         carryover.removeAll()
     }
@@ -62,12 +66,13 @@ public struct MarkStore {
     public mutating func record(car: Car, on track: Track, tick: Tick) {
         guard tick % Self.recordEvery == 0 else { return }
         let state = car.state
-        // Marks live on the ground only: nothing prints from the bridge (it would
-        // draw under it) or from mid-air.
-        guard !Track.isOffGround(state.height), !state.isAirborne else {
+        // Mid-air prints nothing; everything else marks its own level — the
+        // elevated bucket draws after the bridge ribbon, so deck rubber shows.
+        guard !state.isAirborne else {
             lastTirePositions[car.id] = nil
             return
         }
+        let elevated = state.height > 0.5
         let tires = state.tirePositions
         defer { lastTirePositions[car.id] = tires }
         guard let previous = lastTirePositions[car.id], previous.count == tires.count else {
@@ -106,13 +111,13 @@ public struct MarkStore {
         }
 
         for i in tireRange {
-            append(from: previous[i], to: tires[i], in: bucket)
+            append(from: previous[i], to: tires[i], in: bucket, elevated: elevated)
         }
     }
 
-    private mutating func append(from a: Vec2, to b: Vec2, in bucket: Bucket) {
+    private mutating func append(from a: Vec2, to b: Vec2, in bucket: Bucket, elevated: Bool) {
         guard (b - a).lengthSquared >= Self.minSegmentLengthSquared else { return }
-        var list = chunks[bucket] ?? []
+        var list = (elevated ? elevatedChunks : chunks)[bucket] ?? []
         if list.isEmpty || list[list.count - 1].count >= Self.chunkSegments {
             list.append(Chunk())
             if list.count > Self.maxChunksPerBucket {
@@ -122,6 +127,10 @@ public struct MarkStore {
         list[list.count - 1].path.move(to: CGPoint(x: a.x, y: a.y))
         list[list.count - 1].path.addLine(to: CGPoint(x: b.x, y: b.y))
         list[list.count - 1].count += 1
-        chunks[bucket] = list
+        if elevated {
+            elevatedChunks[bucket] = list
+        } else {
+            chunks[bucket] = list
+        }
     }
 }

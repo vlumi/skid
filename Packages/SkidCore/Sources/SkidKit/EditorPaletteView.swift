@@ -2,14 +2,6 @@ import SkidCore
 import SwiftUI
 
 /// The palette's buttons: the primitive set, and nothing else.
-/// A carousel's geometry: one row tall, plus a sliver of the neighbours above and
-/// below. That sliver is what says "drag me".
-struct CarouselMetrics {
-    var rowHeight: CGFloat = 64
-    var peek: CGFloat = 9
-    var spacing: CGFloat = 6
-}
-
 extension EditorView {
     /// **Left · right, then the straight.**
     ///
@@ -19,121 +11,63 @@ extension EditorView {
     /// no axis left to swipe, so it's a plain button.
     func mainRow(walk: WalkResult) -> some View {
         HStack(spacing: 12) {
-            carousel(
-                values: CurveRadius.allCases, current: radius,
-                select: { radiusRaw = $0.rawValue }
-            ) { value in
-                HStack(spacing: 6) {
-                    cornerTile(left: true, radius: value, walk: walk)
-                    cornerTile(left: false, radius: value, walk: walk)
-                }
-            }
+            pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
+            pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
             pieceButton(straight, walk: walk, big: true)
-            // The PITCH the next pieces are laid at — the ramp button's
-            // replacement: a ramp isn't a shape, it's a road with pitch.
-            // Sticky on purpose: a climb is usually more than one piece.
-            carousel(
-                values: [Pitch.up, .flat, .down], current: buildPitch,
-                select: { buildPitch = $0 }
-            ) { value in
-                pitchTile(value)
+            // Direct pickers, all options visible: with exactly three values
+            // each — and no more coming — a tap beats a swipe. The carousels
+            // this replaces needed drag state, and shared drag state is what
+            // made both slide when either was touched.
+            triStack(values: CurveRadius.allCases, current: radius) {
+                radiusRaw = $0.rawValue
+            } content: { value in
+                PieceIcon(id: corner(left: false, radius: value))
+                    .frame(width: 26, height: 26)
+            }
+            triStack(values: [Pitch.up, .flat, .down], current: buildPitch) {
+                buildPitch = $0
+            } content: { value in
+                pitchGlyph(value)
             }
         }
     }
 
-    /// A corner tile at an explicit radius, so a carousel row can show the
-    /// neighbouring radii rather than only the selected one.
-    private func cornerTile(left: Bool, radius: CurveRadius, walk: WalkResult) -> some View {
-        pieceButton(corner(left: left, radius: radius), walk: walk, big: true)
+    /// A three-option picker as a compact vertical stack: every option always
+    /// visible, the current one lit, one tap to change.
+    private func triStack<Value: Hashable, Content: View>(
+        values: [Value], current: Value, select: @escaping (Value) -> Void,
+        @ViewBuilder content: @escaping (Value) -> Content
+    ) -> some View {
+        VStack(spacing: 3) {
+            ForEach(values, id: \.self) { value in
+                Button {
+                    select(value)
+                } label: {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.black.opacity(value == current ? 0.45 : 0.15))
+                        content(value)
+                            .opacity(value == current ? 1 : 0.55)
+                    }
+                    .frame(width: 44, height: 32)
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
-    /// One pitch option: climbing, level, or descending road.
-    private func pitchTile(_ value: Pitch) -> some View {
-        let symbol =
-            value == .up ? "arrow.up.right" : value == .down ? "arrow.down.right" : "arrow.right"
-        return ZStack {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(.black.opacity(value == buildPitch ? 0.3 : 0.15))
-            Image(systemName: symbol)
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.white.opacity(value == buildPitch ? 1 : 0.6))
-        }
-        .frame(width: 44, height: 64)
+    /// The glyph for one pitch option.
+    private func pitchGlyph(_ value: Pitch) -> some View {
+        Image(
+            systemName: value == .up
+                ? "arrow.up.right" : value == .down ? "arrow.down.right" : "arrow.right"
+        )
+        .font(.system(size: 16, weight: .bold))
+        .foregroundColor(.white)
         .accessibilityLabel(
             Text(
                 value == .up ? "Climb" : value == .down ? "Descend" : "Level",
                 bundle: .module))
-    }
-
-    /// A **vertical** carousel that tracks your finger: the neighbouring values sit
-    /// just above and below, peeking out of a clipped window, and the whole strip
-    /// follows the drag before settling on the nearest one.
-    ///
-    /// Both details came from device feedback. The first version acted only on
-    /// `onEnded`, so nothing moved under your finger and there was no way to tell a
-    /// swipe had registered — it read as unreliable even when it worked. And
-    /// vertical beats horizontal here because these buttons sit in a horizontal row:
-    /// a sideways drag competes with the row, an up/down one doesn't. Seeing the
-    /// values move is also what makes the gesture discoverable, so the value names
-    /// are gone — the icons say it better.
-    private func carousel<Value: Hashable, Content: View>(
-        values: [Value], current: Value, metrics: CarouselMetrics = .init(),
-        select: @escaping (Value) -> Void,
-        @ViewBuilder content: @escaping (Value) -> Content
-    ) -> some View {
-        let (height, peek) = (metrics.rowHeight, metrics.peek)
-        let index = values.firstIndex(of: current) ?? 0
-        let step = height + metrics.spacing
-        // The window is a row PLUS a sliver of the neighbours above and below —
-        // that peek is what says "there's more here, drag me". A window exactly one
-        // row tall clips them away entirely and the carousel looks like a plain
-        // button again.
-        let window = height + peek * 2
-        // A window one row tall, with the strip pinned to its TOP and slid upward
-        // by the selected index. Ordering matters: `.frame` after `.offset` would
-        // re-centre the offset content and show the wrong row.
-        return VStack(spacing: metrics.spacing) {
-            ForEach(values, id: \.self) { value in
-                content(value)
-                    // Neighbours are dimmed and shrunk, so the live one is obvious
-                    // and the others read as "there's more this way".
-                    .opacity(value == current ? 1 : 0.35)
-                    .scaleEffect(value == current ? 1 : 0.86)
-            }
-        }
-        .frame(width: nil, alignment: .top)
-        .offset(y: -CGFloat(index) * step + dragOffset + peek)
-        .frame(height: window, alignment: .top)
-        .clipped()
-        // A backing plate so the clipped neighbours read against something: dimmed
-        // dark tiles on dark grass were invisible, which defeated the peek.
-        .background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
-        .contentShape(Rectangle())
-        .animation(.spring(response: 0.28, dampingFraction: 0.8), value: index)
-        .gesture(
-            DragGesture(minimumDistance: 6)
-                .onChanged { value in
-                    // Follow the finger, but resist past the ends so the strip
-                    // can't be dragged off into nothing.
-                    let raw = value.translation.height
-                    let atTop = index == 0 && raw > 0
-                    let atEnd = index == values.count - 1 && raw < 0
-                    dragOffset = (atTop || atEnd) ? raw * 0.25 : raw
-                }
-                .onEnded { value in
-                    // Settle on whichever value the drag landed nearest.
-                    let moved = Int((-value.translation.height / step).rounded())
-                    let target = min(max(index + moved, 0), values.count - 1)
-                    dragOffset = 0
-                    if values[target] != current { select(values[target]) }
-                }
-        )
-    }
-
-    private func cycleRadius(by step: Int) {
-        let all = CurveRadius.allCases
-        guard let index = all.firstIndex(of: radius) else { return }
-        radiusRaw = all[(index + step + all.count) % all.count].rawValue
     }
 
     /// The hotbar: slots you fill yourself, for the pieces that aren't "corner or

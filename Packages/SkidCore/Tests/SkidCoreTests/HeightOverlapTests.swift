@@ -76,6 +76,28 @@ final class HeightOverlapTests: XCTestCase {
             "a road at half height crossing the ground is a collision, not a bridge")
     }
 
+    /// **The join zone is not a landing pad.** Proximity to the start entry
+    /// exempts a forming join from the overlap rule — but the join forms at
+    /// ground height, so the exemption must not admit road HOVERING there.
+    /// Found on device: a flat run at 0.5 could be parked halfway across the
+    /// start grid, because the through-join exemption was height-blind.
+    func testHalfLevelRoadCannotCoverTheStartGrid() {
+        typealias Catalog = PieceCatalog.ID
+        var layout = TrackLayout(pieces: [Catalog.startGrid], gateSeams: [0])
+        layout.append(contentsOf: PieceExpansion.expand(Catalog.shortStraight, mode: .up))
+        // A flat 0.5 loop whose next corner would sweep over the grid start.
+        for id in [
+            Catalog.curve45TightLeft, Catalog.curve45TightLeft, Catalog.curve45TightLeft,
+            Catalog.curve45TightLeft, Catalog.shortStraight, Catalog.shortStraight,
+            Catalog.curve45TightLeft, Catalog.curve45TightLeft,
+        ] {
+            layout.append(contentsOf: PieceExpansion.expand(id, mode: .flat))
+        }
+        XCTAssertFalse(
+            TrackValidator.canAppend(Catalog.curve45TightLeft, to: layout),
+            "hovering over the join zone at half height is a cover, not an approach")
+    }
+
     /// The interval arithmetic at the lattice points, stated directly: the
     /// solid floor is the storey below, except exactly ON a storey where road
     /// is thin.

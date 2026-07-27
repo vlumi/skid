@@ -49,13 +49,18 @@ extension TrackRenderer {
             // ordering is what hides a car driving underneath it. Same shared
             // renderer as the editor, just the upper height band.
             if let layout = track.layout {
+                // The race's gate display is the white chrome — no editor
+                // markers here either (they were also a seam off).
                 EditorRenderer.drawTrack(
-                    walk: layout.walk(), width: track.width, gateSeams: layout.gateSeams,
+                    walk: layout.walk(), width: track.width, gateSeams: [],
                     transform: track.layoutTransform, heightRange: 0.5...2, into: &context)
             } else {
                 drawRibbon(track: track, elevated: true, into: &context)
             }
             drawGates(gateChrome, elevated: true, into: &context)
+            // Rubber laid on the deck, over the deck's ribbon — ground marks
+            // went down before the bridge, so each level keeps its own.
+            drawMarks(scene.marks, elevated: true, into: &context)
             //
             // Never-invisible rule: a ground car hidden under the bridge
             // shows through as a bubble in its color. Ramp climbers are
