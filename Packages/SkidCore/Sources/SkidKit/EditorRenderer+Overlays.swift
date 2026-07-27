@@ -111,18 +111,32 @@ extension EditorRenderer {
         let pose = start.exits[0]
         let fwd = Vec2(angle: pose.heading.radians)
         let side = fwd.perpendicular * (width / 2)
-        let a = t.screen(pose.position.vec2 - side)
-        let b = t.screen(pose.position.vec2 + side)
-        var line = Path()
-        line.move(to: a)
-        line.addLine(to: b)
-        // Width + dash scale with the world (like the kerbs), so the line
-        // shrinks evenly on zoom-out instead of leaving fixed-size dashes.
-        let lineW = max(2, 7 * t.scale)
-        let dash = max(3, 9 * t.scale)
-        context.stroke(
-            line, with: .color(.white),
-            style: StrokeStyle(lineWidth: lineW, dash: [dash, dash]))
+        // A black-and-white checkerboard, two rows deep — both colours painted,
+        // so it reads as a start line rather than as holes in the asphalt (the
+        // race view used to fill only the dark squares over bare road, which
+        // looked black-on-transparent, and stacked that on a dashed line drawn
+        // underneath).
+        // Square cells across the road, two rows deep, laid BEHIND the line
+        // (the start/finish is the start piece's exit, so the board sits on the
+        // road just driven). `across` walks one cell toward the far edge;
+        // `back` walks one cell upstream.
+        let columns = 8
+        let cell = width / Double(columns)
+        let across = fwd.perpendicular * cell
+        let back = fwd * cell
+        let farEdge = pose.position.vec2 - side
+        for row in 0..<2 {
+            for column in 0..<columns {
+                let corner = farEdge + across * Double(column) - back * Double(row)
+                var square = Path()
+                let points = [corner, corner + across, corner + across - back, corner - back]
+                square.move(to: t.screen(points[0]))
+                for point in points.dropFirst() { square.addLine(to: t.screen(point)) }
+                square.closeSubpath()
+                context.fill(
+                    square, with: .color((column + row).isMultiple(of: 2) ? .black : .white))
+            }
+        }
     }
 
 }
