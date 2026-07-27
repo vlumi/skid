@@ -22,6 +22,9 @@ public struct Validation: Equatable, Sendable {
         /// ramp and never came back down, so the road would meet itself at two
         /// different heights.
         case unclosedHeight(Double)
+        /// The road left the world's storeys — climbed past the top level or
+        /// dug below the bottom one.
+        case heightOutOfBounds(Double)
     }
 
     public var problems: [Problem]
@@ -61,7 +64,7 @@ public enum TrackValidator {
         let problems = validate(candidate).problems
         return !problems.contains { problem in
             switch problem {
-            case .overlap, .offCanvas, .walk: return true
+            case .overlap, .offCanvas, .walk, .heightOutOfBounds: return true
             case .openEnds, .gates, .startCount, .unclosedHeight: return false
             }
         }
@@ -99,6 +102,16 @@ public enum TrackValidator {
         // 5. Fits the canvas.
         if !fitsCanvas(walk.placed) {
             problems.append(.offCanvas)
+        }
+
+        // 5b. Stays within the world's storeys. This used to be nobody's rule:
+        // the editor's single ramp button auto-picked a legal direction, so
+        // nothing ever climbed past the deck or dug below the ground — but the
+        // button was the only shield (measured: appending a second climb, or a
+        // descent from the ground, validated happily). With pitch on ordinary
+        // pieces, every button can climb, so the bound belongs to validation.
+        if let escaped = walk.placed.first(where: { !Track.withinLevels($0.exitHeight) }) {
+            problems.append(.heightOutOfBounds(escaped.exitHeight))
         }
 
         // 6. Height comes home. A ring that climbs a ramp must descend before it
