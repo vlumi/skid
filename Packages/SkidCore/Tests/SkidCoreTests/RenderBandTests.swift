@@ -7,9 +7,13 @@ import XCTest
 /// cars, then the bridge over them — so anything painted in the wrong band
 /// shows through the deck.
 final class RenderBandTests: XCTestCase {
-    /// The two bands the race view draws, split at half a level.
+    /// The two bands the race view draws. They PARTITION: piece heights sit
+    /// on the half-level lattice (maxima 0, 0.5 or 1), and 0.75 separates
+    /// "reaches above the shelf" from "stays at or below it". When the bands
+    /// overlapped at exactly 0.5, every climb's lower half drew in both passes
+    /// and its second copy buried the car on it.
     private let ground = -1.0...0.5
-    private let elevated = 0.5...2.0
+    private let elevated = 0.75...2.0
 
     /// **The start line and grid are paint on the start piece's own road**, so
     /// they draw in that piece's band and no other. Both ends have to be inside
@@ -92,28 +96,23 @@ final class RenderBandTests: XCTestCase {
         return best?.seam
     }
 
-    /// **A ground car under a bridge is never drawn on top of it.** A slope
-    /// begins at ground height, so its first sliver is a ramp segment at ~0 and
-    /// a car near the foot matched it — promoting a car driving UNDER the bridge
-    /// into the elevated pass, where it appeared over the deck. Being off the
-    /// ground is the precondition the promotion was missing.
-    ///
-    /// Mirrors `drawCars`' `onRamp` rule: off the ground, on a ramp, on its road.
-    func testGroundCarsAreNeverPromotedToTheDeckPass() {
-        let track = TrackLibrary.track(id: "eight")
-        var checked = 0
-        for index in track.centerline.indices where track.heights[index] <= 0.05 {
-            let point = track.centerline[index]
-            let height = track.heights[index]
-            let promoted =
-                height > Track.surfaceTolerance
-                && track.isOnRamp(point, height: height)
-                && track.distanceToCenterline(point, height: height) <= track.width / 2
-            XCTAssertFalse(
-                promoted, "ground point \(index) would draw over the bridge")
-            checked += 1
+    /// **Every piece draws in exactly one pass.** In both is a double-draw
+    /// whose second copy buries the cars on that piece; in neither is a hole in
+    /// the road. This is the invariant behind two shipped artifacts: a ground
+    /// car riding on top of the bridge, and a climber hidden under the foot of
+    /// its own ramp.
+    func testTheBandsPartitionEveryPiece() throws {
+        for id in ["small", "oval", "eight"] {
+            let layout = try XCTUnwrap(TrackLibrary.layout(id: id))
+            for piece in layout.walk().placed {
+                let top = max(piece.entryHeight, piece.exitHeight)
+                let inGround = ground.contains(top)
+                let inElevated = elevated.contains(top)
+                XCTAssertNotEqual(
+                    inGround, inElevated,
+                    "\(id): piece topping at \(top) must draw in exactly one pass")
+            }
         }
-        XCTAssertGreaterThan(checked, 20, "the eight should have plenty of ground road")
     }
 
     /// A crossing exists on the eight at both heights — the case where a
