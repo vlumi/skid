@@ -33,12 +33,19 @@ extension EditorView {
         var line =
             parts.isEmpty
             ? "Not closed — \(advice)" : "Gap \(parts.joined(separator: " + ")) — \(advice)"
-        // The pose advice is height-blind, and a loose end above the ground
+        // The pose advice is height-blind, and a loose end at the wrong HEIGHT
         // can't mate the start no matter how the shapes line up — a pitched-up
         // clover read "straights will close it" while every flat piece was
-        // rightly refused. Say the missing half.
-        if let last = walk.placed.last, last.exitHeight > 0.001 {
-            line += " · descend to ground to close"
+        // rightly refused. Say the missing half, measured against the layout's
+        // own baseline: a track raised as a whole is already home at height 1,
+        // and telling it to "descend to ground" was simply wrong.
+        if let last = walk.placed.last {
+            let offset = last.exitHeight - layout.originHeight
+            if offset > 0.001 {
+                line += " · descend to the start height"
+            } else if offset < -0.001 {
+                line += " · climb to the start height"
+            }
         }
         if case .needsMorePieces(let searched) = closingOutcome {
             line += " · no close in \(searched)"
