@@ -32,8 +32,6 @@ struct EditorView: View {
 
     /// Which hotbar slot's picker is open, if any.
     @State var configuring: PaletteTarget?
-    /// Live drag offset for the corner carousel, so it follows the finger.
-    @State var dragOffset: CGFloat = 0
     /// The pitch the next pieces are laid at. Session state, not persisted:
     /// every editing session starts on level ground. Sticky across placements
     /// (a climb is usually more than one piece); whether it should auto-reset
@@ -298,8 +296,12 @@ struct EditorView: View {
         near point: CGPoint, walk: WalkResult, transform: EditorRenderer.Transform
     ) -> Int? {
         var best: (seam: Int, distance: CGFloat)?
+        // Seam N is piece N's EXIT, so that exit is where the tap must land —
+        // matching entries made every gate tap one piece early (the same
+        // off-by-one the gate markers had). Piece 0's exit is the start line,
+        // which is always a gate and not toggleable.
         for (index, placed) in walk.placed.enumerated() where index != 0 {
-            let p = transform.screen(placed.entry.position.vec2)
+            let p = transform.screen(placed.exits[0].position.vec2)
             let distance = hypot(p.x - point.x, p.y - point.y)
             guard distance < EditorRenderer.endHitRadius else { continue }
             if best == nil || distance < best!.distance { best = (index, distance) }
