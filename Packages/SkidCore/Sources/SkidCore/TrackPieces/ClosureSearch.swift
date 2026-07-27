@@ -57,7 +57,7 @@ struct ClosureSearch {
         // has to come down before the ring can close, and a ramp is the only
         // piece that does that. On the ground they'd just build a bridge to
         // nowhere, so they stay out.
-        let elevated = (placed.last?.exitHeight ?? 0) > 0.5
+        let elevated = Track.isOffGround(placed.last?.exitHeight ?? 0)
         candidates =
             PieceCatalog.all
             .filter { $0.key != PieceCatalog.startPieceID && $0.value.kind == .road }
@@ -167,7 +167,7 @@ struct ClosureSearch {
     func search(from end: PiecePose, height: Double = 0) -> Outcome {
         if end == goal, abs(height) < 0.001 { return .found([]) }
         var frontier = [Step(pose: end, height: height, run: [], cost: 0, arc: 0)]
-        var seen: Set<Visited> = [Visited(pose: end, heightStep: Int(height.rounded()))]
+        var seen: Set<Visited> = [Visited(pose: end, heightStep: Track.level(of: height))]
         for depth in 0..<maxPieces {
             var next: [Step] = []
             var best: Step?
@@ -196,9 +196,9 @@ struct ClosureSearch {
         for (id, piece) in candidates {
             let pose = piece.paths[0].exit(from: step.pose)
             let height = step.height + piece.heightDelta
-            // Height must stay in range — nothing climbs above the deck or digs
-            // below the ground, and it has to be back at 0 to close.
-            guard height >= -0.001, height <= 1.001 else { continue }
+            // Height must stay within the world's storeys, and it has to be
+            // back at 0 to close.
+            guard Track.withinLevels(height) else { continue }
             let candidate = Step(
                 pose: pose, height: height, run: step.run + [id],
                 cost: step.cost + Self.cost(piece), arc: step.arc + (arcOf[id] ?? 0))
@@ -210,7 +210,7 @@ struct ClosureSearch {
                 best = candidate
                 continue
             }
-            let visited = Visited(pose: pose, heightStep: Int(height.rounded()))
+            let visited = Visited(pose: pose, heightStep: Track.level(of: height))
             guard !seen.contains(visited) else { continue }
             // Prune what can no longer get home: if the goal is further than the
             // remaining pieces could carry the road, nothing downstream closes.

@@ -64,7 +64,7 @@ public struct MarkStore {
         let state = car.state
         // Marks live on the ground only: nothing prints from the bridge (it would
         // draw under it) or from mid-air.
-        guard state.height <= 0.5, !state.isAirborne else {
+        guard !Track.isOffGround(state.height), !state.isAirborne else {
             lastTirePositions[car.id] = nil
             return
         }
