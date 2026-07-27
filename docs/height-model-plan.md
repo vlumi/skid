@@ -146,7 +146,27 @@ Only after that: extend `HeightLevel` (step 3 makes this one definition),
 the search's ramp-offering rule (offer up-ramps when below ground, down-ramps
 when above).
 
-## 5. Curved 90° ramps
+## 5. The half-height lattice round — REPLANNED (supersedes curved ramps)
+
+Direction decided 2026-07-27, spec in docs/track-pieces.md ("Planned: pitch
+and the half-height lattice"): pitched ±0.5 pieces on the ordinary road units
+(1U straight, 45° corners at all radii), palette pitch selector instead of
+ramp buttons, heights bounded 0…1 this round. Implementation order:
+
+1. `withinLevels` as a validator rule (today NOTHING forbids height 2 or −1 —
+   measured; `canAppend(rampUp)` on the deck returns true).
+2. Catalog: half-climb primitives (straight + 45° × radius × hand × up/down),
+   `rampUp`/`rampDown` become compounds of two halves (ids retained; apex
+   seam appears); built-ins re-encode, codes break (pre-release).
+3. Proximity clearance restated: a full storey of air minus car headroom,
+   replacing the half-level threshold that would sit on the new lattice.
+4. Gates/rails per half-mouth (should be automatic); extend RampGateTests'
+   drive fixtures to bending climbs.
+5. Palette: pitch selector; the ramp sentinel retires.
+6. Renderer: wedges/scale are already continuous in height; verify half-level
+   resting roads draw sanely.
+
+The original curved-ramp notes below are kept only for the physics numbers:
 
 Prerequisites: steps 1–2 merged. The structure already generalizes
 (`capsHighEnd` is property-based, rails follow samples, caps span rail
