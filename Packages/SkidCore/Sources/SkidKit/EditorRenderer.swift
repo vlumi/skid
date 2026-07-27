@@ -123,8 +123,13 @@ enum EditorRenderer {
 
         // Grid-slot markings, then the start/finish line at the start piece's
         // exit (the line paints over the hashes).
+        // The start line and grid hatching are PAINT on the start piece's own
+        // road, so they belong to that piece's height band — the `contains`
+        // check alone let a ground-level start line draw during the elevated
+        // pass, so it showed through a bridge crossing over it.
         if let start = walk.placed.first(where: { $0.id == PieceCatalog.startPieceID }),
-            heightRange.contains(start.exitHeight)
+            heightRange.contains(start.exitHeight),
+            heightRange.contains(start.entryHeight)
         {
             drawGridMarkings(start, width: width, transform: t, into: &context)
             drawStartLine(start, width: width, transform: t, into: &context)
@@ -229,12 +234,14 @@ enum EditorRenderer {
         outline.closeSubpath()
 
         let elevated = Track.isOffGround(placed.entryHeight) || Track.isOffGround(placed.exitHeight)
-        fillRoad(outline, placed: placed, samples: e.samples, t: t, into: &context)
-        // Only the DECK's guard rails are drawn on top of the road: they're real
-        // barriers, not paint, so they belong over the surface. Ground edge
-        // decoration went down in the earlier pass, under all asphalt.
+        // Rails go down FIRST, straddling the edges, and the asphalt then covers
+        // their inner half — the same sandwich the ground's kerbs use, which is
+        // what puts the two decorations in the same place.
         if elevated {
             strokeDeckRails(left: e.left, right: e.right, t: t, into: &context)
+        }
+        fillRoad(outline, placed: placed, samples: e.samples, t: t, into: &context)
+        if elevated {
         }
     }
 
@@ -318,13 +325,18 @@ enum EditorRenderer {
             rails.move(to: first)
             side.dropFirst().forEach { rails.addLine(to: $0) }
         }
-        let band = max(2, 12 * t.scale)
+        // Sits exactly where a kerb sits: `kerbBand` wide, straddling the road
+        // edge at DOUBLE that width so the asphalt pass covers the inner half
+        // and only the outboard half shows. Rails used to be a fixed 12-unit
+        // band laid ON the surface, so a bridge's drivable width read narrower
+        // than the same road on the ground and the two didn't line up.
+        let band = max(3, Double(PieceCatalog.kerbBand) * 2 * t.scale)
         context.stroke(
-            rails, with: .color(.black.opacity(0.5)),
-            style: StrokeStyle(lineWidth: band + 5, lineCap: .butt, lineJoin: .round))
+            rails, with: .color(.black.opacity(0.28)),
+            style: StrokeStyle(lineWidth: band + 2, lineCap: .butt, lineJoin: .round))
         context.stroke(
             rails, with: .color(bridgeRail),
-            style: StrokeStyle(lineWidth: band + 2, lineCap: .butt, lineJoin: .round))
+            style: StrokeStyle(lineWidth: band, lineCap: .butt, lineJoin: .round))
     }
 
     private static func offset(_ p: CGPoint, by s: CGSize) -> CGPoint {
