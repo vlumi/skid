@@ -40,14 +40,16 @@ extension TrackRenderer {
         // not a wider version of this split — `RenderBandTests` trips the day
         // `Track.highestLevel` rises, per the rollercoaster plan.
         //
-        // Measured at every TIRE, not just the centre: a car is a rectangle,
-        // and deciding by one point clipped whichever end still hung over road
-        // of the other pass at a band seam. It stays a ground car only when
-        // all of it is on ground-height road.
+        // Measured at the BODY'S CORNERS, not the centre: a car is a
+        // rectangle, and deciding by one point clipped whichever end still
+        // hung over road of the other pass at a band seam. Corners rather than
+        // tires because the drawn nose and tail overhang the axles — the tail
+        // could clear on all four tires and still get painted over. It stays a
+        // ground car only when all of it is over ground-height road.
         func onGround(_ car: Car) -> Bool {
             guard car.state.height <= Track.surfaceTolerance else { return false }
-            return car.state.tirePositions.allSatisfy { tire in
-                track.height(at: tire, preferHeight: car.state.height)
+            return car.state.bodyCorners.allSatisfy { corner in
+                track.height(at: corner, preferHeight: car.state.height)
                     <= Track.surfaceTolerance
             }
         }
