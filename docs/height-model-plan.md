@@ -153,8 +153,8 @@ and the half-height lattice"): pitched ±0.5 pieces on the ordinary road units
 (1U straight, 45° corners at all radii), palette pitch selector instead of
 ramp buttons, heights bounded 0…1 this round. Implementation order:
 
-1. `withinLevels` as a validator rule (today NOTHING forbids height 2 or −1 —
-   measured; `canAppend(rampUp)` on the deck returns true).
+1. `withinLevels` as a validator rule — DONE (`heightOutOfBounds` problem,
+   a placement blocker in `canAppend`).
 2. Catalog: half-climb primitives (straight + 45° × radius × hand × up/down),
    `rampUp`/`rampDown` become compounds of two halves (ids retained; apex
    seam appears); built-ins re-encode, codes break (pre-release).
