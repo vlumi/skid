@@ -21,17 +21,17 @@ import Foundation
 /// `[45L, 45L, 45L, 45L]` and beats `[45L ×4]`. Measured on the real built-ins, the
 /// pieces section roughly halves.
 public enum PieceExpansion {
-    /// The primitives a piece expands to, or `[id]` for something already
-    /// primitive (or with no expansion, like the start grid and ramps).
+    /// The pitched primitives a piece expands to, or `[(id, .flat)]` for
+    /// something already primitive (or with no expansion, like the start grid).
     ///
-    /// "Primitive" means **not decomposable**, not "1U long". The start grid and the
-    /// ramps are 2U and stay whole: a 2U straight splits into two shorts that are
-    /// geometrically identical to it, but half a start grid has no meaning (the grid
-    /// is its slot layout plus the finish line at its exit), and half a ramp would be
-    /// a 0.5-height climb — a new height state needing its own cap rules, on twice
-    /// the slope, when 2U is what makes the climb drivable at all.
-    public static func expand(_ id: PieceID) -> [PieceID] {
-        table[id] ?? [id]
+    /// "Primitive" means **not decomposable**, not "1U long". The start grid is
+    /// 2U and stays whole: half a start grid has no meaning — the grid is its
+    /// slot layout plus the finish line at its exit. The RAMPS, though, now do
+    /// decompose: the half-height lattice made 0.5 a legitimate resting height,
+    /// so the 2U full climb is two pitched 1U shorts with a seam at the apex —
+    /// which is what lets a checkpoint sit mid-climb.
+    public static func expand(_ id: PieceID) -> [(id: PieceID, pitch: Pitch)] {
+        table[id] ?? [(id, .flat)]
     }
 
     /// Expand a whole piece list, bounded as it goes.
@@ -40,8 +40,8 @@ public enum PieceExpansion {
     /// full of compounds would otherwise allocate a long layout before anything
     /// noticed. Returns nil when the limit is exceeded, so the caller can reject
     /// the code rather than trust a truncated result.
-    public static func expand(all ids: [PieceID], limit: Int) -> [PieceID]? {
-        var out: [PieceID] = []
+    public static func expand(all ids: [PieceID], limit: Int) -> [(id: PieceID, pitch: Pitch)]? {
+        var out: [(id: PieceID, pitch: Pitch)] = []
         out.reserveCapacity(ids.count)
         for id in ids {
             for primitive in expand(id) {
@@ -62,7 +62,9 @@ public enum PieceExpansion {
     /// Longest-first is what makes the encoding canonical: greedily taking the
     /// longest match at each position gives one byte sequence per piece list, and
     /// byte-stability is what lets a share code be an identity.
-    public static var compoundsLongestFirst: [(id: PieceID, primitives: [PieceID])] {
+    public static var compoundsLongestFirst:
+        [(id: PieceID, primitives: [(id: PieceID, pitch: Pitch)])]
+    {
         table.map { (id: $0.key, primitives: $0.value) }
             .sorted {
                 $0.primitives.count != $1.primitives.count
@@ -73,19 +75,22 @@ public enum PieceExpansion {
     /// The expansion table. Everything here is verified to compose exactly — see
     /// `PieceExpansionTests`, which walks each compound and its expansion and
     /// asserts the end poses are identical, not merely close.
-    private static let table: [PieceID: [PieceID]] = {
+    private static let table: [PieceID: [(id: PieceID, pitch: Pitch)]] = {
         typealias ID = PieceCatalog.ID
-        var table: [PieceID: [PieceID]] = [:]
+        var table: [PieceID: [(id: PieceID, pitch: Pitch)]] = [:]
+        func flat(_ ids: [PieceID]) -> [(id: PieceID, pitch: Pitch)] {
+            ids.map { ($0, .flat) }
+        }
 
         // Straights: multiples of the short straight.
-        table[ID.straight] = Array(repeating: ID.shortStraight, count: 2)
-        table[ID.longStraight] = Array(repeating: ID.shortStraight, count: 4)
+        table[ID.straight] = flat(Array(repeating: ID.shortStraight, count: 2))
+        table[ID.longStraight] = flat(Array(repeating: ID.shortStraight, count: 4))
 
         // Corners: a 90° is two 45s of the same radius; a hairpin is four.
         for corner in Corner.families {
-            table[corner.ninety] = Array(repeating: corner.fortyFive, count: 2)
+            table[corner.ninety] = flat(Array(repeating: corner.fortyFive, count: 2))
             if let hairpin = corner.hairpin {
-                table[hairpin] = Array(repeating: corner.fortyFive, count: 4)
+                table[hairpin] = flat(Array(repeating: corner.fortyFive, count: 4))
             }
         }
 
@@ -93,22 +98,29 @@ public enum PieceExpansion {
         // leaves on its original heading. Each is its own family's 45 followed by
         // the opposite hand at the same radius.
         for corner in Corner.families {
-            table[corner.chicane] = [corner.fortyFive, corner.mirrored]
+            table[corner.chicane] = flat([corner.fortyFive, corner.mirrored])
         }
 
         // Lane jogs: 90° out and 90° back, shifting sideways a whole number of U.
         // Note these are NOT a radius family — 240 and 360 name the lateral shift,
         // and both start with a tight arc — which is exactly why they can't simply
         // follow a selected radius.
-        table[ID.jog240Left] = [ID.curve90TightLeft, ID.curve90TightRight]
-        table[ID.jog240Right] = [ID.curve90TightRight, ID.curve90TightLeft]
-        table[ID.jog360Left] = [ID.curve90TightLeft, ID.curve90MediumRight]
-        table[ID.jog360Right] = [ID.curve90TightRight, ID.curve90MediumLeft]
+        table[ID.jog240Left] = flat([ID.curve90TightLeft, ID.curve90TightRight])
+        table[ID.jog240Right] = flat([ID.curve90TightRight, ID.curve90TightLeft])
+        table[ID.jog360Left] = flat([ID.curve90TightLeft, ID.curve90MediumRight])
+        table[ID.jog360Right] = flat([ID.curve90TightRight, ID.curve90MediumLeft])
+
+        // The full climbs: two pitched shorts, seam at the apex. The 2U ramp
+        // survives as the one-tap gesture and the closure search's step, but
+        // the layout holds the halves — a checkpoint can sit mid-climb.
+        table[ID.rampUp] = [(ID.shortStraight, .up), (ID.shortStraight, .up)]
+        table[ID.rampDown] = [(ID.shortStraight, .down), (ID.shortStraight, .down)]
 
         // Jogs expand to 90s, which are themselves compound — flatten so every
         // value is genuinely primitive.
-        for (id, primitives) in table where primitives.contains(where: { table[$0] != nil }) {
-            table[id] = primitives.flatMap { table[$0] ?? [$0] }
+        for (id, primitives) in table
+        where primitives.contains(where: { table[$0.id] != nil }) {
+            table[id] = primitives.flatMap { table[$0.id] ?? [$0] }
         }
         return table
     }()

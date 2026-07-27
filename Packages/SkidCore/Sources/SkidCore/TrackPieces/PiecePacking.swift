@@ -20,7 +20,7 @@ public enum PiecePacking {
     /// list packs exactly one way. That matters because a share code doubles as a
     /// track's identity: if the same track could encode two ways, two codes would
     /// name one track and dedup would break.
-    public static func pack(_ primitives: [PieceID]) -> [PieceID] {
+    public static func pack(_ primitives: [(id: PieceID, pitch: Pitch)]) -> [PieceID] {
         let compounds = PieceExpansion.compoundsLongestFirst
         var out: [PieceID] = []
         var index = 0
@@ -29,14 +29,26 @@ public enum PiecePacking {
             for compound in compounds {
                 let run = compound.primitives
                 guard index + run.count <= primitives.count else { continue }
-                guard Array(primitives[index..<(index + run.count)]) == run else { continue }
+                guard
+                    zip(primitives[index..<(index + run.count)], run).allSatisfy({
+                        $0.id == $1.id && $0.pitch == $1.pitch
+                    })
+                else { continue }
                 out.append(compound.id)
                 index += run.count
                 matched = true
                 break
             }
             if !matched {
-                out.append(primitives[index])
+                // A pitched primitive outside any compound has no byte form yet —
+                // that arrives with the mode-switch encoding. Until then the only
+                // sources of pitch are the ramp compounds, which always pack back;
+                // anything else here is a programming error, and dropping the
+                // pitch silently would corrupt the track.
+                precondition(
+                    primitives[index].pitch == .flat,
+                    "pitched primitive outside a compound is not encodable yet")
+                out.append(primitives[index].id)
                 index += 1
             }
         }
@@ -47,7 +59,7 @@ public enum PiecePacking {
     ///
     /// Nil when the expansion would exceed `limit` — a short code full of compounds
     /// must be refused before it allocates, not expanded and then measured.
-    public static func unpack(_ ids: [PieceID], limit: Int) -> [PieceID]? {
+    public static func unpack(_ ids: [PieceID], limit: Int) -> [(id: PieceID, pitch: Pitch)]? {
         PieceExpansion.expand(all: ids, limit: limit)
     }
 }

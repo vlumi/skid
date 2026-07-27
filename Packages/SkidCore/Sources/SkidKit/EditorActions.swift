@@ -19,7 +19,7 @@ extension CouchGame {
     public func editorAppend(_ id: PieceID) -> Bool {
         guard let layout = editorLayout else { return false }
         guard TrackValidator.canAppend(id, to: layout) else { return false }
-        editorLayout?.pieces += PieceExpansion.expand(id)
+        editorLayout?.append(contentsOf: PieceExpansion.expand(id))
         finishIfClosed()
         return true
     }
@@ -32,7 +32,7 @@ extension CouchGame {
     public func editorAppendRun(_ run: [PieceID]) -> Bool {
         guard let layout = editorLayout, !run.isEmpty else { return false }
         guard TrackValidator.canAppend(run: run, to: layout) else { return false }
-        editorLayout?.pieces += run.flatMap { PieceExpansion.expand($0) }
+        editorLayout?.append(contentsOf: run.flatMap { PieceExpansion.expand($0) })
         finishIfClosed()
         return true
     }
@@ -191,7 +191,7 @@ extension CouchGame {
     /// Remove the last piece (never the start piece — a track must keep one).
     public func editorDeleteLast() {
         guard var layout = editorLayout, layout.pieces.count > 1 else { return }
-        layout.pieces.removeLast()
+        layout.removeLastPiece()
         // Drop any gate seam that no longer has a piece.
         layout.gateSeams = layout.gateSeams.filter { $0 < layout.pieces.count }
         editorLayout = layout
