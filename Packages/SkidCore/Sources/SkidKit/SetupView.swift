@@ -10,64 +10,83 @@ struct SetupView: View {
     var body: some View {
         ZStack {
             Color(red: 0.28, green: 0.55, blue: 0.23).ignoresSafeArea()
-            VStack(spacing: 24) {
-                VStack(spacing: 6) {
-                    Text(verbatim: "SKID JAM")
-                        .font(.system(size: 52, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
-                        .shadow(radius: 3)
-                    hiscoreLine
-                }
-
-                HStack(spacing: 10) {
-                    choice(Text("Race", bundle: .module), selected: game.mode == .race) {
-                        game.mode = .race
-                    }
-                    choice(
-                        Text("Time trial", bundle: .module), selected: game.mode == .timeTrial
-                    ) {
-                        game.mode = .timeTrial
-                    }
-                }
-
-                HStack(spacing: 10) {
-                    ForEach(TrackLibrary.all, id: \.id) { track in
-                        choice(trackName(track.id), selected: game.trackID == track.id) {
-                            game.trackID = track.id
-                        }
-                    }
-                    // The custom slot: one permanent place for your own design,
-                    // raced with the full setup (players, AI, laps) like any
-                    // built-in. Only selectable once it compiles to a real track.
-                    customTrackChoice
-                }
-
-                if game.mode == .race {
-                    raceOptions
-                }
-
-                colorRow
-
-                Button {
-                    game.startRace()
-                } label: {
-                    Text("Start", bundle: .module)
-                        .font(.title.bold())
-                        .padding(.horizontal, 48)
-                        .padding(.vertical, 14)
-                        .background(.white.opacity(0.92), in: Capsule())
-                        .foregroundStyle(.black)
-                }
-
-                Button {
-                    game.openEditor()
-                } label: {
-                    Text("Track editor", bundle: .module).pillStyle()
+            // Scrollable, because the lobby has outgrown the smallest screens
+            // (an SE can't show mode + track + race options + colours + both
+            // buttons at once). `minHeight` at the viewport height keeps the
+            // content CENTRED wherever it does fit, so roomy screens look
+            // exactly as before and only a cramped one scrolls. A proper
+            // redesign comes when the game is closer to feature-complete.
+            GeometryReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    lobby
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: proxy.size.height)
                 }
             }
         }
+    }
+
+    private var lobby: some View {
+        VStack(spacing: 24) {
+            VStack(spacing: 6) {
+                Text(verbatim: "SKID JAM")
+                    .font(.system(size: 52, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
+                    .shadow(radius: 3)
+                hiscoreLine
+            }
+
+            HStack(spacing: 10) {
+                choice(Text("Race", bundle: .module), selected: game.mode == .race) {
+                    game.mode = .race
+                }
+                choice(
+                    Text("Time trial", bundle: .module), selected: game.mode == .timeTrial
+                ) {
+                    game.mode = .timeTrial
+                }
+            }
+
+            HStack(spacing: 10) {
+                ForEach(TrackLibrary.all, id: \.id) { track in
+                    choice(trackName(track.id), selected: game.trackID == track.id) {
+                        game.trackID = track.id
+                    }
+                }
+                // The custom slot: one permanent place for your own design,
+                // raced with the full setup (players, AI, laps) like any
+                // built-in. Only selectable once it compiles to a real track.
+                customTrackChoice
+            }
+
+            if game.mode == .race {
+                raceOptions
+            }
+
+            colorRow
+
+            Button {
+                game.startRace()
+            } label: {
+                Text("Start", bundle: .module)
+                    .font(.title.bold())
+                    .padding(.horizontal, 48)
+                    .padding(.vertical, 14)
+                    .background(.white.opacity(0.92), in: Capsule())
+                    .foregroundStyle(.black)
+            }
+
+            Button {
+                game.openEditor()
+            } label: {
+                Text("Track editor", bundle: .module).pillStyle()
+            }
+        }
+        // Room to breathe at both ends when the content does scroll, so the
+        // title and the editor button don't sit flush against the edges.
+        .padding(.vertical, 20)
     }
 
     /// Display name for a built-in track id.
