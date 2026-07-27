@@ -60,7 +60,7 @@ public enum TrackValidator {
     /// piece would re-litigate each prefix.
     public static func canAppend(run: [PieceID], to layout: TrackLayout) -> Bool {
         var candidate = layout
-        candidate.pieces += run.flatMap { PieceExpansion.expand($0) }
+        candidate.append(contentsOf: run.flatMap { PieceExpansion.expand($0) })
         let problems = validate(candidate).problems
         return !problems.contains { problem in
             switch problem {

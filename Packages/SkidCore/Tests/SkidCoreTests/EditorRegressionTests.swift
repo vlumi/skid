@@ -73,7 +73,7 @@ final class EditorRegressionTests: XCTestCase {
             XCTAssertTrue(
                 TrackValidator.canAppend(id, to: layout),
                 "mid-run piece \(id) must be placeable on the growing prefix")
-            layout.pieces += PieceExpansion.expand(id)
+            layout.append(contentsOf: PieceExpansion.expand(id))
         }
         XCTAssertTrue(layout.walk().openEnds.isEmpty)
     }

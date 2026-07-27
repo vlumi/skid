@@ -1,9 +1,24 @@
 import Foundation
 
-/// A track as the piece model stores it: an ordered piece-id list, an origin
-/// pose (the start line, on the fixed canvas), the gate seam indices, and a
-/// theme. This is exactly what the share code carries. Geometry is never
-/// stored — it derives from walking the list.
+/// How a piece runs vertically: level, or climbing/descending **half a level**
+/// over its own length.
+///
+/// Pitch is an attribute of a placed piece, not a piece id — the catalog stays
+/// a set of SHAPES, and "ramp" stops being a thing you pick and becomes a way
+/// you lay road. In the share code, pitch is carried by mode-switch virtual
+/// elements (and, until those land, by the ramp compounds); the in-memory
+/// layout always holds it resolved per piece.
+public enum Pitch: Int, Equatable, Sendable, Codable, CaseIterable {
+    case flat = 0, up = 1, down = -1
+
+    /// The height this pitch adds over one piece: half a level.
+    public var delta: Double { Double(rawValue) * Track.levelHeight / 2 }
+}
+
+/// A track as the piece model stores it: an ordered piece-id list with each
+/// piece's pitch, an origin pose (the start line, on the fixed canvas), the
+/// gate seam indices, and a theme. This is exactly what the share code
+/// carries. Geometry is never stored — it derives from walking the list.
 public struct TrackLayout: Equatable, Sendable, Codable {
     public enum Theme: Int, Equatable, Sendable, Codable {
         case normal = 0, snow = 1, sand = 2
@@ -11,6 +26,11 @@ public struct TrackLayout: Equatable, Sendable, Codable {
 
     /// Pieces in ring order. The start-grid piece appears exactly once.
     public var pieces: [PieceID]
+    /// Each piece's pitch, parallel to `pieces`. May run SHORT of it — direct
+    /// `pieces` mutations don't maintain it, and a missing entry means flat
+    /// (`pitch(at:)` is the accessor; `append`/`removeLastPiece` keep the two
+    /// in step where non-flat pitch is possible). Never longer than `pieces`.
+    public var pitches: [Pitch]
     /// Where piece 0 begins — the start line's pose on the canvas.
     public var origin: PiecePose
     /// Seam indices that are checkpoint gates (0 = the start/finish, always).
@@ -18,13 +38,46 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     public var theme: Theme
 
     public init(
-        pieces: [PieceID], origin: PiecePose = .origin,
+        pieces: [PieceID], pitches: [Pitch] = [], origin: PiecePose = .origin,
         gateSeams: [Int] = [0], theme: Theme = .normal
     ) {
         self.pieces = pieces
+        // Normalized to the piece count so equality is structural: trailing
+        // flats and an absent array mean the same layout.
+        self.pitches = TrackLayout.trimmed(pitches)
         self.origin = origin
         self.gateSeams = gateSeams
         self.theme = theme
+    }
+
+    /// The pitch of piece `index`; flat where the array runs short.
+    public func pitch(at index: Int) -> Pitch {
+        index < pitches.count ? pitches[index] : .flat
+    }
+
+    /// Append resolved (piece, pitch) pairs — what expansions produce — keeping
+    /// the pitch array in step.
+    public mutating func append(contentsOf run: [(id: PieceID, pitch: Pitch)]) {
+        guard run.contains(where: { $0.pitch != .flat }) else {
+            pieces += run.map(\.id)  // all flat: the short array already says so
+            return
+        }
+        pitches += Array(repeating: .flat, count: pieces.count - pitches.count)
+        pieces += run.map(\.id)
+        pitches = TrackLayout.trimmed(pitches + run.map(\.pitch))
+    }
+
+    /// Remove the last piece and its pitch together.
+    public mutating func removeLastPiece() {
+        pieces.removeLast()
+        if pitches.count > pieces.count { pitches.removeLast(pitches.count - pieces.count) }
+    }
+
+    /// Trailing flats dropped, so every equal layout has one representation.
+    private static func trimmed(_ pitches: [Pitch]) -> [Pitch] {
+        var result = pitches
+        while result.last == .flat { result.removeLast() }
+        return result
     }
 }
 
@@ -36,14 +89,26 @@ public struct PlacedPiece: Equatable, Sendable {
     public var entry: PiecePose
     public var exits: [PiecePose]
     /// Continuous **height** at this piece's entry (0 = ground, 1 = deck).
-    /// The exit height is `entryHeight + piece.heightDelta`.
+    /// The exit height is `entryHeight + climb`.
     public var entryHeight: Double
     /// Seam index at this piece's entry port.
     public var entrySeam: Int
+    /// How this placement runs vertically. The piece's own `heightDelta`
+    /// (full-climb compounds like the 2U ramp) and the pitch attribute
+    /// (half-level climbs on ordinary shapes) never coexist on one placement.
+    public var pitch: Pitch
+    /// Whether the climb eases to a standstill at each end, or runs straight
+    /// through into a neighbour that keeps climbing. The walk sets these from
+    /// the sequence: a climb eases only where it FACES something that doesn't
+    /// continue it — so a full climb split into halves is still one S-curve,
+    /// not a terrace with a shelf at the apex.
+    public var easeIn: Bool
+    public var easeOut: Bool
 
     public init(
         id: PieceID, piece: Piece, entry: PiecePose, exits: [PiecePose],
-        entryHeight: Double, entrySeam: Int
+        entryHeight: Double, entrySeam: Int, pitch: Pitch = .flat,
+        easeIn: Bool = true, easeOut: Bool = true
     ) {
         self.id = id
         self.piece = piece
@@ -51,20 +116,35 @@ public struct PlacedPiece: Equatable, Sendable {
         self.exits = exits
         self.entryHeight = entryHeight
         self.entrySeam = entrySeam
+        self.pitch = pitch
+        self.easeIn = easeIn
+        self.easeOut = easeOut
     }
 
+    /// The height this placement gains: the piece's own delta plus its pitch.
+    public var climb: Double { piece.heightDelta + pitch.delta }
+
     /// Height at this piece's exit.
-    public var exitHeight: Double { entryHeight + piece.heightDelta }
+    public var exitHeight: Double { entryHeight + climb }
 
     /// Height at fraction `f` (0…1) along this piece, eased with **smoothstep**
     /// so a ramp meets the ground and deck smoothly rather than with hard
     /// creases. Flat pieces stay constant; the whole visual scale (road width,
     /// car size, wedge) reads off this.
     public func height(atFraction f: Double) -> Double {
-        guard piece.heightDelta != 0 else { return entryHeight }
+        guard climb != 0 else { return entryHeight }
         let x = min(1, max(0, f))
-        let eased = x * x * (3 - 2 * x)  // smoothstep
-        return entryHeight + piece.heightDelta * eased
+        // Cubic Hermite from 0 to 1 with a chosen tangent at each end: 0 where
+        // the climb eases against flat road, 1 (the run's own slope) where it
+        // continues into a neighbour. Both eased is exactly smoothstep; both
+        // continuing is exactly linear — so a chain of same-pitch pieces forms
+        // one S: eased at its outer ends, straight through interior seams.
+        let m0 = easeIn ? 0.0 : 1.0
+        let m1 = easeOut ? 0.0 : 1.0
+        let eased =
+            m0 * (x * x * x - 2 * x * x + x) + (3 * x * x - 2 * x * x * x)
+            + m1 * (x * x * x - x * x)
+        return entryHeight + climb * eased
     }
 
     /// World-space centerline samples paired with the **height** at each one
@@ -82,7 +162,7 @@ public struct PlacedPiece: Equatable, Sendable {
     {
         let pts = centerlineSamples(degreesPerSample: degreesPerSample)
         guard pts.count > 1 else { return pts.map { ($0, entryHeight) } }
-        let delta = abs(piece.heightDelta)
+        let delta = abs(climb)
         guard delta > 0.001 else {
             let last = Double(pts.count - 1)
             return pts.enumerated().map { i, p in (p, height(atFraction: Double(i) / last)) }
@@ -274,7 +354,7 @@ extension TrackLayout {
         var ends: [(pose: PiecePose, height: Double)] = [(origin, 0)]
         var seam = 0
 
-        for id in pieces {
+        for (index, id) in pieces.enumerated() {
             guard let piece = PieceCatalog.piece(id) else {
                 return WalkResult(
                     placed: placed, openEnds: ends.map(\.pose), failure: .unknownPiece(id))
@@ -285,13 +365,20 @@ extension TrackLayout {
             let entry = current.pose
             let entryHeight = current.height
             let exits = piece.paths.map { $0.exit(from: entry) }  // chain fold
-            placed.append(
-                PlacedPiece(
-                    id: id, piece: piece, entry: entry, exits: exits,
-                    entryHeight: entryHeight, entrySeam: seam))
+            var placement = PlacedPiece(
+                id: id, piece: piece, entry: entry, exits: exits,
+                entryHeight: entryHeight, entrySeam: seam, pitch: pitch(at: index))
+            // A climb runs straight through into a neighbour climbing the same
+            // way; it eases only against everything else. (Sequence order is
+            // placement order — forks are Phase B, so neighbours are i±1.)
+            if let previous = placed.last, continues(previous.climb, placement.climb) {
+                placement.easeIn = false
+                placed[placed.count - 1].easeOut = false
+            }
+            placed.append(placement)
             seam += 1
 
-            let exitHeight = entryHeight + piece.heightDelta
+            let exitHeight = placement.exitHeight
             // A fork's SECOND+ exits become both new loose ends AND inlets
             // (a later branch can rejoin them); the FIRST exit is the one we
             // continue next. Auto-mate each exit that lands on an existing
@@ -309,6 +396,11 @@ extension TrackLayout {
         }
 
         return WalkResult(placed: placed, openEnds: ends.map(\.pose), failure: nil)
+    }
+
+    /// Two consecutive climbs continue each other when both run the same way.
+    private func continues(_ a: Double, _ b: Double) -> Bool {
+        a != 0 && b != 0 && (a > 0) == (b > 0)
     }
 
     /// A loose end mates an inlet when their poses are **identical** — same
