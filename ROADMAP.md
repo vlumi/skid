@@ -119,14 +119,20 @@ What's left:
         building, the origin need not be the start line at all**: it's just
         where the walk begins.
 
-        That separation is most of the work, and the code is closer to it than
-        it looks — three places weld the two together today: the compiler takes
-        the grid from `walk.placed[0]`, treats seam 0 as the finish, and the
-        validator requires seam 0 to be marked. Splitting "where the walk
-        starts" from "where the lap starts" would also let the author MOVE the
-        start line on a finished track, which is a want in its own right.
-        Rotating the piece list to put the start piece first at save time keeps
-        the share code's meaning unchanged.
+        *And the restriction only has to hold for a FINISHED track.* Validation
+        is already two-tier — `canAppend` ignores what a work-in-progress is
+        expected to break (loose ends, gate count, standing on the deck) while
+        `isSaveable` demands everything — so "the origin is the start piece" and
+        "seam 0 is the finish" move to the strict tier. Mid-build the origin is
+        just a walk anchor that may sit anywhere, including at a cut end; on
+        save, rotate the piece list so the start piece leads and the invariant
+        holds again, with share codes' meaning unchanged.
+
+        Three places weld the two concepts together today and would need the
+        split: the compiler takes the grid from `walk.placed[0]`, treats seam 0
+        as the finish, and the validator requires seam 0 to be marked. Doing it
+        also buys MOVING the start line on a finished track, which is a want in
+        its own right.
 
         Checkpoint seams shift under any of this, exactly as in the primitives
         round.
