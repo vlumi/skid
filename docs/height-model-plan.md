@@ -37,7 +37,16 @@ the crossing samples' actual heights BEFORE writing the assertion. (b) The
 eight (ground road under mid-deck) must stay exempt. (c) All built-ins still
 validate (existing tests cover this — they must stay green untouched).
 
-## 2. Derive the under-deck cap; pin the cap↔climb coupling
+## 2. Derive the under-deck cap; pin the cap↔climb coupling — DONE
+
+Done differently (and better) than planned below: the cap is now a **gate**
+wall kind — "blocks every car below my height, passes everyone at or above" —
+at `level − reachTolerance`, so the bespoke 0.9 constant is gone entirely and
+the seal says what it means: you may not enter from a road below this level.
+`RampGateTests` pins the remaining physics coupling both ways (analytic
+inequality over every catalog ramp + a flat-out drive-over per ramp pairing).
+A tunnel mouth will want the mirrored kind (blocking from above) in step 4.
+Original notes:
 
 **Fault.** `underDeckCapHeight = 0.9` (PieceCompilerWalls.swift) works only
 because a flat-out climber on a 240-unit ramp arrives at ~0.99, an artifact of
@@ -90,18 +99,35 @@ ground-level cars must not enter it from above/beside. Also
 0→−1 ramp, the cap lands at 0.9 ABOVE ground and walls off the ground road at
 the tunnel mouth.
 
-**Do first, in docs/track-pieces.md, and get sign-off before any code:**
+**Decided (maintainer, 2026-07-27) — the cutting model:**
 
-- The cutting wall model: what guards the tunnel mouth and its sides, and how
-  `Race.blocks` expresses "a wall that stops cars ABOVE it" (the current rule
-  only stops cars below a top).
-- What a ground-level car crossing over a tunnel does (should be: nothing —
-  that is the point of a tunnel) and what the renderer draws (tunnel under
-  ground: draw order, visibility of cars inside).
-- Cap/seal rule for descending ramps, defined relative to the level being
-  sealed, not as an absolute height.
-- Whether grass exists below ground, and what `surface(at:height:)` returns in
-  a tunnel.
+- A tunnel ramp is **a hole in the ground you can always fall into**: entering
+  the cutting is allowed from ANY direction — over either end or across its
+  sides. A car that comes in from the side falls to the ramp surface below.
+- **Leaving is what's restricted**: out the low end into the tunnel, out the
+  high end onto the ground. The sides are walls **from the inside only** —
+  one-way walls, passable inward, solid outward.
+- The mouth seals mirror the embankment gate: a `gate` blocks entering from
+  the storey below; the tunnel needs the mirrored kind blocking entry from the
+  storey ABOVE (its own case in `Wall.Kind`, not a flag). The gate is already
+  bounded to exactly one storey, so deck gates ignore tunnel traffic below by
+  construction.
+
+**Still to settle in docs/track-pieces.md before code:**
+
+- How "falling in" plays: the height chase downward (instant, or faster than
+  the climb clamp — a fall isn't a climb), and what happens to speed on
+  landing.
+- One-way walls in `Race.blocks`: the side rail of a cutting needs a
+  directional test (which side of the wall the car approaches from), which no
+  current kind has.
+- Validator: a cutting's footprint is enterable, so RoadProximity's solidity
+  interval for tunnel-ramp segments is NOT "solid to the ground" like an
+  embankment — decide what it is (probably thin at its own height, since the
+  hole is passable space).
+- Renderer: draw order below ground, car visibility in the cutting/tunnel
+  (per the reveal-beneath/porthole notes), and whether grass exists at −1 /
+  what `surface(at:height:)` returns there.
 
 Only after that: extend `HeightLevel` (step 3 makes this one definition),
 `extend`'s bounds, the rails condition ("not entirely at ground level"), and
