@@ -148,16 +148,34 @@ What's left:
       - **Rethink the delete icon.** The undo-arrow reads as "undo last action"
         rather than "remove this piece".
       Longer term: real undo.
-- [ ] **BUG: a car on the grass under a bridge draws on top of it.** Reported
-      again on build 8 (an old one). The render-pass split asks whether the
-      car's body corners are over ground-height ROAD, and grass answers "no
-      road here" — so a car that has slid off the ribbon beneath a deck falls
-      into the elevated group and paints over the bridge. The pass rule needs a
-      notion of "under something" that doesn't depend on standing on road: the
-      car's own height is the honest signal (it is 0 out there), so treat
-      off-road ground cars as ground cars rather than deferring to the road
-      query. Debug overlay reads `h 0.00 / grass / off road 148` while the car
-      is drawn on the deck.
+- [ ] **Draw by z-order, not by two hardcoded passes.** *(Replaces a growing
+      pile of per-case rules — the maintainer's call, and the right one.)*
+
+      The renderer draws in two fixed passes (`heightRange -1...0.5`, then
+      `0.5...2`), so every object needs a rule deciding which pass it belongs
+      to: ribbons by their max height, cars by their body corners over
+      ground-height road, marks by a height threshold, gates by their own. Each
+      new situation adds a clause, and the passes have already leaked into the
+      structure — the bridge is currently drawn *inside* `drawCars`, because
+      "when" and "what" got conflated.
+
+      Instead: give every drawable a **height** and a **kind**, sort by
+      `(height, kind)` with a fixed kind order — ground < kerb < road < wall <
+      mark < car — and draw the sorted list. Then "a bridge covers the car
+      beneath it" and "a car sits on its own road" are the same fact, one
+      comparison, no special cases. It also generalizes to the levels that are
+      coming (tunnels below, the rollercoaster above), where per-pass rules
+      would multiply.
+
+      **This subsumes the open bug it replaces:** a car on the GRASS under a
+      bridge draws on top of it (reported again on build 8). The pass rule asks
+      whether the car's corners are over ground-height *road*, and grass answers
+      "no road here" — indistinguishable from "road above the ground" — so an
+      off-ribbon car under a deck lands in the elevated group. Debug overlay
+      reads `h 0.00 / grass / off road 148` while the car is drawn on the deck.
+      Under a z-order its height (0) places it correctly without asking about
+      road at all. Fixing it in the current scheme means one more clause, which
+      is the argument for doing this properly.
 
 - [ ] **BUG: on notched phones the stick clamps but the input doesn't.** The
       floating stick's origin is clamped to the player's safe-area-inset zone
