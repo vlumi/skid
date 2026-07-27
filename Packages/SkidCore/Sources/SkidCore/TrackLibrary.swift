@@ -29,6 +29,13 @@ public enum TrackLibrary {
         Builtin(id: "small", name: "Small track", code: "AUwBCB8SDAkBCgwaAgMABAwDBQNIAlgA"),
         Builtin(id: "oval", name: "Big oval", code: "Af8BBx8NDQINDQECBAACBgoDBQSwBhgA"),
         Builtin(id: "eight", name: "Eight", code: "AZkBCx8ReQUFAnoGBhIBAgMADAQDBQJYA8AH"),
+        // Built in the editor with the pitch tools, and the first built-in to
+        // START off the ground: its baseline is the deck, so the lap dips to
+        // ground level and climbs back. Exercises raised baselines, half-level
+        // climbs and self-crossing at two heights all at once.
+        Builtin(
+            id: "clover", name: "Clover",
+            code: "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI"),
     ]
 
     /// Every built-in, compiled once. A code that doesn't compile is a broken

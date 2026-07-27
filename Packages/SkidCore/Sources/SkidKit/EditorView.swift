@@ -300,8 +300,20 @@ struct EditorView: View {
         }
     }
 
-    /// The seam nearest a tap, if it's close enough to count. A seam sits at a
-    /// piece's entry port; seam 0 is the start/finish and can't be toggled.
+    /// The seam a tap means, if any is close enough to count.
+    ///
+    /// **Measured to the drawn gate LINE, not the seam's centre point.** A gate
+    /// is a bar across the road, and that bar is what the author aims at — so a
+    /// tap near either end of it counts, exactly as it looks. Measuring to the
+    /// centre point made gates on a zoomed-out track nearly untappable: the
+    /// canvas is 1600 units wide, so a whole track on a small phone draws at
+    /// ~0.47 points per unit, putting adjacent seams 56 points apart with a
+    /// 26-point hit circle each — narrower than a fingertip, and a tap that
+    /// looked spot-on landed in a neighbour's circle instead.
+    ///
+    /// **Existing gates win ties**, because removing one is the harder gesture:
+    /// a track carrying several gates has many seams to hit, and the one you
+    /// can see is the one you meant.
     private func seam(
         near point: CGPoint, walk: WalkResult, transform: EditorRenderer.Transform
     ) -> Int? {
@@ -311,31 +323,59 @@ struct EditorView: View {
         // which is always a gate and not toggleable.
         var best: SeamHit?
         for (index, placed) in walk.placed.enumerated() where index != 0 {
-            let p = transform.screen(placed.exits[0].position.vec2)
-            let distance = hypot(p.x - point.x, p.y - point.y)
+            let distance = distanceToGateBar(of: placed, from: point, transform: transform)
             guard distance < EditorRenderer.endHitRadius else { continue }
             let candidate = SeamHit(
-                seam: index, distance: distance, height: placed.exitHeight)
+                seam: index, distance: distance, height: placed.exitHeight,
+                isGate: game.editorIsGate(seam: index))
             guard let current = best else {
                 best = candidate
                 continue
             }
-            // Nearest wins — except between seams at the SAME SPOT, where
-            // distance can't choose and height does: the one drawn on top is
-            // the one being pointed at.
-            //
-            // "Same spot" is literal. Measured on a crossing built in the
-            // editor, the ambiguous pair is exactly coincident (0 units apart),
-            // while any two seams you can aim between are a piece-length away —
-            // so the tie-break needs only a float-noise window, not a share of
-            // the hit radius. A wider window (half the radius) was the bug: a
-            // tap plainly on the lower seam still fell inside it, and the
-            // bridge won every time.
-            let coincident = abs(distance - current.distance) < 1
-            let higher = candidate.height > current.height + 0.001
-            if coincident ? higher : distance < current.distance { best = candidate }
+            best = preferred(candidate, over: current)
         }
         return best?.seam
+    }
+
+    /// Screen distance from `point` to the gate bar drawn across this piece's
+    /// exit — the segment spanning the road, not its midpoint.
+    private func distanceToGateBar(
+        of placed: PlacedPiece, from point: CGPoint, transform: EditorRenderer.Transform
+    ) -> CGFloat {
+        let pose = placed.exits[0]
+        let across = Vec2(angle: pose.heading.radians).perpendicular
+        let half = across * (Double(PieceCatalog.width) / 2)
+        let a = transform.screen(pose.position.vec2 - half)
+        let b = transform.screen(pose.position.vec2 + half)
+        let ab = CGPoint(x: b.x - a.x, y: b.y - a.y)
+        let lengthSquared = ab.x * ab.x + ab.y * ab.y
+        guard lengthSquared > 0 else { return hypot(a.x - point.x, a.y - point.y) }
+        // Project onto the bar, clamped to its ends.
+        let t = max(
+            0, min(1, ((point.x - a.x) * ab.x + (point.y - a.y) * ab.y) / lengthSquared))
+        let closest = CGPoint(x: a.x + ab.x * t, y: a.y + ab.y * t)
+        return hypot(closest.x - point.x, closest.y - point.y)
+    }
+
+    /// Which of two candidate seams a tap meant.
+    private func preferred(_ candidate: SeamHit, over current: SeamHit) -> SeamHit {
+        // A gate you can see beats an empty seam at a comparable distance —
+        // removing a gate is the gesture that was impossible otherwise.
+        if candidate.isGate != current.isGate {
+            let gate = candidate.isGate ? candidate : current
+            let empty = candidate.isGate ? current : candidate
+            return gate.distance < empty.distance + EditorRenderer.endHitRadius / 2
+                ? gate : empty
+        }
+        // Otherwise nearest wins, except between bars at the SAME SPOT, where
+        // distance can't choose and height does: the one drawn on top is the
+        // one being pointed at. "Same spot" is literal — a float-noise window,
+        // since any two seams you can aim between are a piece apart.
+        let coincident = abs(candidate.distance - current.distance) < 1
+        if coincident {
+            return candidate.height > current.height + 0.001 ? candidate : current
+        }
+        return candidate.distance < current.distance ? candidate : current
     }
 
     private var panZoom: some Gesture {
@@ -397,4 +437,7 @@ private struct SeamHit {
     var seam: Int
     var distance: CGFloat
     var height: Double
+    /// Whether this seam already carries a gate — a visible target, so it wins
+    /// near-ties against empty seams.
+    var isGate: Bool
 }
