@@ -80,7 +80,8 @@ extension CouchGame {
         guard let layout = editorLayout, let last = layout.walk().placed.last else {
             return PieceCatalog.ID.rampUp
         }
-        return last.exitHeight > 0.5 ? PieceCatalog.ID.rampDown : PieceCatalog.ID.rampUp
+        return Track.isOffGround(last.exitHeight)
+            ? PieceCatalog.ID.rampDown : PieceCatalog.ID.rampUp
     }
 
     /// Move the whole layout so it sits centered on the canvas, by shifting the

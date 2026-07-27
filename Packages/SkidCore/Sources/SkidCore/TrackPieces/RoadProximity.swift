@@ -126,7 +126,9 @@ struct RoadProximity {
             forEachNearby(a, b) { other in
                 guard !hit else { return }
                 let existing = segments[other]
-                guard max(low - existing.top, existing.solidLow - top, 0) <= 0.5
+                guard
+                    max(low - existing.top, existing.solidLow - top, 0)
+                        <= Track.levelSeparation
                 else { return }
                 guard segmentDistance(a, b, existing.a, existing.b) < Self.minGap
                 else { return }
@@ -147,7 +149,7 @@ struct RoadProximity {
     /// full level; nothing clears a ramp, at either end — which is exactly how
     /// the compiled track drives (side rails + the mouth cap).
     private func clearVertically(_ a: RoadSegment, _ b: RoadSegment) -> Bool {
-        max(a.solidLow - b.top, b.solidLow - a.top, 0) > 0.5
+        max(a.solidLow - b.top, b.solidLow - a.top, 0) > Track.levelSeparation
     }
 
     /// Where the solid fill under road at `height` starts. `trunc`, with a hair

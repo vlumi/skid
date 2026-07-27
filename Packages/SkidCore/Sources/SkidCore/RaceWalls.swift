@@ -76,6 +76,10 @@ extension Race {
             return car.height < wall.height
                 && car.height >= wall.height - Track.levelHeight
         case .rail:
+            // Embankment-only trunc: "which level's floor does this rail's
+            // guard reach down to" assumes storeys at whole heights ≥ 0. A
+            // tunnel cutting's rails are one-way and get their own kind (see
+            // docs/height-model-plan.md step 4), so this stays as is.
             let floor = wall.height.rounded(.down)
             return car.height >= floor - Track.reachTolerance && car.height <= wall.height
         }

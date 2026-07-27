@@ -232,7 +232,7 @@ enum EditorRenderer {
         outline.addLines(fillLeft + fillRight.reversed())
         outline.closeSubpath()
 
-        let elevated = placed.entryHeight > 0.5 || placed.exitHeight > 0.5
+        let elevated = Track.isOffGround(placed.entryHeight) || Track.isOffGround(placed.exitHeight)
         fillRoad(outline, placed: placed, samples: e.samples, t: t, into: &context)
         // Only the DECK's guard rails are drawn on top of the road: they're real
         // barriers, not paint, so they belong over the surface. Ground edge
@@ -250,7 +250,7 @@ enum EditorRenderer {
         _ placed: PlacedPiece, width: Double, t: Transform,
         into context: inout GraphicsContext
     ) {
-        guard placed.entryHeight > 0.5 || placed.exitHeight > 0.5,
+        guard Track.isOffGround(placed.entryHeight) || Track.isOffGround(placed.exitHeight),
             let e = edges(placed, width: width, t: t)
         else { return }
         var shLeft: [CGPoint] = []
@@ -365,7 +365,7 @@ enum EditorRenderer {
         into context: inout GraphicsContext
     ) {
         guard placed.piece.heightDelta != 0 else {
-            let elevated = placed.entryHeight > 0.5
+            let elevated = Track.isOffGround(placed.entryHeight)
             context.fill(outline, with: .color(elevated ? deckGray : asphalt))
             return
         }
