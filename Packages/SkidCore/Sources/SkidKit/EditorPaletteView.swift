@@ -57,15 +57,23 @@ extension EditorView {
         }
     }
 
-    /// One radius option, as an abstract arc: the tighter the option, the
-    /// harder the bend — no piece rendering, just curvature.
+    /// One radius option, as how much turning the radius buys: a full circle
+    /// for tight, a half-circle (open down) for medium, a quarter arc from
+    /// bottom-left to top-right for sweep.
     private func radiusGlyph(_ value: CurveRadius) -> some View {
-        let bend: CGFloat = value == .tight ? 11 : value == .medium ? 20 : 44
-        return Path { path in
-            path.addArc(
-                center: CGPoint(x: 2, y: 20 + bend - 4), radius: bend,
-                startAngle: .degrees(-90),
-                endAngle: .degrees(value == .tight ? 0 : -35), clockwise: false)
+        Path { path in
+            switch value {
+            case .tight:
+                path.addEllipse(in: CGRect(x: 5, y: 3, width: 16, height: 16))
+            case .medium:
+                path.addArc(
+                    center: CGPoint(x: 13, y: 16), radius: 10,
+                    startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
+            case .sweep:
+                path.addArc(
+                    center: CGPoint(x: 24, y: 20), radius: 20,
+                    startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+            }
         }
         .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
         .frame(width: 26, height: 22)
