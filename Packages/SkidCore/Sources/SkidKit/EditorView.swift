@@ -104,12 +104,6 @@ struct EditorView: View {
 
                 // Delete and Close sit ON the map, at the end they act on.
                 mapActions(walk: walk, transform: transform)
-                // Whole-track transforms, bottom-left of the map area: clear of
-                // the top bar and of the palette's own map actions.
-                transformPad
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                    .padding(.leading, 12)
-                    .padding(.bottom, 12)
                 topBar
                 paletteBar(walk: walk)
             }
@@ -239,6 +233,15 @@ struct EditorView: View {
         VStack {
             Spacer()
             VStack(spacing: 10) {
+                // Whole-track transforms, on the row above the hint: LAID OUT
+                // rather than floated over the map, so they can't collide with
+                // the palette on a small screen (a corner-anchored pad landed
+                // right on top of it on an SE).
+                HStack {
+                    transformPad
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
                 // Save state, or how far the selected end is from closing.
                 Group {
                     if game.editorIsSaveable() {

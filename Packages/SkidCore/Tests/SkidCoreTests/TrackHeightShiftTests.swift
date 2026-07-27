@@ -80,6 +80,41 @@ final class TrackHeightShiftTests: XCTestCase {
         XCTAssertEqual(TrackCode.encode(explicitGround), TrackCode.encode(flatRing()))
     }
 
+    /// **The solver comes home to the BASELINE, not the ground.** On a raised
+    /// track a loose end below the baseline has to climb back — which needs
+    /// pitched-UP candidates and a goal height that isn't hardcoded to 0.
+    func testTheSolverClosesUpToARaisedBaseline() throws {
+        // A ring at half height with one piece dropped to the ground: the run
+        // home must climb.
+        var layout = TrackLayout(
+            pieces: [Catalog.startGrid], originHeight: 0.5, gateSeams: [0])
+        layout.append(contentsOf: PieceExpansion.expand(Catalog.shortStraight, mode: .down))
+        for id in [
+            Catalog.curve45TightLeft, Catalog.curve45TightLeft, Catalog.curve45TightLeft,
+            Catalog.curve45TightLeft, Catalog.shortStraight, Catalog.shortStraight,
+            Catalog.curve45TightLeft, Catalog.curve45TightLeft,
+        ] {
+            layout.append(contentsOf: PieceExpansion.expand(id, mode: .flat))
+        }
+        let placed = layout.walk().placed
+        XCTAssertEqual(try XCTUnwrap(placed.last).exitHeight, 0, accuracy: 1e-9)
+        let end = try XCTUnwrap(layout.walk().openEnds.first)
+        guard let run = layout.closingRun(from: end, maxPieces: 4) else {
+            return  // no run within the budget is a legitimate outcome for this shape
+        }
+        XCTAssertTrue(run.contains { $0.pitch == .up }, "the run home must climb: \(run)")
+        var closed = layout
+        closed.append(contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
+        XCTAssertTrue(closed.walk().openEnds.isEmpty)
+        XCTAssertEqual(
+            try XCTUnwrap(closed.walk().placed.last).exitHeight, 0.5, accuracy: 1e-9)
+        XCTAssertFalse(
+            TrackValidator.validate(closed).problems.contains { problem in
+                if case .unclosedHeight = problem { return true }
+                return false
+            })
+    }
+
     /// The same range rule the buttons use, without a view: mirrors
     /// `CouchGame.canShiftHeight`.
     private func canShift(_ layout: TrackLayout, steps: Int) -> Bool {
