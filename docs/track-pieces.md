@@ -602,6 +602,37 @@ mid-climb like everywhere else. The old `rampUp`/`rampDown` ids stay as
 compounds in the expansion table; the built-ins re-encode, and older codes
 stop loading (pre-release, as before).
 
+### Mode switches: virtual elements that carry state
+
+**Decided.** Pitch — and with it walls and kerb style — is encoded as **mode
+switches in the byte stream**, not as piece-id variants: a handful of ids
+meaning "switch to pitch up / flat / down", "walls on / off", "kerb style N",
+each applying to every following piece until changed. The switches are
+virtual in exactly the compound sense: they exist at the encoding boundary
+only, and the decoder resolves them into **per-piece attributes** — the
+in-memory layout never contains a switch, so seam and checkpoint indexing is
+untouched by construction, and the two caps keep their meanings (switches
+count against the encoded-id cap, never against track length).
+
+Why not id variants: the cross-product (shape × pitch × walls × kerb) blows
+past id 128 — where decal variants begin — and these settings are run-shaped:
+a bridge is two pitch changes, not twelve flagged pieces. A switch costs one
+byte per *change*. Canonicality keeps the packing discipline: a defined
+initial state (flat, walls default, kerb default) and a switch emitted only
+when the next piece's attribute differs — one track, one byte stream.
+
+The catalog therefore stays at its ~10 shapes; pitch resolves to a per-piece
+height delta at walk time. `rampUp`/`rampDown` survive as compounds ("pitch
+up, two shorts, flat" in effect) so old intent maps cleanly.
+
+**Walls** default to today's behaviour — rails wherever road is off the
+ground. Explicit walls-on gives ground-level barriers; walls-OFF on elevated
+road is deferred until the fall mechanic exists (driving off an unwalled deck
+has to mean something before it can be legal). **Kerb style** as a mode
+supersedes the run-shaped half of the sparse-decal plan; point decals keep
+`pos:id` pairs. **Ramp chevrons** are gone from the renderer — climb marking
+returns later as a decoration mode, author-controlled.
+
 ### Rules that follow
 
 - **Bounds are a validator rule now.** Nothing today forbids climbing past
