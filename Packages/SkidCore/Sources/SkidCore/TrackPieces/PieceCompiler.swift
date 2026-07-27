@@ -223,7 +223,7 @@ public enum PieceCompiler {
             // Guard rails along both edges of anything off the ground — the
             // barrier the editor draws as the blue deck rail. Without these a
             // bridge has nothing to stop you driving off the side.
-            if piece.entryHeight > 0.5 || piece.exitHeight > 0.5 {
+            if Track.isOffGround(piece.entryHeight) || Track.isOffGround(piece.exitHeight) {
                 road.walls.append(
                     contentsOf: deckRails(of: piece, capHighEnd: capsHighEnd(piece)))
             }

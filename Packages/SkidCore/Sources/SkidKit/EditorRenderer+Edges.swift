@@ -72,7 +72,7 @@ extension EditorRenderer {
         for (index, placed) in walk.placed.enumerated() {
             // Deck edges get guard rails instead, and break any run in progress.
             // A piece outside the requested height band breaks it too.
-            guard placed.entryHeight <= 0.5, placed.exitHeight <= 0.5,
+            guard !Track.isOffGround(placed.entryHeight), !Track.isOffGround(placed.exitHeight),
                 heightRange.contains(max(placed.entryHeight, placed.exitHeight))
             else {
                 close()

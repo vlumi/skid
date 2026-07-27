@@ -126,7 +126,7 @@ extension PieceCompiler {
         else { return [] }
         // The high end: a climb ends high, a descent starts high.
         let high = lastHeight > firstHeight ? (leftLast, rightLast) : (leftFirst, rightFirst)
-        let level = max(firstHeight, lastHeight).rounded()
+        let level = Double(Track.level(of: max(firstHeight, lastHeight))) * Track.levelHeight
         return [
             Wall(
                 from: high.0, to: high.1, height: level - Track.reachTolerance,
