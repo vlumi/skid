@@ -13,18 +13,18 @@ extension EditorView {
         HStack(spacing: 12) {
             pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
             pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
-            // The straight places the 1U short, but ICONS as the longer road:
-            // a 1U ribbon is as wide as it is long and reads as a stub tile.
-            pieceButton(straight, icon: PieceCatalog.ID.straight, walk: walk, big: true)
             // Direct pickers, all options visible: with exactly three values
-            // each — and no more coming — a tap beats a swipe. The carousels
-            // this replaces needed drag state, and shared drag state is what
-            // made both slide when either was touched.
+            // each — and no more coming — a tap beats a swipe. The radius
+            // picker sits AGAINST the corner pair it modifies; pitch applies
+            // to everything, so it closes the row.
             triStack(values: CurveRadius.allCases, current: radius) {
                 radiusRaw = $0.rawValue
             } content: { value in
                 radiusGlyph(value)
             }
+            // The straight places the 1U short, but ICONS as the longer road:
+            // a 1U ribbon is as wide as it is long and reads as a stub tile.
+            pieceButton(straight, icon: PieceCatalog.ID.straight, walk: walk, big: true)
             triStack(values: [Pitch.up, .flat, .down], current: buildPitch) {
                 buildPitch = $0
             } content: { value in
@@ -33,20 +33,21 @@ extension EditorView {
         }
     }
 
-    /// A three-option picker as a compact vertical stack: every option always
-    /// visible, the current one lit, one tap to change.
+    /// A three-option picker as ONE segmented control: a single body, rounded
+    /// on its outer corners only, hairline seams between the segments — so it
+    /// reads as a toggle with three positions, not three unrelated buttons.
     private func triStack<Value: Hashable, Content: View>(
         values: [Value], current: Value, select: @escaping (Value) -> Void,
         @ViewBuilder content: @escaping (Value) -> Content
     ) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 1) {
             ForEach(values, id: \.self) { value in
                 Button {
                     select(value)
                 } label: {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(.black.opacity(value == current ? 0.45 : 0.15))
+                        Rectangle()
+                            .fill(.black.opacity(value == current ? 0.5 : 0))
                         content(value)
                             .opacity(value == current ? 1 : 0.55)
                     }
@@ -55,6 +56,8 @@ extension EditorView {
                 .buttonStyle(.plain)
             }
         }
+        .background(.black.opacity(0.2))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     /// One radius option, as how much turning the radius buys: a full circle
