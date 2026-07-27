@@ -28,7 +28,7 @@ public enum TrackLibrary {
     public static let builtins: [Builtin] = [
         Builtin(id: "small", name: "Small track", code: "AUwBCB8SDAkBCgwaAgMABAwDBQNIAlgA"),
         Builtin(id: "oval", name: "Big oval", code: "Af8BBx8NDQINDQECBAACBgoDBQSwBhgA"),
-        Builtin(id: "eight", name: "Eight", code: "ASkBCx8LABEdAR4SAAwBAgQAAwgNAwUDSALQAQ"),
+        Builtin(id: "eight", name: "Eight", code: "AXYBCx8LABEdAR4SAAwBAgQAAwkPAwUDSALQAQ"),
     ]
 
     /// Every built-in, compiled once. A code that doesn't compile is a broken

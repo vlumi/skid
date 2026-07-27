@@ -153,13 +153,13 @@ final class TrackValidatorTests: XCTestCase {
         // A tight ring, one piece short of lapping back over its own start.
         let ring: [PieceID] =
             [Pieces.startGrid]
-            + Array(repeating: PieceExpansion.expand(Pieces.curve90TightLeft), count: 4)
+            + Array(repeating: PieceExpansion.expand(Pieces.curve90TightLeft).map(\.id), count: 4)
             .flatMap { $0 }
         let base = TrackLayout(pieces: ring)
         // Whatever the validator would flag as an overlap, canAppend must refuse.
         for candidate in [Pieces.curve90TightLeft, Pieces.straight, Pieces.hairpinTightLeft] {
             var next = base
-            next.pieces += PieceExpansion.expand(candidate)
+            next.append(contentsOf: PieceExpansion.expand(candidate))
             let overlaps = TrackValidator.validate(next).problems.contains(.overlap)
             XCTAssertEqual(
                 TrackValidator.canAppend(candidate, to: base), !overlaps,

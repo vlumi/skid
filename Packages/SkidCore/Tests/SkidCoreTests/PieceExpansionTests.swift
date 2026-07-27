@@ -10,8 +10,11 @@ final class PieceExpansionTests: XCTestCase {
     private typealias Pieces = PieceCatalog.ID
 
     /// Walk a piece list from the start grid and return the final exit pose.
-    private func endPose(_ pieces: [PieceID]) -> PiecePose? {
-        let walk = TrackLayout(pieces: [Pieces.startGrid] + pieces, gateSeams: [0]).walk()
+    private func endPose(_ pieces: [(id: PieceID, pitch: Pitch)]) -> PiecePose? {
+        let walk = TrackLayout(
+            pieces: [Pieces.startGrid] + pieces.map(\.id),
+            pitches: [.flat] + pieces.map(\.pitch), gateSeams: [0]
+        ).walk()
         guard walk.failure == nil else { return nil }
         return walk.placed.last?.exits.first
     }
@@ -25,7 +28,8 @@ final class PieceExpansionTests: XCTestCase {
     func testEveryCompoundExpandsToTheSamePose() throws {
         var checked = 0
         for (id, primitives) in PieceExpansion.compoundsLongestFirst {
-            let single = try XCTUnwrap(endPose([id]), "compound \(id) failed to walk")
+            let single = try XCTUnwrap(
+                endPose([(id, .flat)]), "compound \(id) failed to walk")
             let composed = try XCTUnwrap(
                 endPose(primitives), "expansion of \(id) failed to walk")
             XCTAssertEqual(
@@ -42,8 +46,8 @@ final class PieceExpansionTests: XCTestCase {
         for (id, primitives) in PieceExpansion.compoundsLongestFirst {
             for primitive in primitives {
                 XCTAssertTrue(
-                    PieceExpansion.isPrimitive(primitive),
-                    "\(id) expands to \(primitive), which is itself compound")
+                    PieceExpansion.isPrimitive(primitive.id),
+                    "\(id) expands to \(primitive.id), which is itself compound")
             }
         }
     }
@@ -56,7 +60,8 @@ final class PieceExpansionTests: XCTestCase {
         XCTAssertEqual(expansion.count, 4, "a hairpin is four 45s")
         // Four pieces mean three interior seams; the middle one is the apex.
         let layout = TrackLayout(
-            pieces: [Pieces.startGrid] + expansion + [Pieces.straight], gateSeams: [0, 3])
+            pieces: [Pieces.startGrid] + expansion.map(\.id) + [Pieces.straight],
+            gateSeams: [0, 3])
         XCTAssertTrue(
             TrackValidator.validate(layout).problems.contains { problem in
                 if case .openEnds = problem { return true }
@@ -75,12 +80,14 @@ final class PieceExpansionTests: XCTestCase {
     /// IS. (Crossings, forks and jumps are also primitive but unbuildable in Phase
     /// A, and ids 128+ are decal variants of the straight — neither belongs here.)
     func testTheDrivablePrimitiveSet() {
+        // The ramps left this set with the half-height lattice: a full climb
+        // is two pitched shorts now, so rampUp/rampDown are compounds.
         let expected: Set<PieceID> = [
             Pieces.shortStraight,
             Pieces.curve45TightLeft, Pieces.curve45TightRight,
             Pieces.curve45MediumLeft, Pieces.curve45MediumRight,
             Pieces.curve45SweepLeft, Pieces.curve45SweepRight,
-            Pieces.startGrid, Pieces.rampUp, Pieces.rampDown,
+            Pieces.startGrid,
         ]
         let actual = Set(
             PieceCatalog.all

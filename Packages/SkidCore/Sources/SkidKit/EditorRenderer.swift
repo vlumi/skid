@@ -111,10 +111,13 @@ enum EditorRenderer {
             drawPieceRibbon(placed, width: width, t: t, into: &context)
         }
         // Checkpoint gates across the seams the author marked (seam 0 is the
-        // start/finish, drawn as its own line below).
+        // start/finish, drawn as its own line below). Seam N is piece N's EXIT —
+        // drawing at the entry put every marker one piece early, which showed
+        // the moment the race view (whose white chrome comes from the compiled
+        // gates, correctly placed) drew both.
         for seam in gateSeams where seam != 0 && seam < walk.placed.count {
             let piece = walk.placed[seam]
-            guard heightRange.contains(piece.entryHeight) else { continue }
+            guard heightRange.contains(piece.exitHeight) else { continue }
             drawGate(piece, width: width, transform: t, into: &context)
         }
 
@@ -357,18 +360,29 @@ enum EditorRenderer {
         samples: [(point: Vec2, height: Double)], t: Transform,
         into context: inout GraphicsContext
     ) {
-        guard placed.piece.heightDelta != 0 else {
-            let elevated = Track.isOffGround(placed.entryHeight)
-            context.fill(outline, with: .color(elevated ? deckGray : asphalt))
+        // Shade follows HEIGHT, at both ends of every piece — not a binary
+        // ground/deck pick from the entry. A half-climb blends from its entry
+        // shade to its exit shade, and a road resting at 0.5 takes the matching
+        // mid shade, so a split climb reads as one continuous surface instead
+        // of banding at each seam.
+        guard placed.climb != 0 else {
+            context.fill(outline, with: .color(roadShade(at: placed.entryHeight)))
             return
         }
-        let colors = placed.piece.heightDelta > 0 ? [asphalt, deckGray] : [deckGray, asphalt]
         context.fill(
             outline,
             with: .linearGradient(
-                Gradient(colors: colors),
+                Gradient(colors: [
+                    roadShade(at: placed.entryHeight), roadShade(at: placed.exitHeight),
+                ]),
                 startPoint: t.screen(samples.first!.point), endPoint: t.screen(samples.last!.point))
         )
+    }
+
+    /// Ground asphalt at 0, deck gray at a full level, blended between.
+    private static func roadShade(at height: Double) -> Color {
+        let f = min(1, max(0, height / Track.levelHeight))
+        return Color(white: 0.62 + 0.10 * f)
     }
 
 }

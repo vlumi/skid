@@ -112,7 +112,7 @@ enum TrackRenderer {
         // painted on top of it.
         if let layout = track.layout {
             EditorRenderer.drawTrack(
-                walk: layout.walk(), width: track.width, gateSeams: layout.gateSeams,
+                walk: layout.walk(), width: track.width, gateSeams: [],
                 transform: track.layoutTransform, heightRange: -1...0.5, into: &context)
         } else {
             // No layout (ad-hoc tracks built directly in tests): fall back to the
@@ -272,12 +272,9 @@ enum TrackRenderer {
         span: (a: Vec2, b: Vec2), colors: [Color], worldCenter: Vec2,
         into context: inout GraphicsContext
     ) {
-        for end in [span.a, span.b] {
-            let post = CGRect(x: end.x - 6, y: end.y - 6, width: 12, height: 12)
-            context.fill(Path(ellipseIn: post), with: .color(kerbWhite))
-            context.stroke(
-                Path(ellipseIn: post), with: .color(.black.opacity(0.55)), lineWidth: 2)
-        }
+        // No neutral posts: the thin white line is the gate; the only dots
+        // drawn are car-colored "waiting on this gate" markers, anchored off
+        // the infield end.
         let infield =
             span.a.distance(to: worldCenter) <= span.b.distance(to: worldCenter)
             ? (post: span.a, other: span.b) : (post: span.b, other: span.a)

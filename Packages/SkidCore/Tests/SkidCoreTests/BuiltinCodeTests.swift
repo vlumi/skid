@@ -42,7 +42,9 @@ final class BuiltinCodeTests: XCTestCase {
     func testTheDeckBetweenRampsCarriesNoCap() throws {
         let track = TrackLibrary.track(id: "eight")
         let caps = track.walls.filter { $0.kind == .gate }
-        XCTAssertEqual(caps.count, 2, "expected exactly one gate per ramp")
+        // Two per full climb since the half-height lattice: the apex seal
+        // (mouth of the lower half, at 0.3) and the deck seal (0.8).
+        XCTAssertEqual(caps.count, 4, "expected two gates per full climb")
 
         // And the decisive part: no cap may block the ground road under the bridge.
         for cap in caps {
@@ -69,11 +71,11 @@ final class BuiltinCodeTests: XCTestCase {
         XCTAssertFalse(elevated.isEmpty, "the eight should have an elevated run")
         for piece in elevated {
             XCTAssertEqual(
-                PieceCompiler.capsHighEnd(piece), piece.piece.heightDelta != 0,
-                "only a ramp caps; deck pieces are ordinary road at height 1")
+                PieceCompiler.capsHighEnd(piece), piece.climb != 0,
+                "only a climbing placement caps; deck pieces are ordinary road")
         }
         // And the deck really is built from the same ids used on the ground.
-        let deck = elevated.filter { $0.piece.heightDelta == 0 }
+        let deck = elevated.filter { $0.climb == 0 }
         XCTAssertFalse(deck.isEmpty, "the eight should have level deck")
         for piece in deck {
             XCTAssertTrue(

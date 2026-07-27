@@ -79,17 +79,16 @@ extension PieceCompiler {
     /// across the bridge — walling off the road below at each seam. The old catalog
     /// hid the fault behind a one-piece deck.
     ///
-    /// So: **only a ramp has a mouth**, and a ramp is a piece that says so —
-    /// `heightDelta != 0`. Deck pieces are ordinary straights and corners that
-    /// happen to sit at height 1; there is no separate deck piece, and nothing
-    /// about a deck piece marks it as the end of anything.
+    /// So: **only a climbing placement has a mouth**, and a placement says so —
+    /// `climb != 0` (the piece's own delta or its pitch). Deck pieces are
+    /// ordinary shapes that happen to sit at height 1; nothing about one marks
+    /// it as the end of anything.
     ///
-    /// Asking the piece beats inferring from its sampled endpoint heights. The
-    /// sampled difference is only ever an echo of `heightDelta` for a ramp, but it
-    /// also picks up floating-point drift on level pieces, and it would answer
+    /// Asking the placement beats inferring from its sampled endpoint heights,
+    /// which pick up floating-point drift on level pieces and would answer
     /// "yes" for any future piece that changes height for some other reason.
     static func capsHighEnd(_ piece: PlacedPiece) -> Bool {
-        piece.piece.heightDelta != 0
+        piece.climb != 0
     }
 
     /// The seal under a ramp's raised end, as a **gate**: a one-way level wall
@@ -124,12 +123,16 @@ extension PieceCompiler {
             let rightFirst = right.first, let rightLast = right.last,
             let firstHeight = samples.first?.height, let lastHeight = samples.last?.height
         else { return [] }
-        // The high end: a climb ends high, a descent starts high.
+        // The high end: a climb ends high, a descent starts high. The gate's
+        // threshold comes from the MOUTH'S OWN height, not a rounded storey —
+        // a half-climb's mouth at 0.5 gets a gate at 0.3, admitting the
+        // arriving half-climber and stopping the ground; rounding to a storey
+        // put an unreachable 0.8 gate on it.
         let high = lastHeight > firstHeight ? (leftLast, rightLast) : (leftFirst, rightFirst)
-        let level = Double(Track.level(of: max(firstHeight, lastHeight))) * Track.levelHeight
         return [
             Wall(
-                from: high.0, to: high.1, height: level - Track.reachTolerance,
+                from: high.0, to: high.1,
+                height: max(firstHeight, lastHeight) - Track.reachTolerance,
                 kind: .gate)
         ]
     }

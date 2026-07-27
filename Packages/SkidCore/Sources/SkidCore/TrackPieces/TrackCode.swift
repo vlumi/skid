@@ -50,7 +50,11 @@ public enum TrackCode {
         var body: [UInt8] = []
         // Packed into compounds at the byte boundary only — the layout itself is
         // always primitives (see `PiecePacking`).
-        appendSection(&body, .pieces, encodeVarintIDs(PiecePacking.pack(layout.pieces)))
+        appendSection(
+            &body, .pieces,
+            encodeVarintIDs(
+                PiecePacking.pack(
+                    layout.pieces.indices.map { (layout.pieces[$0], layout.pitch(at: $0)) })))
         appendSection(&body, .gates, layout.gateSeams.map { UInt8(truncatingIfNeeded: $0) })
         appendSection(&body, .origin, encodeOrigin(layout.origin))
         if layout.theme != .normal {
@@ -94,16 +98,19 @@ public enum TrackCode {
         // why the expansion is bounded as it proceeds rather than measured after.
         let encoded = try decodeVarintIDs(piecesPayload)
         guard encoded.count <= maxPieces else { throw DecodeError.tooLarge }
-        guard let pieces = PiecePacking.unpack(encoded, limit: maxLength) else {
+        guard let resolved = PiecePacking.unpack(encoded, limit: maxLength) else {
             throw DecodeError.tooLarge
         }
+        let pieces = resolved.map(\.id)
+        let pitches = resolved.map(\.pitch)
         let gates = gatesPayload.map { Int($0) }
         guard gates.count <= maxGates else { throw DecodeError.tooLarge }
         let origin = try decodeOrigin(originPayload)
         let themeByte = sections[.theme].flatMap { $0.first }
         let theme = themeByte.flatMap { TrackLayout.Theme(rawValue: Int($0)) } ?? .normal
 
-        return TrackLayout(pieces: pieces, origin: origin, gateSeams: gates, theme: theme)
+        return TrackLayout(
+            pieces: pieces, pitches: pitches, origin: origin, gateSeams: gates, theme: theme)
     }
 
     /// Parse the TLV body into known sections, bounds-checking every step.
