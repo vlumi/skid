@@ -97,10 +97,18 @@ public struct PlacedPiece: Equatable, Sendable {
     /// (full-climb compounds like the 2U ramp) and the pitch attribute
     /// (half-level climbs on ordinary shapes) never coexist on one placement.
     public var pitch: Pitch
+    /// Whether the climb eases to a standstill at each end, or runs straight
+    /// through into a neighbour that keeps climbing. The walk sets these from
+    /// the sequence: a climb eases only where it FACES something that doesn't
+    /// continue it — so a full climb split into halves is still one S-curve,
+    /// not a terrace with a shelf at the apex.
+    public var easeIn: Bool
+    public var easeOut: Bool
 
     public init(
         id: PieceID, piece: Piece, entry: PiecePose, exits: [PiecePose],
-        entryHeight: Double, entrySeam: Int, pitch: Pitch = .flat
+        entryHeight: Double, entrySeam: Int, pitch: Pitch = .flat,
+        easeIn: Bool = true, easeOut: Bool = true
     ) {
         self.id = id
         self.piece = piece
@@ -109,6 +117,8 @@ public struct PlacedPiece: Equatable, Sendable {
         self.entryHeight = entryHeight
         self.entrySeam = entrySeam
         self.pitch = pitch
+        self.easeIn = easeIn
+        self.easeOut = easeOut
     }
 
     /// The height this placement gains: the piece's own delta plus its pitch.
@@ -124,7 +134,16 @@ public struct PlacedPiece: Equatable, Sendable {
     public func height(atFraction f: Double) -> Double {
         guard climb != 0 else { return entryHeight }
         let x = min(1, max(0, f))
-        let eased = x * x * (3 - 2 * x)  // smoothstep
+        // Cubic Hermite from 0 to 1 with a chosen tangent at each end: 0 where
+        // the climb eases against flat road, 1 (the run's own slope) where it
+        // continues into a neighbour. Both eased is exactly smoothstep; both
+        // continuing is exactly linear — so a chain of same-pitch pieces forms
+        // one S: eased at its outer ends, straight through interior seams.
+        let m0 = easeIn ? 0.0 : 1.0
+        let m1 = easeOut ? 0.0 : 1.0
+        let eased =
+            m0 * (x * x * x - 2 * x * x + x) + (3 * x * x - 2 * x * x * x)
+            + m1 * (x * x * x - x * x)
         return entryHeight + climb * eased
     }
 
@@ -346,9 +365,16 @@ extension TrackLayout {
             let entry = current.pose
             let entryHeight = current.height
             let exits = piece.paths.map { $0.exit(from: entry) }  // chain fold
-            let placement = PlacedPiece(
+            var placement = PlacedPiece(
                 id: id, piece: piece, entry: entry, exits: exits,
                 entryHeight: entryHeight, entrySeam: seam, pitch: pitch(at: index))
+            // A climb runs straight through into a neighbour climbing the same
+            // way; it eases only against everything else. (Sequence order is
+            // placement order — forks are Phase B, so neighbours are i±1.)
+            if let previous = placed.last, continues(previous.climb, placement.climb) {
+                placement.easeIn = false
+                placed[placed.count - 1].easeOut = false
+            }
             placed.append(placement)
             seam += 1
 
@@ -370,6 +396,11 @@ extension TrackLayout {
         }
 
         return WalkResult(placed: placed, openEnds: ends.map(\.pose), failure: nil)
+    }
+
+    /// Two consecutive climbs continue each other when both run the same way.
+    private func continues(_ a: Double, _ b: Double) -> Bool {
+        a != 0 && b != 0 && (a > 0) == (b > 0)
     }
 
     /// A loose end mates an inlet when their poses are **identical** — same
