@@ -33,6 +33,13 @@ extension EditorView {
         var line =
             parts.isEmpty
             ? "Not closed — \(advice)" : "Gap \(parts.joined(separator: " + ")) — \(advice)"
+        // The pose advice is height-blind, and a loose end above the ground
+        // can't mate the start no matter how the shapes line up — a pitched-up
+        // clover read "straights will close it" while every flat piece was
+        // rightly refused. Say the missing half.
+        if let last = walk.placed.last, last.exitHeight > 0.001 {
+            line += " · descend to ground to close"
+        }
         if case .needsMorePieces(let searched) = closingOutcome {
             line += " · no close in \(searched)"
         }
