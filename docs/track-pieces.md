@@ -574,6 +574,73 @@ packs ~45% more characters per version than byte mode — a base32-uppercase
 code (with an uppercased share path) would exploit it if the budget ever
 tightens. Not needed at current sizes.
 
+## Planned: tunnels (level −1)
+
+The mirror of the bridge, one storey down. Decided so far; **the rest of this
+section is a proposal awaiting sign-off — no code before that.**
+
+### What a tunnel is
+
+A **cutting** descends from the ground into a **buried run** at −1 and climbs
+back out. Phase one is deliberately constrained, the way the jump constrains
+its air gap: a short-tunnel family (down-mouth → buried road → up-mouth),
+bottoming at −1 — no arbitrary depth stacks. A brief duck-under reads well
+precisely because the exit mouth and surroundings stay visible; long
+underground stretches play badly with a top-down camera.
+
+### The cutting rule (decided)
+
+A cutting is **a hole in the ground you can always fall into**:
+
+- **Entering is allowed from any direction** — over either end or across its
+  sides. A car coming in over a side falls to the ramp surface below.
+- **Leaving is restricted to the ends**: out the low end into the tunnel, out
+  the high end onto the ground. The sides are walls *from the inside only* —
+  one-way, passable inward, solid outward.
+- The buried run is sealed like any road with earth around it: its own mouths
+  are the only ways in or out.
+
+### Proposed mechanics (sign-off wanted)
+
+- **Falling** is a downward height chase, distinctly faster than the climb
+  clamp (a fall is not a climb) — proposal: ~3× `maxHeightChangePerTick`, no
+  speed loss on landing, matching the arcade rule that drivable ramps never
+  scrub speed. No airborne state: you slide in, you don't launch.
+- **One-way walls** become their own `Wall.Kind` (`cuttingRail`), blocking
+  only cars approaching from the wall's inside face — the side test is the
+  sign of the cross product against the wall's stored direction, so emission
+  must order each wall's endpoints with the cutting on a known side. The
+  mouth seals reuse the gate idea mirrored: the tunnel mouth blocks entry
+  from the storey **above** (its own kind, not a flag on `gate`).
+- **Solidity for the validator** stays one rule: a segment occupies the
+  vertical interval between its road height and the ground it pierces —
+  embankment ramps occupy [0, h] (already shipped), cutting segments occupy
+  [h, 0] (the open trench displaces the ground above it, so ground road may
+  not cross a trench), and the buried run occupies [−1, −1] (roofed — ground
+  and deck road above it are exactly what tunnels are for).
+- **Levels**: `Track.lowestLevel` drops to −1; nothing else moves (the level
+  vocabulary and the one-storey gate bound were built for this).
+- **Surfaces**: no grass below grade. The trench is all road; falls land on
+  road; the buried run's walls are its earth. `surface(at:height:)` below
+  ground answers for the tunnel road alone.
+
+### The camera problem (prerequisite, not part of this round)
+
+An underground car is occluded by the ground above it. Driving the buried run
+needs the **travelling porthole** — a real clipped hole in the ground layer
+above the car, redrawing the car and its surroundings through it. The cheap
+translucent-disc fake that suffices under bridge decks is not enough here:
+the revealed content is the whole point. Rendering order becomes
+paint-lowest-first with holes; the editor instead ghosts everything below the
+currently edited height. **Tunnels do not ship before the porthole does.**
+
+### Encoding
+
+Nothing new: tunnel pieces are catalog ids like any other (appended — ids
+never renumber), a mouth is a ramp with `heightDelta: −1`/`+1`, and the
+buried run is ordinary road at −1. Seam indexing, caps, and codes are
+untouched.
+
 ## A library of your own tracks *(planned)*
 
 The custom slot in the setup picker is the first step; the shape it grows into:

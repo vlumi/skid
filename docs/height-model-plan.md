@@ -96,7 +96,13 @@ untouched — do not "improve" anything in this step):
 - Leave `trunc(wall.height)` in `Race.blocks` as-is but comment it as
   embankment-only, pending step 4's design.
 
-## 4. Tunnels: design before code
+## 4. Tunnels: design before code — SPEC WRITTEN, awaiting sign-off
+
+The spec lives in docs/track-pieces.md ("Planned: tunnels (level −1)"):
+the decided cutting rule plus proposals for falling, one-way walls, cutting
+solidity ([h, 0] — the same interval rule mirrored), lowestLevel = −1, and
+the porthole prerequisite. Code starts only after the proposals are approved.
+Original notes:
 
 The embankment model does not mirror to tunnels — a tunnel ramp is a
 **cutting**, and the danger inverts: nothing drives "under" it; instead
