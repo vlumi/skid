@@ -26,11 +26,19 @@ extension TrackRenderer {
         // into the elevated pass and drawn up on the deck. The debug overlay caught
         // it — a car reading "h 0.00 / grass / off road 101" drawn on the bridge.
         //
-        func onRamp(_ car: Car) -> Bool { car.state.isClimbing(on: track) }
-        // "On the ground" is now a height comparison, not a layer test.
+        // Which pass a car draws in follows its HEIGHT alone, because the
+        // ribbon bands PARTITION at the same boundary: at or below the
+        // half-level shelf a car stands on ground-band road (drawn before
+        // ground cars), above it on elevated-band road (drawn before elevated
+        // cars). The old scheme promoted "climbing" cars between groups by
+        // sniffing for nearby slopes, and both of its failure modes shipped:
+        // a ground car under the bridge sniffed the ramp's eased foot and rode
+        // on top, then the fix for that left a real climber buried under the
+        // foot piece's second copy — which existed only because the bands
+        // OVERLAPPED at exactly 0.5.
         func onGround(_ car: Car) -> Bool { car.state.height <= 0.5 }
         for (index, car) in race.cars.enumerated()
-        where onGround(car) && !car.state.isAirborne && !onRamp(car) {
+        where onGround(car) && !car.state.isAirborne {
             draw(
                 car: car.state, color: colorAt(index),
                 opacity: translucent.contains(index) ? 0.55 : 1,
@@ -45,9 +53,13 @@ extension TrackRenderer {
             if let layout = track.layout {
                 // The race's gate display is the white chrome — no editor
                 // markers here either (they were also a seam off).
+                // 0.75, not 0.5: piece heights sit on the half-level
+                // lattice, so maxima are 0, 0.5 or 1 — and 0.5 belonged to BOTH
+                // bands, double-drawing every climb's lower half over the cars
+                // on it. Anything that stays at or below the shelf is ground.
                 EditorRenderer.drawTrack(
                     walk: layout.walk(), width: track.width, gateSeams: [],
-                    transform: track.layoutTransform, heightRange: 0.5...2, into: &context)
+                    transform: track.layoutTransform, heightRange: 0.75...2, into: &context)
             } else {
                 drawRibbon(track: track, elevated: true, into: &context)
             }
@@ -60,7 +72,7 @@ extension TrackRenderer {
             // shows through as a bubble in its color. Ramp climbers are
             // fully visible on their slope — no bubble.
             for (index, car) in race.cars.enumerated()
-            where onGround(car) && !onRamp(car)
+            where onGround(car)
                 && track.distanceToCenterline(car.state.position, height: 1)
                     < track.width / 2 + 8
             {
@@ -71,7 +83,7 @@ extension TrackRenderer {
             // Elevation.scale factor the road width uses), so a car grows as it
             // climbs and reads as elevated on the deck — no discrete pop.
             for (index, car) in race.cars.enumerated()
-            where !car.state.isAirborne && (!onGround(car) || onRamp(car)) {
+            where !car.state.isAirborne && !onGround(car) {
                 // The car's own height IS the scale now — no reconstruction.
                 draw(
                     car: car.state, color: colorAt(index),
@@ -183,23 +195,5 @@ extension TrackRenderer {
         // Cockpit dot behind the midpoint.
         let cockpit = CGRect(x: -4, y: -3.2, width: 6.4, height: 6.4)
         car2D.fill(Path(ellipseIn: cockpit), with: .color(.black.opacity(0.65)))
-    }
-}
-
-extension CarState {
-    /// Whether this car should draw in the ELEVATED pass: at a ramp's height, on
-    /// its asphalt, and meaningfully off the ground.
-    ///
-    /// The off-the-ground clause is what a ramp's foot needs. A slope starts at
-    /// ground height, so its first sliver is a "ramp segment at height ~0" — and
-    /// a ground car near the foot (measured: 47 units away, beside a segment
-    /// climbing 0.000→0.004) matched it and was promoted into the elevated pass,
-    /// showing ON TOP of the bridge it was driving under. A car still on the
-    /// ground has nothing to be lifted above; the promotion exists so a CLIMBING
-    /// car isn't swallowed by the deck edge.
-    func isClimbing(on track: Track) -> Bool {
-        guard height > Track.surfaceTolerance else { return false }
-        guard track.isOnRamp(position, height: height) else { return false }
-        return track.distanceToCenterline(position, height: height) <= track.width / 2
     }
 }
