@@ -52,6 +52,11 @@ extension EditorView {
                             .opacity(value == current ? 1 : 0.55)
                     }
                     .frame(width: 44, height: 32)
+                    // A transparent fill is not hit-testable, so unselected
+                    // segments were tappable only on their glyph strokes —
+                    // which read as "the selected one hogs the touch area".
+                    // Every segment owns its full rectangle.
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
