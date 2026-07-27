@@ -155,9 +155,11 @@ ramp buttons, heights bounded 0…1 this round. Implementation order:
 
 1. `withinLevels` as a validator rule — DONE (`heightOutOfBounds` problem,
    a placement blocker in `canAppend`).
-2. Catalog: half-climb primitives (straight + 45° × radius × hand × up/down),
-   `rampUp`/`rampDown` become compounds of two halves (ids retained; apex
-   seam appears); built-ins re-encode, codes break (pre-release).
+2. REPLANNED — no id cross-product. Pitch/walls/kerbs are per-piece
+   ATTRIBUTES resolved from mode-switch virtual elements at the encoding
+   boundary (see the mode-switches section of docs/track-pieces.md). The
+   catalog keeps its shapes; `rampUp`/`rampDown` become compounds; built-ins
+   re-encode, codes break (pre-release).
 3. Proximity clearance restated: a full storey of air minus car headroom,
    replacing the half-level threshold that would sit on the new lattice.
 4. Gates/rails per half-mouth (should be automatic); extend RampGateTests'

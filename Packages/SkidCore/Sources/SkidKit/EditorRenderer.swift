@@ -110,13 +110,6 @@ enum EditorRenderer {
         for (_, placed) in ordered {
             drawPieceRibbon(placed, width: width, t: t, into: &context)
         }
-        // Climb markings on ramps. A LAUNCH gets them too; an ordinary ramp is
-        // just sloped road, and its own wedge shading already reads as a climb.
-        for (_, placed) in ordered
-        where placed.piece.heightDelta != 0 || placed.piece.launches {
-            drawRampChevrons(placed, width: width, transform: t, into: &context)
-        }
-
         // Checkpoint gates across the seams the author marked (seam 0 is the
         // start/finish, drawn as its own line below).
         for seam in gateSeams where seam != 0 && seam < walk.placed.count {
