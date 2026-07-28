@@ -159,6 +159,13 @@ What's left:
       floating wedge. Needs a look decision (shorter/softer? surface-tinted?)
       plus a rule for what happens where the beam crosses a storey edge —
       clip it, fade it, or drop it while the car is covered.
+- [ ] **The under-bridge bubble should be a window, not a dot.** Today a
+      covered car shows through the deck as a solid disc in its color — a
+      placeholder. Wanted: see "through" the bridge — a dimmed circular hole
+      at the car's position with the car itself visible inside it. The
+      z-order makes this a self-contained layer: clip the bubble layer to
+      the circle, dim it, and draw the car (same body drawing, smaller
+      scale) inside the clip, above the covering road.
 
 ## v0.7.0 — Mac, physical controls & orientation
 
