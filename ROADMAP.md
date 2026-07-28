@@ -151,6 +151,14 @@ What's left:
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
+- [ ] **Do something about the headlights.** On a real device (clover,
+      2026-07-28) the beam reads as a detached red smear rather than light —
+      most jarring around the underpasses. Mechanically it is a ~58-unit cone
+      drawn inside the car's own layer, so it inherits the car's storey
+      whole: it can lap onto road above or poke out from under a deck as a
+      floating wedge. Needs a look decision (shorter/softer? surface-tinted?)
+      plus a rule for what happens where the beam crosses a storey edge —
+      clip it, fade it, or drop it while the car is covered.
 
 ## v0.7.0 — Mac, physical controls & orientation
 
