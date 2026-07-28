@@ -41,6 +41,45 @@ final class FloatingStickTests: XCTestCase {
         XCTAssertEqual(knob, Vec2(-10, 0))  // instantly un-maxed, pointing left
     }
 
+    /// **A finger outside the zone AIMS the stick.** The origin can only move
+    /// inside the player's zone, but the finger can be beyond it — the inset
+    /// around a notch is untouchable screen, not untouchable finger. When the
+    /// clamp bites, the origin holds and the knob points at the finger at full
+    /// deflection, so steering keeps its full range.
+    func testAnOutOfZoneFingerAimsTheStick() {
+        let zone = CGRect(x: 0, y: 59, width: 390, height: 300)
+        let radius = 48.0
+        let origin = Vec2(200, 120)
+        func bearing(_ dx: Double) -> Double {
+            let (o, knob) = floatingStick(
+                origin: origin, finger: Vec2(200 + dx, 20), radius: radius, bounds: zone)
+            XCTAssertEqual(o.x, origin.x, accuracy: 0.001, "the origin must hold")
+            XCTAssertEqual(o.y, origin.y, accuracy: 0.001, "the origin must hold")
+            XCTAssertEqual(knob.length, radius, accuracy: 0.001, "full deflection")
+            return atan2(knob.y, knob.x) * 180 / .pi
+        }
+        // Straight above: dead ahead. Then sideways movement must actually turn
+        // it — a trailing origin swung only 20° over this range, because it
+        // slid along the clamp edge while the perpendicular offset stayed
+        // pinned ("pulling down is easy, turning nearly impossible").
+        XCTAssertEqual(bearing(0), -90, accuracy: 0.5)
+        XCTAssertGreaterThan(
+            bearing(120) - bearing(0), 45,
+            "moving the finger 120pt sideways must swing the stick well past 20°")
+    }
+
+    /// Aiming applies only when the clamp actually bites: a finger inside the
+    /// zone still drags the origin, so the rim behaviour the scheme is built on
+    /// is unchanged.
+    func testAFingerInsideTheZoneStillDragsTheOrigin() {
+        let zone = CGRect(x: 0, y: 0, width: 390, height: 600)
+        let origin = Vec2(200, 300)
+        let (moved, knob) = floatingStick(
+            origin: origin, finger: Vec2(200, 420), radius: 48, bounds: zone)
+        XCTAssertEqual(moved.y, 372, accuracy: 0.001, "origin trails 48 behind the finger")
+        XCTAssertEqual(knob.length, 48, accuracy: 0.001)
+    }
+
     func testTrailingOriginStaysInsideBounds() {
         // A zone with little room: dragging far right can't push the stick's
         // travel circle out of the zone — the origin re-clamps.

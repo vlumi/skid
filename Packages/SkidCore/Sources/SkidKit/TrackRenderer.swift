@@ -103,41 +103,97 @@ enum TrackRenderer {
         // **The track is drawn by the EDITOR's renderer**, off the same placed
         // pieces the editor draws, so what you build is exactly what you drive.
         // Two separate renderers drifted apart in kerbs, rails and ramp
-        // markings, and every fix had to be made twice.
+        // markings, and every fix had to be made twice. The context is already
+        // in world space here, so the shared drawing takes an identity
+        // transform.
         //
-        // The context is already in world space here, so the shared drawing
-        // takes an identity transform.
-        // Only the GROUND here. The bridge goes on later, over the cars driving
-        // underneath it (see `drawCars`), or a car under the bridge would be
-        // painted on top of it.
-        if let layout = track.layout {
-            EditorRenderer.drawTrack(
-                walk: layout.walk(), width: track.width, gateSeams: [],
-                transform: track.layoutTransform, heightRange: -1...0.5, into: &context)
-        } else {
-            // No layout (ad-hoc tracks built directly in tests): fall back to the
-            // centerline stroke, which needs no piece model.
-            drawRibbon(track: track, elevated: false, into: &context)
+        // Everything below is COLLECTED, not painted: each drawable declares
+        // the storey it occupies and what kind of thing it is, and
+        // `RenderOrder` paints them sorted. See RenderOrder.swift for why —
+        // briefly, "the bridge covers the car under it" and "the car sits on
+        // its own road" are then the same comparison instead of two hand-tuned
+        // height passes that disagreed at the edges.
+        var order = RenderOrder.Builder()
+
+        let gateChrome = chrome(race: race, spans: gateSpans, colorAt: color)
+
+        // Road, one layer per storey the track actually uses. A piece belongs
+        // to the storey of its highest end, so a ramp paints whole, with the
+        // level it climbs to.
+        let storeys = trackStoreys(track)
+        for storey in storeys {
+            let band = storeyBand(storey)
+            order.add(storey: storey, kind: .road) { context in
+                if let layout = track.layout {
+                    EditorRenderer.drawTrack(
+                        walk: layout.walk(), width: track.width, gateSeams: [],
+                        transform: track.layoutTransform, heightRange: band, into: &context)
+                } else {
+                    // No layout (ad-hoc tracks built directly in tests): fall
+                    // back to the centerline stroke, which needs no piece model.
+                    drawRibbon(track: track, elevated: storey > 0, into: &context)
+                }
+            }
+            order.add(storey: storey, kind: .gate) { context in
+                drawGates(gateChrome, elevated: storey > 0, into: &context)
+            }
+            order.add(storey: storey, kind: .mark) { context in
+                drawMarks(marks, elevated: storey > 0, into: &context)
+            }
         }
-        drawPatches(track: track, into: &context)
-        // Which players are waiting on which gate, in car colors.
-        var nextByGate: [Int: [Color]] = [:]
-        for (index, car) in race.cars.enumerated() where car.progress.finishedAt == nil {
-            nextByGate[car.progress.nextGate, default: []].append(color(index))
+        // Surface patches are ground paint.
+        order.add(storey: 0, kind: .ground) { context in
+            drawPatches(track: track, into: &context)
         }
-        let gateChrome = GateChrome(
-            spans: gateSpans,
-            nextByGate: nextByGate,
-            worldCenter: Vec2(track.size.x / 2, track.size.y / 2),
-            heights: track.gates.map(\.height)
-        )
-        drawGates(gateChrome, elevated: false, into: &context)
-        drawMarks(marks, into: &context)
-        drawCars(scene: scene, gateChrome: gateChrome, colorAt: color, into: &context)
+
+        addCars(scene: scene, gateChrome: gateChrome, colorAt: color, to: &order)
+        order.paint(into: &context)
+
         // Last, so it sits over everything it's describing.
         if scene.debug {
             DebugOverlay.draw(scene: scene, into: &context)
         }
+    }
+
+    /// Gate chrome for this frame: the spans, plus which players are waiting on
+    /// which gate, in their car colors.
+    private static func chrome(
+        race: Race, spans: [(a: Vec2, b: Vec2)?], colorAt: (Int) -> Color
+    ) -> GateChrome {
+        var nextByGate: [Int: [Color]] = [:]
+        for (index, car) in race.cars.enumerated() where car.progress.finishedAt == nil {
+            nextByGate[car.progress.nextGate, default: []].append(colorAt(index))
+        }
+        return GateChrome(
+            spans: spans,
+            nextByGate: nextByGate,
+            worldCenter: Vec2(race.track.size.x / 2, race.track.size.y / 2),
+            heights: race.track.gates.map(\.height)
+        )
+    }
+
+    /// The storeys a track's road occupies, ascending. Always includes the
+    /// ground, so a flat track still gets its single road layer.
+    static func trackStoreys(_ track: Track) -> [Int] {
+        var found: Set<Int> = [0]
+        for height in track.heights { found.insert(Track.level(of: height)) }
+        return found.sorted()
+    }
+
+    /// The height range whose pieces belong to `storey` — a piece counts as
+    /// belonging to the storey of its HIGHEST end, so a climb paints whole
+    /// rather than splitting across levels at its midpoint.
+    static func storeyBand(_ storey: Int) -> ClosedRange<Double> {
+        let top = Double(storey) * Track.levelHeight
+        let below = top - Track.levelHeight
+        return (below + Track.levelHeight / 4)...(top + Track.levelHeight / 4)
+    }
+
+    /// The inverse of `storeyBand`: the storey whose band a piece top falls in.
+    /// Cars on asphalt stack by THIS of the piece under them, so a car and its
+    /// own ribbon can never land in different storeys.
+    static func storey(ofTop top: Double) -> Int {
+        Int((top / Track.levelHeight - 0.25).rounded(.up))
     }
 
     /// The ribbon at one height band, as contiguous runs of centerline segments

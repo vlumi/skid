@@ -5,114 +5,91 @@ import SwiftUI
 /// within the length budget. Everything here draws in world space, inside the
 /// aspect-fit transform set up by `TrackRenderer.draw`.
 extension TrackRenderer {
-    static func drawCars(
-        scene: WorldScene, gateChrome: GateChrome, colorAt: (Int) -> Color,
-        into context: inout GraphicsContext
+    /// Collect the cars as layers: each one at the storey it occupies, so the
+    /// z-order puts it above its own road and under any road a level above.
+    ///
+    /// No pass-picking. A car on ASPHALT is at the storey of the piece under
+    /// it — the ribbon paints whole at the level of its highest end, so the car
+    /// must stack by the same rule, or mid-climb it is a storey below its own
+    /// road and vanishes beneath the ramp's upper half. A car on GRASS has no
+    /// piece; its raw height decides (which is what hides it under a bridge,
+    /// where the bubble takes over). The long-running "is this car on a ramp /
+    /// over ground-height road?" promotion logic is still gone — this is a
+    /// lookup of stored piece data, not a guess from nearby slopes.
+    static func addCars(
+        scene: WorldScene, gateChrome: GateChrome, colorAt: @escaping (Int) -> Color,
+        to order: inout RenderOrder.Builder
     ) {
         let race = scene.race
         let track = race.track
         let translucent = ghostOverlaps(race: race)
-        // The PB ghost drives under the real cars, translucent and
-        // colorless — present, never in the way.
+
+        // The PB ghost drives under the real cars, translucent and colorless —
+        // present, never in the way.
         for ghost in scene.ghosts where !ghost.isAirborne {
-            draw(car: ghost, color: .white, opacity: 0.38, into: &context)
-        }
-        // A car climbing a ramp draws ABOVE the deck, so its nose never slides
-        // under the bridge edge on the way up.
-        //
-        // It must be ON the ramp, not merely near one: asking only "is there
-        // sloped road at this spot" was true for a car on the grass beside a ramp
-        // and for one on the road passing under the bridge, so those were promoted
-        // into the elevated pass and drawn up on the deck. The debug overlay caught
-        // it — a car reading "h 0.00 / grass / off road 101" drawn on the bridge.
-        //
-        // Which pass a car draws in follows its HEIGHT alone. The general
-        // rule: a ribbon may cover only cars a FULL LEVEL below it (that's the
-        // clearance road-over-road requires), so a car draws under exactly the
-        // ribbon passes that are a storey above it. With today's two storeys
-        // that collapses to one split: only true GROUND cars can have road
-        // above them, and everything even slightly off the ground draws after
-        // the elevated ribbons. Splitting cars at the shelf (0.5) instead
-        // clipped a descending car whose tail still overlapped the upper half
-        // while its height had already reached the shelf.
-        //
-        // More storeys need per-storey interleaving of ribbon and car passes,
-        // not a wider version of this split — `RenderBandTests` trips the day
-        // `Track.highestLevel` rises, per the rollercoaster plan.
-        //
-        // Measured at the BODY'S CORNERS, not the centre: a car is a
-        // rectangle, and deciding by one point clipped whichever end still
-        // hung over road of the other pass at a band seam. Corners rather than
-        // tires because the drawn nose and tail overhang the axles — the tail
-        // could clear on all four tires and still get painted over. It stays a
-        // ground car only when all of it is over ground-height road.
-        func onGround(_ car: Car) -> Bool {
-            guard car.state.height <= Track.surfaceTolerance else { return false }
-            return car.state.bodyCorners.allSatisfy { corner in
-                track.height(at: corner, preferHeight: car.state.height)
-                    <= Track.surfaceTolerance
+            order.add(storey: carStorey(of: ghost, on: track), kind: .car) { context in
+                draw(car: ghost, color: .white, opacity: 0.38, into: &context)
             }
-        }
-        for (index, car) in race.cars.enumerated()
-        where onGround(car) && !car.state.isAirborne {
-            draw(
-                car: car.state, color: colorAt(index),
-                opacity: translucent.contains(index) ? 0.55 : 1,
-                into: &context
-            )
         }
 
-        if track.heights.contains(where: { $0 > 0.5 }) {
-            // NOW the bridge, on top of the ground cars just drawn — that
-            // ordering is what hides a car driving underneath it. Same shared
-            // renderer as the editor, just the upper height band.
-            if let layout = track.layout {
-                // The race's gate display is the white chrome — no editor
-                // markers here either (they were also a seam off).
-                // 0.75, not 0.5: piece heights sit on the half-level
-                // lattice, so maxima are 0, 0.5 or 1 — and 0.5 belonged to BOTH
-                // bands, double-drawing every climb's lower half over the cars
-                // on it. Anything that stays at or below the shelf is ground.
-                EditorRenderer.drawTrack(
-                    walk: layout.walk(), width: track.width, gateSeams: [],
-                    transform: track.layoutTransform, heightRange: 0.75...2, into: &context)
-            } else {
-                drawRibbon(track: track, elevated: true, into: &context)
+        for (index, car) in race.cars.enumerated() where !car.state.isAirborne {
+            let state = car.state
+            let opacity = translucent.contains(index) ? 0.55 : 1
+            let storey = carStorey(of: state, on: track)
+            order.add(storey: storey, kind: .car) { context in
+                // Scaled by the continuous height at its position (the same
+                // Elevation.scale the road width uses), so a car grows as it
+                // climbs — no discrete pop at a level boundary.
+                draw(
+                    car: state, color: colorAt(index), opacity: opacity,
+                    scale: Elevation.scale(atHeight: state.height), into: &context)
             }
-            drawGates(gateChrome, elevated: true, into: &context)
-            // Rubber laid on the deck, over the deck's ribbon — ground marks
-            // went down before the bridge, so each level keeps its own.
-            drawMarks(scene.marks, elevated: true, into: &context)
-            //
-            // Never-invisible rule: a ground car hidden under the bridge
-            // shows through as a bubble in its color. Ramp climbers are
-            // fully visible on their slope — no bubble.
-            for (index, car) in race.cars.enumerated()
-            where onGround(car)
-                && track.distanceToCenterline(car.state.position, height: 1)
+            // Never-invisible rule: a car with road a full level above it is
+            // hidden by that road, so it also shows through as a bubble in its
+            // own color. Drawn at the covering storey, above that road.
+            let coveringStorey = storey + 1
+            let coveringHeight = Double(coveringStorey) * Track.levelHeight
+            if track.heights.contains(where: { Track.level(of: $0) == coveringStorey }),
+                track.distanceToCenterline(state.position, height: coveringHeight)
                     < track.width / 2 + 8
             {
-                drawBubble(at: car.state.position, color: colorAt(index), into: &context)
-            }
-            // Bridge cars, and ramp climbers on their way up/down: scaled
-            // SMOOTHLY by the continuous height at their position (the same
-            // Elevation.scale factor the road width uses), so a car grows as it
-            // climbs and reads as elevated on the deck — no discrete pop.
-            for (index, car) in race.cars.enumerated()
-            where !car.state.isAirborne && !onGround(car) {
-                // The car's own height IS the scale now — no reconstruction.
-                draw(
-                    car: car.state, color: colorAt(index),
-                    scale: Elevation.scale(atHeight: car.state.height), into: &context)
+                order.add(storey: coveringStorey, kind: .car) { context in
+                    drawBubble(at: state.position, color: colorAt(index), into: &context)
+                }
             }
         }
 
         // Airborne cars fly over everything: bigger, with a drop shadow.
         for (index, car) in race.cars.enumerated() where car.state.isAirborne {
-            draw(
-                car: car.state, color: colorAt(index), scale: 1.22, shadow: true,
-                into: &context)
+            let state = car.state
+            order.add(storey: Track.highestLevel + 1, kind: .airborne) { context in
+                draw(
+                    car: state, color: colorAt(index), scale: 1.22, shadow: true,
+                    into: &context)
+            }
         }
+    }
+
+    /// The storey a car paints in: **the highest storey of any road its BODY
+    /// touches at its own height**; on grass (touching none), its own level.
+    ///
+    /// Body, not center: ribbons paint whole, so where a descent hands over to
+    /// a flat run the neighbouring ribbon is binned a storey up, and a car
+    /// straddling that seam had its tail painted over by road at its own
+    /// height. "At its own height" is the other half of the rule: without it,
+    /// a car entering an underpass would inherit the BRIDGE's storey from the
+    /// deck overhead and paint on top of the thing it is sliding under.
+    static func carStorey(of state: CarState, on track: Track) -> Int {
+        var highest: Int?
+        for point in [state.position] + state.bodyCorners {
+            guard
+                track.distanceToCenterline(point, height: state.height)
+                    <= track.width / 2
+            else { continue }
+            let touched = storey(ofTop: track.deckTop(at: point, preferHeight: state.height))
+            highest = max(highest ?? touched, touched)
+        }
+        return highest ?? Track.level(of: state.height)
     }
 
     /// A car hidden under the bridge, shown through it in its own color, so no
@@ -162,27 +139,6 @@ extension TrackRenderer {
 
         let length = CarGeometry.length
         let width = CarGeometry.width
-        // A headlight cone projected AHEAD of the nose, in the car's tint:
-        // a soft fan that fades out, reading the facing direction at a glance
-        // (even mid-flip, where nose ≠ travel) without shouting like the old
-        // bold arrow. Skipped for the translucent PB ghost.
-        if opacity > 0.5 {
-            let mouth = length / 2 + 2  // just off the nose
-            let reach = mouth + 46  // how far the beam throws
-            let spread = 20.0  // half-width of the beam at its far end
-            var cone = Path()
-            cone.move(to: CGPoint(x: mouth, y: -3))
-            cone.addLine(to: CGPoint(x: reach, y: -spread))
-            cone.addLine(to: CGPoint(x: reach, y: spread))
-            cone.addLine(to: CGPoint(x: mouth, y: 3))
-            cone.closeSubpath()
-            // Fade along the throw so it glows from the nose and dissolves.
-            car2D.fill(
-                cone,
-                with: .linearGradient(
-                    Gradient(colors: [color.opacity(0.55), color.opacity(0)]),
-                    startPoint: CGPoint(x: mouth, y: 0), endPoint: CGPoint(x: reach, y: 0)))
-        }
         // Tires first, so the body sits on top; open-wheel means they stick
         // out past the body sides.
         for offset in CarGeometry.tireOffsets {
@@ -207,9 +163,45 @@ extension TrackRenderer {
             glow.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
         }
         car2D.fill(bodyPath, with: .color(color))
+        // FACING is told by the body itself, not a thrown headlight beam — a
+        // projected cone fought the storey binning (sliced off at ramp feet
+        // by the higher-binned ribbon, painted onto a deck from a descent
+        // that shares its storey), and no shape change fixes a decal that
+        // leaves the car. Classic single-seater proportions carry the cue
+        // instead: a LIT NOSE and the driver tucked back at the rear axle.
+        // Bright end = front, dark dot = back — silhouette-scale marks that
+        // survive the tiny on-SE car where any detail line vanishes.
+        var sheen = car2D
+        sheen.clip(to: bodyPath)
+        sheen.fill(
+            Path(CGRect(x: 0, y: -width / 4, width: length / 2, height: width / 2)),
+            with: .linearGradient(
+                Gradient(colors: [.white.opacity(0), .white.opacity(0.55)]),
+                startPoint: .zero, endPoint: CGPoint(x: length / 2, y: 0)))
+        // Lamp dots hugging the nose tip (the body clip rounds them into the
+        // corners): flavor at editor zoom, they melt into the sheen at race
+        // scale.
+        for side in [-1.0, 1.0] {
+            let lamp = CGRect(
+                x: length / 2 - 6, y: side * 3.4 - 1.9, width: 3.8, height: 3.8)
+            sheen.fill(
+                Path(ellipseIn: lamp),
+                with: .color(Color(red: 1, green: 0.98, blue: 0.82)))
+        }
         car2D.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
-        // Cockpit dot behind the midpoint.
-        let cockpit = CGRect(x: -4, y: -3.2, width: 6.4, height: 6.4)
+        // The driver sits near the back, like the classic single-seaters.
+        let cockpit = CGRect(x: -9.5, y: -3.2, width: 6.4, height: 6.4)
         car2D.fill(Path(ellipseIn: cockpit), with: .color(.black.opacity(0.65)))
     }
 }
+
+#if DEBUG
+extension TrackRenderer {
+    /// Test-only window into the private car drawing, for look probes.
+    static func probeDrawCar(
+        _ state: CarState, color: Color, into context: inout GraphicsContext
+    ) {
+        draw(car: state, color: color, into: &context)
+    }
+}
+#endif
