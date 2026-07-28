@@ -148,6 +148,20 @@ What's left:
       - **Rethink the delete icon.** The undo-arrow reads as "undo last action"
         rather than "remove this piece".
       Longer term: real undo.
+- [ ] **BUG: a wall hit from outside ignores its drawn width.** At the root of
+      a ramp, a car coming from the grass stops short of the barrier it can
+      see (measured on the clover, 2026-07-28: cyan at h 0.00 reading "off
+      road 74" while parked outside the ramp's rail). `collideWithWalls`
+      treats a wall as a zero-thickness segment and pushes the car out by
+      `CarGeometry.radius` alone, but the rail is DRAWN as a band straddling
+      the road edge (`kerbBand` either side, so ~15 units outboard) — and at
+      a ramp's root the band's outboard half sits over grass a car can reach.
+      Hits from inside look right because the asphalt edge and the collision
+      line coincide there. Fix is probably to give a rail its half-thickness
+      in the collision test, from the same constant the renderer strokes with,
+      so `Track` owns one wall width the way it now owns one road width
+      (`footprintHalfWidth`). Check the ramp-foot rails specifically: their
+      geometry is the case that made the old scaled-rail version drift.
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
