@@ -70,14 +70,26 @@ extension TrackRenderer {
         }
     }
 
-    /// The storey a car paints in: on asphalt, the storey of the piece it is
-    /// ON (via the stored deck tops); on grass, the storey of its own height.
+    /// The storey a car paints in: **the highest storey of any road its BODY
+    /// touches at its own height**; on grass (touching none), its own level.
+    ///
+    /// Body, not center: ribbons paint whole, so where a descent hands over to
+    /// a flat run the neighbouring ribbon is binned a storey up, and a car
+    /// straddling that seam had its tail painted over by road at its own
+    /// height. "At its own height" is the other half of the rule: without it,
+    /// a car entering an underpass would inherit the BRIDGE's storey from the
+    /// deck overhead and paint on top of the thing it is sliding under.
     static func carStorey(of state: CarState, on track: Track) -> Int {
-        guard
-            track.distanceToCenterline(state.position, height: state.height)
-                <= track.width / 2
-        else { return Track.level(of: state.height) }
-        return storey(ofTop: track.deckTop(at: state.position, preferHeight: state.height))
+        var highest: Int?
+        for point in [state.position] + state.bodyCorners {
+            guard
+                track.distanceToCenterline(point, height: state.height)
+                    <= track.width / 2
+            else { continue }
+            let touched = storey(ofTop: track.deckTop(at: point, preferHeight: state.height))
+            highest = max(highest ?? touched, touched)
+        }
+        return highest ?? Track.level(of: state.height)
     }
 
     /// A car hidden under the bridge, shown through it in its own color, so no

@@ -398,11 +398,14 @@ public struct Track: Equatable, Sendable, Codable {
         guard deckTops.count == centerline.count, !deckTops.isEmpty else {
             return height(at: p, preferHeight: preferHeight)
         }
-        let (segment, t) = closestCenterlinePoint(to: p, preferHeight: preferHeight)
-        // A seam segment straddles two pieces; the piece that owns the NEARER
-        // endpoint owns the spot, so the handover happens mid-segment rather
-        // than a whole sample early on one side.
-        return deckTops[t < 0.5 ? segment : (segment + 1) % deckTops.count]
+        let (segment, _) = closestCenterlinePoint(to: p, preferHeight: preferHeight)
+        // Every segment belongs WHOLLY to the piece of its end point: the
+        // compiler emits each piece's points after its entry through its exit,
+        // so a segment never spans two pieces. Attributing by the end point is
+        // therefore exact — the nearer-endpoint guess it replaces over-reached
+        // by half a segment, which on a sparsely-sampled straight extended a
+        // ramp's storey up to 60 units into the flat run beyond it.
+        return deckTops[(segment + 1) % deckTops.count]
     }
 
     /// The portion of a gate that lies on the asphalt ribbon — where a
