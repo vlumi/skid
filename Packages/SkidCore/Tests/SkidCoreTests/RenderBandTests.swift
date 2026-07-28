@@ -3,15 +3,11 @@ import XCTest
 @testable import SkidCore
 @testable import SkidKit
 
-/// What belongs to which height band. The race view draws the ground, then the
-/// cars, then the bridge over them — so anything painted in the wrong band
-/// shows through the deck.
+/// Which seam a tap means, and which band the start line's paint belongs to.
+/// (Draw ORDER now lives in `RenderOrderTests` — the two hardcoded passes these
+/// once described were replaced by a storey/kind z-order.)
 final class RenderBandTests: XCTestCase {
-    /// The two bands the race view draws. They PARTITION: piece heights sit
-    /// on the half-level lattice (maxima 0, 0.5 or 1), and 0.75 separates
-    /// "reaches above the shelf" from "stays at or below it". When the bands
-    /// overlapped at exactly 0.5, every climb's lower half drew in both passes
-    /// and its second copy buried the car on it.
+    /// The height bands the editor still uses to draw a partial track.
     private let ground = -1.0...0.5
     private let elevated = 0.75...2.0
 
@@ -96,45 +92,4 @@ final class RenderBandTests: XCTestCase {
         return best?.seam
     }
 
-    /// **The car interleave assumes two storeys — this trips when that ends.**
-    /// The race view draws ground ribbons, ground cars, elevated ribbons, then
-    /// everything else; the general rule (a ribbon covers only cars a full
-    /// level below it) collapses to that single split ONLY while the world has
-    /// storeys 0 and 1. Raising `highestLevel` (the rollercoaster) needs
-    /// per-storey interleaving of ribbon and car passes first — see the plan in
-    /// docs/track-pieces.md.
-    func testTheCarInterleaveMatchesTheWorldsStoreys() {
-        XCTAssertEqual(
-            Track.highestLevel, 1,
-            "add per-storey render passes before raising the world's ceiling")
-    }
-
-    /// **Every piece draws in exactly one pass.** In both is a double-draw
-    /// whose second copy buries the cars on that piece; in neither is a hole in
-    /// the road. This is the invariant behind two shipped artifacts: a ground
-    /// car riding on top of the bridge, and a climber hidden under the foot of
-    /// its own ramp.
-    func testTheBandsPartitionEveryPiece() throws {
-        for id in ["small", "oval", "eight"] {
-            let layout = try XCTUnwrap(TrackLibrary.layout(id: id))
-            for piece in layout.walk().placed {
-                let top = max(piece.entryHeight, piece.exitHeight)
-                let inGround = ground.contains(top)
-                let inElevated = elevated.contains(top)
-                XCTAssertNotEqual(
-                    inGround, inElevated,
-                    "\(id): piece topping at \(top) must draw in exactly one pass")
-            }
-        }
-    }
-
-    /// A crossing exists on the eight at both heights — the case where a
-    /// misbanded start line would be visible — so the fixture really exercises
-    /// the rule rather than passing for lack of a bridge.
-    func testTheEightHasRoadAtBothBands() throws {
-        let layout = try XCTUnwrap(TrackLibrary.layout(id: "eight"))
-        let placed = layout.walk().placed
-        XCTAssertTrue(placed.contains { ground.contains($0.entryHeight) })
-        XCTAssertTrue(placed.contains { elevated.contains($0.exitHeight) })
-    }
 }

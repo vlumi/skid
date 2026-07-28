@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Cars and bridges stack correctly, everywhere.** A car that slid onto the
+  grass under a bridge used to be drawn on top of it. The world is now painted
+  strictly bottom-up — ground, then whatever stands on it, then the level above
+  — so what covers what follows from where things are, not from a list of
+  special cases.
+
 ### build 8 — 2026-07-27
 
 - **A rebuilt editor palette.** Picking a piece used to mean tabs, a radius row,
