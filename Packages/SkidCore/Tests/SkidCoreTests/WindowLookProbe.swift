@@ -45,7 +45,10 @@ final class WindowLookProbe: XCTestCase {
                 with: .color(Color(red: 0.28, green: 0.55, blue: 0.25)))
             var world = context
             world.scaleBy(x: 2.4, y: 2.4)
-            let deck = Path(CGRect(x: 20, y: 30, width: 280, height: 50))
+            // The deck strip, drawn at the PAINTED width (as a real elevated
+            // ribbon is) with the rail straddling its edge — the geometry the
+            // window has to match.
+            let deck = Path(CGRect(x: 20, y: 26, width: 280, height: 58))
             world.fill(deck, with: .color(Color(white: 0.62)))
             var dash = Path()
             dash.move(to: CGPoint(x: 20, y: 55))
@@ -59,7 +62,7 @@ final class WindowLookProbe: XCTestCase {
                 // Mid-deck; the yellow deck car passes over this one's hole.
                 Probe(at: Vec2(160, 55), heading: -.pi / 2, color: .white),
                 // Under the deck EDGE: sliver only, rail stays solid.
-                Probe(at: Vec2(250, 76), heading: 2.6, color: .cyan),
+                Probe(at: Vec2(250, 80), heading: 2.6, color: .cyan),
             ]
             for c in cases {
                 var state = CarState(position: c.at, heading: c.heading)
@@ -75,7 +78,7 @@ final class WindowLookProbe: XCTestCase {
 
             // The rails paint over everything of the deck's road layer in the
             // real renderer; here just drawn last to eyeball the hole edge.
-            for railY in [30.0, 80.0] {
+            for railY in [26.0, 84.0] {
                 var rail = Path()
                 rail.move(to: CGPoint(x: 20, y: railY))
                 rail.addLine(to: CGPoint(x: 300, y: railY))
