@@ -223,7 +223,8 @@ public struct Race: Equatable, Sendable {
         // on the bridge (20 of 520 such runs reached the deck).
         let height = car.state.height
         func onOwnRoad(_ position: Vec2) -> Bool {
-            track.distanceToCenterline(position, height: height) <= track.width / 2
+            track.distanceToCenterline(position, height: height)
+                <= track.halfWidth(atHeight: height)
         }
         guard onOwnRoad(car.state.position), onOwnRoad(from) else {
             // Off the road. Up high, that's a fall off the deck; on the ground,
