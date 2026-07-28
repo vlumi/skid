@@ -16,4 +16,16 @@ extension Track {
     public func halfWidth(atHeight height: Double) -> Double {
         width / 2 * Elevation.scale(atHeight: height)
     }
+
+    /// **How far the road's whole visual FOOTPRINT reaches** at `height`: the
+    /// asphalt, plus the kerb/rail band that straddles its edge.
+    ///
+    /// Distinct from `halfWidth`, which is the drivable asphalt. An elevated
+    /// road's rails stand on its edge and hide the ground under them exactly
+    /// as the asphalt does, so anything reasoning about what the road COVERS
+    /// (the under-deck window) needs this, while anything reasoning about what
+    /// a car can DRIVE on needs `halfWidth`.
+    public func footprintHalfWidth(atHeight height: Double) -> Double {
+        halfWidth(atHeight: height) + Double(PieceCatalog.kerbBand)
+    }
 }

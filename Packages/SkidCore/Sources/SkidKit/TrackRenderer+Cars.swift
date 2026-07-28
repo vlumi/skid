@@ -49,14 +49,24 @@ extension TrackRenderer {
             // at the car's position with the car itself visible through it.
             // Drawn at the covering storey, above that road (and above its
             // marks and gates, which the dimming swallows inside the hole).
-            // The reach is the road's own half-width at that height plus the
-            // rail band straddling its edge. `Track.halfWidth` already knows
-            // the road is wider up there, so this asks rather than re-derives.
+            // A bridge's footprint is its asphalt PLUS the rails standing on
+            // its edges — that whole band hides what is under it, so that whole
+            // band is where the hole may be cut. The TRIGGER then reaches one
+            // hole-radius further out, because the hole is centred on the car:
+            // stopping the trigger at the footprint edge made the window vanish
+            // the moment the car's centre cleared the bridge, cutting off a
+            // window whose disc still overlapped it. Reaching further lets the
+            // clip do the trimming, which is its job.
+            //
+            // These two used to disagree the other way, too: the trigger
+            // reached the rail's outer edge (87 on the eight) while the hole was
+            // cut only in the asphalt (72), so a car under the wall triggered a
+            // window with nowhere to draw and stayed invisible.
             let coveringStorey = storey + 1
             let coveringHeight = Double(coveringStorey) * Track.levelHeight
             if track.heights.contains(where: { Track.level(of: $0) == coveringStorey }),
                 track.distanceToCenterline(state.position, height: coveringHeight)
-                    < track.halfWidth(atHeight: coveringHeight) + Double(PieceCatalog.kerbBand)
+                    < track.footprintHalfWidth(atHeight: coveringHeight) + holeRadius
             {
                 let deck = coveringDeck(track: track, height: coveringHeight)
                 order.add(storey: coveringStorey, kind: .window) { context in
@@ -116,7 +126,8 @@ extension TrackRenderer {
         into context: inout GraphicsContext
     ) {
         let hole = CGRect(
-            x: state.position.x - 20, y: state.position.y - 20, width: 40, height: 40)
+            x: state.position.x - holeRadius, y: state.position.y - holeRadius,
+            width: holeRadius * 2, height: holeRadius * 2)
         let rim = Path(ellipseIn: hole)
         var window = context
         window.clip(to: deck)
@@ -140,13 +151,18 @@ extension TrackRenderer {
             line.move(to: CGPoint(x: a.x, y: a.y))
             line.addLine(to: CGPoint(x: b.x, y: b.y))
         }
-        // Stroked to the road's real width at this height, so the hole is cut
-        // in the asphalt the player sees.
+        // Stroked to the road's whole FOOTPRINT — asphalt plus rails — since
+        // the rails hide the ground under them just as the asphalt does.
         return line.strokedPath(
             StrokeStyle(
-                lineWidth: track.halfWidth(atHeight: height) * 2,
+                lineWidth: track.footprintHalfWidth(atHeight: height) * 2,
                 lineCap: .round, lineJoin: .round))
     }
+
+    /// Radius of the window's disc, centred on the car. Also how far past the
+    /// bridge's footprint the window keeps being drawn, since a disc centred
+    /// just outside the bridge still overlaps it.
+    private static let holeRadius: Double = 20
 
     /// Ghost mode: overlapping pass-through cars go translucent so pileups
     /// on the racing line stay readable.
