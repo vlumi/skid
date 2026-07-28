@@ -49,15 +49,18 @@ extension TrackRenderer {
             // at the car's position with the car itself visible through it.
             // Drawn at the covering storey, above that road (and above its
             // marks and gates, which the dimming swallows inside the hole).
-            // The margin reaches past the asphalt to the rail band so the
-            // window doesn't blink out while the car passes under the deck's
-            // EDGE; the hole itself is clipped to the deck, so what shows
-            // there is the honest sliver.
+            // Both the trigger and the hole use the deck's PAINTED reach, which
+            // is wider than the nominal road: the fake-perspective scaling
+            // (`Elevation.scale`) draws an elevated ribbon 1.2× wide, and the
+            // rail straddles that edge on top. Sized nominally, the trigger
+            // stopped at 76 and the hole at 60 while the deck's asphalt ran to
+            // 72 and its rail to 87 — a 27-unit band, nearly half a car length,
+            // where the car was plainly under the bridge and got nothing.
             let coveringStorey = storey + 1
             let coveringHeight = Double(coveringStorey) * Track.levelHeight
             if track.heights.contains(where: { Track.level(of: $0) == coveringStorey }),
                 track.distanceToCenterline(state.position, height: coveringHeight)
-                    < track.width / 2 + 16
+                    < paintedReach(of: track, atHeight: coveringHeight)
             {
                 let deck = coveringDeck(track: track, height: coveringHeight)
                 order.add(storey: coveringStorey, kind: .window) { context in
@@ -141,8 +144,23 @@ extension TrackRenderer {
             line.move(to: CGPoint(x: a.x, y: a.y))
             line.addLine(to: CGPoint(x: b.x, y: b.y))
         }
+        // Stroked to the width the ribbon is actually PAINTED at this height,
+        // not the nominal road width — otherwise the hole stops short of the
+        // asphalt it is supposed to be cut in.
         return line.strokedPath(
-            StrokeStyle(lineWidth: track.width, lineCap: .round, lineJoin: .round))
+            StrokeStyle(
+                lineWidth: track.width * Elevation.scale(atHeight: height),
+                lineCap: .round, lineJoin: .round))
+    }
+
+    /// How far the drawn road reaches from its centerline at `height`: the
+    /// painted half-width (widened by the elevation scaling, exactly as the
+    /// ribbon is drawn) plus the rail band that straddles its edge.
+    ///
+    /// The one place this reach is defined, so the window's trigger and its
+    /// hole can never disagree about where the deck ends.
+    static func paintedReach(of track: Track, atHeight height: Double) -> Double {
+        track.width / 2 * Elevation.scale(atHeight: height) + Double(PieceCatalog.kerbBand)
     }
 
     /// Ghost mode: overlapping pass-through cars go translucent so pileups
@@ -244,6 +262,11 @@ extension TrackRenderer {
         _ state: CarState, color: Color, into context: inout GraphicsContext
     ) {
         draw(car: state, color: color, into: &context)
+    }
+
+    /// Test-only window into the covering-deck clip region.
+    static func probeCoveringDeck(track: Track, height: Double) -> Path {
+        coveringDeck(track: track, height: height)
     }
 
     /// Test-only window into the under-deck window drawing.
