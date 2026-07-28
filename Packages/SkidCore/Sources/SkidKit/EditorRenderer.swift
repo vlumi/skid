@@ -24,6 +24,15 @@ enum EditorRenderer {
 
         var scale: CGFloat
         var offset: CGSize
+        /// Any FURTHER scaling the caller's GraphicsContext applies after
+        /// `screen(_:)` — 1 in the editor (whose transform maps all the way to
+        /// the screen), the map scale in the race (whose context is scaled to
+        /// world units). Quantities that must hold in true screen points
+        /// (the seam overlap) divide by this; without it the race shrank the
+        /// overlap back under the antialiasing width, and the hairlines the
+        /// overlap exists to cover came back — on the rails first, whose
+        /// butt-capped ends read crisper than the shaded road fill.
+        var contextScale: CGFloat = 1
         func screen(_ p: Vec2) -> CGPoint {
             CGPoint(x: p.x * scale + offset.width, y: p.y * scale + offset.height)
         }
@@ -227,8 +236,9 @@ enum EditorRenderer {
         // Extend the FILL past both end cuts, along each edge's own direction,
         // so abutting pieces overlap and the antialiased seam shows no hairline
         // gap. See `seamOverlap` for the size.
-        let fillLeft = extendEnds(e.left, by: seamOverlap)
-        let fillRight = extendEnds(e.right, by: seamOverlap)
+        let overlap = seamOverlap / t.contextScale
+        let fillLeft = extendEnds(e.left, by: overlap)
+        let fillRight = extendEnds(e.right, by: overlap)
         var outline = Path()
         outline.addLines(fillLeft + fillRight.reversed())
         outline.closeSubpath()
@@ -320,7 +330,8 @@ enum EditorRenderer {
         into context: inout GraphicsContext
     ) {
         var rails = Path()
-        for side in [extendEnds(left, by: seamOverlap), extendEnds(right, by: seamOverlap)] {
+        let overlap = seamOverlap / t.contextScale
+        for side in [extendEnds(left, by: overlap), extendEnds(right, by: overlap)] {
             guard let first = side.first else { continue }
             rails.move(to: first)
             side.dropFirst().forEach { rails.addLine(to: $0) }
@@ -357,8 +368,10 @@ enum EditorRenderer {
     /// the overlap has to clear that — not just one pixel. It costs nothing
     /// visually: the overlap is inside the neighbouring piece's own fill.
     ///
-    /// This is in screen points BY CONSTRUCTION — `edges` returns
-    /// `Transform.screen` output, so zoom doesn't shrink it.
+    /// This is in screen points: `edges` returns `Transform.screen` output
+    /// (so editor zoom doesn't shrink it), and use sites divide by
+    /// `Transform.contextScale` for callers whose context scales further
+    /// (the race view — see `contextScale`).
     static let seamOverlap: CGFloat = 1
 
     private static func extendEnds(_ pts: [CGPoint], by d: CGFloat) -> [CGPoint] {

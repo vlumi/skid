@@ -125,9 +125,14 @@ enum TrackRenderer {
             let band = storeyBand(storey)
             order.add(storey: storey, kind: .road) { context in
                 if let layout = track.layout {
+                    // The race context scales world → screen AFTER the
+                    // transform; the transform must know, so true-screen-point
+                    // quantities (the seam overlap) hold on screen.
+                    var t = track.layoutTransform
+                    t.contextScale = scale
                     EditorRenderer.drawTrack(
                         walk: layout.walk(), width: track.width, gateSeams: [],
-                        transform: track.layoutTransform, heightRange: band, into: &context)
+                        transform: t, heightRange: band, into: &context)
                 } else {
                     // No layout (ad-hoc tracks built directly in tests): fall
                     // back to the centerline stroke, which needs no piece model.

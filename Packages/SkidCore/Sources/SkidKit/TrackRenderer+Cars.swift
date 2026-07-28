@@ -45,16 +45,33 @@ extension TrackRenderer {
                     scale: Elevation.scale(atHeight: state.height), into: &context)
             }
             // Never-invisible rule: a car with road a full level above it is
-            // hidden by that road, so it also shows through as a bubble in its
-            // own color. Drawn at the covering storey, above that road.
+            // hidden by that road, so the deck gets a WINDOW — a dimmed hole
+            // at the car's position with the car itself visible through it.
+            // Drawn at the covering storey, above that road (and above its
+            // marks and gates, which the dimming swallows inside the hole).
+            // A bridge's footprint is its asphalt PLUS the rails standing on
+            // its edges — that whole band hides what is under it, so that whole
+            // band is where the hole may be cut. The TRIGGER then reaches one
+            // hole-radius further out, because the hole is centred on the car:
+            // stopping the trigger at the footprint edge made the window vanish
+            // the moment the car's centre cleared the bridge, cutting off a
+            // window whose disc still overlapped it. Reaching further lets the
+            // clip do the trimming, which is its job.
+            //
+            // These two used to disagree the other way, too: the trigger
+            // reached the rail's outer edge (87 on the eight) while the hole was
+            // cut only in the asphalt (72), so a car under the wall triggered a
+            // window with nowhere to draw and stayed invisible.
             let coveringStorey = storey + 1
             let coveringHeight = Double(coveringStorey) * Track.levelHeight
             if track.heights.contains(where: { Track.level(of: $0) == coveringStorey }),
                 track.distanceToCenterline(state.position, height: coveringHeight)
-                    < track.width / 2 + 8
+                    < track.footprintHalfWidth(atHeight: coveringHeight) + holeRadius
             {
-                order.add(storey: coveringStorey, kind: .car) { context in
-                    drawBubble(at: state.position, color: colorAt(index), into: &context)
+                let deck = coveringDeck(track: track, height: coveringHeight)
+                order.add(storey: coveringStorey, kind: .window) { context in
+                    drawWindow(
+                        around: state, color: colorAt(index), deck: deck, into: &context)
                 }
             }
         }
@@ -84,7 +101,7 @@ extension TrackRenderer {
         for point in [state.position] + state.bodyCorners {
             guard
                 track.distanceToCenterline(point, height: state.height)
-                    <= track.width / 2
+                    <= track.halfWidth(atHeight: state.height)
             else { continue }
             let touched = storey(ofTop: track.deckTop(at: point, preferHeight: state.height))
             highest = max(highest ?? touched, touched)
@@ -92,16 +109,60 @@ extension TrackRenderer {
         return highest ?? Track.level(of: state.height)
     }
 
-    /// A car hidden under the bridge, shown through it in its own color, so no
-    /// player is ever invisible.
-    private static func drawBubble(
-        at position: Vec2, color: Color, into context: inout GraphicsContext
+    /// A car hidden under the bridge shows THROUGH it: a dark circular hole
+    /// in the deck with the car itself drawn inside, slightly small for depth.
+    /// (Replaces a solid dot in the car's color — a placeholder that told you
+    /// a car was there but not which way it pointed.)
+    ///
+    /// Two deliberate simplifications, both the maintainer's calls:
+    /// - The hole is a hole IN THE DECK: everything, rim included, is clipped
+    ///   to the covering asphalt, so the window never eats the deck rail or
+    ///   spills onto the grass — the wall stands solid across the hole's edge.
+    /// - The hole doesn't try to show what is really down there (grass,
+    ///   decals): the car sits in plain heavy shadow, which reads as "under
+    ///   the bridge" without re-rendering the world below.
+    private static func drawWindow(
+        around state: CarState, color: Color, deck: Path,
+        into context: inout GraphicsContext
     ) {
-        let bubble = CGRect(x: position.x - 15, y: position.y - 15, width: 30, height: 30)
-        context.fill(Path(ellipseIn: bubble), with: .color(color.opacity(0.55)))
-        context.stroke(
-            Path(ellipseIn: bubble), with: .color(.white.opacity(0.85)), lineWidth: 2.5)
+        let hole = CGRect(
+            x: state.position.x - holeRadius, y: state.position.y - holeRadius,
+            width: holeRadius * 2, height: holeRadius * 2)
+        let rim = Path(ellipseIn: hole)
+        var window = context
+        window.clip(to: deck)
+        var inside = window
+        inside.clip(to: rim)
+        inside.fill(rim, with: .color(.black.opacity(0.62)))
+        draw(car: state, color: color, opacity: 0.95, scale: 0.8, into: &inside)
+        // A dark rim so the edge reads as a cut, not a smudge.
+        window.stroke(rim, with: .color(.black.opacity(0.5)), lineWidth: 2.5)
     }
+
+    /// The covering deck's asphalt as a region: the centerline segments at
+    /// the covering height, stroked to the road width — what the window is
+    /// allowed to cut a hole in.
+    private static func coveringDeck(track: Track, height: Double) -> Path {
+        var line = Path()
+        let n = track.centerline.count
+        for i in 0..<n where track.segment(i, isAt: height) {
+            let a = track.centerline[i]
+            let b = track.centerline[(i + 1) % n]
+            line.move(to: CGPoint(x: a.x, y: a.y))
+            line.addLine(to: CGPoint(x: b.x, y: b.y))
+        }
+        // Stroked to the road's whole FOOTPRINT — asphalt plus rails — since
+        // the rails hide the ground under them just as the asphalt does.
+        return line.strokedPath(
+            StrokeStyle(
+                lineWidth: track.footprintHalfWidth(atHeight: height) * 2,
+                lineCap: .round, lineJoin: .round))
+    }
+
+    /// Radius of the window's disc, centred on the car. Also how far past the
+    /// bridge's footprint the window keeps being drawn, since a disc centred
+    /// just outside the bridge still overlaps it.
+    private static let holeRadius: Double = 20
 
     /// Ghost mode: overlapping pass-through cars go translucent so pileups
     /// on the racing line stay readable.
@@ -202,6 +263,19 @@ extension TrackRenderer {
         _ state: CarState, color: Color, into context: inout GraphicsContext
     ) {
         draw(car: state, color: color, into: &context)
+    }
+
+    /// Test-only window into the covering-deck clip region.
+    static func probeCoveringDeck(track: Track, height: Double) -> Path {
+        coveringDeck(track: track, height: height)
+    }
+
+    /// Test-only window into the under-deck window drawing.
+    static func probeDrawWindow(
+        around state: CarState, color: Color, deck: Path,
+        into context: inout GraphicsContext
+    ) {
+        drawWindow(around: state, color: color, deck: deck, into: &context)
     }
 }
 #endif

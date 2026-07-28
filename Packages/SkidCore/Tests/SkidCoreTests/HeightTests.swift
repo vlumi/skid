@@ -327,4 +327,38 @@ final class HeightTests: XCTestCase {
         }
         XCTAssertEqual(run(), run())
     }
+
+    /// **The road is as wide as it looks, at every height.** The ribbon is
+    /// drawn wider as it rises (the fake-perspective `Elevation` scaling), and
+    /// the model has to agree — it used not to: `width` was flat, so on a
+    /// bridge the band between the nominal edge (60) and the painted one (72)
+    /// was GRASS to the sim. A car there lost grip on road it could plainly
+    /// see, and past the nominal edge it fell off a deck it was still drawn
+    /// on. The renderer must never have to re-apply the scale itself.
+    func testTheRoadIsAsWideAsItIsDrawn() throws {
+        let track = try XCTUnwrap(TrackLibrary.track(id: "eight"))
+        // Ground: nominal.
+        XCTAssertEqual(track.halfWidth(atHeight: 0), track.width / 2, accuracy: 1e-9)
+        // Deck: wider, by exactly the drawn scaling.
+        XCTAssertEqual(
+            track.halfWidth(atHeight: Track.levelHeight),
+            track.width / 2 * Elevation.scale(atHeight: Track.levelHeight),
+            accuracy: 1e-9)
+        XCTAssertGreaterThan(
+            track.halfWidth(atHeight: Track.levelHeight), track.width / 2,
+            "an elevated road is drawn wider, so it must BE wider")
+
+        // The band that used to be a lie: on the deck, out past the nominal
+        // edge but inside the painted one, the surface must be asphalt.
+        let n = track.centerline.count
+        let deck = try XCTUnwrap(
+            (0..<n).first { track.heights[$0] >= Track.levelHeight - 0.01 },
+            "the eight should have a deck")
+        let ahead = track.centerline[(deck + 1) % n] - track.centerline[deck]
+        let across = ahead.normalized.perpendicular
+        let outer = track.centerline[deck] + across * (track.width / 2 + 6)
+        XCTAssertEqual(
+            track.surface(at: outer, height: Track.levelHeight), .asphalt,
+            "painted deck asphalt must not be grass to the sim")
+    }
 }
