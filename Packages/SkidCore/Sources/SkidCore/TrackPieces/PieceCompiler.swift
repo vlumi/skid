@@ -28,6 +28,7 @@ public enum PieceCompiler {
         let road = lowerPieces(walk.placed)
         var centerline = road.centerline
         var heights = road.heights
+        var deckTops = road.deckTops
         let ramps = road.ramps
         let walls = road.walls
         var gates: [Gate] = []
@@ -46,6 +47,7 @@ public enum PieceCompiler {
         {
             centerline.removeLast()
             if heights.count > centerline.count { heights.removeLast() }
+            if deckTops.count > centerline.count { deckTops.removeLast() }
         }
 
         // Gates: the road cross-section at each marked seam, seams ascending.
@@ -79,6 +81,7 @@ public enum PieceCompiler {
             centerline: centerline,
             width: Double(PieceCatalog.width),
             heights: heights,
+            deckTops: deckTops,
             ramps: ramps,
             walls: walls,
             gates: gates,
@@ -195,6 +198,11 @@ public enum PieceCompiler {
         var centerline: [Vec2] = []
         /// Height per centerline point, parallel to `centerline`.
         var heights: [Double] = []
+        /// The TOP of the piece each point belongs to (its highest end),
+        /// parallel to `centerline`. This is the height the renderer bins whole
+        /// ribbons by, so anything that must stack with the ribbon — a car
+        /// mid-climb — can stack by the same rule instead of its raw height.
+        var deckTops: [Double] = []
         /// Jump take-off lines only — an ordinary climb is just `heights`.
         var ramps: [Ramp] = []
         var walls: [Wall] = []
@@ -212,13 +220,16 @@ public enum PieceCompiler {
         guard let first = placed.first else { return road }
         road.centerline.append(first.entry.position.vec2)
         road.heights.append(first.entryHeight)
+        road.deckTops.append(max(first.entryHeight, first.exitHeight))
 
         for piece in placed {
+            let top = max(piece.entryHeight, piece.exitHeight)
             for sample in piece.heightedSamples(degreesPerSample: degreesPerSample)
                 .dropFirst()
             {
                 road.centerline.append(sample.point)
                 road.heights.append(sample.height)
+                road.deckTops.append(top)
             }
 
             // Guard rails along both edges of anything off the ground — the

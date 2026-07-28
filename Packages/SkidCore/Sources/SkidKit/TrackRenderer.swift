@@ -189,6 +189,13 @@ enum TrackRenderer {
         return (below + Track.levelHeight / 4)...(top + Track.levelHeight / 4)
     }
 
+    /// The inverse of `storeyBand`: the storey whose band a piece top falls in.
+    /// Cars on asphalt stack by THIS of the piece under them, so a car and its
+    /// own ribbon can never land in different storeys.
+    static func storey(ofTop top: Double) -> Int {
+        Int((top / Track.levelHeight - 0.25).rounded(.up))
+    }
+
     /// The ribbon at one height band, as contiguous runs of centerline segments
     /// (a flat track is one full loop at height 0).
     ///

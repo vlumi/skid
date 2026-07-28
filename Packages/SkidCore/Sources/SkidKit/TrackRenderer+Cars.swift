@@ -8,12 +8,14 @@ extension TrackRenderer {
     /// Collect the cars as layers: each one at the storey it occupies, so the
     /// z-order puts it above its own road and under any road a level above.
     ///
-    /// No promotion, no pass-picking. A car's storey is `Track.level` of its
-    /// height, full stop — the long-running "is this car on a ramp / over
-    /// ground-height road / past the shelf?" logic existed only to choose
-    /// between two hardcoded passes, and every version of it had an edge case
-    /// (a car on the grass under a bridge drew on top of it, because grass and
-    /// "road above me" answered alike).
+    /// No pass-picking. A car on ASPHALT is at the storey of the piece under
+    /// it — the ribbon paints whole at the level of its highest end, so the car
+    /// must stack by the same rule, or mid-climb it is a storey below its own
+    /// road and vanishes beneath the ramp's upper half. A car on GRASS has no
+    /// piece; its raw height decides (which is what hides it under a bridge,
+    /// where the bubble takes over). The long-running "is this car on a ramp /
+    /// over ground-height road?" promotion logic is still gone — this is a
+    /// lookup of stored piece data, not a guess from nearby slopes.
     static func addCars(
         scene: WorldScene, gateChrome: GateChrome, colorAt: @escaping (Int) -> Color,
         to order: inout RenderOrder.Builder
@@ -25,7 +27,7 @@ extension TrackRenderer {
         // The PB ghost drives under the real cars, translucent and colorless —
         // present, never in the way.
         for ghost in scene.ghosts where !ghost.isAirborne {
-            order.add(height: ghost.height, kind: .car) { context in
+            order.add(storey: carStorey(of: ghost, on: track), kind: .car) { context in
                 draw(car: ghost, color: .white, opacity: 0.38, into: &context)
             }
         }
@@ -33,7 +35,8 @@ extension TrackRenderer {
         for (index, car) in race.cars.enumerated() where !car.state.isAirborne {
             let state = car.state
             let opacity = translucent.contains(index) ? 0.55 : 1
-            order.add(height: state.height, kind: .car) { context in
+            let storey = carStorey(of: state, on: track)
+            order.add(storey: storey, kind: .car) { context in
                 // Scaled by the continuous height at its position (the same
                 // Elevation.scale the road width uses), so a car grows as it
                 // climbs — no discrete pop at a level boundary.
@@ -44,7 +47,7 @@ extension TrackRenderer {
             // Never-invisible rule: a car with road a full level above it is
             // hidden by that road, so it also shows through as a bubble in its
             // own color. Drawn at the covering storey, above that road.
-            let coveringStorey = Track.level(of: state.height) + 1
+            let coveringStorey = storey + 1
             let coveringHeight = Double(coveringStorey) * Track.levelHeight
             if track.heights.contains(where: { Track.level(of: $0) == coveringStorey }),
                 track.distanceToCenterline(state.position, height: coveringHeight)
@@ -65,6 +68,16 @@ extension TrackRenderer {
                     into: &context)
             }
         }
+    }
+
+    /// The storey a car paints in: on asphalt, the storey of the piece it is
+    /// ON (via the stored deck tops); on grass, the storey of its own height.
+    static func carStorey(of state: CarState, on track: Track) -> Int {
+        guard
+            track.distanceToCenterline(state.position, height: state.height)
+                <= track.width / 2
+        else { return Track.level(of: state.height) }
+        return storey(ofTop: track.deckTop(at: state.position, preferHeight: state.height))
     }
 
     /// A car hidden under the bridge, shown through it in its own color, so no

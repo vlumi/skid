@@ -144,6 +144,15 @@ public struct Track: Equatable, Sendable, Codable {
     ///
     /// Parallel to `centerline`; a track with no elevation is all zeros.
     public var heights: [Double]
+
+    /// **The top of the piece each centerline point belongs to** — the highest
+    /// end of the piece that emitted it, parallel to `centerline`. The renderer
+    /// paints each ribbon piece WHOLE at the storey of this value, so anything
+    /// that must stack with the ribbon (a car mid-climb) has to stack by the
+    /// same value: a car at height 0.36 is at level 0, but the ramp under it
+    /// painted a level up, and stacking the car by raw height slid it beneath
+    /// the upper half of its own road.
+    public var deckTops: [Double]
     /// Jump take-off lines. A plain ramp needs no line at all now — the climb is
     /// in `heights` — but a launch still needs a moment where the car leaves the
     /// road ballistically.
@@ -188,6 +197,7 @@ public struct Track: Equatable, Sendable, Codable {
         centerline: [Vec2],
         width: Double,
         heights: [Double]? = nil,
+        deckTops: [Double]? = nil,
         ramps: [Ramp] = [],
         walls: [Wall] = [],
         gates: [Gate] = [],
@@ -205,6 +215,9 @@ public struct Track: Equatable, Sendable, Codable {
         self.width = width
         // A flat track needs no height data at all, so `nil` means all-ground.
         self.heights = heights ?? Array(repeating: 0, count: centerline.count)
+        // Ad-hoc tracks (built without the piece compiler) have no pieces, so
+        // each point's "deck top" is honestly its own height.
+        self.deckTops = deckTops ?? self.heights
         self.ramps = ramps
         self.walls = walls
         self.gates = gates
@@ -376,6 +389,20 @@ public struct Track: Equatable, Sendable, Codable {
         let from = height(ofPoint: segment)
         let to = height(ofPoint: next)
         return from + (to - from) * t
+    }
+
+    /// The top of the piece of road at `p` — the height the renderer bins that
+    /// piece's whole ribbon by. `preferHeight` anchors a bridge crossing to the
+    /// car's own stretch, exactly as in `height(at:)`.
+    public func deckTop(at p: Vec2, preferHeight: Double? = nil) -> Double {
+        guard deckTops.count == centerline.count, !deckTops.isEmpty else {
+            return height(at: p, preferHeight: preferHeight)
+        }
+        let (segment, t) = closestCenterlinePoint(to: p, preferHeight: preferHeight)
+        // A seam segment straddles two pieces; the piece that owns the NEARER
+        // endpoint owns the spot, so the handover happens mid-segment rather
+        // than a whole sample early on one side.
+        return deckTops[t < 0.5 ? segment : (segment + 1) % deckTops.count]
     }
 
     /// The portion of a gate that lies on the asphalt ribbon — where a
