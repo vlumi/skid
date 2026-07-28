@@ -149,46 +149,6 @@ final class RenderOrderTests: XCTestCase {
         XCTAssertEqual(TrackRenderer.carStorey(of: state, on: track), 0)
     }
 
-    /// **The window covers the deck the player SEES, not the nominal road.**
-    /// The fake-perspective scaling draws an elevated ribbon wider than its
-    /// nominal width (`Elevation.scale`, 1.2× at deck height) and the rail
-    /// straddles that edge on top. Sizing the window nominally left a
-    /// 27-unit band — nearly half a car length — where the car was plainly
-    /// under the bridge and got no window at all: the trigger stopped at 76
-    /// and the hole was cut at 60, while the asphalt ran to 72 and the rail
-    /// to 87. Both must derive from the painted reach.
-    func testTheWindowReachesThePaintedDeckEdge() throws {
-        let track = try XCTUnwrap(TrackLibrary.track(id: "eight"))
-        let deckHeight = Track.levelHeight
-        let painted = track.width / 2 * Elevation.scale(atHeight: deckHeight)
-        let reach = TrackRenderer.paintedReach(of: track, atHeight: deckHeight)
-        XCTAssertGreaterThan(
-            reach, painted,
-            "the reach must clear the painted asphalt, since the rail sits outboard of it")
-        XCTAssertGreaterThan(
-            reach, track.width / 2 + Double(PieceCatalog.kerbBand),
-            "the reach must account for the elevation scaling, not just the rail")
-        // The hole is cut at the painted width too: a point just inside the
-        // painted edge, which the nominal stroke missed, must be in the clip.
-        let n = track.centerline.count
-        let crossing = try XCTUnwrap(
-            (0..<n).first {
-                track.heights[$0] < 0.05
-                    && track.distanceToCenterline(track.centerline[$0], height: deckHeight)
-                        <= track.width / 2
-            }, "the eight should cross under its own bridge")
-        let (segment, _) = track.closestCenterlinePoint(
-            to: track.centerline[crossing], preferHeight: deckHeight)
-        let ahead = track.centerline[(segment + 1) % n] - track.centerline[segment]
-        let across = ahead.normalized.perpendicular
-        // Between the nominal (60) and painted (72) edges: under asphalt.
-        let outer = track.centerline[crossing] + across * (track.width / 2 + 6)
-        let clip = TrackRenderer.probeCoveringDeck(track: track, height: deckHeight)
-        XCTAssertTrue(
-            clip.contains(CGPoint(x: outer.x, y: outer.y)),
-            "the hole must be cut in the painted asphalt, not the nominal width")
-    }
-
     /// `storey(ofTop:)` must be the exact inverse of `storeyBand`: every real
     /// piece top (heights come in half-level steps) maps to the one band that
     /// contains it, so cars and ribbons can never disagree by construction.

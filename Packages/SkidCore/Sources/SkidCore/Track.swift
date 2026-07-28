@@ -128,7 +128,9 @@ public struct Track: Equatable, Sendable, Codable {
     public var id: String
     /// Closed loop — the last point connects back to the first.
     public var centerline: [Vec2]
-    /// Full width of the asphalt ribbon.
+    /// Full width of the asphalt ribbon **at ground level**. The ribbon gets
+    /// wider with height — see `halfWidth(atHeight:)`, which is what anything
+    /// asking "is this on the road" must use.
     public var width: Double
     /// **Height per centerline point**, 0 = ground, 1 = bridge deck, varying
     /// continuously across a ramp — the single source of truth for elevation.
@@ -361,7 +363,8 @@ public struct Track: Equatable, Sendable, Codable {
             let low = self.height(ofPoint: i)
             let high = self.height(ofPoint: next)
             guard abs(low - high) > 0.001 else { continue }
-            guard p.distance(toSegment: centerline[i], centerline[next]) <= width / 2 + tolerance
+            let reach = halfWidth(atHeight: max(low, high)) + tolerance
+            guard p.distance(toSegment: centerline[i], centerline[next]) <= reach
             else { continue }
             // The car must be at roughly the height of THIS piece of slope.
             guard let height else { return true }
@@ -418,7 +421,7 @@ public struct Track: Equatable, Sendable, Codable {
         var last: Double?
         for i in 0...samples {
             let t = Double(i) / Double(samples)
-            if distanceToCenterline(gate.a + dir * t) <= width / 2 {
+            if distanceToCenterline(gate.a + dir * t) <= halfWidth(atHeight: gate.height) {
                 if first == nil { first = t }
                 last = t
             }
@@ -435,6 +438,7 @@ public struct Track: Equatable, Sendable, Codable {
                 return patch.surface
             }
         }
-        return distanceToCenterline(p, height: height) <= width / 2 ? .asphalt : .grass
+        return distanceToCenterline(p, height: height) <= halfWidth(atHeight: height)
+            ? .asphalt : .grass
     }
 }

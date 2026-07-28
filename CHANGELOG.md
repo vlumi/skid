@@ -21,6 +21,10 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The road on a bridge is as wide as it looks.** An elevated road is drawn
+  wider than one on the ground, but the game still used the ground width — so
+  a strip of the bridge that looked like asphalt behaved like grass, and you
+  could fall off a deck you were still driving on.
 - **Race positions follow the road.** Live standings measured "who's closer
   to the next checkpoint" as the crow flies, so on a track that curls back on
   itself a trailing car could rank ahead of the leader rounding a loop —
