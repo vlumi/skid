@@ -21,6 +21,9 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **No more hairlines between track pieces.** Abutting pieces overlap enough to
+  cover the edge blending now — most visible on a ramp, where the seam ran
+  through a gradient.
 - **Cars and bridges stack correctly, everywhere.** A car that slid onto the
   grass under a bridge used to be drawn on top of it. The world is now painted
   strictly bottom-up — ground, then whatever stands on it, then the level above
