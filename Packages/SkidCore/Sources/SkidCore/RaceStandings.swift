@@ -24,10 +24,15 @@ extension Race {
             track.arcPosition(of: mid, preferHeight: next.height)
             - track.arcPosition(of: car.state.position, preferHeight: car.state.height)
         if ahead < 0 { ahead += length }
-        // Fraction toward the next gate: closer = larger, capped to [0,1) so
-        // it can never bump the crossed-gate count.
-        let span = max(1, length / Double(gateCount))
-        let toward = max(0, 1 - ahead / span)
+        // Fraction toward the next gate, measured over the WHOLE remaining
+        // lap rather than a nominal gate span. A span of "lap ÷ gates" is
+        // wrong whenever gates are unevenly spaced: on the clover, the run to
+        // gate 0 is over half the lap, so every car on the grid was further
+        // away than one span, the fraction floored at 0 for all of them, and
+        // the standings fell back to the index tie-break — the reported
+        // "positions look random until we drive a bit" (they resolved as soon
+        // as the field got within a span of the gate).
+        let toward = max(0, 1 - ahead / max(1, length))
         return Double(crossed) + min(0.999, toward)
     }
 

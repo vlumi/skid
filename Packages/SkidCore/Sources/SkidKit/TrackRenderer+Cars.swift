@@ -59,7 +59,7 @@ extension TrackRenderer {
                 track.distanceToCenterline(state.position, height: coveringHeight)
                     < track.width / 2 + 16
             {
-                let deck = coveringDeck(track: track, height: coveringHeight)
+                let deck = coveringDeck(track: track, storey: coveringStorey)
                 order.add(storey: coveringStorey, kind: .window) { context in
                     drawWindow(
                         around: state, color: colorAt(index), deck: deck, into: &context)
@@ -129,18 +129,27 @@ extension TrackRenderer {
         window.stroke(rim, with: .color(.black.opacity(0.5)), lineWidth: 2.5)
     }
 
-    /// The covering deck's asphalt as a region: the centerline segments at
-    /// the covering height, stroked to the road width — what the window is
-    /// allowed to cut a hole in.
-    private static func coveringDeck(track: Track, height: Double) -> Path {
+    /// The covering storey's asphalt as a region — what the window is allowed
+    /// to cut a hole in.
+    ///
+    /// Selected by the STOREY each segment's piece is binned into, exactly as
+    /// the ribbon layers are, NOT by a height test on the segment itself. A
+    /// height test cut the region short at every deck end: a ramp shoulder
+    /// sits below `deckHeight - surfaceTolerance` while still painting in the
+    /// deck's storey, so the clip ended before the ribbon did and a window
+    /// near the bridge's edge fell outside it and vanished entirely.
+    private static func coveringDeck(track: Track, storey: Int) -> Path {
         var line = Path()
         let n = track.centerline.count
-        for i in 0..<n where track.segment(i, isAt: height) {
+        for i in 0..<n where self.storey(ofTop: track.deckTops[i]) == storey {
             let a = track.centerline[i]
             let b = track.centerline[(i + 1) % n]
             line.move(to: CGPoint(x: a.x, y: a.y))
             line.addLine(to: CGPoint(x: b.x, y: b.y))
         }
+        // Round joins/caps: the ribbon's own ends are square, but a round cap
+        // only ever reaches HALF a road-width past the last sample, which is
+        // covered by the piece beyond it wherever one exists.
         return line.strokedPath(
             StrokeStyle(lineWidth: track.width, lineCap: .round, lineJoin: .round))
     }
@@ -244,6 +253,11 @@ extension TrackRenderer {
         _ state: CarState, color: Color, into context: inout GraphicsContext
     ) {
         draw(car: state, color: color, into: &context)
+    }
+
+    /// Test-only window into the covering-deck clip region.
+    static func probeCoveringDeck(track: Track, storey: Int) -> Path {
+        coveringDeck(track: track, storey: storey)
     }
 
     /// Test-only window into the under-deck window drawing.
