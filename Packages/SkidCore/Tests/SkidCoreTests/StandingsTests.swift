@@ -118,6 +118,39 @@ final class StandingsTests: XCTestCase {
         }
     }
 
+    /// **The starting grid ranks by grid slot, not by car index.** The
+    /// within-gate fraction used to be measured against a nominal "lap ÷
+    /// gates" span; on the clover the run to gate 0 is over half the lap, so
+    /// every car on the grid was more than a span out, every fraction floored
+    /// at 0, and standings fell back to the index tie-break. On screen that
+    /// read as random order at the lights, resolving only once the field got
+    /// within a span of the gate.
+    func testTheStartingGridRanksByGridPosition() throws {
+        let track = try XCTUnwrap(TrackLibrary.track(id: "clover"))
+        let race = Race(
+            track: track, players: (0..<4).map(PlayerID.init),
+            config: RaceConfig(laps: 3))
+        let scores = race.cars.map { race.raceProgress(of: $0) }
+        XCTAssertEqual(
+            Set(scores).count, scores.count,
+            "cars on the grid must not all score the same (that hands "
+                + "ranking to the index tie-break)")
+        // Front of the grid = least road left to the next gate = first.
+        let gate = track.gates[0]
+        let gateArc = track.arcPosition(
+            of: (gate.a + gate.b) * 0.5, preferHeight: gate.height)
+        func remaining(_ car: Car) -> Double {
+            let ahead =
+                gateArc
+                - track.arcPosition(
+                    of: car.state.position, preferHeight: car.state.height)
+            return ahead < 0 ? ahead + track.centerlineLength : ahead
+        }
+        XCTAssertEqual(
+            race.standings,
+            race.cars.indices.sorted { remaining(race.cars[$0]) < remaining(race.cars[$1]) })
+    }
+
     /// The reported scene, concretely: two cars between the same gates, the
     /// leader farther along the road — the leader must rank ahead even where
     /// the trailing car is geometrically closer to the gate.

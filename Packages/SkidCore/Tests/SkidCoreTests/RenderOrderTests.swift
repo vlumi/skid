@@ -149,6 +149,34 @@ final class RenderOrderTests: XCTestCase {
         XCTAssertEqual(TrackRenderer.carStorey(of: state, on: track), 0)
     }
 
+    /// **The window's clip covers the whole deck the ribbon paints**, right
+    /// out to its ends. Selecting the clip by a height test on each segment
+    /// cut it short at every deck end — a ramp shoulder sits below
+    /// `deckHeight - surfaceTolerance` yet still paints in the deck's storey —
+    /// so a window near the bridge's edge fell outside the clip and vanished
+    /// (reported: "no window near the edge of the bridge at all").
+    ///
+    /// Asserted where it matters: at every ground point the clover's deck
+    /// crosses over, the covering region must contain that point.
+    func testTheWindowClipCoversTheDeckOverEveryUnderpass() throws {
+        let track = try XCTUnwrap(TrackLibrary.track(id: "clover"))
+        let deck = TrackRenderer.probeCoveringDeck(track: track, storey: 1)
+        var checked = 0
+        for (index, point) in track.centerline.enumerated()
+        where track.heights[index] < 0.1 {
+            // Only where a deck really is overhead.
+            guard
+                track.distanceToCenterline(point, height: Track.levelHeight)
+                    <= track.width / 2
+            else { continue }
+            checked += 1
+            XCTAssertTrue(
+                deck.contains(CGPoint(x: point.x, y: point.y)),
+                "point \(index) is under the deck but outside the window's clip")
+        }
+        XCTAssertGreaterThan(checked, 0, "the clover should have underpasses")
+    }
+
     /// `storey(ofTop:)` must be the exact inverse of `storeyBand`: every real
     /// piece top (heights come in half-level steps) maps to the one band that
     /// contains it, so cars and ribbons can never disagree by construction.
