@@ -21,6 +21,10 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The car shows where it points, without the headlight beam.** The thrown
+  cone kept landing on the wrong surface around ramps and bridges, so the
+  body carries the cue now: a lit nose, and the driver seated at the back
+  like the classic single-seaters.
 - **Steering works with your thumb near the screen edge.** On phones with a
   notch, a thumb that strayed into the inset used to leave the stick barely
   able to turn — it now points where your thumb is, at full lock.

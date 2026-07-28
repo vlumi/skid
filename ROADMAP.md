@@ -151,19 +151,6 @@ What's left:
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
-- [ ] **Replace the headlight cone with a body-local facing cue.** The
-      thrown beam is structurally at odds with paint-whole-piece binning, not
-      a shape problem (clover, 2026-07-28): a climb piece's ribbon is binned
-      a storey up and slices the beam off at the ramp foot, and a car
-      mid-descent is legitimately in the deck's storey, so its beam paints
-      ON the bridge while the car is still in the open. Any thrown decal has
-      this; length only changes how often. Direction: keep the facing cue
-      but inside (or barely off) the body silhouette — nose dots, a
-      windshield wedge in the tint, a brighter nose on the existing rim glow
-      — which cannot interact with the z-order at all. A real light beam
-      (clipped to the car-storey ribbon, fading on grass) stays a possible
-      later polish, not this round. The bubble window should skip whatever
-      cue remains off-body.
 - [ ] **The under-bridge bubble should be a window, not a dot.** Today a
       covered car shows through the deck as a solid disc in its color — a
       placeholder. Wanted: see "through" the bridge — a dimmed circular hole

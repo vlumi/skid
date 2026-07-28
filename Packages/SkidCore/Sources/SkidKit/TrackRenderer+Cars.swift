@@ -139,27 +139,6 @@ extension TrackRenderer {
 
         let length = CarGeometry.length
         let width = CarGeometry.width
-        // A headlight cone projected AHEAD of the nose, in the car's tint:
-        // a soft fan that fades out, reading the facing direction at a glance
-        // (even mid-flip, where nose ≠ travel) without shouting like the old
-        // bold arrow. Skipped for the translucent PB ghost.
-        if opacity > 0.5 {
-            let mouth = length / 2 + 2  // just off the nose
-            let reach = mouth + 46  // how far the beam throws
-            let spread = 20.0  // half-width of the beam at its far end
-            var cone = Path()
-            cone.move(to: CGPoint(x: mouth, y: -3))
-            cone.addLine(to: CGPoint(x: reach, y: -spread))
-            cone.addLine(to: CGPoint(x: reach, y: spread))
-            cone.addLine(to: CGPoint(x: mouth, y: 3))
-            cone.closeSubpath()
-            // Fade along the throw so it glows from the nose and dissolves.
-            car2D.fill(
-                cone,
-                with: .linearGradient(
-                    Gradient(colors: [color.opacity(0.55), color.opacity(0)]),
-                    startPoint: CGPoint(x: mouth, y: 0), endPoint: CGPoint(x: reach, y: 0)))
-        }
         // Tires first, so the body sits on top; open-wheel means they stick
         // out past the body sides.
         for offset in CarGeometry.tireOffsets {
@@ -184,9 +163,45 @@ extension TrackRenderer {
             glow.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
         }
         car2D.fill(bodyPath, with: .color(color))
+        // FACING is told by the body itself, not a thrown headlight beam — a
+        // projected cone fought the storey binning (sliced off at ramp feet
+        // by the higher-binned ribbon, painted onto a deck from a descent
+        // that shares its storey), and no shape change fixes a decal that
+        // leaves the car. Classic single-seater proportions carry the cue
+        // instead: a LIT NOSE and the driver tucked back at the rear axle.
+        // Bright end = front, dark dot = back — silhouette-scale marks that
+        // survive the tiny on-SE car where any detail line vanishes.
+        var sheen = car2D
+        sheen.clip(to: bodyPath)
+        sheen.fill(
+            Path(CGRect(x: 0, y: -width / 4, width: length / 2, height: width / 2)),
+            with: .linearGradient(
+                Gradient(colors: [.white.opacity(0), .white.opacity(0.55)]),
+                startPoint: .zero, endPoint: CGPoint(x: length / 2, y: 0)))
+        // Lamp dots hugging the nose tip (the body clip rounds them into the
+        // corners): flavor at editor zoom, they melt into the sheen at race
+        // scale.
+        for side in [-1.0, 1.0] {
+            let lamp = CGRect(
+                x: length / 2 - 6, y: side * 3.4 - 1.9, width: 3.8, height: 3.8)
+            sheen.fill(
+                Path(ellipseIn: lamp),
+                with: .color(Color(red: 1, green: 0.98, blue: 0.82)))
+        }
         car2D.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
-        // Cockpit dot behind the midpoint.
-        let cockpit = CGRect(x: -4, y: -3.2, width: 6.4, height: 6.4)
+        // The driver sits near the back, like the classic single-seaters.
+        let cockpit = CGRect(x: -9.5, y: -3.2, width: 6.4, height: 6.4)
         car2D.fill(Path(ellipseIn: cockpit), with: .color(.black.opacity(0.65)))
     }
 }
+
+#if DEBUG
+extension TrackRenderer {
+    /// Test-only window into the private car drawing, for look probes.
+    static func probeDrawCar(
+        _ state: CarState, color: Color, into context: inout GraphicsContext
+    ) {
+        draw(car: state, color: color, into: &context)
+    }
+}
+#endif
