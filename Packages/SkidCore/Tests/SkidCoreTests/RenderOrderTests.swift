@@ -57,24 +57,73 @@ final class RenderOrderTests: XCTestCase {
     /// partition: a piece belongs to exactly one, by its highest end. In two
     /// bands is a double-draw that buries whatever sits between them; in
     /// neither is a hole in the road.
-    /// **A car mid-climb paints in its own ramp's storey.** The ribbon paints
+    /// **A car never paints below the piece it is on.** The ribbon paints
     /// whole at the level of its highest end, so a car at height 0.36 stacking
     /// by raw height (level 0) slid UNDER the upper half of the piece it was
     /// driving on — reported on the eight, car swallowed by the lower ramp.
-    /// The car's storey must equal the storey its supporting piece was binned
-    /// into, at every point of every built-in.
+    /// At every point of every built-in, the car's storey is at least its
+    /// supporting piece's (it may exceed it where the body straddles a seam
+    /// onto a higher-binned neighbour — that is the point of the body rule).
     func testACarOnARampPaintsWithItsRoad() throws {
         for id in TrackLibrary.all.map(\.id) {
             let track = try XCTUnwrap(TrackLibrary.track(id: id))
             for (index, point) in track.centerline.enumerated() {
                 let state = probe(at: point, height: track.heights[index])
-                XCTAssertEqual(
+                XCTAssertGreaterThanOrEqual(
                     TrackRenderer.carStorey(of: state, on: track),
                     TrackRenderer.storey(ofTop: track.deckTops[index]),
                     "\(id) point \(index) h=\(track.heights[index]): the car "
-                        + "must stack with the piece it is on")
+                        + "must not stack below the piece it is on")
             }
         }
+    }
+
+    /// **A car straddling a descent's hand-over seam paints with the descent.**
+    /// The clover's dips: where the 0.5→0 piece meets the flat underpass run,
+    /// the descent's ribbon is binned a storey up, and a car whose tail still
+    /// touches it was painted over at its own height — reported as the car
+    /// half-swallowed at the dip. The body rule lifts it to the highest road
+    /// it touches.
+    func testAStraddlingCarPaintsWithTheHigherPiece() throws {
+        let track = try XCTUnwrap(TrackLibrary.track(id: "clover"))
+        let n = track.centerline.count
+        // The hand-over POINT is the descent's exit: the last 0.5-topped
+        // sample. (The first 0-topped point is a whole piece later on a
+        // sparsely-sampled straight, so searching for it finds the wrong spot.)
+        let seam = try XCTUnwrap(
+            (0..<n).first {
+                track.deckTops[$0] == 0.5 && track.deckTops[($0 + 1) % n] == 0
+            }, "the clover should hand a descent over to a flat run")
+        let along =
+            (track.centerline[(seam + 1) % n] - track.centerline[seam]).normalized
+        // Center 6 units onto the flat: the tail (12 back) still overlaps the
+        // descent's ribbon, the nose is clear on the flat.
+        var state = probe(at: track.centerline[seam] + along * 6, height: 0)
+        state.heading = atan2(along.y, along.x)
+        XCTAssertEqual(
+            TrackRenderer.carStorey(of: state, on: track), 1,
+            "the tail still touches the descent piece")
+        // A body length further on, nothing touches the descent any more —
+        // the car settles into the underpass storey (and the bubble regime).
+        var clear = probe(at: track.centerline[seam] + along * 30, height: 0)
+        clear.heading = state.heading
+        XCTAssertEqual(TrackRenderer.carStorey(of: clear, on: track), 0)
+    }
+
+    /// **Deep in the underpass the car keeps the ground storey**, body rule or
+    /// not: the bridge overhead is road at ANOTHER height, so the body must not
+    /// inherit its storey — that is what keeps the car under the deck (with the
+    /// bubble), instead of painting on top of the thing it is sliding under.
+    func testAnUnderpassCarStaysUnderTheBridge() throws {
+        let track = try XCTUnwrap(TrackLibrary.track(id: "clover"))
+        let n = track.centerline.count
+        // The middle of a flat h-0 run, far from both hand-over seams.
+        let underpass = try XCTUnwrap(
+            (0..<n).first { i in
+                (-3...3).allSatisfy { track.deckTops[(i + $0 + n) % n] == 0 }
+            }, "the clover should have a flat run at the bottom of a dip")
+        let state = probe(at: track.centerline[underpass], height: 0)
+        XCTAssertEqual(TrackRenderer.carStorey(of: state, on: track), 0)
     }
 
     /// The reported scene, pinned concretely: on the eight, a car at a point
