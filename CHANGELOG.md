@@ -21,6 +21,22 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The car shows where it points, without the headlight beam.** The thrown
+  cone kept landing on the wrong surface around ramps and bridges, so the
+  body carries the cue now: a lit nose, and the driver seated at the back
+  like the classic single-seaters.
+- **Steering works with your thumb near the screen edge.** On phones with a
+  notch, a thumb that strayed into the inset used to leave the stick barely
+  able to turn — it now points where your thumb is, at full lock.
+- **No more hairlines between track pieces.** Abutting pieces overlap enough to
+  cover the edge blending now — most visible on a ramp, where the seam ran
+  through a gradient.
+- **Cars and bridges stack correctly, everywhere.** A car that slid onto the
+  grass under a bridge used to be drawn on top of it. The world is now painted
+  strictly bottom-up — ground, then whatever stands on it, then the level above
+  — so what covers what follows from where things are, not from a list of
+  special cases.
+
 ### build 8 — 2026-07-27
 
 - **A rebuilt editor palette.** Picking a piece used to mean tabs, a radius row,
