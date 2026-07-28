@@ -49,14 +49,20 @@ extension TrackRenderer {
             // at the car's position with the car itself visible through it.
             // Drawn at the covering storey, above that road (and above its
             // marks and gates, which the dimming swallows inside the hole).
+            // The margin reaches past the asphalt to the rail band so the
+            // window doesn't blink out while the car passes under the deck's
+            // EDGE; the hole itself is clipped to the deck, so what shows
+            // there is the honest sliver.
             let coveringStorey = storey + 1
             let coveringHeight = Double(coveringStorey) * Track.levelHeight
             if track.heights.contains(where: { Track.level(of: $0) == coveringStorey }),
                 track.distanceToCenterline(state.position, height: coveringHeight)
-                    < track.width / 2 + 8
+                    < track.width / 2 + 16
             {
-                order.add(storey: coveringStorey, kind: .car) { context in
-                    drawWindow(around: state, color: colorAt(index), into: &context)
+                let deck = coveringDeck(track: track, height: coveringHeight)
+                order.add(storey: coveringStorey, kind: .window) { context in
+                    drawWindow(
+                        around: state, color: colorAt(index), deck: deck, into: &context)
                 }
             }
         }
@@ -94,25 +100,49 @@ extension TrackRenderer {
         return highest ?? Track.level(of: state.height)
     }
 
-    /// A car hidden under the bridge shows THROUGH it: a dimmed circular hole
+    /// A car hidden under the bridge shows THROUGH it: a dark circular hole
     /// in the deck with the car itself drawn inside, slightly small for depth.
     /// (Replaces a solid dot in the car's color — a placeholder that told you
-    /// a car was there but not which way it pointed.) The clip keeps the car
-    /// and its glow inside the hole, and the dimming covers the deck's own
-    /// marks and gates painted before it, so the hole reads as looking down
-    /// past the deck rather than paint on top of it.
+    /// a car was there but not which way it pointed.)
+    ///
+    /// Two deliberate simplifications, both the maintainer's calls:
+    /// - The hole is a hole IN THE DECK: everything, rim included, is clipped
+    ///   to the covering asphalt, so the window never eats the deck rail or
+    ///   spills onto the grass — the wall stands solid across the hole's edge.
+    /// - The hole doesn't try to show what is really down there (grass,
+    ///   decals): the car sits in plain heavy shadow, which reads as "under
+    ///   the bridge" without re-rendering the world below.
     private static func drawWindow(
-        around state: CarState, color: Color, into context: inout GraphicsContext
+        around state: CarState, color: Color, deck: Path,
+        into context: inout GraphicsContext
     ) {
         let hole = CGRect(
             x: state.position.x - 20, y: state.position.y - 20, width: 40, height: 40)
         let rim = Path(ellipseIn: hole)
         var window = context
-        window.clip(to: rim)
-        window.fill(rim, with: .color(.black.opacity(0.38)))
-        draw(car: state, color: color, opacity: 0.95, scale: 0.8, into: &window)
+        window.clip(to: deck)
+        var inside = window
+        inside.clip(to: rim)
+        inside.fill(rim, with: .color(.black.opacity(0.62)))
+        draw(car: state, color: color, opacity: 0.95, scale: 0.8, into: &inside)
         // A dark rim so the edge reads as a cut, not a smudge.
-        context.stroke(rim, with: .color(.black.opacity(0.45)), lineWidth: 2.5)
+        window.stroke(rim, with: .color(.black.opacity(0.5)), lineWidth: 2.5)
+    }
+
+    /// The covering deck's asphalt as a region: the centerline segments at
+    /// the covering height, stroked to the road width — what the window is
+    /// allowed to cut a hole in.
+    private static func coveringDeck(track: Track, height: Double) -> Path {
+        var line = Path()
+        let n = track.centerline.count
+        for i in 0..<n where track.segment(i, isAt: height) {
+            let a = track.centerline[i]
+            let b = track.centerline[(i + 1) % n]
+            line.move(to: CGPoint(x: a.x, y: a.y))
+            line.addLine(to: CGPoint(x: b.x, y: b.y))
+        }
+        return line.strokedPath(
+            StrokeStyle(lineWidth: track.width, lineCap: .round, lineJoin: .round))
     }
 
     /// Ghost mode: overlapping pass-through cars go translucent so pileups
@@ -218,9 +248,10 @@ extension TrackRenderer {
 
     /// Test-only window into the under-deck window drawing.
     static func probeDrawWindow(
-        around state: CarState, color: Color, into context: inout GraphicsContext
+        around state: CarState, color: Color, deck: Path,
+        into context: inout GraphicsContext
     ) {
-        drawWindow(around: state, color: color, into: &context)
+        drawWindow(around: state, color: color, deck: deck, into: &context)
     }
 }
 #endif
