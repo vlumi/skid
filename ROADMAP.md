@@ -148,19 +148,6 @@ What's left:
       - **Rethink the delete icon.** The undo-arrow reads as "undo last action"
         rather than "remove this piece".
       Longer term: real undo.
-- [ ] **BUG: on notched phones the stick clamps but the input doesn't.** The
-      floating stick's origin is clamped to the player's safe-area-inset zone
-      (`clampStick`, margin = radius + 18) while touches are still accepted
-      from outside it, so a finger out in the inset area produces a knob that
-      can't travel any further: pulling "down" (toward the zone) works, but
-      moving sideways just slides the origin along the clamp edge instead of
-      deflecting the stick — turning becomes nearly impossible. Fix direction:
-      an out-of-zone finger should still AIM (point the stick at the finger,
-      full deflection along that bearing) rather than drag the origin; the
-      clamp should bound where the stick is DRAWN, not what the input means.
-      Also worth checking per side: the notch side genuinely has no touchable
-      area, but the opposite side's inset may not need reserving at all.
-
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.

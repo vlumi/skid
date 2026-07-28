@@ -21,6 +21,9 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Steering works with your thumb near the screen edge.** On phones with a
+  notch, a thumb that strayed into the inset used to leave the stick barely
+  able to turn — it now points where your thumb is, at full lock.
 - **No more hairlines between track pieces.** Abutting pieces overlap enough to
   cover the edge blending now — most visible on a ramp, where the seam ran
   through a gradient.

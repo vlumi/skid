@@ -62,6 +62,17 @@ func quantizedAxis(
 /// you can swing extreme-to-extreme without lifting, in a zone too narrow to
 /// reach full lock otherwise. The trailing origin re-clamps to `bounds` so
 /// the stick never wanders off the player's zone.
+///
+/// **When the clamp bites, the stick AIMS instead of trailing.** The origin
+/// can only move inside the zone, but the finger can be outside it (the safe
+/// area under a notch is untouchable, yet the surrounding inset is not), and
+/// then a trailing origin distorts the direction: it slides sideways with the
+/// finger while the perpendicular offset stays pinned, so the knob barely
+/// turns. Measured on a notched top zone, moving the finger 120 points
+/// sideways swung the stick only 20° — the reported "pulling down is easy but
+/// turning is nearly impossible". Pinning the knob to the finger's BEARING
+/// from the clamped origin keeps full deflection and full steering range: the
+/// clamp then bounds where the stick is DRAWN, not what the input MEANS.
 func floatingStick(
     origin: Vec2, finger: Vec2, radius: Double, bounds: CGRect?
 ) -> (origin: Vec2, knob: Vec2) {
@@ -69,8 +80,18 @@ func floatingStick(
     let distance = offset.length
     guard distance > radius, distance > 0 else { return (origin, offset) }
     let direction = offset * (1 / distance)
-    let draggedOrigin = clampStick(finger - direction * radius, radius: radius, bounds: bounds)
-    return (draggedOrigin, finger - draggedOrigin)
+    let trailing = finger - direction * radius
+    let clamped = clampStick(trailing, radius: radius, bounds: bounds)
+    // Un-clamped: the origin really is `radius` behind the finger, so the knob
+    // is the finger itself — full deflection along the true bearing.
+    guard (clamped - trailing).length > 0.001 else { return (clamped, finger - clamped) }
+    // Clamped: the origin STAYS PUT and the knob takes the finger's bearing at
+    // full deflection. Letting the origin slide along the clamp edge is what
+    // killed steering — it chased the finger sideways while the perpendicular
+    // offset stayed pinned, so the bearing barely moved.
+    let aim = finger - origin
+    guard aim.length > 0.001 else { return (origin, direction * radius) }
+    return (origin, aim * (radius / aim.length))
 }
 
 /// Keep a floating stick's origin far enough inside `bounds` that its whole
