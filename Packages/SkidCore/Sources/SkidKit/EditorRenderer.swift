@@ -224,11 +224,11 @@ enum EditorRenderer {
         into context: inout GraphicsContext
     ) {
         guard let e = edges(placed, width: width, t: t) else { return }
-        // Extend the FILL a hair past both end cuts, along each edge's own
-        // direction, so abutting pieces' fills overlap sub-pixel and the
-        // antialiased seam shows no hairline gap between pieces.
-        let fillLeft = extendEnds(e.left, by: 0.6)
-        let fillRight = extendEnds(e.right, by: 0.6)
+        // Extend the FILL past both end cuts, along each edge's own direction,
+        // so abutting pieces overlap and the antialiased seam shows no hairline
+        // gap. See `seamOverlap` for the size.
+        let fillLeft = extendEnds(e.left, by: seamOverlap)
+        let fillRight = extendEnds(e.right, by: seamOverlap)
         var outline = Path()
         outline.addLines(fillLeft + fillRight.reversed())
         outline.closeSubpath()
@@ -320,7 +320,7 @@ enum EditorRenderer {
         into context: inout GraphicsContext
     ) {
         var rails = Path()
-        for side in [extendEnds(left, by: 0.6), extendEnds(right, by: 0.6)] {
+        for side in [extendEnds(left, by: seamOverlap), extendEnds(right, by: seamOverlap)] {
             guard let first = side.first else { continue }
             rails.move(to: first)
             side.dropFirst().forEach { rails.addLine(to: $0) }
@@ -346,6 +346,21 @@ enum EditorRenderer {
     /// Push a polyline's two endpoints outward along its own end direction by
     /// `d` screen points — so a filled ribbon overlaps its neighbor by a hair
     /// and the antialiased seam shows no background hairline.
+    /// How far a piece's fill and rails reach past their end cuts, in SCREEN
+    /// points, so abutting pieces overlap instead of leaving a hairline.
+    ///
+    /// A full point, not the 0.6 this started at: hairlines were still visible
+    /// on a 13 mini, worst at the two-piece ramp's mid-climb seam, where both
+    /// halves are height-shaded so the gap reads against a gradient rather than
+    /// flat grey. A device pixel is 0.33pt at 3× and 0.5pt at 2×, but
+    /// antialiasing spreads a diagonal seam over about a point either side, so
+    /// the overlap has to clear that — not just one pixel. It costs nothing
+    /// visually: the overlap is inside the neighbouring piece's own fill.
+    ///
+    /// This is in screen points BY CONSTRUCTION — `edges` returns
+    /// `Transform.screen` output, so zoom doesn't shrink it.
+    static let seamOverlap: CGFloat = 1
+
     private static func extendEnds(_ pts: [CGPoint], by d: CGFloat) -> [CGPoint] {
         guard pts.count >= 2 else { return pts }
         var out = pts
