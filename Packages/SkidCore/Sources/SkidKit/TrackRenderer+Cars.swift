@@ -45,8 +45,10 @@ extension TrackRenderer {
                     scale: Elevation.scale(atHeight: state.height), into: &context)
             }
             // Never-invisible rule: a car with road a full level above it is
-            // hidden by that road, so it also shows through as a bubble in its
-            // own color. Drawn at the covering storey, above that road.
+            // hidden by that road, so the deck gets a WINDOW — a dimmed hole
+            // at the car's position with the car itself visible through it.
+            // Drawn at the covering storey, above that road (and above its
+            // marks and gates, which the dimming swallows inside the hole).
             let coveringStorey = storey + 1
             let coveringHeight = Double(coveringStorey) * Track.levelHeight
             if track.heights.contains(where: { Track.level(of: $0) == coveringStorey }),
@@ -54,7 +56,7 @@ extension TrackRenderer {
                     < track.width / 2 + 8
             {
                 order.add(storey: coveringStorey, kind: .car) { context in
-                    drawBubble(at: state.position, color: colorAt(index), into: &context)
+                    drawWindow(around: state, color: colorAt(index), into: &context)
                 }
             }
         }
@@ -92,15 +94,25 @@ extension TrackRenderer {
         return highest ?? Track.level(of: state.height)
     }
 
-    /// A car hidden under the bridge, shown through it in its own color, so no
-    /// player is ever invisible.
-    private static func drawBubble(
-        at position: Vec2, color: Color, into context: inout GraphicsContext
+    /// A car hidden under the bridge shows THROUGH it: a dimmed circular hole
+    /// in the deck with the car itself drawn inside, slightly small for depth.
+    /// (Replaces a solid dot in the car's color — a placeholder that told you
+    /// a car was there but not which way it pointed.) The clip keeps the car
+    /// and its glow inside the hole, and the dimming covers the deck's own
+    /// marks and gates painted before it, so the hole reads as looking down
+    /// past the deck rather than paint on top of it.
+    private static func drawWindow(
+        around state: CarState, color: Color, into context: inout GraphicsContext
     ) {
-        let bubble = CGRect(x: position.x - 15, y: position.y - 15, width: 30, height: 30)
-        context.fill(Path(ellipseIn: bubble), with: .color(color.opacity(0.55)))
-        context.stroke(
-            Path(ellipseIn: bubble), with: .color(.white.opacity(0.85)), lineWidth: 2.5)
+        let hole = CGRect(
+            x: state.position.x - 20, y: state.position.y - 20, width: 40, height: 40)
+        let rim = Path(ellipseIn: hole)
+        var window = context
+        window.clip(to: rim)
+        window.fill(rim, with: .color(.black.opacity(0.38)))
+        draw(car: state, color: color, opacity: 0.95, scale: 0.8, into: &window)
+        // A dark rim so the edge reads as a cut, not a smudge.
+        context.stroke(rim, with: .color(.black.opacity(0.45)), lineWidth: 2.5)
     }
 
     /// Ghost mode: overlapping pass-through cars go translucent so pileups
@@ -202,6 +214,13 @@ extension TrackRenderer {
         _ state: CarState, color: Color, into context: inout GraphicsContext
     ) {
         draw(car: state, color: color, into: &context)
+    }
+
+    /// Test-only window into the under-deck window drawing.
+    static func probeDrawWindow(
+        around state: CarState, color: Color, into context: inout GraphicsContext
+    ) {
+        drawWindow(around: state, color: color, into: &context)
     }
 }
 #endif

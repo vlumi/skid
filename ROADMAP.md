@@ -151,20 +151,6 @@ What's left:
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
-- [ ] **The under-bridge bubble should be a window, not a dot.** Today a
-      covered car shows through the deck as a solid disc in its color — a
-      placeholder. Wanted: see "through" the bridge — a dimmed circular hole
-      at the car's position with the car itself visible inside it. The
-      z-order makes this a self-contained layer: clip the bubble layer to
-      the circle, dim it, and draw the car (same body drawing, smaller
-      scale) inside the clip, above the covering road.
-
-## v0.7.0 — Mac, physical controls & orientation
-
-Clusters the "big screen + orientation" work: Mac, iPad's larger canvas, and
-landscape all share the same layout/orientation machinery, and the `mapRect`
-indirection from the couch redesign keeps them localized.
-
 - [ ] macOS target (Universal Purchase, same bundle id), sim untouched —
       only render/input capture differ
 - [ ] Keyboard scheme (arrows/WASD, 1–2 players) and GameController support
