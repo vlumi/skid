@@ -78,7 +78,7 @@ enum DebugOverlay {
 
             let surface = track.surface(at: position, height: state.height)
             let toRoad = track.distanceToCenterline(position, height: state.height)
-            let onRoad = toRoad <= track.width / 2
+            let onRoad = toRoad <= track.halfWidth(atHeight: state.height)
             let lines = [
                 "h \(format(state.height))",
                 "\(surface)",

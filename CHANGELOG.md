@@ -21,6 +21,21 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The road on a bridge is as wide as it looks.** An elevated road is drawn
+  wider than one on the ground, but the game still used the ground width — so
+  a strip of the bridge that looked like asphalt behaved like grass, and you
+  could fall off a deck you were still driving on.
+- **Race positions follow the road.** Live standings measured "who's closer
+  to the next checkpoint" as the crow flies, so on a track that curls back on
+  itself a trailing car could rank ahead of the leader rounding a loop —
+  progress is measured along the road now.
+- **No hairline gaps in the race view.** The seam overlap that keeps piece
+  joints solid held in the editor but shrank under the race map's scale;
+  walls showed it first.
+- **See through bridges.** A car driving under a deck now shows through a
+  dark window in the road above — the car itself, pointing where it points,
+  instead of the solid colored dot. The hole is cut in the asphalt only (the
+  rails stay solid), and a car driving ON the deck passes over it.
 - **The car shows where it points, without the headlight beam.** The thrown
   cone kept landing on the wrong surface around ramps and bridges, so the
   body carries the cue now: a lit nose, and the driver seated at the back

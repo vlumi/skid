@@ -149,6 +149,71 @@ final class RenderOrderTests: XCTestCase {
         XCTAssertEqual(TrackRenderer.carStorey(of: state, on: track), 0)
     }
 
+    /// **A car under the bridge's WALL still gets a window.** The trigger and
+    /// the hole must agree about how far the bridge reaches, and that reach is
+    /// the whole footprint — asphalt plus the rails standing on its edges,
+    /// which hide the ground under them just as the asphalt does. They
+    /// disagreed: the trigger reached the rail's outer edge (87 on the eight)
+    /// while the hole was cut only in the asphalt (72), so a car passing under
+    /// the wall triggered a window with nowhere to draw and stayed invisible.
+    func testACarUnderTheBridgeWallStillGetsAWindow() throws {
+        let track = try XCTUnwrap(TrackLibrary.track(id: "eight"))
+        let deckHeight = Track.levelHeight
+        let n = track.centerline.count
+        let crossing = try XCTUnwrap(
+            (0..<n).first {
+                track.heights[$0] < 0.05
+                    && track.distanceToCenterline(track.centerline[$0], height: deckHeight)
+                        <= track.width / 2
+            }, "the eight should cross under its own bridge")
+        let (segment, _) = track.closestCenterlinePoint(
+            to: track.centerline[crossing], preferHeight: deckHeight)
+        let ahead = track.centerline[(segment + 1) % n] - track.centerline[segment]
+        let across = ahead.normalized.perpendicular
+        let clip = TrackRenderer.probeCoveringDeck(track: track, height: deckHeight)
+        // Out past the asphalt, inside the rail band: under the wall.
+        let underWall =
+            track.centerline[crossing]
+            + across * (track.halfWidth(atHeight: deckHeight) + 6)
+        XCTAssertLessThan(
+            track.halfWidth(atHeight: deckHeight) + 6,
+            track.footprintHalfWidth(atHeight: deckHeight),
+            "the probe point must be inside the rail band")
+        XCTAssertTrue(
+            clip.contains(CGPoint(x: underWall.x, y: underWall.y)),
+            "the hole must be cut under the rail too, or the car is invisible there")
+
+        // And the trigger reaches exactly as far as the hole's disc can still
+        // touch that footprint — no further (wasted layers), no nearer (windows
+        // cut off while still visible). The disc is centred on the car, so the
+        // margin past the footprint is its RADIUS: both are measured as
+        // perpendicular distance from the same centerline.
+        let footprint = track.footprintHalfWidth(atHeight: deckHeight)
+        for offset in [footprint - 5, footprint + 5, footprint + 15] {
+            let point = track.centerline[crossing] + across * offset
+            XCTAssertTrue(
+                discTouches(clip, at: point),
+                "at \(offset) the disc still overlaps the bridge, so a window is due")
+        }
+        // A full disc-diameter out, nothing of the hole can reach the bridge.
+        let clear = track.centerline[crossing] + across * (footprint + 45)
+        XCTAssertFalse(
+            discTouches(clip, at: clear),
+            "well clear of the bridge, no part of the hole can overlap it")
+    }
+
+    /// Whether a window disc centred at `point` overlaps `region` — sampled on
+    /// its rim, which is where a centred disc first touches.
+    private func discTouches(_ region: Path, at point: Vec2) -> Bool {
+        for degrees in stride(from: 0.0, to: 360.0, by: 15.0) {
+            let radians = degrees * .pi / 180
+            let rim = CGPoint(
+                x: point.x + cos(radians) * 19.5, y: point.y + sin(radians) * 19.5)
+            if region.contains(rim) { return true }
+        }
+        return false
+    }
+
     /// `storey(ofTop:)` must be the exact inverse of `storeyBand`: every real
     /// piece top (heights come in half-level steps) maps to the one band that
     /// contains it, so cars and ribbons can never disagree by construction.
