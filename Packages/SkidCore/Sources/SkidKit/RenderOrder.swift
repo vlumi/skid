@@ -34,6 +34,10 @@ enum RenderOrder {
         case wall
         case mark
         case gate
+        /// The under-deck window: a hole showing a covered car. Below `car`
+        /// so a real car DRIVING on this deck passes over the hole, never
+        /// under the ghost of the car beneath it.
+        case window
         case car
         /// Above every storey: a launched car is between levels by definition.
         case airborne
