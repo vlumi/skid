@@ -57,6 +57,83 @@ final class RenderOrderTests: XCTestCase {
     /// partition: a piece belongs to exactly one, by its highest end. In two
     /// bands is a double-draw that buries whatever sits between them; in
     /// neither is a hole in the road.
+    /// **A car mid-climb paints in its own ramp's storey.** The ribbon paints
+    /// whole at the level of its highest end, so a car at height 0.36 stacking
+    /// by raw height (level 0) slid UNDER the upper half of the piece it was
+    /// driving on — reported on the eight, car swallowed by the lower ramp.
+    /// The car's storey must equal the storey its supporting piece was binned
+    /// into, at every point of every built-in.
+    func testACarOnARampPaintsWithItsRoad() throws {
+        for id in TrackLibrary.all.map(\.id) {
+            let track = try XCTUnwrap(TrackLibrary.track(id: id))
+            for (index, point) in track.centerline.enumerated() {
+                let state = probe(at: point, height: track.heights[index])
+                XCTAssertEqual(
+                    TrackRenderer.carStorey(of: state, on: track),
+                    TrackRenderer.storey(ofTop: track.deckTops[index]),
+                    "\(id) point \(index) h=\(track.heights[index]): the car "
+                        + "must stack with the piece it is on")
+            }
+        }
+    }
+
+    /// The reported scene, pinned concretely: on the eight, a car at a point
+    /// whose height is strictly mid-climb (~0.36) paints at storey 1, above
+    /// its own ramp — not at level 0, beneath it.
+    func testTheMidClimbCarIsNotSwallowedByTheRamp() throws {
+        let track = try XCTUnwrap(TrackLibrary.track(id: "eight"))
+        let index = try XCTUnwrap(
+            track.heights.firstIndex { $0 > 0.3 && $0 < 0.45 },
+            "the eight should have a mid-climb point")
+        let state = probe(at: track.centerline[index], height: track.heights[index])
+        XCTAssertEqual(TrackRenderer.carStorey(of: state, on: track), 1)
+        XCTAssertEqual(Track.level(of: state.height), 0, "raw height would say 0 — the bug")
+    }
+
+    /// A car on the grass keeps its raw-height storey: there is no piece under
+    /// it, so the bridge covers it and the bubble takes over.
+    func testAGrassCarKeepsItsOwnStorey() throws {
+        let track = try XCTUnwrap(TrackLibrary.track(id: "eight"))
+        let offRoad = try XCTUnwrap(
+            grassPoint(on: track), "the eight should have grass near the road")
+        let state = probe(at: offRoad, height: 0)
+        XCTAssertEqual(TrackRenderer.carStorey(of: state, on: track), 0)
+    }
+
+    /// `storey(ofTop:)` must be the exact inverse of `storeyBand`: every real
+    /// piece top (heights come in half-level steps) maps to the one band that
+    /// contains it, so cars and ribbons can never disagree by construction.
+    func testStoreyOfTopInvertsTheBands() {
+        for step in 0...4 {
+            let top = Double(step) * Track.levelHeight / 2
+            let storey = TrackRenderer.storey(ofTop: top)
+            XCTAssertTrue(
+                TrackRenderer.storeyBand(storey).contains(top),
+                "top \(top) must fall in its own storey's band")
+        }
+    }
+
+    /// A car body somewhere, for storey questions — only position and height
+    /// matter to the z-order.
+    private func probe(at position: Vec2, height: Double) -> CarState {
+        var state = CarState(position: position, heading: 0)
+        state.height = height
+        return state
+    }
+
+    /// Some point on the grass: step outward from a centerline point until
+    /// clear of the road at EVERY height (so no bridge stretch claims it).
+    private func grassPoint(on track: Track) -> Vec2? {
+        let out = Vec2(track.width * 1.5, 0)
+        for point in track.centerline {
+            let candidate = point + out
+            if track.distanceToCenterline(candidate) > track.width / 2 + 1 {
+                return candidate
+            }
+        }
+        return nil
+    }
+
     func testStoreyBandsPartitionEveryPiece() throws {
         for id in ["small", "oval", "eight", "clover"] {
             let layout = try XCTUnwrap(TrackLibrary.layout(id: id))
