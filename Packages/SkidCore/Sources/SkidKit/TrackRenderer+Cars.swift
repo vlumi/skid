@@ -49,16 +49,20 @@ extension TrackRenderer {
             // at the car's position with the car itself visible through it.
             // Drawn at the covering storey, above that road (and above its
             // marks and gates, which the dimming swallows inside the hole).
-            // The margin reaches past the asphalt to the rail band so the
-            // window doesn't blink out while the car passes under the deck's
-            // EDGE; the hole itself is clipped to the deck, so what shows
-            // there is the honest sliver.
+            // WHETHER a window is due is asked of the deck's REGION, not of
+            // the distance to its centerline. Distance-to-centerline reads the
+            // nearest SAMPLE POINT, and the samples along a straight are a
+            // whole road-width apart, so one step off a crossing the distance
+            // jumped from 0 to 120 and the window only appeared within a hair
+            // of dead centre — the reported wide margin, worse on the flat
+            // side where the samples are coarsest (the ramp side, densely
+            // sampled by its climb, was nearly right).
+            //
+            // The region is the same clip the hole is cut in, grown by the
+            // rail band so the window appears just before the car slides under
+            // the deck's edge rather than after.
             let coveringStorey = storey + 1
-            let coveringHeight = Double(coveringStorey) * Track.levelHeight
-            if track.heights.contains(where: { Track.level(of: $0) == coveringStorey }),
-                track.distanceToCenterline(state.position, height: coveringHeight)
-                    < track.width / 2 + 16
-            {
+            if windowIsDue(for: state, on: track, storey: coveringStorey) {
                 let deck = coveringDeck(track: track, storey: coveringStorey)
                 order.add(storey: coveringStorey, kind: .window) { context in
                     drawWindow(
@@ -128,6 +132,34 @@ extension TrackRenderer {
         // A dark rim so the edge reads as a cut, not a smudge.
         window.stroke(rim, with: .color(.black.opacity(0.5)), lineWidth: 2.5)
     }
+
+    /// Whether a car needs a window in the road at `storey` above it.
+    ///
+    /// Asked of the deck's REGION, never of distance to its centerline:
+    /// distance-to-centerline reads the nearest sample POINT, and samples
+    /// along a straight sit a full road-width apart, so one step off a
+    /// crossing the distance jumped from 0 to 120 and the window only appeared
+    /// within a hair of dead centre. The region is sample-density-independent,
+    /// which is what makes the margin the same on a densely-sampled ramp and
+    /// a sparsely-sampled straight.
+    ///
+    /// Grown by the rail band, and asked of the BODY, so the window is up from
+    /// the moment any part of the car reaches the deck's barrier rather than
+    /// once its centre is already hidden.
+    static func windowIsDue(for state: CarState, on track: Track, storey: Int) -> Bool {
+        guard track.heights.contains(where: { Track.level(of: $0) == storey })
+        else { return false }
+        let deck = coveringDeck(track: track, storey: storey)
+        let approach = deck.strokedPath(StrokeStyle(lineWidth: railBand * 2))
+        return state.bodyCorners.contains {
+            let point = CGPoint(x: $0.x, y: $0.y)
+            return deck.contains(point) || approach.contains(point)
+        }
+    }
+
+    /// How far the deck's barrier stands outboard of its asphalt — the band the
+    /// window has to reach so it appears as the car meets the rail.
+    private static let railBand: Double = 16
 
     /// The covering storey's asphalt as a region — what the window is allowed
     /// to cut a hole in.
@@ -253,6 +285,11 @@ extension TrackRenderer {
         _ state: CarState, color: Color, into context: inout GraphicsContext
     ) {
         draw(car: state, color: color, into: &context)
+    }
+
+    /// Test-only window into the window-due predicate.
+    static func probeWindowIsDue(for state: CarState, on track: Track, storey: Int) -> Bool {
+        windowIsDue(for: state, on: track, storey: storey)
     }
 
     /// Test-only window into the covering-deck clip region.

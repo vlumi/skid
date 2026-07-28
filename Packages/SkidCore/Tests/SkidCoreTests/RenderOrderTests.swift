@@ -177,6 +177,66 @@ final class RenderOrderTests: XCTestCase {
         XCTAssertGreaterThan(checked, 0, "the clover should have underpasses")
     }
 
+    /// **The window appears as the car's body reaches the deck, all the way
+    /// across.** Whether a window is due used to be asked as
+    /// distance-to-CENTERLINE, which reads the nearest sample POINT — and
+    /// samples along a straight sit a road-width apart, so one step off a
+    /// crossing the distance jumped 0 → 120 and the window only showed within
+    /// a hair of dead centre (reported as a wide margin, worst on the flat
+    /// side where sampling is coarsest). Asking the deck's REGION instead is
+    /// sample-density-independent.
+    ///
+    /// Walked finely along the eight's lower road through its bridge: the
+    /// window must be up continuously from the moment the body reaches the
+    /// rail (half-width + rail band + the body's own reach) until it clears.
+    func testTheWindowIsUpWheneverTheBodyIsUnderTheDeck() throws {
+        let track = try XCTUnwrap(TrackLibrary.track(id: "eight"))
+        let n = track.centerline.count
+        let crossing = try XCTUnwrap(
+            (0..<n).first {
+                track.heights[$0] < 0.05
+                    && track.distanceToCenterline(track.centerline[$0], height: 1.0)
+                        <= track.width / 2
+            }, "the eight should cross under its own bridge")
+        var covered = 0
+        for step in -40...40 {
+            let along = Double(step) * 2
+            let point = walk(track: track, from: crossing, by: along)
+            var probe = CarState(position: point, heading: 0)
+            probe.height = 0
+            let due = TrackRenderer.probeWindowIsDue(for: probe, on: track, storey: 1)
+            // Well under the deck: a window is mandatory.
+            if abs(along) < track.width / 2 - CarGeometry.length {
+                XCTAssertTrue(due, "no window \(along) units into the underpass")
+                covered += 1
+            }
+            // Far clear of it: there must be none.
+            if abs(along) > track.width / 2 + 16 + CarGeometry.length * 2 {
+                XCTAssertFalse(due, "a window \(along) units clear of the deck")
+            }
+        }
+        XCTAssertGreaterThan(covered, 0, "the sweep must cross the deck")
+    }
+
+    /// A point `distance` along the centerline from `index` (negative = back).
+    private func walk(track: Track, from index: Int, by distance: Double) -> Vec2 {
+        let n = track.centerline.count
+        var remaining = abs(distance)
+        var at = index
+        while remaining > 0 {
+            let next = distance < 0 ? (at + n - 1) % n : (at + 1) % n
+            let step = track.centerline[at].distance(to: track.centerline[next])
+            if step >= remaining || step <= 0 {
+                let t = step > 0 ? remaining / step : 0
+                return track.centerline[at]
+                    + (track.centerline[next] - track.centerline[at]) * t
+            }
+            remaining -= step
+            at = next
+        }
+        return track.centerline[at]
+    }
+
     /// `storey(ofTop:)` must be the exact inverse of `storeyBand`: every real
     /// piece top (heights come in half-level steps) maps to the one band that
     /// contains it, so cars and ribbons can never disagree by construction.
