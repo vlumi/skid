@@ -132,73 +132,19 @@ What's left:
       (its value doesn't change — the settle logic is per-carousel — but it moves).
       The state has to be per-carousel, and the animation wants a proper
       interactive spring rather than a spring applied only to the settled index.
-- [ ] **A selection model for the editor.** Today the editor only edits the
-      chain's growing end, and every action lives in a fixed spot. The notes
-      below pull in two directions and the shape has to be **decided before
-      coding**:
-
-      *The conflict.* "Select a piece, then delete it" and "select an end, then
-      build from it" are different selections. Most pieces have exactly one free
-      end, so selecting the piece could imply the end — except the start piece,
-      which has two, and that is precisely the moment (a one-piece track) when
-      the author must choose a direction. A single selection therefore needs a
-      rule for the ambiguous case, or the two need separating.
-
-      *Proposed resolution, for sign-off:* selection is **a piece**, and the
-      arrows are the disambiguator. A selected piece draws an arrow at each of
-      its free ends; tapping an arrow chooses that end (and on the start piece
-      that is how you pick a direction), with the last-used end remembered so
-      the common case stays one tap. Delete then acts on the selected piece and
-      build acts on its chosen end — one selection, one extra tap only where
-      the geometry is genuinely ambiguous.
-
-      Details either way:
-      - **Build from either end.** Tap the arrow at an end to switch to it,
-        rather than being locked to the last piece placed. If the arrow is the
-        thing you tap, the separate hazard-striped "construction" marker on the
-        loose end may be redundant — try dropping it.
-      - **Delete anywhere, not just at the end.** Remove a piece from the
-        middle of a finished track. More than a UI change: pieces are a sequence
-        walked from the origin, so naively dropping one leaves everything after
-        it translated and rotated — the track swings.
-
-        *The maintainer's framing, which resolves this:* **re-anchor instead of
-        re-walking.** Cutting a ring at a piece leaves an open chain; make one
-        cut end the layout's new origin (with its pose and height baked in) and
-        the remaining geometry is unchanged by construction, with two loose ends
-        to rejoin — which the closure search already helps with. **While
-        building, the origin need not be the start line at all**: it's just
-        where the walk begins.
-
-        *And the restriction only has to hold for a FINISHED track.* Validation
-        is already two-tier — `canAppend` ignores what a work-in-progress is
-        expected to break (loose ends, gate count, standing on the deck) while
-        `isSaveable` demands everything — so "the origin is the start piece" and
-        "seam 0 is the finish" move to the strict tier. Mid-build the origin is
-        just a walk anchor that may sit anywhere, including at a cut end; on
-        save, rotate the piece list so the start piece leads and the invariant
-        holds again, with share codes' meaning unchanged.
-
-        Three places weld the two concepts together today and would need the
-        split: the compiler takes the grid from `walk.placed[0]`, treats seam 0
-        as the finish, and the validator requires seam 0 to be marked. Doing it
-        also buys MOVING the start line on a finished track, which is a want in
-        its own right.
-
-        Checkpoint seams shift under any of this, exactly as in the primitives
-        round.
-      - **Anchor delete to what it deletes.** The delete button sits at the
-        chain's end and the map re-frames after every removal, so deleting a
-        run means re-aiming for a moving button each time. Put it ON the
-        selected piece instead, and hide it when nothing is selected: the piece
-        just placed is selected by default, tapping another selects that one,
-        tapping empty space clears. Then repeated deletes stay under the thumb.
-      - **Move the "track complete" chip out of the button column.** It appears
-        between the map actions and shifts them down, which is worst exactly
-        when a finished track is being edited — a corner would do.
-      - **Rethink the delete icon.** The undo-arrow reads as "undo last action"
-        rather than "remove this piece".
-      Longer term: real undo.
+- [ ] **The editor overhaul.** Planned — see
+      [docs/editor-overhaul-plan.md](docs/editor-overhaul-plan.md), which
+      absorbs and settles everything this entry used to debate. In one line
+      each: selection is a piece with arrows at its free ends; build from
+      either end; open chains delete at their ends, closed rings delete
+      anywhere (rotate-then-pop — the surviving geometry stays put by
+      construction, the payoff of the flexible-track groundwork that already
+      shipped); gating becomes an edit MODE with gates highlighted; variants
+      are applied in place by long-press (the start line's facing first,
+      decals when they land; pitch-in-place explicitly disallowed); undo with
+      a long history; the closure control, complete chip and delete icon all
+      move. Crossings ([docs/crossing-plan.md](docs/crossing-plan.md)) land
+      first, so mid-track deletion is exercised against them.
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
