@@ -84,21 +84,29 @@ jog that enters and leaves on the same heading. Not a sharp offset at either end
 (maintainer's call), and no new corner vocabulary: radius comes from the existing
 three, and the arcs' angle is free rather than restricted to 45° multiples.
 
-**Parameters:** radius (catalog: 1/2/4U), arc angle (continuous), middle length
-(continuous). Two continuous unknowns, which is exactly what a two-component gap
-needs.
+**Parameters:** radius (catalog: 1/2/4U), arc angle (continuous, **and zero is
+allowed**), middle length (continuous). Two continuous unknowns, which is exactly
+what a two-component gap needs.
 
-**Verified reachable** (numerically, radius 1–4U, arc ≤ 90°, middle ≤ 8U):
+**Zero degrees is not an edge case to tolerate — it is what makes the piece
+total.** At θ = 0 both arcs vanish and the shape *is* a straight of length L
+(displacement `(L, 0)`, and the radius becomes irrelevant). So the fitter
+subsumes the plain custom-length straight, and every pure-longitudinal gap is
+reachable by construction rather than needing a different piece.
+
+**Verified reachable** (numerically, radius 1–4U, arc 0…90°, middle ≤ 8U):
 - the measured mixed-eight gap `(2.0, −0.828)U` → **R=1U, 29.28° arcs, 1.172U
   middle**;
 - `(3.0, 0.5)U` → R=1U, 10.04°, 2.692U; `(5.0, 2.0)U` → R=2U, 26.17°, 3.606U;
-- **not** reachable: zero lateral offset (`dy = 0`) — by construction, since a
-  jog always steps sideways, and that case needs no fitter because a plain
-  straight already fits; and gaps too small to fit two arcs plus a straight
-  (`dx` below roughly 1.5–2U, depending on radius).
+- **the whole `dy = 0` line**, via θ = 0: `(2.0, 0)U` → 0°, L = 2U; `(0.5, 0)U`
+  → 0°, L = 0.5U. (An earlier version of this plan recorded `dy = 0` as
+  unreachable. That was the solver requiring θ > 0, not the geometry.)
+- **not** reachable: a gap that is both short and laterally offset — too little
+  room for two arcs plus a straight (`dx` below roughly 1.5–2U while `dy ≠ 0`,
+  depending on radius).
 
-So the validity rule has a **lower** bound as well as an upper one. When the ends
-are inside the dead zone the honest editor hint is "these ends are too close to
+So validity still has a **lower** bound, but only for offset gaps. When the ends
+are inside that dead zone the honest editor hint is "these ends are too close to
 bridge — lengthen one side" rather than "cannot close", and the nearest reachable
 pose is computable, so the hint can name a direction.
 
@@ -127,9 +135,11 @@ above; a fitter track round-trips byte-identically through encode/decode.
 
 ## Rejected along the way
 
-- **A single custom-length straight.** One degree of freedom against a
-  two-component gap. It closes only when the gap lies along its own heading,
-  which the mixed eight's does not.
+- **A single custom-length straight** as a *separate* piece. One degree of
+  freedom against a two-component gap: it closes only when the gap lies along its
+  own heading, which the mixed eight's does not. Not rejected as a *shape*,
+  though — it is the fitter at θ = 0, so it comes for free rather than needing
+  its own id.
 - **Two custom straights, one per lobe** (axis `2.0U`, diagonal `−0.83U` for the
   measured case). Honest to the geometry and needs no new piece — but one length
   comes out negative, meaning "shorten that lobe", and it drops the single-fitter
