@@ -261,47 +261,6 @@ public struct Track: Equatable, Sendable, Codable {
         abs(self.height(ofSegment: index) - height) <= tolerance
     }
 
-    /// Distance from `p` to the centerline loop — optionally only the road at
-    /// roughly `height`, so a bridge and the road beneath it stay distinct.
-    public func distanceToCenterline(
-        _ p: Vec2, height: Double? = nil, heightTolerance: Double = Self.surfaceTolerance
-    ) -> Double {
-        var best = Double.greatestFiniteMagnitude
-        for i in centerline.indices {
-            if let height, !segment(i, isAt: height, tolerance: heightTolerance) { continue }
-            let a = centerline[i]
-            let b = centerline[(i + 1) % centerline.count]
-            best = min(best, p.distance(toSegment: a, b))
-        }
-        return best
-    }
-
-    /// The closest point on the centerline loop to `p`, as (segment index,
-    /// parameter along it). `preferHeight` breaks the tie where two stretches of
-    /// road overlap in 2D (a bridge crossing): anchor to the car's own height.
-    public func closestCenterlinePoint(
-        to p: Vec2, preferHeight: Double? = nil
-    ) -> (segment: Int, t: Double) {
-        var best = (segment: 0, t: 0.0)
-        var bestScore = Double.greatestFiniteMagnitude
-        for i in centerline.indices {
-            let a = centerline[i]
-            let b = centerline[(i + 1) % centerline.count]
-            let closest = p.closestPoint(onSegment: a, b)
-            var score = p.distance(to: closest)
-            if let preferHeight, !segment(i, isAt: preferHeight) {
-                score += width  // road at another height loses ties decisively
-            }
-            if score < bestScore {
-                bestScore = score
-                let length = (b - a).length
-                let t = length > 0 ? (closest - a).length / length : 0
-                best = (i, t)
-            }
-        }
-        return best
-    }
-
     /// Total length of the centerline loop.
     public var centerlineLength: Double {
         var total = 0.0
