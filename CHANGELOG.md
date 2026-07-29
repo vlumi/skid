@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 9 — 2026-07-28
+
 - **The road on a bridge is as wide as it looks.** An elevated road is drawn
   wider than one on the ground, but the game still used the ground width — so
   a strip of the bridge that looked like asphalt behaved like grass, and you
