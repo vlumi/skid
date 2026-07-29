@@ -77,7 +77,14 @@ What's left:
       are worth doing on their own merits.
 - [ ] **Crossings and jumps in the compiler.** The catalog has the geometry and
       the editor has the buttons hidden; the Phase-A compiler can't build either
-      yet.
+      yet. Crossings are DESIGNED — see
+      [docs/crossing-plan.md](docs/crossing-plan.md): a crossing stays two
+      crossable pieces that overlap (nothing stored, so deletion cannot dangle;
+      switching a straight to crossable is a 1:1 id swap; rendering verified
+      correct from the existing paint order alone). The remaining engine work is
+      a geometric legality rule and a heading-alignment tiebreak for the
+      resolver in the shared zone — owed before or during the editor overhaul,
+      since mid-track deletion interacts with it.
 
       A CROSSING is cheap, and worth doing when the pieces are: the route stays
       one closed ring (a track already crosses itself wherever a bridge does),
