@@ -169,3 +169,67 @@ final class FitterValidationTests: XCTestCase {
             problems.contains(.overlap), "an unsolved fitter is not an overlap")
     }
 }
+
+/// The editor's side: the closure control offers a fitter only where the catalog
+/// cannot reach, and placing it closes the ring.
+final class FitterClosureTests: XCTestCase {
+    private typealias Catalog = PieceCatalog.ID
+
+    /// **A standard run is always preferred.** On a ring the catalog can close,
+    /// the outcome must be `.found`, never `.fits` — a run closes exactly, in the
+    /// quantized ring, which beats a fitter on every axis.
+    func testACatalogRunWinsWhenOneExists() throws {
+        let full = try TrackCode.decode(
+            try XCTUnwrap(TrackLibrary.builtins.first { $0.id == "oval" }).code)
+        var short = full
+        short.pieces.remove(at: 13)  // a 1U straight: trivially re-closable
+        short.gateSeams = [0]
+        let end = try XCTUnwrap(short.walk().openEnds.first)
+        switch short.closingOutcome(from: end) {
+        case .found:
+            break  // as it must be
+        case .fits:
+            XCTFail("a fitter was offered where a catalog run exists")
+        case .needsMorePieces(let searched):
+            XCTFail("no outcome at all (searched \(searched))")
+        }
+    }
+
+    /// The gap measurement is in the loose end's own frame, and a gap needing a
+    /// TURN is not a fitter's to fix — turning is the catalog's job.
+    func testAGapNeedingATurnIsNotFitted() throws {
+        let layout = TrackLayout(
+            pieces: [Catalog.startGrid, Catalog.curve90MediumRight], gateSeams: [0])
+        let end = try XCTUnwrap(layout.walk().openEnds.first)
+        XCTAssertNil(
+            layout.fitting(from: end, to: layout.origin),
+            "headings differ, so no fitter applies")
+    }
+
+    /// **Placing a fitter closes the ring**, and the result validates — the
+    /// editor's whole promise.
+    func testPlacingAFitterClosesTheRing() throws {
+        let full = try TrackCode.decode(
+            try XCTUnwrap(TrackLibrary.builtins.first { $0.id == "oval" }).code)
+        var short = full
+        short.pieces.remove(at: 13)
+        short.gateSeams = full.gateSeams.filter { $0 < 13 }
+        let end = try XCTUnwrap(short.walk().openEnds.first)
+        let fitter = try XCTUnwrap(
+            short.fitting(from: end, to: short.origin),
+            "this gap should be fittable")
+
+        var layout = short
+        layout.pieces.append(PieceCatalog.fitterPieceID)
+        layout.fitters[layout.pieces.count - 1] = fitter
+        let walk = layout.walk()
+        XCTAssertNil(walk.failure)
+        XCTAssertTrue(walk.openEnds.isEmpty, "the fitter must close the ring")
+        XCTAssertFalse(
+            TrackValidator.validate(layout).problems.contains(.unsolvedFitter(1)))
+        // And it compiles to a drivable track.
+        let track = try PieceCompiler.compile(layout, id: "fitted")
+        XCTAssertGreaterThan(track.centerlineLength, 0)
+        XCTAssertFalse(track.gates.isEmpty)
+    }
+}

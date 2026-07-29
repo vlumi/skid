@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **A track can close even when the pieces don't quite meet.** Mixing straights
+  along the grid with diagonal ones used to leave gaps no piece could fill, which
+  made some shapes — a figure-eight with one diagonal loop, say — impossible to
+  finish. When that happens the editor now offers to close the loop with a fitted
+  piece, shaped to the gap.
+
 - **The app icon's car matches the one you drive.** Same lit nose and
   rear-seated driver as in the game, instead of the older plain body.
 - **Railings stop you where they look like they should.** Coming off the grass
