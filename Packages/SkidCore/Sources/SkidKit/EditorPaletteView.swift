@@ -301,6 +301,14 @@ extension EditorView {
             mapAction("flag.checkered", tint: .yellow, label: "Close the loop") {
                 game.editorAppendRun(run)
             }
+        case .fits(let fitter):
+            // Same question, different answer: no run of catalog pieces reaches,
+            // but one fitting piece does. Marked distinctly so it is clear the
+            // track is being closed by a custom-shaped piece rather than by the
+            // ordinary vocabulary.
+            mapAction("flag.checkered", tint: .teal, label: "Close with a fitted piece") {
+                game.editorAppendFitter(fitter)
+            }
         default:
             // Nothing when there's no run to take: the reason already shows in the
             // hint line, and a dead button on the map would just be clutter.

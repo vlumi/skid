@@ -233,6 +233,11 @@ one-piece answer where `ClosureSearch` returns a multi-piece run.
 - **Solvability is validity.** A track whose fitter has no solution does not
   save. The check belongs in `TrackValidator` next to the overlap rules.
 
+**Done** for the closing position. Built in commits by concern: geometry, the
+closed-form solve, the stored payload, walk placement, lowering to road, validator
+rules, then the editor's fallback. The remaining limits are recorded above — a
+fitter is flat, needs matching headings, and cannot close a loop that overshoots.
+
 **Test.** The measured mixed-eight closes and compiles; a fitter in the dead zone
 fails validation with the actionable problem; the reachability boundary is pinned
 by the numbers above; a fitter track round-trips byte-identically through

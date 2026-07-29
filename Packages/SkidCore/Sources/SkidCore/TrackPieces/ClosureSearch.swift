@@ -340,6 +340,11 @@ public enum ClosureOutcome: Equatable, Sendable {
     /// exists (the search also stops when every continuation would touch
     /// pavement already laid). Phrase it as a limit, never as "impossible".
     case needsMorePieces(searched: Int)
+    /// No run of catalog pieces closes the gap, but a single **fitting piece**
+    /// does. Only ever offered as a fallback: a standard run closes the loop
+    /// EXACTLY, in the quantized ring, with no stored floats — better on every
+    /// axis, so a fitter is a concession, not an alternative to weigh.
+    case fits(Fitter)
 }
 
 extension TrackLayout {
@@ -357,8 +362,32 @@ extension TrackLayout {
             ?? walked.placed.last?.exitHeight ?? 0
         switch search.search(from: end, height: height) {
         case .found(let run): return .found(run)
-        case .needsMorePieces(let searched): return .needsMorePieces(searched: searched)
+        case .needsMorePieces(let searched):
+            // Fall back to a fitting piece, which bridges gaps the quantized
+            // catalog cannot express — but only where the loose end already sits
+            // at the height it must close at, since a fitter is flat.
+            let goal = target ?? origin
+            if abs(height - originHeight) < 0.001,
+                let fitter = fitting(from: end, to: goal)
+            {
+                return .fits(fitter)
+            }
+            return .needsMorePieces(searched: searched)
         }
+    }
+
+    /// The fitting piece that closes `end` onto `goal`, if one can.
+    ///
+    /// The gap is measured in the loose end's own frame, which is what the solver
+    /// wants: forward along its heading, and to its left. A fitter leaves on the
+    /// heading it entered, so the headings must already agree — turning is the
+    /// catalog's job, and a gap needing a turn is not a fitter's to fix.
+    public func fitting(from end: PiecePose, to goal: PiecePose) -> Fitter? {
+        guard end.heading == goal.heading else { return nil }
+        let delta = goal.position.vec2 - end.position.vec2
+        let forward = Vec2(angle: end.heading.radians)
+        let left = Vec2(angle: end.heading.radians - .pi / 2)
+        return Fitter.solving(forward: delta.dot(forward), left: delta.dot(left))
     }
 
     /// The closing run if one was found within `maxPieces`, else nil.
