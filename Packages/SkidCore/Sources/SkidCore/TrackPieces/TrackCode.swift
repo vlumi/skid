@@ -16,6 +16,9 @@ public enum TrackCode {
         case tooLarge
         /// Origin position wasn't a whole-unit integer (u16 range).
         case badOrigin
+        /// The fitters section was malformed: not a whole number of 8-byte
+        /// entries, or a radius index the catalog doesn't have.
+        case badFitter
     }
 
     public static let version = 1
@@ -46,6 +49,11 @@ public enum TrackCode {
         /// a signed byte. Omitted when the track starts on the ground, so every
         /// ground-level code keeps its exact bytes.
         case baseHeight = 5
+        /// Solved fitter shapes, 8 bytes each: piece index, radius index and
+        /// side, then the angle and the middle length as 24-bit fixed point.
+        /// Omitted entirely when a track has no fitters, so codes for ordinary
+        /// tracks are byte-identical to before this existed.
+        case fitters = 6
     }
 
     // MARK: - Encode
@@ -67,6 +75,9 @@ public enum TrackCode {
         appendSection(&body, .origin, encodeOrigin(layout.origin))
         if layout.theme != .normal {
             appendSection(&body, .theme, [UInt8(layout.theme.rawValue)])
+        }
+        if !layout.fitters.isEmpty {
+            appendSection(&body, .fitters, encodeFitters(layout.fitters))
         }
         if layout.originHeight != 0 {
             let halves = Int((layout.originHeight / (Track.levelHeight / 2)).rounded())
@@ -124,13 +135,17 @@ public enum TrackCode {
             Int(Int8(bitPattern: $0))
         }
         let originHeight = Double(baseHalves ?? 0) * (Track.levelHeight / 2)
+        let fitters =
+            try sections[.fitters].map {
+                try decodeFitters($0, pieceCount: pieces.count)
+            } ?? [:]
         // Hostile input: a baseline outside the world's storeys is refused here,
         // before anything walks or allocates.
         guard Track.withinLevels(originHeight) else { throw DecodeError.tooLarge }
 
         return TrackLayout(
             pieces: pieces, pitches: pitches, origin: origin, originHeight: originHeight,
-            gateSeams: gates, theme: theme)
+            gateSeams: gates, theme: theme, fitters: fitters)
     }
 
     /// Parse the TLV body into known sections, bounds-checking every step.
@@ -166,6 +181,63 @@ public enum TrackCode {
 
     /// Piece ids as varints: 0…127 one byte; ≥128 a two-byte big-endian value
     /// with the high bit of the first byte set (15-bit, ~32k ids).
+    /// Fitters as 8 bytes each, sorted by index so the encoding is canonical:
+    /// index, then radius-and-side packed into one byte, then the angle and the
+    /// middle length as 24-bit big-endian fixed point.
+    ///
+    /// The quantization is NOT applied here — a solved fitter is already snapped
+    /// to this grid (see `Fitter.quantized`), so encoding is lossless and the
+    /// shape a decoder walks is exactly the shape the author's device walked.
+    private static func encodeFitters(_ fitters: [Int: Fitter]) -> [UInt8] {
+        var out: [UInt8] = []
+        for (index, fitter) in fitters.sorted(by: { $0.key < $1.key }) {
+            out.append(UInt8(truncatingIfNeeded: index))
+            let radius = fitter.radiusIndex ?? 0
+            out.append(UInt8(radius) | (fitter.stepsLeft ? 0x80 : 0))
+            out.append(contentsOf: bytes24(Fitter.quantizedAngle(fitter.angle)))
+            out.append(contentsOf: bytes24(Fitter.quantizedLength(fitter.length)))
+        }
+        return out
+    }
+
+    private static func decodeFitters(
+        _ payload: [UInt8], pieceCount: Int
+    ) throws -> [Int: Fitter] {
+        guard payload.count % 8 == 0 else { throw DecodeError.badFitter }
+        var out: [Int: Fitter] = [:]
+        for start in stride(from: 0, to: payload.count, by: 8) {
+            let index = Int(payload[start])
+            // The index must address a real piece: a shape with nothing to attach
+            // to is malformed, not merely unused.
+            guard index < pieceCount else { throw DecodeError.badFitter }
+            let radiusByte = payload[start + 1]
+            let radiusIndex = Int(radiusByte & 0x7F)
+            guard Fitter.radii.indices.contains(radiusIndex) else {
+                throw DecodeError.badFitter
+            }
+            let angle = Fitter.dequantizedAngle(
+                value24(payload[(start + 2)..<(start + 5)]))
+            let length = Fitter.dequantizedLength(
+                value24(payload[(start + 5)..<(start + 8)]))
+            out[index] = Fitter(
+                radius: Fitter.radii[radiusIndex], angle: angle, length: length,
+                stepsLeft: radiusByte & 0x80 != 0)
+        }
+        return out
+    }
+
+    private static func bytes24(_ value: Int) -> [UInt8] {
+        [
+            UInt8(truncatingIfNeeded: value >> 16),
+            UInt8(truncatingIfNeeded: value >> 8),
+            UInt8(truncatingIfNeeded: value),
+        ]
+    }
+
+    private static func value24(_ slice: ArraySlice<UInt8>) -> Int {
+        slice.reduce(0) { ($0 << 8) | Int($1) }
+    }
+
     private static func encodeVarintIDs(_ ids: [PieceID]) -> [UInt8] {
         var out: [UInt8] = []
         for id in ids {

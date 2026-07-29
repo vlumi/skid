@@ -38,6 +38,26 @@ extension CouchGame {
         return true
     }
 
+    /// Close the loop with a **fitting piece**: place it and store its solved
+    /// shape, which is the only piece whose geometry lives in the layout rather
+    /// than the catalog (see `Fitter`).
+    ///
+    /// Solved here, once, on this device — never re-derived when a code is decoded,
+    /// because `sin`/`atan2` are not required to be correctly rounded and
+    /// deterministic lockstep cannot absorb an ULP of disagreement.
+    @discardableResult
+    public func editorAppendFitter(_ fitter: Fitter) -> Bool {
+        guard var layout = editorLayout else { return false }
+        layout.pieces.append(PieceCatalog.fitterPieceID)
+        layout.fitters[layout.pieces.count - 1] = fitter
+        // The fitter must actually close the ring — it has nothing to offer a
+        // track it leaves open, and the walk needs an inlet to pin its exit to.
+        guard layout.walk().openEnds.isEmpty else { return false }
+        editorLayout = layout
+        finishIfClosed()
+        return true
+    }
+
     /// The moment the ring closes, finish the job: put default checkpoints in
     /// (a closed loop with only the start line marked is unsaveable, and
     /// nothing about that is the author's mistake) and center it on the

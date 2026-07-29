@@ -72,8 +72,7 @@ What's left:
       simultaneous equations. Plan in
       [docs/flexible-tracks-plan.md](docs/flexible-tracks-plan.md): the start
       line becomes an ordinary piece (exactly one, anywhere, either direction),
-      encoding gets a canonical normalisation, stored codes convert once, and
-      then a **fitting piece** — curve + straight + curve, radius from the
+      encoding gets a canonical normalization, and then a **fitting piece** — curve + straight + curve, radius from the
       existing three, arc angle free — closes what the catalog can't. Steps 1–3
       are worth doing on their own merits.
 - [ ] **Crossings and jumps in the compiler.** The catalog has the geometry and
