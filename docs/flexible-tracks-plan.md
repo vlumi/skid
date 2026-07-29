@@ -160,9 +160,11 @@ standard pieces are two answers to the same question, so they belong to **one
 control with two options**, not two controls placed near each other. Today that
 question is the `closeItAction` chip on the map (`EditorPaletteView`), which
 appears only when `ClosureSearch` found a run and shows nothing otherwise. The
-fitter becomes its second option: offer the standard run when one exists, offer
-the fitter when it does not (or offer both when both do, since a fitter may be the
-tidier answer).
+fitter becomes its fallback: offer the standard run when one exists, and the
+fitter **only when none does**. Never both — if standard pieces can close the
+loop, they close it *exactly*, in the quantized ring, with no stored floats and no
+determinism caveat, which beats a fitter on every axis. A fitter is a concession
+to gaps the catalog cannot express, not a tidier alternative to it.
 
 That chip is also **due to move** as part of the editor overhaul, so this step
 should not hardcode its position — extend the existing chip in place and let the
