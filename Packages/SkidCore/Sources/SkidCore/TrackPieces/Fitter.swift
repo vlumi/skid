@@ -103,15 +103,18 @@ extension Fitter {
     /// because they are within reach of ordinary pieces.
     public static func solving(
         forward: Double, left: Double, radii: [Double] = Fitter.radii,
-        maxLength: Double = 8 * Double(PieceCatalog.unit)
+        maxLength: Double = Fitter.maxLength
     ) -> Fitter? {
         var best: Fitter?
         for radius in radii {
             for candidate in candidates(
                 forward: forward, left: left, radius: radius, maxLength: maxLength)
             {
-                if best == nil || candidate.arcLength < best!.arcLength {
-                    best = candidate
+                // Snapped to the encodable grid HERE, so the shape that closes
+                // the loop is the shape a decoded code reproduces exactly.
+                let snapped = candidate.quantized
+                if best == nil || snapped.arcLength < best!.arcLength {
+                    best = snapped
                 }
             }
         }
@@ -151,5 +154,59 @@ extension Fitter {
             out.append(fitter)
         }
         return out
+    }
+}
+
+extension Fitter {
+    /// **Quantization is applied at SOLVE time, not at encode time.**
+    ///
+    /// The stored numbers have to be the only numbers, or the authoring device
+    /// and a device that decodes the code would walk slightly different shapes —
+    /// which deterministic lockstep cannot tolerate. So a solved fitter is
+    /// snapped to the encodable grid immediately, and the *snapped* shape is what
+    /// closes the loop, gets drawn, and gets driven. Encoding is then lossless by
+    /// construction.
+    ///
+    /// 24 bits each for angle and length: the angle step is ~5e-6°, the length
+    /// step ~6e-5 units. The worst positional error is four orders of magnitude
+    /// below `Track.surfaceTolerance` and five below a device pixel, so the
+    /// snapping is invisible — but it is a real change to the shape, which is why
+    /// it happens before anything measures the shape.
+    public static let angleSteps = 1 << 24
+    public static let lengthSteps = 1 << 24
+    /// The longest middle straight a fitter may store, and so the range the
+    /// length quantization spans.
+    public static let maxLength = 8 * Double(PieceCatalog.unit)
+
+    /// This fitter snapped to the encodable grid.
+    public var quantized: Fitter {
+        Fitter(
+            radius: radius,
+            angle: Self.dequantizedAngle(Self.quantizedAngle(angle)),
+            length: Self.dequantizedLength(Self.quantizedLength(length)),
+            stepsLeft: stepsLeft)
+    }
+
+    static func quantizedAngle(_ angle: Double) -> Int {
+        let clamped = min(max(angle, 0), maxAngle)
+        return Int((clamped / maxAngle * Double(angleSteps - 1)).rounded())
+    }
+
+    static func dequantizedAngle(_ steps: Int) -> Double {
+        Double(steps) / Double(angleSteps - 1) * maxAngle
+    }
+
+    static func quantizedLength(_ length: Double) -> Int {
+        let clamped = min(max(length, 0), maxLength)
+        return Int((clamped / maxLength * Double(lengthSteps - 1)).rounded())
+    }
+
+    static func dequantizedLength(_ steps: Int) -> Double {
+        Double(steps) / Double(lengthSteps - 1) * maxLength
+    }
+
+    /// Index of this fitter's radius in `Fitter.radii`, for encoding.
+    var radiusIndex: Int? {
+        Self.radii.firstIndex { abs($0 - radius) < 1e-9 }
     }
 }
