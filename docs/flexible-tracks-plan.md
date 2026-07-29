@@ -155,6 +155,24 @@ are inside that dead zone the honest editor hint is "these ends are too close to
 bridge — lengthen one side" rather than "cannot close", and the nearest reachable
 pose is computable, so the hint can name a direction.
 
+**How it is offered** (maintainer's call): closing with a fitter and closing with
+standard pieces are two answers to the same question, so they belong to **one
+control with two options**, not two controls placed near each other. Today that
+question is the `closeItAction` chip on the map (`EditorPaletteView`), which
+appears only when `ClosureSearch` found a run and shows nothing otherwise. The
+fitter becomes its second option: offer the standard run when one exists, offer
+the fitter when it does not (or offer both when both do, since a fitter may be the
+tidier answer).
+
+That chip is also **due to move** as part of the editor overhaul, so this step
+should not hardcode its position — extend the existing chip in place and let the
+overhaul relocate the combined control.
+
+Note this couples to the freehand idea above: a chip that only appears near
+closure cannot build an all-fitter track. If freehand ever becomes a real mode it
+needs its own affordance (a palette entry), which is an argument for keeping the
+fitter's *insertion* API independent of the chip that happens to call it.
+
 **Scope for the first cut** (maintainer's call): the fitter may be inserted
 **only as the last piece, closing onto the start line**. The editor builds
 one-way, so that is the only position it can currently be placed at anyway, and
