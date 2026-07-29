@@ -11,6 +11,13 @@ for faults introduced and fixed inside one unreleased build.
 Backwards compatibility is **not** kept (maintainer's call). Old codes must
 convert once, not decode forever — see step 3.
 
+**These steps are MODEL work only.** Each one makes the model able to express
+something; the editor UI that lets a user *do* it comes with the editor overhaul
+(the selection model and its dependents), which has to happen before these
+pieces fall together anyway. So "the start line can sit anywhere" means the
+compiler, validator and renderer handle it — not that there is a button for it
+yet.
+
 ## Why: the mixed-diagonal problem
 
 Straight runs come in two families. An axis-aligned straight displaces by whole
@@ -48,6 +55,15 @@ facing the other way.
 **Test.** A track with the start line at piece 5 compiles, laps, and reports the
 same lap count as the same track with it at piece 0; a track with zero or two
 start lines fails validation with a specific problem.
+
+**Done** (model half). Smaller than this plan predicted: the "exactly one start
+piece" rule already existed, and the editor renderer already found the piece by
+id. Three real welds: the compiler's grid came from `walk.placed[0]`; the finish
+gate was hardcoded to seam 0; the validator required seam 0 to be gated. All
+three now key off the start piece's index. One bug fell out — the editor skipped
+drawing a chevron at seam 0 on the assumption it was the start line, so on a
+rotated ring it drew one ACROSS the start line and left the real seam 0 bare.
+Deleting and inserting the start line is editor work, and waits for the overhaul.
 
 ## 2. Canonical normalisation for encoding
 
