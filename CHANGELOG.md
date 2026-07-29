@@ -36,8 +36,8 @@ ships (see [AGENTS.md](AGENTS.md)).
   walls showed it first.
 - **See through bridges.** A car driving under a deck now shows through a
   dark window in the road above — the car itself, pointing where it points,
-  instead of the solid colored dot. The hole is cut in the asphalt only (the
-  rails stay solid), and a car driving ON the deck passes over it.
+  instead of the solid colored dot. The hole covers the bridge's whole width,
+  railings included, and a car driving ON the deck passes over it.
 - **The car shows where it points, without the headlight beam.** The thrown
   cone kept landing on the wrong surface around ramps and bridges, so the
   body carries the cue now: a lit nose, and the driver seated at the back
