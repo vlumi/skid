@@ -112,7 +112,12 @@ public enum PieceCompiler {
         }
         framed.walls =
             track.walls.map { wall in
-                Wall(from: wall.a + shift, to: wall.b + shift, height: wall.height, kind: wall.kind)
+                // `outward` is a DIRECTION: it survives the shift unchanged.
+                // Rebuilding a wall field-by-field here is how it would quietly
+                // get lost, so keep this exhaustive.
+                Wall(
+                    from: wall.a + shift, to: wall.b + shift, height: wall.height,
+                    kind: wall.kind, outward: wall.outward)
             }
             // The fence goes on AFTER re-framing, since it's defined against the
             // final `size` rather than against the walked coordinates.

@@ -26,11 +26,31 @@ public struct Wall: Equatable, Sendable, Codable {
     public var height: Double
     public var kind: Kind
 
-    public init(from a: Vec2, to b: Vec2, height: Double = 0, kind: Kind = .rail) {
+    /// **Which way this barrier's structure stands**, as a unit vector pointing
+    /// away from the road it guards — the direction its bulk occupies.
+    ///
+    /// A rail is a line here but a BAND on screen (`kerbBand` outboard of the
+    /// asphalt), so a car meeting it from that side must stop against the band's
+    /// face rather than the line's, and the collision needs to know which side
+    /// that is. It cannot be derived: comparing distance to the centerline costs
+    /// a full search per wall per tick, and "away from the middle of the map" is
+    /// a coin flip on a track that curls back on itself — measured 192 wrong out
+    /// of 430 rails on the clover. The compiler builds each edge's rails already
+    /// knowing the direction, so it simply records it.
+    ///
+    /// `.zero` means "no side" — a barrier with no bulk to stand clear of (the
+    /// map boundary, a level seal), and the case older data decodes to.
+    public var outward: Vec2 = .zero
+
+    public init(
+        from a: Vec2, to b: Vec2, height: Double = 0, kind: Kind = .rail,
+        outward: Vec2 = .zero
+    ) {
         self.a = a
         self.b = b
         self.height = height
         self.kind = kind
+        self.outward = outward
     }
 
 }

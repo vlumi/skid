@@ -50,6 +50,92 @@ final class WallTests: XCTestCase {
     /// Rails sit on the road's TRUE edge, not the height-scaled visual one — the
     /// grip width never scales with height, so a scaled rail sits somewhere the
     /// car can't reach.
+    /// **A car stops against the railing you can see, not the line behind it.**
+    ///
+    /// A rail is a segment in the model but a band on screen, `kerbBand` of it
+    /// outboard of the asphalt. Coming from the grass the car used to halt with
+    /// its centre a car-radius from that inner line, which left it stopped in
+    /// mid-air short of the barrier — measured at a clover ramp root, a 4.9-unit
+    /// gap. From INSIDE nothing changes: the band's inner half hides under the
+    /// asphalt, so the segment already is the face there.
+    func testACarStopsAgainstTheRailingItCanSee() throws {
+        let layout = try XCTUnwrap(TrackLibrary.layout(id: "clover"))
+        let track = try PieceCompiler.compile(layout, id: "clover")
+        // Both a deck rail and a ramp-ROOT rail: the band's stand-off grows with
+        // height, so one figure for all of them gave the low rails 12 units of
+        // invisible reach ("the car leans against nothing at the ramp's root").
+        for minHeight in [0.9, 0.0] {
+            try assertStopsAgainstItsBand(on: track, railAbove: minHeight)
+        }
+    }
+
+    private func assertStopsAgainstItsBand(on track: Track, railAbove: Double) throws {
+        let rail = try XCTUnwrap(
+            track.walls.first {
+                $0.kind == .rail && $0.outward.length > 0.001
+                    && $0.height > railAbove && $0.height < railAbove + 0.1
+                    && ($0.b - $0.a).length < Double(PieceCatalog.width)
+            }, "the clover should have a rail just above \(railAbove)")
+        let mid = (rail.a + rail.b) * 0.5
+
+        var race = Race(
+            track: track, players: [PlayerID(0)], config: RaceConfig(laps: 1))
+        // Approach from OUTSIDE, at the rail's own height, driving inward.
+        let start = mid + rail.outward * 40
+        race.cars[0].state.position = start
+        race.cars[0].state.height = rail.height
+        race.cars[0].state.velocity = rail.outward * -120
+        // The CLOSEST it ever gets: a wall has restitution, so the car bounces
+        // away again and its final rest position is not where it touched.
+        var closest = Double.greatestFiniteMagnitude
+        for _ in 0..<20 {
+            race.advance(inputs: [PlayerID(0): .coast])
+            closest = min(closest, (race.cars[0].state.position - mid).dot(rail.outward))
+        }
+        let standoff = closest
+
+        // It must stop clear of the band's outboard face, not just the segment.
+        let bandFace =
+            track.halfWidth(atHeight: rail.height) + Double(PieceCatalog.kerbBand)
+            - track.width / 2
+        XCTAssertGreaterThan(
+            standoff, bandFace,
+            "at h \(rail.height) the car stopped inside the railing's drawn band")
+        // And snug against it: the car's own radius past the band's face, no
+        // more, so the barrier is exactly as thick as it is drawn — no
+        // invisible reach beyond the picture.
+        XCTAssertLessThan(
+            standoff, bandFace + CarGeometry.radius + 2,
+            "at h \(rail.height) the car stopped short of the railing")
+    }
+
+    /// The face is **stored**, not inferred, and the compiler gets it right:
+    /// stepping along a rail's `outward` must lead away from the road it guards.
+    /// Deriving it instead was measured wrong for 192 of the clover's 430 rails
+    /// ("away from the middle of the map" fails wherever a track curls back).
+    func testEveryRailKnowsWhichWayIsOut() throws {
+        for id in ["eight", "clover"] {
+            let layout = try XCTUnwrap(TrackLibrary.layout(id: id))
+            let track = try PieceCompiler.compile(layout, id: id)
+            var checked = 0
+            for wall in track.walls
+            where wall.kind == .rail && wall.outward.length > 0.001 {
+                // End caps span the road across, so "out" has no meaning there.
+                guard (wall.b - wall.a).length < Double(PieceCatalog.width) else {
+                    continue
+                }
+                let mid = (wall.a + wall.b) * 0.5
+                let inward = track.distanceToCenterline(mid - wall.outward * 10)
+                let outward = track.distanceToCenterline(mid + wall.outward * 10)
+                XCTAssertGreaterThan(
+                    outward, inward,
+                    "\(id): a rail's outward must point away from its road")
+                checked += 1
+            }
+            XCTAssertGreaterThan(checked, 0, "\(id) should have faced rails")
+        }
+    }
+
     func testRailsSitOnTheRealRoadEdge() {
         let track = TrackLibrary.track(id: "eight")
         let count = track.centerline.count
