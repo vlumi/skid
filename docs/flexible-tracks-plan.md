@@ -65,7 +65,7 @@ drawing a chevron at seam 0 on the assumption it was the start line, so on a
 rotated ring it drew one ACROSS the start line and left the real seam 0 bare.
 Deleting and inserting the start line is editor work, and waits for the overhaul.
 
-## 2. Canonical normalisation for encoding
+## 2. Canonical normalization for encoding
 
 With the start line free to move and (step 4) a fitter to anchor at, the same
 track could be written several ways. Codes are identities, so **one track must
@@ -76,8 +76,30 @@ otherwise at the start line, and walk forward from there. Decode is unchanged �
 it still just walks the list in order — so this costs nothing at runtime and
 keeps decoding dumb.
 
-**Test.** Building the same ring from different starting points, in either
-direction, yields byte-identical codes.
+**Test.** Building the same ring from different starting points yields
+byte-identical codes.
+
+Note **reversal is not normalized away**: the same loop driven the other way is a
+different track (every corner swaps hand), so it keeps its own code. Only
+rotation is a re-spelling.
+
+**Done.** `TrackLayout.normalized()` rotates a closed ring to begin at the start
+line, carrying `origin`/`originHeight` to the new first piece (they describe
+piece 0, so rotating without them moves the track) and shifting `gateSeams` and
+`pitches` by the same offset. `TrackCode.encode` calls it. Open chains are
+returned untouched — mid-build, the first piece is where the author started and
+the two ends are not interchangeable.
+
+All four shipped built-ins were already canonical (start line at index 0), so no
+code changed; a test pins that, and fails loudly if a future built-in is authored
+otherwise.
+
+One correction from the investigation: an earlier reading of mine claimed gate
+seams "drift" when compound pieces expand on decode, measured as gates landing
+443 units apart. That was an ill-posed comparison — a hand-written compound
+layout against its own expansion, which are two different layouts, since **seams
+index the decoded primitives**. The real round trip is exactly stable: 19
+primitives in, 19 out, identical seams, gates 0.0000 apart.
 
 ## 3. Convert the stored tracks once
 
@@ -86,7 +108,7 @@ No compatibility shim. A format version byte is added so an old code fails
 compatibility promise, because a silently misread code is a miserable bug.
 
 - A one-shot converter re-encodes the built-ins and the maintainer's saved codes
-  into the new format (start line as a piece, normalised order).
+  into the new format (start line as a piece, normalized order).
 - `TrackLibrary`'s built-in codes are replaced with the converted ones.
 - Acceptance: every converted track compiles to geometry identical to what it
   compiled to before (same centerline, same gates, same lap count), and the AI
@@ -135,7 +157,7 @@ pose is computable, so the hint can name a direction.
   The editor must say so when the user tries.
 - **Drawn like any other piece**, with a discreet marker that it is the fitter —
   needed precisely so that "why can't I delete this?" has a visible answer.
-- **Its geometry is derived, not stored.** With the walk normalised to start at
+- **Its geometry is derived, not stored.** With the walk normalized to start at
   the fitter (step 2), both chains grow outward from it, so both loose ends are
   known before the fitter is evaluated. It needs an id in the stream and no
   payload, which also sidesteps the forward-reference problem: a piece meaning
