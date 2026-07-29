@@ -199,6 +199,17 @@ one-piece answer where `ClosureSearch` returns a multi-piece run.
   trig, and the forward-reference problem never arises — a stored fitter works
   anywhere in the stream, which is what makes multiple fitters and free deletion
   possible later.
+
+  **Consequence worth naming: a track of nothing but fitters is a freehand
+  track.** Once each one carries its own shape, the quantized catalog is the
+  convenient path rather than the only one, and an author could build a whole loop
+  out of curve-straight-curve pieces at arbitrary angles. The budget allows it —
+  the piece limit is 127 and ~5 bytes each keeps even 30–60 of them inside a
+  comfortable code. Not a goal, and not something to design *for* yet, but it
+  should be allowed to work rather than accidentally forbidden, and it is a
+  plausible future "freehand mode" for whoever wants one. What it must not break:
+  the overlap validator and the closure rules apply to fitters exactly as to
+  anything else.
 - **Solvability is validity.** A track whose fitter has no solution does not
   save. The check belongs in `TrackValidator` next to the overlap rules.
 
