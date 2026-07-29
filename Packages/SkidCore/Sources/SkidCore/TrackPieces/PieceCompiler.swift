@@ -51,14 +51,20 @@ public enum PieceCompiler {
         }
 
         // Gates: the road cross-section at each marked seam, seams ascending.
-        // Runtime convention: the LAST gate is start/finish. Seam 0 is the
-        // start line, so emit the others first and seam 0 last.
-        let orderedSeams = layout.gateSeams.filter { $0 != 0 }.sorted() + [0]
+        // Runtime convention: the LAST gate is start/finish, and the start/finish
+        // line is the START PIECE's own seam — which is its index, since seam N
+        // is piece N's exit. It is NOT seam 0: the start line is an ordinary
+        // piece and may sit anywhere on the ring (see
+        // docs/flexible-tracks-plan.md), so a track can be rotated, and later
+        // anchored somewhere other than its start.
+        let startSeam =
+            walk.placed.firstIndex { $0.id == PieceCatalog.startPieceID } ?? 0
+        let orderedSeams = layout.gateSeams.filter { $0 != startSeam }.sorted() + [startSeam]
         for seam in orderedSeams {
             gates.append(gate(at: seam, in: walk.placed))
         }
 
-        let (slots, heading) = startGrid(at: walk.placed[0])
+        let (slots, heading) = startGrid(at: walk.placed[startSeam])
 
         // Frame the track on what it ACTUALLY occupies, not on the whole
         // allowance.
