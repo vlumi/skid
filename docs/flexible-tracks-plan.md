@@ -101,18 +101,25 @@ layout against its own expansion, which are two different layouts, since **seams
 index the decoded primitives**. The real round trip is exactly stable: 19
 primitives in, 19 out, identical seams, gates 0.0000 apart.
 
-## 3. Convert the stored tracks once
+## 3. Convert the stored tracks once — NOT NEEDED
 
-No compatibility shim. A format version byte is added so an old code fails
-**loudly** rather than decoding into nonsense — worth having even with no
-compatibility promise, because a silently misread code is a miserable bug.
+Planned as a one-shot conversion behind a new version byte. It turned out there
+is nothing to convert, so nothing was written. Three reasons, each checked rather
+than assumed:
 
-- A one-shot converter re-encodes the built-ins and the maintainer's saved codes
-  into the new format (start line as a piece, normalized order).
-- `TrackLibrary`'s built-in codes are replaced with the converted ones.
-- Acceptance: every converted track compiles to geometry identical to what it
-  compiled to before (same centerline, same gates, same lap count), and the AI
-  still laps each of them.
+- **Steps 1 and 2 did not change the format.** Step 1 moved where the compiler
+  and validator *look* for the start line; step 2 rotates a ring before writing
+  it. Neither alters what the bytes mean.
+- **Every existing track already anchors at its start line**, so it is already in
+  canonical form. Verified for all four built-ins (start line at index 0,
+  re-encoding reproduces the stored code byte-for-byte, same gate count and road
+  length as before), and the maintainer confirmed the same for their saved codes.
+- **The version byte and the loud failure already exist.** `TrackCode` carries
+  `version = 1`, and `decode` throws `badVersion` on a mismatch — verified.
+
+So no bump: bumping would invalidate every existing code to no purpose. The
+version byte is there for when the format genuinely changes — the fitting piece
+(step 4) may be that moment, since it adds an id and possibly a payload.
 
 ## 4. The fitting piece — curve + straight + curve
 
@@ -148,6 +155,18 @@ are inside that dead zone the honest editor hint is "these ends are too close to
 bridge — lengthen one side" rather than "cannot close", and the nearest reachable
 pose is computable, so the hint can name a direction.
 
+**Scope for the first cut** (maintainer's call): the fitter may be inserted
+**only as the last piece, closing onto the start line**. The editor builds
+one-way, so that is the only position it can currently be placed at anyway, and
+it is exactly the position the closure suggester already reasons about. That makes
+step 4 a palette entry plus a solve, not an editor overhaul — and it is enough to
+test and verify the geometry on a real device, which is the point of doing it now.
+
+**What already fits it.** `ClosureGap` (TrackLayout.swift) splits the gap into the
+axis part and the *diagonal* (√2) part — the two currencies the fitter has to
+settle — plus `headingEighths`. So the solve's inputs exist; the fitter is a
+one-piece answer where `ClosureSearch` returns a multi-piece run.
+
 **Rules that make it tractable:**
 - **At most one per track**, and it may only be inserted to *join the loop* —
   never in open chain. A closed ring has exactly one place where two ends of a
@@ -157,12 +176,14 @@ pose is computable, so the hint can name a direction.
   The editor must say so when the user tries.
 - **Drawn like any other piece**, with a discreet marker that it is the fitter —
   needed precisely so that "why can't I delete this?" has a visible answer.
-- **Its geometry is derived, not stored.** With the walk normalized to start at
-  the fitter (step 2), both chains grow outward from it, so both loose ends are
-  known before the fitter is evaluated. It needs an id in the stream and no
-  payload, which also sidesteps the forward-reference problem: a piece meaning
-  "whatever reaches the next piece" is unencodable when the next piece's pose
-  does not exist yet.
+- **Geometry: derived while it is last, stored when it is not.** As the closing
+  piece it needs no payload — everything before it is known, and it simply
+  reaches the start line. That is the first cut. If it is ever allowed
+  mid-stream, the forward-reference problem returns (a piece meaning "whatever
+  reaches the next piece" is unencodable before the next piece's pose exists) and
+  it must carry its radius, angle and length explicitly. Worth deciding then, not
+  now — but note the reserved id block at 112–127 is for byte modes, so a
+  parameterized fitter would want a plain id plus a payload section.
 - **Solvability is validity.** A track whose fitter has no solution does not
   save. The check belongs in `TrackValidator` next to the overlap rules.
 
