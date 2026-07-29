@@ -242,7 +242,14 @@ public struct PlacedPiece: Equatable, Sendable {
     static func fitterSamples(
         _ fitter: Fitter, from entry: PiecePose, degreesPerSample: Double
     ) -> [Vec2] {
-        let side = fitter.stepsLeft ? 1.0 : -1.0
+        // NEGATIVE for a left step. `Fitter.displacement` measures "left" as
+        // `heading − 90°`, which in this y-down world is a NEGATIVE rotation; the
+        // sweep below turns by a positive angle for a positive turn. Getting this
+        // backwards mirrored the piece about its entry heading — the road left its
+        // own exit by 198 units on a real track, while the validator (which uses
+        // `displacement`) saw nothing wrong, because both sides of that comparison
+        // shared the same convention.
+        let side = fitter.stepsLeft ? -1.0 : 1.0
         var heading = entry.heading.radians
         var at = entry.position.vec2
         var points: [Vec2] = [at]
