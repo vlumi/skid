@@ -121,6 +121,15 @@ public enum PieceCatalog {
         // Start grid (straight 2U; the start/finish line is at its exit).
         add(Piece(id: ID.startGrid, paths: [[.straight(length: straight)]]))
 
+        // The fitting piece. Its `paths` are a PLACEHOLDER and are never walked:
+        // the walk takes a fitter's exit from the inlet it closes onto, and its
+        // real shape comes from the solved `Fitter` in the layout (see
+        // `TrackLayout.fitters`). The entry exists so the piece has a catalog
+        // identity — a kind, a name, a footprint for the palette — like everything
+        // else. Registering it with a zero-length straight keeps anything that
+        // walks the catalog blind to the special case.
+        add(Piece(id: ID.fitter, paths: [[.straight(length: 0)]]))
+
         // Crossable straights (at-grade intersections): 1U covers a 90°
         // crossing (shared zone = one width); a diagonal crossing needs 2U.
         add(
