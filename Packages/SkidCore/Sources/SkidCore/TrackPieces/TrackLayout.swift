@@ -106,6 +106,10 @@ public struct PlacedPiece: Equatable, Sendable {
     public var piece: Piece
     public var entry: PiecePose
     public var exits: [PiecePose]
+    /// The solved shape, for a fitting piece only. Its geometry is not in the
+    /// catalog — see `Fitter` — so the walk carries it here for whoever draws or
+    /// drives the road.
+    public var fitter: Fitter?
     /// Continuous **height** at this piece's entry (0 = ground, 1 = deck).
     /// The exit height is `entryHeight + climb`.
     public var entryHeight: Double
@@ -210,6 +214,11 @@ public struct PlacedPiece: Equatable, Sendable {
     public func centerlineSamples(path pathIndex: Int = 0, degreesPerSample: Double = 6)
         -> [Vec2]
     {
+        // A fitter's road is its solved curve-straight-curve, not a catalog path.
+        if let fitter {
+            return Self.fitterSamples(
+                fitter, from: entry, degreesPerSample: degreesPerSample)
+        }
         guard pathIndex < piece.paths.count else { return [entry.position.vec2] }
         // Walk the chain segment by segment, concatenating samples. Each
         // segment starts where the previous ended, so drop the duplicated
@@ -221,6 +230,45 @@ public struct PlacedPiece: Equatable, Sendable {
                 of: segment, from: pose, degreesPerSample: degreesPerSample)
             points.append(contentsOf: sampled.dropFirst())
         }
+        return points
+    }
+
+    /// A fitter's centerline: arc, straight, mirrored arc, sampled in world space.
+    ///
+    /// Walked in floating point from the entry pose — the one piece for which that
+    /// is right, since its shape is a solved float and its exit is pinned
+    /// separately (the inlet it closes onto). Any drift over the piece's own
+    /// length is ~1e-12 units, twelve orders below a device pixel.
+    static func fitterSamples(
+        _ fitter: Fitter, from entry: PiecePose, degreesPerSample: Double
+    ) -> [Vec2] {
+        let side = fitter.stepsLeft ? 1.0 : -1.0
+        var heading = entry.heading.radians
+        var at = entry.position.vec2
+        var points: [Vec2] = [at]
+
+        func sweep(_ turn: Double) {
+            guard abs(turn) > 1e-12 else { return }
+            let steps = max(
+                1, Int((abs(turn) * 180 / .pi / degreesPerSample).rounded(.up)))
+            let center =
+                at + Vec2(angle: heading + (turn > 0 ? .pi / 2 : -.pi / 2))
+                * fitter.radius
+            let startAngle = atan2(at.y - center.y, at.x - center.x)
+            for step in 1...steps {
+                let a = startAngle + turn * Double(step) / Double(steps)
+                points.append(center + Vec2(angle: a) * fitter.radius)
+            }
+            at = points[points.count - 1]
+            heading += turn
+        }
+
+        sweep(side * fitter.angle)
+        if fitter.length > 0 {
+            at += Vec2(angle: heading) * fitter.length
+            points.append(at)
+        }
+        sweep(-side * fitter.angle)
         return points
     }
 
