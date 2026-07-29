@@ -166,6 +166,10 @@ extension EditorView {
         let problems = TrackValidator.validate(layout).problems
         for problem in problems {
             if case .unclosedHeight = problem { return "Ramp back down before closing" }
+            // A fitting piece whose shape no longer spans its gap — its
+            // neighbours were edited after it was solved. Re-solving is the fix,
+            // which is what re-closing does.
+            if case .unsolvedFitter = problem { return "Close the loop again to refit" }
         }
         if problems.contains(.overlap) { return "The track crosses itself — reshape it" }
         if problems.contains(.offCanvas) { return "The track runs off the canvas" }

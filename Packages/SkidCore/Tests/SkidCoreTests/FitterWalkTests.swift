@@ -100,3 +100,72 @@ final class FitterWalkTests: XCTestCase {
         }
     }
 }
+
+/// Validation rules that exist only because a fitter's shape is stored rather
+/// than derived.
+final class FitterValidationTests: XCTestCase {
+    private typealias Catalog = PieceCatalog.ID
+
+    /// A closed ring, with the last piece replaced by a properly solved fitter.
+    private func fittedRing() throws -> TrackLayout {
+        let full = try TrackCode.decode(
+            try XCTUnwrap(TrackLibrary.builtins.first { $0.id == "oval" }).code)
+        var short = full
+        short.pieces.remove(at: 13)
+        short.gateSeams = full.gateSeams.filter { $0 < 13 }
+        let end = try XCTUnwrap(short.walk().openEnds.first)
+        let delta = short.origin.position.vec2 - end.position.vec2
+        let solved = try XCTUnwrap(
+            Fitter.solving(
+                forward: delta.dot(Vec2(angle: end.heading.radians)),
+                left: delta.dot(Vec2(angle: end.heading.radians - .pi / 2))))
+        var layout = short
+        layout.pieces.append(Catalog.fitter)
+        layout.fitters = [layout.pieces.count - 1: solved]
+        return layout
+    }
+
+    /// **A solved fitter is saveable**, so the rules below aren't just refusing
+    /// everything.
+    func testARingClosedByAFitterIsSaveable() throws {
+        let problems = TrackValidator.validate(try fittedRing()).problems
+        XCTAssertFalse(
+            problems.contains(.unsolvedFitter(1)),
+            "a properly solved fitter must not be reported: \(problems)")
+    }
+
+    /// A fitter with no stored shape has no road at all, so the track can't save.
+    func testAFitterWithoutAShapeIsRefused() throws {
+        var layout = try fittedRing()
+        layout.fitters = [:]
+        XCTAssertTrue(
+            TrackValidator.validate(layout).problems.contains(.unsolvedFitter(1)),
+            "an unsolved fitter must be reported")
+    }
+
+    /// **A stale shape is refused too** — the case that only exists because the
+    /// shape is stored. Editing a neighbour changes the gap without changing the
+    /// stored answer, which would leave a kink at the seam.
+    func testAStaleFitterShapeIsRefused() throws {
+        var layout = try fittedRing()
+        let index = layout.pieces.count - 1
+        let solved = try XCTUnwrap(layout.fitters[index])
+        // Same shape, longer middle: no longer spans the gap it has to.
+        layout.fitters[index] = Fitter(
+            radius: solved.radius, angle: solved.angle,
+            length: solved.length + Double(PieceCatalog.unit), stepsLeft: solved.stepsLeft)
+        XCTAssertTrue(
+            TrackValidator.validate(layout).problems.contains(.unsolvedFitter(1)),
+            "a fitter that no longer reaches its exit must be reported")
+    }
+
+    /// An unsolved fitter must not make PLACEMENT illegal — placing the piece and
+    /// then solving it is the ordinary order of events.
+    func testAnUnsolvedFitterStillPlaces() throws {
+        var layout = try fittedRing()
+        layout.fitters = [:]
+        let problems = TrackValidator.validate(layout).problems
+        XCTAssertFalse(
+            problems.contains(.overlap), "an unsolved fitter is not an overlap")
+    }
+}

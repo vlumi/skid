@@ -26,6 +26,9 @@ public struct Validation: Equatable, Sendable {
         /// The road left the world's storeys — climbed past the top level or
         /// dug below the bottom one.
         case heightOutOfBounds(Double)
+        /// A fitting piece has no solved shape, or a shape that doesn't reach
+        /// what it is supposed to close onto. Carries how many are wrong.
+        case unsolvedFitter(Int)
     }
 
     public var problems: [Problem]
@@ -75,7 +78,11 @@ public enum TrackValidator {
         !validate(candidate).problems.contains { problem in
             switch problem {
             case .overlap, .offCanvas, .walk, .heightOutOfBounds: return true
-            case .openEnds, .gates, .startCount, .unclosedHeight: return false
+            // An unsolved fitter is an ordinary mid-build state — the piece is
+            // placed, then solved — so it does not make a placement illegal. It
+            // does stop the track saving, which is rule 4b in `validate`.
+            case .openEnds, .gates, .startCount, .unclosedHeight, .unsolvedFitter:
+                return false
             }
         }
     }
@@ -107,6 +114,15 @@ public enum TrackValidator {
         // 4. Gates: 2…16, the start line's own seam included, in range.
         if !gatesValid(layout, placedCount: walk.placed.count) {
             problems.append(.gates)
+        }
+
+        // 4b. Every fitter is solved, and its shape really spans its gap. A
+        // fitter's geometry is not in the catalog — it is stored per placement —
+        // so an unsolved one has no road at all, and a stale one (its neighbours
+        // edited after it was solved) would leave a visible kink at the seam.
+        let brokenFitters = unsolvedFitters(layout, walk: walk)
+        if brokenFitters > 0 {
+            problems.append(.unsolvedFitter(brokenFitters))
         }
 
         // 5. Fits the canvas.
@@ -156,6 +172,39 @@ public enum TrackValidator {
     /// (The "every route crosses gates in the same cyclic order" rule only bites
     /// once forks compile — Phase B — since Phase A tracks are single-route by
     /// construction.)
+    /// How many fitting pieces are missing a shape, or carry one that no longer
+    /// spans the gap it has to bridge.
+    ///
+    /// The second half is what keeps a fitter honest under editing: its shape is
+    /// stored, not derived, so moving or deleting a neighbour changes the gap
+    /// without changing the stored answer. Checking that the shape still lands on
+    /// the piece's own exit catches that, and it is the same comparison the seam
+    /// test makes.
+    private static func unsolvedFitters(_ layout: TrackLayout, walk: WalkResult) -> Int {
+        var wrong = 0
+        for placed in walk.placed where placed.id == PieceCatalog.fitterPieceID {
+            guard let fitter = placed.fitter else {
+                wrong += 1
+                continue
+            }
+            let step = fitter.displacement
+            let forward = Vec2(angle: placed.entry.heading.radians)
+            let left = Vec2(angle: placed.entry.heading.radians - .pi / 2)
+            let reached =
+                placed.entry.position.vec2 + forward * step.forward + left * step.left
+            if reached.distance(to: placed.exits[0].position.vec2) > fitterTolerance {
+                wrong += 1
+            }
+        }
+        return wrong
+    }
+
+    /// How far a stored fitter may land from the pose it must reach. Generous
+    /// against the solve's own precision (which is four orders finer) and far
+    /// below anything visible — a device pixel is about a unit — so this catches
+    /// a STALE shape, not a rounding difference.
+    private static let fitterTolerance = 0.5
+
     private static func gatesValid(_ layout: TrackLayout, placedCount: Int) -> Bool {
         let seams = Set(layout.gateSeams)
         // The start line's own seam must be gated — it is the finish line. That
