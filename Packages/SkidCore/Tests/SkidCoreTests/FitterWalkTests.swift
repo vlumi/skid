@@ -32,6 +32,51 @@ final class FitterWalkTests: XCTestCase {
         XCTAssertEqual(fitter.exits[0].heading, layout.origin.heading)
     }
 
+    /// **The drawn road arrives where the exit says it does.** The exit is pinned
+    /// to the inlet while the road is sampled from the solved shape, so if the two
+    /// disagreed the track would kink at the seam — visibly, and the car would
+    /// drive a different line from the one drawn. This is the test that the pinning
+    /// trick is sound.
+    ///
+    /// The case is derived rather than invented: take a ring that closes (the oval
+    /// built-in), drop one piece, and the remaining gap is exactly what that piece
+    /// spanned. Chains assembled by hand tend to *overshoot* the origin, which a
+    /// fitter cannot fix — its length is non-negative, so it can only ever travel
+    /// forward.
+    func testTheSampledRoadReachesThePinnedExit() throws {
+        let full = try TrackCode.decode(
+            try XCTUnwrap(TrackLibrary.builtins.first { $0.id == "oval" }).code)
+        var short = full
+        let dropped = 13  // a 1U straight; the gap becomes 1U straight ahead
+        short.pieces.remove(at: dropped)
+        short.gateSeams = [0]
+        let openWalk = short.walk()
+        let end = try XCTUnwrap(openWalk.openEnds.first)
+        let delta = short.origin.position.vec2 - end.position.vec2
+        let solved = try XCTUnwrap(
+            Fitter.solving(
+                forward: delta.dot(Vec2(angle: end.heading.radians)),
+                left: delta.dot(Vec2(angle: end.heading.radians - .pi / 2))))
+
+        var layout = short
+        layout.pieces.append(Catalog.fitter)
+        layout.fitters = [layout.pieces.count - 1: solved]
+        let closed = layout.walk()
+        XCTAssertNil(closed.failure)
+        XCTAssertTrue(closed.openEnds.isEmpty, "the fitter must close the ring")
+
+        let placed = try XCTUnwrap(closed.placed.last)
+        XCTAssertEqual(placed.id, Catalog.fitter)
+        let road = placed.centerlineSamples(degreesPerSample: 3)
+        XCTAssertEqual(
+            try XCTUnwrap(road.last).distance(to: placed.exits[0].position.vec2), 0,
+            accuracy: 0.01,
+            "the sampled road must land on the pinned exit, or the seam kinks")
+        XCTAssertEqual(
+            try XCTUnwrap(road.first).distance(to: placed.entry.position.vec2), 0,
+            accuracy: 1e-9, "and start at its entry")
+    }
+
     /// The walk still refuses a fitter with nothing to close onto, rather than
     /// inventing a destination.
     func testAFitterWithNothingToCloseOntoFails() {

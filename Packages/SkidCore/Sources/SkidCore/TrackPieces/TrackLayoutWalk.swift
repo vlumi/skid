@@ -64,6 +64,7 @@ extension TrackLayout {
             var placement = PlacedPiece(
                 id: id, piece: piece, entry: entry, exits: exits,
                 entryHeight: entryHeight, entrySeam: seam, pitch: pitch(at: index))
+            placement.fitter = id == PieceCatalog.fitterPieceID ? fitters[index] : nil
             // A climb runs straight through into a neighbour climbing the same
             // way; it eases only against everything else. (Sequence order is
             // placement order — forks are Phase B, so neighbours are i±1.)
