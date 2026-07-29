@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The app icon's car matches the one you drive.** Same lit nose and
+  rear-seated driver as in the game, instead of the older plain body.
 - **Railings stop you where they look like they should.** Coming off the grass
   at a ramp or bridge, the car used to halt just short of the railing — and
   after that was fixed, low railings briefly pushed back from further away than
