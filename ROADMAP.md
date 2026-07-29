@@ -78,18 +78,18 @@ What's left:
 - [ ] **Crossings and jumps in the compiler.** The catalog has the geometry and
       the editor has the buttons hidden; the Phase-A compiler can't build either
       yet. Crossings are DESIGNED — see
-      [docs/crossing-plan.md](docs/crossing-plan.md): a crossing stays two
-      crossable pieces that overlap (nothing stored, so deletion cannot dangle;
-      crossable is a per-piece FLAG so curves can cross too — a pinched 8 is
-      legal — and switching is a flag toggle; rendering verified correct from
-      the existing paint order alone). The remaining engine work is the
-      per-sample legality rule (both sides flagged, angle ≥ 45°, ground level
-      only at first — flat pieces have no rails, so a ground crossing has no
-      wall problem) and a heading-alignment tiebreak for the resolver in the
-      shared zone — owed before or during the editor overhaul, since mid-track
-      deletion interacts with it. Fully permissive overlap ("gates keep track
-      of the track") was considered and bounded out: the gate insight is right,
-      but unbounded zones tax kerbs, walls and every future decal.
+      [docs/crossing-plan.md](docs/crossing-plan.md): crossings are IMPLICIT.
+      Nothing is declared, flagged or placed — draw a road across a road, and
+      steep same-height overlap is legal while shallow overlap stays refused.
+      Nothing stored (deletion cannot dangle), zero encoding, no editor
+      controls; a pinched )( eight works since the rule never asks what shape
+      a piece is; rendering verified correct from the existing paint order
+      alone, and the angle threshold is what keeps zones small enough for
+      kerbs/walls/decals to stay tractable. Ground level only at first (flat
+      pieces have no rails, so no wall problem). Remaining engine work: the
+      per-sample rule itself, a heading-alignment tiebreak for the resolver in
+      the shared zone, and keeping gate seams out of the zone — owed before or
+      during the editor overhaul, since mid-track deletion interacts with it.
 
       A CROSSING is cheap, and worth doing when the pieces are: the route stays
       one closed ring (a track already crosses itself wherever a bridge does),
