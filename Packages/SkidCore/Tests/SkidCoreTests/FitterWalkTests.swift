@@ -101,6 +101,34 @@ final class FitterWalkTests: XCTestCase {
     }
 }
 
+/// A real fitted track from the editor, kept as a regression: the first one built
+/// on a device had its fitter drawn 198 units from its own exit (a left-stepping
+/// jog, mirrored by a sign error the validator could not see, because it compared
+/// `displacement` against itself).
+final class FittedTrackRegressionTests: XCTestCase {
+    func testTheFirstFittedTrackDrawsWhereItClaims() throws {
+        let code = "AYMBFB8BAHoDAwl4AwIBAAoABHkEBHgpAgMAEAYDBQHgBSgBBggWgE7JyylAtQUBAg"
+        let layout = try TrackCode.decode(code)
+        let fitter = try XCTUnwrap(layout.fitters.values.first)
+        XCTAssertTrue(fitter.stepsLeft, "this track's fitter steps left — the broken case")
+
+        let walk = layout.walk()
+        XCTAssertNil(walk.failure)
+        XCTAssertTrue(walk.openEnds.isEmpty, "it closes")
+        XCTAssertTrue(TrackValidator.validate(layout).isSaveable)
+
+        let placed = try XCTUnwrap(
+            walk.placed.first { $0.id == PieceCatalog.fitterPieceID })
+        let road = placed.centerlineSamples(degreesPerSample: 3)
+        XCTAssertEqual(
+            try XCTUnwrap(road.last).distance(to: placed.exits[0].position.vec2), 0,
+            accuracy: 0.01, "the drawn road must reach the piece's own exit")
+        // And it races.
+        let track = try PieceCompiler.compile(layout, id: "fitted")
+        XCTAssertGreaterThan(track.centerlineLength, 0)
+    }
+}
+
 /// Validation rules that exist only because a fitter's shape is stored rather
 /// than derived.
 final class FitterValidationTests: XCTestCase {

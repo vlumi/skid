@@ -192,6 +192,40 @@ final class FitterTests: XCTestCase {
         XCTAssertNoThrow(try TrackCode.decode(TrackCode.encode(layout)))
     }
 
+    /// **The sampled road and the closed form must agree — for BOTH jog sides.**
+    ///
+    /// They didn't. `displacement` measures "left" as `heading − 90°`, which is a
+    /// negative rotation in this y-down world, while the sampler swept positively
+    /// for a left step — so a left-stepping fitter came out mirrored about its
+    /// entry heading. On a real track that put the road 198 units from its own
+    /// exit, and neither the validator nor the seam test caught it: the validator
+    /// uses `displacement` on both sides of its comparison, and the seam test
+    /// happened to use a right-stepping fitter.
+    ///
+    /// Sweeping both sides at several headings is what makes this stick.
+    func testTheSampledRoadAgreesWithTheClosedFormBothWays() {
+        for stepsLeft in [true, false] {
+            for headingStep in 0...7 {
+                let fitter = Fitter(
+                    radius: unit, angle: 0.45, length: 1.3 * unit, stepsLeft: stepsLeft)
+                let entry = PiecePose(
+                    position: CoordPoint(3, 5), heading: Heading(headingStep))
+                let road = PlacedPiece.fitterSamples(
+                    fitter, from: entry, degreesPerSample: 3)
+                // Where the closed form says it lands.
+                let step = fitter.displacement
+                let forward = Vec2(angle: entry.heading.radians)
+                let left = Vec2(angle: entry.heading.radians - .pi / 2)
+                let expected =
+                    entry.position.vec2 + forward * step.forward + left * step.left
+                XCTAssertEqual(
+                    road.last!.distance(to: expected), 0, accuracy: 0.01,
+                    "stepsLeft=\(stepsLeft) heading=\(headingStep): the drawn road "
+                        + "must end where the solve says it does")
+            }
+        }
+    }
+
     /// Displacement matches the closed form worked out by hand: two arc chords
     /// plus the straight, resolved into the entry frame.
     func testDisplacementMatchesTheClosedForm() {
