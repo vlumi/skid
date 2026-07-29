@@ -127,6 +127,34 @@ final class FittedTrackRegressionTests: XCTestCase {
         let track = try PieceCompiler.compile(layout, id: "fitted")
         XCTAssertGreaterThan(track.centerlineLength, 0)
     }
+
+    /// **A fitter is edged like the road it is**, which the device screenshot
+    /// confirms: both sides get the plain white line, and the exit kerb of the
+    /// corner run it terminates carries a little way onto it — the same treatment
+    /// any straight following a corner gets.
+    ///
+    /// It works because kerbs are planned from `centerlineSamples`, the funnel a
+    /// fitter already feeds, and because its catalog path is a placeholder straight
+    /// so the corner detector reads it as a straight. Neither is a coincidence
+    /// worth breaking: a gentle lateral jog is not a corner a car would cut.
+    func testAFitterIsEdgedLikeARoad() throws {
+        let code = "AfkBFB8BAHoDAwl4AwIBAAoABHkEBHgpAgMABREDBQNIAtABBggWgE7JyylAtQUBAg"
+        let layout = try TrackCode.decode(code)
+        let walk = layout.walk()
+        let plan = KerbPlan.plan(for: walk)
+        let index = try XCTUnwrap(
+            walk.placed.firstIndex { $0.id == PieceCatalog.fitterPieceID })
+        let styles = plan.styles[index]
+        XCTAssertEqual(
+            styles.count,
+            walk.placed[index].centerlineSamples(
+                degreesPerSample: KerbPlan.degreesPerSample
+            ).count,
+            "every sample of the fitter's road must be edged")
+        XCTAssertTrue(
+            styles.contains { $0.left == .line && $0.right == .line },
+            "most of a fitter is plain edge line, not kerbing")
+    }
 }
 
 /// Validation rules that exist only because a fitter's shape is stored rather
