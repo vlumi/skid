@@ -38,14 +38,26 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     /// other height derives from it by pitch, exactly as before; this is only
     /// the baseline the walk starts from.
     public var originHeight: Double
-    /// Seam indices that are checkpoint gates (0 = the start/finish, always).
+    /// Seam indices that are checkpoint gates. The start line's own seam is
+    /// always among them — it is the finish line — and that seam is the start
+    /// piece's index, not necessarily 0.
     public var gateSeams: [Int]
+    /// **Solved shapes for the fitting pieces**, keyed by piece index.
+    ///
+    /// Every other piece's geometry comes from the catalog; a fitter's is solved
+    /// when it is placed, because it exists precisely to make a shape the catalog
+    /// cannot. Stored rather than re-derived so that every device walks identical
+    /// numbers (see `Fitter`). An index with no entry is a fitter that has not
+    /// been solved, which the validator refuses.
+    public var fitters: [Int: Fitter]
     public var theme: Theme
 
     public init(
         pieces: [PieceID], pitches: [Pitch] = [], origin: PiecePose = .origin,
-        originHeight: Double = 0, gateSeams: [Int] = [0], theme: Theme = .normal
+        originHeight: Double = 0, gateSeams: [Int] = [0], theme: Theme = .normal,
+        fitters: [Int: Fitter] = [:]
     ) {
+        self.fitters = fitters
         self.pieces = pieces
         self.originHeight = originHeight
         // Normalized to the piece count so equality is structural: trailing

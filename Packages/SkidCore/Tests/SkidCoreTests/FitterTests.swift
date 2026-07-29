@@ -6,6 +6,13 @@ import XCTest
 final class FitterTests: XCTestCase {
     private let unit = Double(PieceCatalog.unit)
 
+    /// How close a solved fitter lands on its target. Not machine epsilon: a
+    /// solved fitter is snapped to the encodable grid immediately (so that the
+    /// shape which closes the loop is the shape a decoded code reproduces), and
+    /// the grid step is ~6e-5 units of length. That is four orders of magnitude
+    /// below `Track.surfaceTolerance` and five below a device pixel.
+    private let landing = 1e-3
+
     /// **At zero angle the fitter IS a straight.** Not an edge case to tolerate —
     /// it is what makes the piece total, since a purely longitudinal gap has no
     /// lateral component for a jog to produce.
@@ -59,8 +66,8 @@ final class FitterTests: XCTestCase {
         XCTAssertFalse(fitter.stepsLeft, "the gap steps right")
         // And it lands where it was asked to, which is the whole point.
         let step = fitter.displacement
-        XCTAssertEqual(step.forward, forward, accuracy: 1e-9)
-        XCTAssertEqual(step.left, left, accuracy: 1e-9)
+        XCTAssertEqual(step.forward, forward, accuracy: landing)
+        XCTAssertEqual(step.left, left, accuracy: landing)
     }
 
     /// The gap my planning search actually solved, kept because it exercises a
@@ -70,8 +77,8 @@ final class FitterTests: XCTestCase {
             Fitter.solving(forward: 4 * unit, left: -1.5 * unit))
         XCTAssertGreaterThan(fitter.length, 0, "this one needs a middle straight")
         let step = fitter.displacement
-        XCTAssertEqual(step.forward, 4 * unit, accuracy: 1e-6)
-        XCTAssertEqual(step.left, -1.5 * unit, accuracy: 1e-6)
+        XCTAssertEqual(step.forward, 4 * unit, accuracy: landing)
+        XCTAssertEqual(step.left, -1.5 * unit, accuracy: landing)
     }
 
     /// A purely forward gap solves as the zero-angle straight — the case that
@@ -82,7 +89,7 @@ final class FitterTests: XCTestCase {
                 Fitter.solving(forward: units * unit, left: 0),
                 "\(units)U straight-ahead must solve")
             XCTAssertEqual(fitter.angle, 0, accuracy: 1e-9)
-            XCTAssertEqual(fitter.length, units * unit, accuracy: 1e-6)
+            XCTAssertEqual(fitter.length, units * unit, accuracy: landing)
         }
     }
 
@@ -100,10 +107,11 @@ final class FitterTests: XCTestCase {
                 solved += 1
                 let step = fitter.displacement
                 XCTAssertEqual(
-                    step.forward, forward, accuracy: 1e-6,
+                    step.forward, forward, accuracy: landing,
                     "forward \(forward) left \(left)")
                 XCTAssertEqual(
-                    step.left, left, accuracy: 1e-6, "forward \(forward) left \(left)")
+                    step.left, left, accuracy: landing,
+                    "forward \(forward) left \(left)")
                 XCTAssertGreaterThanOrEqual(fitter.length, 0)
                 XCTAssertLessThanOrEqual(fitter.angle, Fitter.maxAngle + 1e-9)
             }
@@ -117,6 +125,74 @@ final class FitterTests: XCTestCase {
     func testGapsTooShortToBridgeHaveNoSolution() {
         XCTAssertNil(Fitter.solving(forward: 0.3 * unit, left: 0.2 * unit))
         XCTAssertNil(Fitter.solving(forward: 0, left: unit), "sideways only")
+    }
+
+    /// **A decoded fitter is bit-identical to the one that was solved.** This is
+    /// the determinism claim the stored payload exists for: `sin` and `atan2` are
+    /// not required to be correctly rounded, so a device that re-solved would risk
+    /// an ULP of disagreement, and lockstep has no tolerance for that.
+    func testADecodedFitterIsBitIdentical() throws {
+        let solved = try XCTUnwrap(
+            Fitter.solving(forward: 4 * unit, left: -1.5 * unit))
+        let layout = TrackLayout(
+            pieces: [PieceCatalog.ID.startGrid, PieceCatalog.ID.fitter],
+            gateSeams: [0], fitters: [1: solved])
+        let restored = try TrackCode.decode(TrackCode.encode(layout))
+        let back = try XCTUnwrap(restored.fitters[1])
+        XCTAssertEqual(back.radius.bitPattern, solved.radius.bitPattern)
+        XCTAssertEqual(back.angle.bitPattern, solved.angle.bitPattern, "angle must survive exactly")
+        XCTAssertEqual(
+            back.length.bitPattern, solved.length.bitPattern, "length must survive exactly")
+        XCTAssertEqual(back.stepsLeft, solved.stepsLeft)
+    }
+
+    /// The whole grid survives encoding, not just one lucky value — swept over
+    /// solved fitters across the reachable range.
+    func testEverySolvedFitterSurvivesEncodingExactly() throws {
+        var checked = 0
+        for forwardHalf in 3...12 {
+            for leftHalf in [-4, -1, 0, 2, 5] {
+                let forward = Double(forwardHalf) * 0.5 * unit
+                let left = Double(leftHalf) * 0.5 * unit
+                guard let solved = Fitter.solving(forward: forward, left: left)
+                else { continue }
+                let layout = TrackLayout(
+                    pieces: [PieceCatalog.ID.startGrid, PieceCatalog.ID.fitter],
+                    gateSeams: [0], fitters: [1: solved])
+                let back = try XCTUnwrap(
+                    try TrackCode.decode(TrackCode.encode(layout)).fitters[1])
+                XCTAssertEqual(back, solved, "forward \(forward) left \(left)")
+                checked += 1
+            }
+        }
+        XCTAssertGreaterThan(checked, 20, "the sweep should cover plenty")
+    }
+
+    /// A track with no fitters encodes exactly as before the section existed —
+    /// the section is omitted, so existing codes keep their bytes.
+    func testTracksWithoutFittersAreUnaffected() throws {
+        for builtin in TrackLibrary.builtins {
+            let layout = try TrackCode.decode(builtin.code)
+            XCTAssertTrue(layout.fitters.isEmpty, "\(builtin.id) has no fitters")
+            XCTAssertEqual(
+                TrackCode.encode(layout), builtin.code,
+                "\(builtin.id): adding the fitters section must not change its code")
+        }
+    }
+
+    /// Malformed fitter payloads are refused rather than misread.
+    func testAMalformedFitterSectionIsRejected() throws {
+        let solved = try XCTUnwrap(Fitter.solving(forward: 4 * unit, left: -1.5 * unit))
+        let layout = TrackLayout(
+            pieces: [PieceCatalog.ID.startGrid, PieceCatalog.ID.fitter],
+            gateSeams: [0], fitters: [1: solved])
+        // A fitter whose index addresses no piece must not decode.
+        let bad = TrackLayout(
+            pieces: [PieceCatalog.ID.startGrid, PieceCatalog.ID.fitter],
+            gateSeams: [0], fitters: [9: solved])
+        XCTAssertThrowsError(try TrackCode.decode(TrackCode.encode(bad)))
+        // The good one still round-trips, so the guard isn't over-broad.
+        XCTAssertNoThrow(try TrackCode.decode(TrackCode.encode(layout)))
     }
 
     /// Displacement matches the closed form worked out by hand: two arc chords

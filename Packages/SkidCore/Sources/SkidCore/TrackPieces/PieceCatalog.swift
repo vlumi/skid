@@ -220,10 +220,19 @@ public enum PieceCatalog {
         public static let joinStraightRight: PieceID = 38
         public static let joinSymmetric: PieceID = 39
         public static let jump: PieceID = 40
+        /// The fitting piece — a curve-straight-curve jog whose shape is SOLVED
+        /// and stored per placement, not fixed by the catalog. See `Fitter`.
+        public static let fitter: PieceID = 41
     }
 
     /// The start-grid piece id — exactly one per track.
     public static let startPieceID: PieceID = ID.startGrid
+
+    /// The fitting piece's id. Unlike every other piece, its geometry is not in
+    /// the catalog: each placement carries its own solved shape in
+    /// `TrackLayout.fitters`, because the whole point is a shape the catalog
+    /// cannot express.
+    public static let fitterPieceID: PieceID = ID.fitter
 
     public static func piece(_ id: PieceID) -> Piece? { all[id] }
 }
