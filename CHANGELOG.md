@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 10 — 2026-07-29
+
 - **A track can close even when the pieces don't quite meet.** Mixing straights
   along the grid with diagonal ones used to leave gaps no piece could fill, which
   made some shapes — a figure-eight with one diagonal loop, say — impossible to
