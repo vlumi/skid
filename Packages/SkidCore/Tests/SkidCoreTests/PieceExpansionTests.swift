@@ -88,6 +88,11 @@ final class PieceExpansionTests: XCTestCase {
             Pieces.curve45MediumLeft, Pieces.curve45MediumRight,
             Pieces.curve45SweepLeft, Pieces.curve45SweepRight,
             Pieces.startGrid,
+            // The fitter is primitive because it has no expansion: its shape is
+            // solved per placement and stored in the layout, not built from other
+            // pieces. It is the one primitive whose geometry the catalog does not
+            // describe.
+            Pieces.fitter,
         ]
         let actual = Set(
             PieceCatalog.all
