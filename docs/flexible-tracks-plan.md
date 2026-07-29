@@ -168,29 +168,45 @@ settle — plus `headingEighths`. So the solve's inputs exist; the fitter is a
 one-piece answer where `ClosureSearch` returns a multi-piece run.
 
 **Rules that make it tractable:**
-- **At most one per track**, and it may only be inserted to *join the loop* —
-  never in open chain. A closed ring has exactly one place where two ends of a
-  linear build meet.
-- **While a fitter exists, no other piece may be removed from the ring** — its
-  geometry is derived from both neighbours, so deleting elsewhere invalidates it.
-  The editor must say so when the user tries.
+- **First cut: one per track, inserted last, closing onto the start line.** Not
+  because the model requires it — see the storage note below, which removes that
+  constraint — but because that is what a one-way editor can place and what is
+  needed to verify the geometry on a device.
+- **No special deletion rule.** Because the fitter stores its own solved shape it
+  does not depend on its neighbours, so removing another piece cannot invalidate
+  it: the loop simply stops being closed, which is ordinary mid-build state the
+  editor already handles. (An earlier draft of this plan forbade deleting any ring
+  piece while a fitter existed, and made "at most one" a hard rule. Storing the
+  solve retires both.)
 - **Drawn like any other piece**, with a discreet marker that it is the fitter —
   needed precisely so that "why can't I delete this?" has a visible answer.
-- **Geometry: derived while it is last, stored when it is not.** As the closing
-  piece it needs no payload — everything before it is known, and it simply
-  reaches the start line. That is the first cut. If it is ever allowed
-  mid-stream, the forward-reference problem returns (a piece meaning "whatever
-  reaches the next piece" is unencodable before the next piece's pose exists) and
-  it must carry its radius, angle and length explicitly. Worth deciding then, not
-  now — but note the reserved id block at 112–127 is for byte modes, so a
-  parameterized fitter would want a plain id plus a payload section.
+- **Geometry is SOLVED ONCE AND STORED** — radius, arc angle, middle length —
+  not re-derived on decode. Roughly 4–5 bytes: 2 bits of radius (three catalog
+  values), the angle in fixed point, the length in fixed point. The reserved
+  112–127 block is for byte modes, so this wants a plain id plus a payload
+  section.
+
+  **The reason is determinism, not precision.** The closure residual is ~1e-12
+  units against a device pixel of ~0.97 units on a phone — twelve orders below
+  visible, ten below the tightest gameplay tolerance (`surfaceTolerance` 0.12).
+  That part is harmless. But AGENTS.md commits Phase 2 networking to
+  **deterministic lockstep** — same inputs, same state, bit-for-bit — and `sin`
+  and `atan2` are not required to be correctly rounded, so two devices each
+  re-solving the same fitter can differ by an ULP. Lockstep has no tolerance for
+  that: a 1e-12 difference in geometry compounds through collisions.
+
+  Storing the answer means every device walks identical numbers, decode does no
+  trig, and the forward-reference problem never arises — a stored fitter works
+  anywhere in the stream, which is what makes multiple fitters and free deletion
+  possible later.
 - **Solvability is validity.** A track whose fitter has no solution does not
   save. The check belongs in `TrackValidator` next to the overlap rules.
 
 **Test.** The measured mixed-eight closes and compiles; a fitter in the dead zone
-fails validation with the actionable problem; deleting a ring piece while a
-fitter exists is refused; the reachability boundary is pinned by the numbers
-above; a fitter track round-trips byte-identically through encode/decode.
+fails validation with the actionable problem; the reachability boundary is pinned
+by the numbers above; a fitter track round-trips byte-identically through
+encode/decode; and a decoded fitter reproduces the authoring device's geometry
+exactly, since that is the determinism claim.
 
 ## Rejected along the way
 
