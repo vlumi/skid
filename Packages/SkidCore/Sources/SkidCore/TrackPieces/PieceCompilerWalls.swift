@@ -54,10 +54,19 @@ extension PieceCompiler {
         // sample's own height, so the barrier climbs with the slope and a car
         // passing underneath at height 0 never touches it.
         var rails: [Wall] = []
-        for edge in [left, right] {
+        // The offset that built each edge IS its outward direction, so record it
+        // rather than leave the physics to guess (it cannot — see `Wall.outward`).
+        for (edge, sign) in [(left, 1.0), (right, -1.0)] {
             for index in 1..<edge.count {
                 let height = (samples[index - 1].height + samples[index].height) / 2
-                rails.append(Wall(from: edge[index - 1], to: edge[index], height: height))
+                let along = edge[index] - edge[index - 1]
+                let outward =
+                    along.length > 0
+                    ? along.perpendicular.normalized * sign : Vec2.zero
+                rails.append(
+                    Wall(
+                        from: edge[index - 1], to: edge[index], height: height,
+                        outward: outward))
             }
         }
         if capHighEnd {

@@ -19,11 +19,13 @@ extension Race {
             let closest = nearestPoint(on: wall, toPathFrom: from, to: car.position)
             let offset = car.position - closest
             let dist = offset.length
-            guard dist < CarGeometry.radius, dist > 0 else { continue }
+            let reach =
+                CarGeometry.radius + outboardThickness(of: wall, approachedFrom: from)
+            guard dist < reach, dist > 0 else { continue }
             let normal = offset.normalized
             // Push out of the wall, then reflect the into-wall velocity
             // component with restitution.
-            car.position = closest + normal * CarGeometry.radius
+            car.position = closest + normal * reach
             let intoWall = car.velocity.dot(normal)
             if intoWall < 0 {
                 car.velocity -= normal * intoWall * (1 + tuning.wallRestitution)
@@ -83,6 +85,50 @@ extension Race {
             let floor = wall.height.rounded(.down)
             return car.height >= floor - Track.reachTolerance && car.height <= wall.height
         }
+    }
+
+    /// How far a wall's **structure** stands proud of its collision segment on
+    /// the side the car is hitting it from.
+    ///
+    /// A rail is a segment in the model but a BAND on screen: the renderer
+    /// strokes the ribbon's edge `kerbBand` either side, so the asphalt covers
+    /// the inner half and `kerbBand` shows outboard. Approached from the grass
+    /// the car therefore stopped in mid-air, its centre `CarGeometry.radius`
+    /// from a line sitting well inside the visible barrier — measured at a
+    /// clover ramp root, a 4.9-unit gap between where the car halted and where
+    /// the railing was drawn. From inside there is nothing to add: the band's
+    /// inner half is under the asphalt, so the segment already is the face.
+    ///
+    /// Which side the car is on comes from the wall's stored `outward`, because
+    /// it cannot be worked out here: a centerline search costs too much to run
+    /// per wall per car per tick (it took the suite from 28 seconds to 533), and
+    /// "away from the middle of the map" is a coin flip on a track that curls
+    /// back on itself — 192 of 430 clover rails wrong. A wall with no `outward`
+    /// (the map boundary, a level seal, a ramp's end cap) has no bulk to stand
+    /// clear of and adds nothing.
+    private func outboardThickness(of wall: Wall, approachedFrom from: Vec2) -> Double {
+        guard wall.kind == .rail, wall.outward.length > 0.001 else { return 0 }
+        guard (from - wall.a).dot(wall.outward) > 0 else { return 0 }
+        return railThickness(atHeight: wall.height)
+    }
+
+    /// How far a rail's band stands outboard of its collision segment, at the
+    /// height that rail guards.
+    ///
+    /// Per rail, not one constant, because the segment does not track the band:
+    /// rails are generated at the NOMINAL road edge (deliberately — see
+    /// `PieceCompilerWalls.deckRails`, where scaling them per sample made
+    /// mid-ramp rails drift outboard) while the band is drawn at the PAINTED
+    /// edge, which grows with height. So the gap between line and band grows
+    /// too: 15 units at a ground rail, 27 at a deck rail.
+    ///
+    /// Taking the deck's figure for every rail — the first version of this —
+    /// gave the low rails 12 units of reach they are not drawn with, which is
+    /// an invisible wall to lean against at a ramp's root. Each rail knows its
+    /// own height, so it uses it.
+    private func railThickness(atHeight height: Double) -> Double {
+        let face = track.halfWidth(atHeight: height) + Double(PieceCatalog.kerbBand)
+        return max(0, face - track.width / 2)
     }
 
     /// The point on `wall` nearest the car's swept path this tick — treating the

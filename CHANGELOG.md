@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Railings stop you where they look like they should.** Coming off the grass
+  at a ramp or bridge, the car used to halt just short of the railing — and
+  after that was fixed, low railings briefly pushed back from further away than
+  they were drawn. Both gone: a railing is exactly as solid as it looks, at
+  every height.
+
 ### build 9 — 2026-07-28
 
 - **The road on a bridge is as wide as it looks.** An elevated road is drawn
