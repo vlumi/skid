@@ -148,12 +148,9 @@ What's left:
       - **Rethink the delete icon.** The undo-arrow reads as "undo last action"
         rather than "remove this piece".
       Longer term: real undo.
-- [ ] **Refresh the app icon for the new car.** The car is drawn differently
-      now (lit nose, driver at the back, no headlight beam), so the icon's car
-      no longer matches what the game shows. Update the generator's artwork and
-      re-run it — and the same artwork on the site, whose hero image is the
-      icon. Icon must stay opaque (the generator flattens + preflight guards
-      it); the site lives in its own repo.
+- [ ] **Update the site's hero image to the new icon.** The icon now matches
+      the game's car (lit nose, driver at the back); the site's hero is the same
+      artwork and still shows the old one. Separate repo, separate push.
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
