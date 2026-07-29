@@ -13,7 +13,8 @@ public struct Validation: Equatable, Sendable {
         case overlap
         /// Not exactly one start-grid piece.
         case startCount(Int)
-        /// Gates out of range, or seam 0 not marked, or a route crosses them
+        /// Gates out of range, or the start line's seam not marked, or a route
+        /// crosses them
         /// in a different order.
         case gates
         /// The footprint doesn't fit the fixed canvas.
@@ -103,7 +104,7 @@ public enum TrackValidator {
             problems.append(.overlap)
         }
 
-        // 4. Gates: 2…16, seam 0 included, in range.
+        // 4. Gates: 2…16, the start line's own seam included, in range.
         if !gatesValid(layout, placedCount: walk.placed.count) {
             problems.append(.gates)
         }
@@ -157,7 +158,12 @@ public enum TrackValidator {
     /// construction.)
     private static func gatesValid(_ layout: TrackLayout, placedCount: Int) -> Bool {
         let seams = Set(layout.gateSeams)
-        guard seams.contains(0) else { return false }
+        // The start line's own seam must be gated — it is the finish line. That
+        // seam is the start PIECE's index, not 0: the start line is an ordinary
+        // piece that may sit anywhere on the ring, so requiring seam 0 would
+        // forbid every rotation of a valid track.
+        let startSeam = layout.pieces.firstIndex(of: PieceCatalog.startPieceID) ?? 0
+        guard seams.contains(startSeam) else { return false }
         guard (2...16).contains(seams.count) else { return false }
         return layout.gateSeams.allSatisfy { (0..<placedCount).contains($0) }
     }

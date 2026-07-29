@@ -119,12 +119,16 @@ enum EditorRenderer {
         for (_, placed) in ordered {
             drawPieceRibbon(placed, width: width, t: t, into: &context)
         }
-        // Checkpoint gates across the seams the author marked (seam 0 is the
-        // start/finish, drawn as its own line below). Seam N is piece N's EXIT —
-        // drawing at the entry put every marker one piece early, which showed
-        // the moment the race view (whose white chrome comes from the compiled
-        // gates, correctly placed) drew both.
-        for seam in gateSeams where seam != 0 && seam < walk.placed.count {
+        // Checkpoint gates across the seams the author marked, skipping the
+        // START LINE's own seam — that one is drawn as the start/finish line
+        // below. It is the start PIECE's index, not seam 0: the start line is an
+        // ordinary piece and may sit anywhere on the ring, so hardcoding 0 drew a
+        // checkpoint chevron across the start line and left the real seam 0 bare.
+        // Seam N is piece N's EXIT — drawing at the entry put every marker one
+        // piece early, which showed the moment the race view (whose white chrome
+        // comes from the compiled gates, correctly placed) drew both.
+        let startSeam = walk.placed.firstIndex { $0.id == PieceCatalog.startPieceID }
+        for seam in gateSeams where seam != startSeam && seam < walk.placed.count {
             let piece = walk.placed[seam]
             guard heightRange.contains(piece.exitHeight) else { continue }
             drawGate(piece, width: width, transform: t, into: &context)
