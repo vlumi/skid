@@ -65,3 +65,91 @@ public struct Fitter: Equatable, Sendable, Codable {
     /// Centerline length — what the piece costs in road.
     public var arcLength: Double { 2 * radius * angle + length }
 }
+
+extension Fitter {
+    /// The radii a fitter may use — the catalog's own three, so it still looks
+    /// like the rest of the road.
+    public static var radii: [Double] {
+        [
+            Double(PieceCatalog.tightRadius), Double(PieceCatalog.mediumRadius),
+            Double(PieceCatalog.sweepRadius),
+        ]
+    }
+
+    /// Largest arc turn a fitter may use. Beyond a quarter turn the "smooth jog"
+    /// reads as a pair of corners instead.
+    public static let maxAngle = Double.pi / 2
+
+    /// **The shortest fitter reaching `(forward, left)` in the entry frame**, or
+    /// nil if the shape cannot.
+    ///
+    /// Closed form, not a search. Writing `F` for forward and `T` for |left|:
+    ///
+    ///     F = 2R·sin θ + L·cos θ
+    ///     T = 2R·(1 − cos θ) + L·sin θ
+    ///
+    /// Eliminating `L` and multiplying through by `cos θ` collapses to
+    ///
+    ///     F·sin θ + (2R − T)·cos θ = 2R
+    ///
+    /// which is `A·sin θ + B·cos θ = C` — solvable directly as
+    /// `θ = atan2(A, B) ± acos(C / hypot(A, B))`. Both roots are checked, the
+    /// shortest valid one wins, and `L` follows from the first equation.
+    ///
+    /// Unreachable gaps fall out of the same arithmetic rather than being
+    /// special-cased: `|C| > hypot(A, B)` means no angle exists, and a negative
+    /// `L` means the arcs alone already overshoot. That is the dead zone — gaps
+    /// too short to fit two arcs plus a straight, which need no fitter anyway
+    /// because they are within reach of ordinary pieces.
+    public static func solving(
+        forward: Double, left: Double, radii: [Double] = Fitter.radii,
+        maxLength: Double = 8 * Double(PieceCatalog.unit)
+    ) -> Fitter? {
+        var best: Fitter?
+        for radius in radii {
+            for candidate in candidates(
+                forward: forward, left: left, radius: radius, maxLength: maxLength)
+            {
+                if best == nil || candidate.arcLength < best!.arcLength {
+                    best = candidate
+                }
+            }
+        }
+        return best
+    }
+
+    /// Both roots for one radius, keeping the valid ones.
+    private static func candidates(
+        forward: Double, left: Double, radius: Double, maxLength: Double
+    ) -> [Fitter] {
+        let target = abs(left)
+        let a = forward
+        let b = 2 * radius - target
+        let c = 2 * radius
+        let hypotenuse = (a * a + b * b).squareRoot()
+        guard hypotenuse > 1e-12, abs(c / hypotenuse) <= 1 else { return [] }
+        let base = atan2(a, b)
+        let offset = acos(c / hypotenuse)
+        var out: [Fitter] = []
+        for root in [base - offset, base + offset] {
+            // A root a hair below zero IS the zero-angle case (the plain
+            // straight) arriving as -1e-17; clamping keeps it rather than
+            // discarding the one shape that closes a purely forward gap.
+            let angle = abs(root) < 1e-9 ? 0 : root
+            guard angle >= 0, angle <= maxAngle else { continue }
+            guard cos(angle) > 1e-9 else { continue }
+            let length = (forward - 2 * radius * sin(angle)) / cos(angle)
+            guard length >= -1e-9, length <= maxLength else { continue }
+            let fitter = Fitter(
+                radius: radius, angle: angle, length: max(0, length),
+                stepsLeft: left >= 0)
+            // Verify rather than trust: the algebra above assumed cos θ ≠ 0 and
+            // dropped a sign, so confirm the shape really lands on the target.
+            let step = fitter.displacement
+            guard abs(step.forward - forward) < 1e-6, abs(step.left - left) < 1e-6
+            else { continue }
+            out.append(fitter)
+        }
+        return out
+    }
+}
