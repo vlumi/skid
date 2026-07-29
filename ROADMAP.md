@@ -80,11 +80,16 @@ What's left:
       yet. Crossings are DESIGNED — see
       [docs/crossing-plan.md](docs/crossing-plan.md): a crossing stays two
       crossable pieces that overlap (nothing stored, so deletion cannot dangle;
-      switching a straight to crossable is a 1:1 id swap; rendering verified
-      correct from the existing paint order alone). The remaining engine work is
-      a geometric legality rule and a heading-alignment tiebreak for the
-      resolver in the shared zone — owed before or during the editor overhaul,
-      since mid-track deletion interacts with it.
+      crossable is a per-piece FLAG so curves can cross too — a pinched 8 is
+      legal — and switching is a flag toggle; rendering verified correct from
+      the existing paint order alone). The remaining engine work is the
+      per-sample legality rule (both sides flagged, angle ≥ 45°, ground level
+      only at first — flat pieces have no rails, so a ground crossing has no
+      wall problem) and a heading-alignment tiebreak for the resolver in the
+      shared zone — owed before or during the editor overhaul, since mid-track
+      deletion interacts with it. Fully permissive overlap ("gates keep track
+      of the track") was considered and bounded out: the gate insight is right,
+      but unbounded zones tax kerbs, walls and every future decal.
 
       A CROSSING is cheap, and worth doing when the pieces are: the route stays
       one closed ring (a track already crosses itself wherever a bridge does),
