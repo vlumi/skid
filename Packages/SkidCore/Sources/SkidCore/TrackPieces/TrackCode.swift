@@ -51,6 +51,10 @@ public enum TrackCode {
     // MARK: - Encode
 
     public static func encode(_ layout: TrackLayout) -> String {
+        // One track, one code: a closed ring is rotated to its canonical
+        // starting piece first, so the same track built from different starting
+        // points does not produce different codes. An open chain is untouched.
+        let layout = layout.normalized()
         var body: [UInt8] = []
         // Packed into compounds at the byte boundary only — the layout itself is
         // always primitives (see `PiecePacking`).
