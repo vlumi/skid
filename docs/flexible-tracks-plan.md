@@ -139,24 +139,16 @@ total.** At θ = 0 both arcs vanish and the shape *is* a straight of length L
 subsumes the plain custom-length straight, and every pure-longitudinal gap is
 reachable by construction rather than needing a different piece.
 
-**CORRECTION to the numbers below.** The planning search that produced them was
-fed the mixed-eight gap as `(2.0, −0.828)U`, but the measured gap is
-`(2·√2/2, −(2−√2))U ≈ (1.414, −0.586)U` — I had mixed up the two. The exact solve
-gives that gap **R=1U, 45° arcs, no middle straight** (a clean pair of 45° arcs,
-arc length 188.5 vs 263 for the misquoted target). The reachability *shape* below
-still holds; only that one worked example was wrong, and it is wrong in the
-commits and PRs that quoted it too.
+**What it reaches, and what it does not.** Verified numerically over radius 1–4U,
+arc 0…90°, middle ≤ 8U:
 
-**Verified reachable** (numerically, radius 1–4U, arc 0…90°, middle ≤ 8U):
-- the misquoted target `(2.0, −0.828)U` → R=1U, 29.28° arcs, 1.172U middle
-  (a valid solve, just not of the mixed-eight gap);
-- `(3.0, 0.5)U` → R=1U, 10.04°, 2.692U; `(5.0, 2.0)U` → R=2U, 26.17°, 3.606U;
-- **the whole `dy = 0` line**, via θ = 0: `(2.0, 0)U` → 0°, L = 2U; `(0.5, 0)U`
-  → 0°, L = 0.5U. (An earlier version of this plan recorded `dy = 0` as
-  unreachable. That was the solver requiring θ > 0, not the geometry.)
-- **not** reachable: a gap that is both short and laterally offset — too little
-  room for two arcs plus a straight (`dx` below roughly 1.5–2U while `dy ≠ 0`,
-  depending on radius).
+- gaps with both a forward and a lateral component, generally — the case a mixed
+  axis/diagonal ring leaves;
+- the whole purely-forward line, via θ = 0, where the piece is just a straight;
+- **not** a gap that is both short and laterally offset — too little room for two
+  arcs plus a straight;
+- **not** a backwards gap. The middle length cannot go negative, so a fitter closes
+  a loop that stops SHORT of the start line, never one that overshoots it.
 
 So validity still has a **lower** bound, but only for offset gaps. When the ends
 are inside that dead zone the honest editor hint is "these ends are too close to

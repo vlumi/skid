@@ -46,11 +46,8 @@ final class FitterTests: XCTestCase {
     /// leaves `forward = 2·(√2/2)U`, `right = (2−√2)U`, which no catalog piece can
     /// absorb.
     ///
-    /// The answer is a pair of 45° arcs with no straight between them (R=1U). Note
-    /// the planning notes quoted "R=1U, 29.28°, 1.172U" for this gap — that solves
-    /// a *different* target (forward 240, left 99.4), because the search that found
-    /// it was fed `(2.0, −0.828)` in units where the real gap is `(1.414, −0.586)`.
-    /// The exact solve, being exact, finds the shorter true answer.
+    /// The answer is a pair of 45° arcs with no straight between them, at the tight
+    /// radius.
     func testTheMixedEightGapSolves() throws {
         let forward = 2 * (2.0.squareRoot() / 2) * unit
         let left = -(2 - 2.0.squareRoot()) * unit
@@ -70,8 +67,8 @@ final class FitterTests: XCTestCase {
         XCTAssertEqual(step.left, left, accuracy: landing)
     }
 
-    /// The gap my planning search actually solved, kept because it exercises a
-    /// non-zero straight between the arcs — the general case.
+    /// A gap needing a straight between the arcs — the general case, where neither
+    /// the angle nor the length is degenerate.
     func testAGapNeedingAStraightBetweenTheArcs() throws {
         let fitter = try XCTUnwrap(
             Fitter.solving(forward: 4 * unit, left: -1.5 * unit))
@@ -199,7 +196,7 @@ final class FitterTests: XCTestCase {
     /// plus the straight, resolved into the entry frame.
     func testDisplacementMatchesTheClosedForm() {
         let radius = 2 * unit
-        let angle = 29.28 * .pi / 180
+        let angle = 30 * Double.pi / 180
         let length = 1.172 * unit
         let fitter = Fitter(
             radius: radius, angle: angle, length: length, stepsLeft: false)

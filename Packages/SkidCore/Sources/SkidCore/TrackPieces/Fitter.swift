@@ -14,8 +14,8 @@ import Foundation
 ///
 /// **This is the one piece whose geometry is not exact.** Everything else lives
 /// in `Coord`'s ring — `(a + b√2)/2` with integer parts — so loop closure and
-/// port mating need no epsilon. A free arc angle cannot: `sin(29.28°)` is not in
-/// the ring. The fitter is allowed to be inexact because it is *defined* by its
+/// port mating need no epsilon. A free arc angle cannot: the sine of an arbitrary
+/// angle is not in the ring. The fitter is allowed to be inexact because it is *defined* by its
 /// endpoints: it is the shape that reaches the pose it was solved for, so closure
 /// is true by construction rather than by comparison. Its residual is ~1e-12
 /// units, twelve orders of magnitude below a device pixel and ten below the
