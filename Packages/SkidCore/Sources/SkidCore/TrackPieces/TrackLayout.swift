@@ -38,14 +38,26 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     /// other height derives from it by pitch, exactly as before; this is only
     /// the baseline the walk starts from.
     public var originHeight: Double
-    /// Seam indices that are checkpoint gates (0 = the start/finish, always).
+    /// Seam indices that are checkpoint gates. The start line's own seam is
+    /// always among them — it is the finish line — and that seam is the start
+    /// piece's index, not necessarily 0.
     public var gateSeams: [Int]
+    /// **Solved shapes for the fitting pieces**, keyed by piece index.
+    ///
+    /// Every other piece's geometry comes from the catalog; a fitter's is solved
+    /// when it is placed, because it exists precisely to make a shape the catalog
+    /// cannot. Stored rather than re-derived so that every device walks identical
+    /// numbers (see `Fitter`). An index with no entry is a fitter that has not
+    /// been solved, which the validator refuses.
+    public var fitters: [Int: Fitter]
     public var theme: Theme
 
     public init(
         pieces: [PieceID], pitches: [Pitch] = [], origin: PiecePose = .origin,
-        originHeight: Double = 0, gateSeams: [Int] = [0], theme: Theme = .normal
+        originHeight: Double = 0, gateSeams: [Int] = [0], theme: Theme = .normal,
+        fitters: [Int: Fitter] = [:]
     ) {
+        self.fitters = fitters
         self.pieces = pieces
         self.originHeight = originHeight
         // Normalized to the piece count so equality is structural: trailing
@@ -94,6 +106,10 @@ public struct PlacedPiece: Equatable, Sendable {
     public var piece: Piece
     public var entry: PiecePose
     public var exits: [PiecePose]
+    /// The solved shape, for a fitting piece only. Its geometry is not in the
+    /// catalog — see `Fitter` — so the walk carries it here for whoever draws or
+    /// drives the road.
+    public var fitter: Fitter?
     /// Continuous **height** at this piece's entry (0 = ground, 1 = deck).
     /// The exit height is `entryHeight + climb`.
     public var entryHeight: Double
@@ -198,6 +214,11 @@ public struct PlacedPiece: Equatable, Sendable {
     public func centerlineSamples(path pathIndex: Int = 0, degreesPerSample: Double = 6)
         -> [Vec2]
     {
+        // A fitter's road is its solved curve-straight-curve, not a catalog path.
+        if let fitter {
+            return Self.fitterSamples(
+                fitter, from: entry, degreesPerSample: degreesPerSample)
+        }
         guard pathIndex < piece.paths.count else { return [entry.position.vec2] }
         // Walk the chain segment by segment, concatenating samples. Each
         // segment starts where the previous ended, so drop the duplicated
@@ -209,6 +230,52 @@ public struct PlacedPiece: Equatable, Sendable {
                 of: segment, from: pose, degreesPerSample: degreesPerSample)
             points.append(contentsOf: sampled.dropFirst())
         }
+        return points
+    }
+
+    /// A fitter's centerline: arc, straight, mirrored arc, sampled in world space.
+    ///
+    /// Walked in floating point from the entry pose — the one piece for which that
+    /// is right, since its shape is a solved float and its exit is pinned
+    /// separately (the inlet it closes onto). Any drift over the piece's own
+    /// length is ~1e-12 units, twelve orders below a device pixel.
+    static func fitterSamples(
+        _ fitter: Fitter, from entry: PiecePose, degreesPerSample: Double
+    ) -> [Vec2] {
+        // NEGATIVE for a left step. `Fitter.displacement` measures "left" as
+        // `heading − 90°`, which in this y-down world is a NEGATIVE rotation; the
+        // sweep below turns by a positive angle for a positive turn. Getting this
+        // backwards mirrored the piece about its entry heading — the road left its
+        // own exit by 198 units on a real track, while the validator (which uses
+        // `displacement`) saw nothing wrong, because both sides of that comparison
+        // shared the same convention.
+        let side = fitter.stepsLeft ? -1.0 : 1.0
+        var heading = entry.heading.radians
+        var at = entry.position.vec2
+        var points: [Vec2] = [at]
+
+        func sweep(_ turn: Double) {
+            guard abs(turn) > 1e-12 else { return }
+            let steps = max(
+                1, Int((abs(turn) * 180 / .pi / degreesPerSample).rounded(.up)))
+            let center =
+                at + Vec2(angle: heading + (turn > 0 ? .pi / 2 : -.pi / 2))
+                * fitter.radius
+            let startAngle = atan2(at.y - center.y, at.x - center.x)
+            for step in 1...steps {
+                let a = startAngle + turn * Double(step) / Double(steps)
+                points.append(center + Vec2(angle: a) * fitter.radius)
+            }
+            at = points[points.count - 1]
+            heading += turn
+        }
+
+        sweep(side * fitter.angle)
+        if fitter.length > 0 {
+            at += Vec2(angle: heading) * fitter.length
+            points.append(at)
+        }
+        sweep(-side * fitter.angle)
         return points
     }
 
@@ -335,86 +402,5 @@ extension TrackLayout {
             axisX: Double(dx.a) / 2 / unit, axisY: Double(dy.a) / 2 / unit,
             diagonalX: Double(dx.b) / unit, diagonalY: Double(dy.b) / unit,
             headingEighths: ((goal.heading.step - end.heading.step) % 8 + 8) % 8)
-    }
-}
-
-extension TrackLayout {
-    /// Walk the piece list from the origin, placing each piece and threading
-    /// poses. Forks push their extra exit onto a stack of loose ends; a piece
-    /// extends the current loose end, and when an exit lands exactly on an
-    /// open end it auto-mates (that end is consumed). Pure and deterministic —
-    /// no coordinates are read from storage, only derived here.
-    public func walk() -> WalkResult {
-        guard !pieces.isEmpty else {
-            return WalkResult(placed: [], openEnds: [], failure: .emptyLayout)
-        }
-
-        var placed: [PlacedPiece] = []
-        // Inlets a loose end can close onto: the start line (the origin, its
-        // heading pointing INTO the first piece) plus each fork's not-yet-
-        // continued exit. A loose end "mates" when it lands on an inlet exactly
-        // and head-on. The origin inlet stays available the whole walk so a
-        // ring closes onto it.
-        var inlets: [(pose: PiecePose, height: Double)] = [(origin, originHeight)]
-        // Loose ends still to be extended (LIFO stack). Start at the origin.
-        var ends: [(pose: PiecePose, height: Double)] = [(origin, originHeight)]
-        var seam = 0
-
-        for (index, id) in pieces.enumerated() {
-            guard let piece = PieceCatalog.piece(id) else {
-                return WalkResult(
-                    placed: placed, openEnds: ends.map(\.pose), failure: .unknownPiece(id))
-            }
-            // Continue the current loose end (LIFO — a fork's branch is
-            // finished before returning to the trunk's pushed exit).
-            guard let current = ends.popLast() else { break }  // stranded piece
-            let entry = current.pose
-            let entryHeight = current.height
-            let exits = piece.paths.map { $0.exit(from: entry) }  // chain fold
-            var placement = PlacedPiece(
-                id: id, piece: piece, entry: entry, exits: exits,
-                entryHeight: entryHeight, entrySeam: seam, pitch: pitch(at: index))
-            // A climb runs straight through into a neighbour climbing the same
-            // way; it eases only against everything else. (Sequence order is
-            // placement order — forks are Phase B, so neighbours are i±1.)
-            if let previous = placed.last, continues(previous.climb, placement.climb) {
-                placement.easeIn = false
-                placed[placed.count - 1].easeOut = false
-            }
-            placed.append(placement)
-            seam += 1
-
-            let exitHeight = placement.exitHeight
-            // A fork's SECOND+ exits become both new loose ends AND inlets
-            // (a later branch can rejoin them); the FIRST exit is the one we
-            // continue next. Auto-mate each exit that lands on an existing
-            // inlet at the same height instead of pushing it.
-            for (k, exitPose) in exits.enumerated() {
-                if let hit = inlets.firstIndex(where: {
-                    mate(exitPose, $0.pose) && abs(exitHeight - $0.height) < 0.001
-                }) {
-                    inlets.remove(at: hit)  // closed this joint
-                } else {
-                    ends.append((exitPose, exitHeight))
-                    if k > 0 { inlets.append((exitPose, exitHeight)) }
-                }
-            }
-        }
-
-        return WalkResult(placed: placed, openEnds: ends.map(\.pose), failure: nil)
-    }
-
-    /// Two consecutive climbs continue each other when both run the same way.
-    private func continues(_ a: Double, _ b: Double) -> Bool {
-        a != 0 && b != 0 && (a > 0) == (b > 0)
-    }
-
-    /// A loose end mates an inlet when their poses are **identical** — same
-    /// position and same heading. The walk is forward-driven: an inlet stores
-    /// the direction traffic flows *into* the joint (the origin faces the way
-    /// piece 0 drives away; a fork branch-exit faces the way it drives on), so
-    /// a returning end closes by flowing in the *same* direction, not head-on.
-    private func mate(_ end: PiecePose, _ inlet: PiecePose) -> Bool {
-        end == inlet
     }
 }

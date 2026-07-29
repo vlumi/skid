@@ -121,6 +121,15 @@ public enum PieceCatalog {
         // Start grid (straight 2U; the start/finish line is at its exit).
         add(Piece(id: ID.startGrid, paths: [[.straight(length: straight)]]))
 
+        // The fitting piece. Its `paths` are a PLACEHOLDER and are never walked:
+        // the walk takes a fitter's exit from the inlet it closes onto, and its
+        // real shape comes from the solved `Fitter` in the layout (see
+        // `TrackLayout.fitters`). The entry exists so the piece has a catalog
+        // identity — a kind, a name, a footprint for the palette — like everything
+        // else. Registering it with a zero-length straight keeps anything that
+        // walks the catalog blind to the special case.
+        add(Piece(id: ID.fitter, paths: [[.straight(length: 0)]]))
+
         // Crossable straights (at-grade intersections): 1U covers a 90°
         // crossing (shared zone = one width); a diagonal crossing needs 2U.
         add(
@@ -220,10 +229,19 @@ public enum PieceCatalog {
         public static let joinStraightRight: PieceID = 38
         public static let joinSymmetric: PieceID = 39
         public static let jump: PieceID = 40
+        /// The fitting piece — a curve-straight-curve jog whose shape is SOLVED
+        /// and stored per placement, not fixed by the catalog. See `Fitter`.
+        public static let fitter: PieceID = 41
     }
 
     /// The start-grid piece id — exactly one per track.
     public static let startPieceID: PieceID = ID.startGrid
+
+    /// The fitting piece's id. Unlike every other piece, its geometry is not in
+    /// the catalog: each placement carries its own solved shape in
+    /// `TrackLayout.fitters`, because the whole point is a shape the catalog
+    /// cannot express.
+    public static let fitterPieceID: PieceID = ID.fitter
 
     public static func piece(_ id: PieceID) -> Piece? { all[id] }
 }

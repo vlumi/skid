@@ -101,18 +101,25 @@ layout against its own expansion, which are two different layouts, since **seams
 index the decoded primitives**. The real round trip is exactly stable: 19
 primitives in, 19 out, identical seams, gates 0.0000 apart.
 
-## 3. Convert the stored tracks once
+## 3. Convert the stored tracks once — NOT NEEDED
 
-No compatibility shim. A format version byte is added so an old code fails
-**loudly** rather than decoding into nonsense — worth having even with no
-compatibility promise, because a silently misread code is a miserable bug.
+Planned as a one-shot conversion behind a new version byte. It turned out there
+is nothing to convert, so nothing was written. Three reasons, each checked rather
+than assumed:
 
-- A one-shot converter re-encodes the built-ins and the maintainer's saved codes
-  into the new format (start line as a piece, normalized order).
-- `TrackLibrary`'s built-in codes are replaced with the converted ones.
-- Acceptance: every converted track compiles to geometry identical to what it
-  compiled to before (same centerline, same gates, same lap count), and the AI
-  still laps each of them.
+- **Steps 1 and 2 did not change the format.** Step 1 moved where the compiler
+  and validator *look* for the start line; step 2 rotates a ring before writing
+  it. Neither alters what the bytes mean.
+- **Every existing track already anchors at its start line**, so it is already in
+  canonical form. Verified for all four built-ins (start line at index 0,
+  re-encoding reproduces the stored code byte-for-byte, same gate count and road
+  length as before), and the maintainer confirmed the same for their saved codes.
+- **The version byte and the loud failure already exist.** `TrackCode` carries
+  `version = 1`, and `decode` throws `badVersion` on a mismatch — verified.
+
+So no bump: bumping would invalidate every existing code to no purpose. The
+version byte is there for when the format genuinely changes — the fitting piece
+(step 4) may be that moment, since it adds an id and possibly a payload.
 
 ## 4. The fitting piece — curve + straight + curve
 
@@ -132,44 +139,110 @@ total.** At θ = 0 both arcs vanish and the shape *is* a straight of length L
 subsumes the plain custom-length straight, and every pure-longitudinal gap is
 reachable by construction rather than needing a different piece.
 
-**Verified reachable** (numerically, radius 1–4U, arc 0…90°, middle ≤ 8U):
-- the measured mixed-eight gap `(2.0, −0.828)U` → **R=1U, 29.28° arcs, 1.172U
-  middle**;
-- `(3.0, 0.5)U` → R=1U, 10.04°, 2.692U; `(5.0, 2.0)U` → R=2U, 26.17°, 3.606U;
-- **the whole `dy = 0` line**, via θ = 0: `(2.0, 0)U` → 0°, L = 2U; `(0.5, 0)U`
-  → 0°, L = 0.5U. (An earlier version of this plan recorded `dy = 0` as
-  unreachable. That was the solver requiring θ > 0, not the geometry.)
-- **not** reachable: a gap that is both short and laterally offset — too little
-  room for two arcs plus a straight (`dx` below roughly 1.5–2U while `dy ≠ 0`,
-  depending on radius).
+**What it reaches, and what it does not.** Verified numerically over radius 1–4U,
+arc 0…90°, middle ≤ 8U:
+
+- gaps with both a forward and a lateral component, generally — the case a mixed
+  axis/diagonal ring leaves;
+- the whole purely-forward line, via θ = 0, where the piece is just a straight;
+- **not** a gap that is both short and laterally offset — too little room for two
+  arcs plus a straight;
+- **not** a backwards gap. The middle length cannot go negative, so a fitter closes
+  a loop that stops SHORT of the start line, never one that overshoots it.
 
 So validity still has a **lower** bound, but only for offset gaps. When the ends
 are inside that dead zone the honest editor hint is "these ends are too close to
 bridge — lengthen one side" rather than "cannot close", and the nearest reachable
 pose is computable, so the hint can name a direction.
 
+**How it is offered** (maintainer's call): closing with a fitter and closing with
+standard pieces are two answers to the same question, so they belong to **one
+control with two options**, not two controls placed near each other. Today that
+question is the `closeItAction` chip on the map (`EditorPaletteView`), which
+appears only when `ClosureSearch` found a run and shows nothing otherwise. The
+fitter becomes its fallback: offer the standard run when one exists, and the
+fitter **only when none does**. Never both — if standard pieces can close the
+loop, they close it *exactly*, in the quantized ring, with no stored floats and no
+determinism caveat, which beats a fitter on every axis. A fitter is a concession
+to gaps the catalog cannot express, not a tidier alternative to it.
+
+That chip is also **due to move** as part of the editor overhaul, so this step
+should not hardcode its position — extend the existing chip in place and let the
+overhaul relocate the combined control.
+
+Note this couples to the freehand idea above: a chip that only appears near
+closure cannot build an all-fitter track. If freehand ever becomes a real mode it
+needs its own affordance (a palette entry), which is an argument for keeping the
+fitter's *insertion* API independent of the chip that happens to call it.
+
+**Scope for the first cut** (maintainer's call): the fitter may be inserted
+**only as the last piece, closing onto the start line**. The editor builds
+one-way, so that is the only position it can currently be placed at anyway, and
+it is exactly the position the closure suggester already reasons about. That makes
+step 4 a palette entry plus a solve, not an editor overhaul — and it is enough to
+test and verify the geometry on a real device, which is the point of doing it now.
+
+**What already fits it.** `ClosureGap` (TrackLayout.swift) splits the gap into the
+axis part and the *diagonal* (√2) part — the two currencies the fitter has to
+settle — plus `headingEighths`. So the solve's inputs exist; the fitter is a
+one-piece answer where `ClosureSearch` returns a multi-piece run.
+
 **Rules that make it tractable:**
-- **At most one per track**, and it may only be inserted to *join the loop* —
-  never in open chain. A closed ring has exactly one place where two ends of a
-  linear build meet.
-- **While a fitter exists, no other piece may be removed from the ring** — its
-  geometry is derived from both neighbours, so deleting elsewhere invalidates it.
-  The editor must say so when the user tries.
+- **First cut: one per track, inserted last, closing onto the start line.** Not
+  because the model requires it — see the storage note below, which removes that
+  constraint — but because that is what a one-way editor can place and what is
+  needed to verify the geometry on a device.
+- **No special deletion rule.** Because the fitter stores its own solved shape it
+  does not depend on its neighbours, so removing another piece cannot invalidate
+  it: the loop simply stops being closed, which is ordinary mid-build state the
+  editor already handles. (An earlier draft of this plan forbade deleting any ring
+  piece while a fitter existed, and made "at most one" a hard rule. Storing the
+  solve retires both.)
 - **Drawn like any other piece**, with a discreet marker that it is the fitter —
   needed precisely so that "why can't I delete this?" has a visible answer.
-- **Its geometry is derived, not stored.** With the walk normalized to start at
-  the fitter (step 2), both chains grow outward from it, so both loose ends are
-  known before the fitter is evaluated. It needs an id in the stream and no
-  payload, which also sidesteps the forward-reference problem: a piece meaning
-  "whatever reaches the next piece" is unencodable when the next piece's pose
-  does not exist yet.
+- **Geometry is SOLVED ONCE AND STORED** — radius, arc angle, middle length —
+  not re-derived on decode. Roughly 4–5 bytes: 2 bits of radius (three catalog
+  values), the angle in fixed point, the length in fixed point. The reserved
+  112–127 block is for byte modes, so this wants a plain id plus a payload
+  section.
+
+  **The reason is determinism, not precision.** The closure residual is ~1e-12
+  units against a device pixel of ~0.97 units on a phone — twelve orders below
+  visible, ten below the tightest gameplay tolerance (`surfaceTolerance` 0.12).
+  That part is harmless. But AGENTS.md commits Phase 2 networking to
+  **deterministic lockstep** — same inputs, same state, bit-for-bit — and `sin`
+  and `atan2` are not required to be correctly rounded, so two devices each
+  re-solving the same fitter can differ by an ULP. Lockstep has no tolerance for
+  that: a 1e-12 difference in geometry compounds through collisions.
+
+  Storing the answer means every device walks identical numbers, decode does no
+  trig, and the forward-reference problem never arises — a stored fitter works
+  anywhere in the stream, which is what makes multiple fitters and free deletion
+  possible later.
+
+  **Consequence worth naming: a track of nothing but fitters is a freehand
+  track.** Once each one carries its own shape, the quantized catalog is the
+  convenient path rather than the only one, and an author could build a whole loop
+  out of curve-straight-curve pieces at arbitrary angles. The budget allows it —
+  the piece limit is 127 and ~5 bytes each keeps even 30–60 of them inside a
+  comfortable code. Not a goal, and not something to design *for* yet, but it
+  should be allowed to work rather than accidentally forbidden, and it is a
+  plausible future "freehand mode" for whoever wants one. What it must not break:
+  the overlap validator and the closure rules apply to fitters exactly as to
+  anything else.
 - **Solvability is validity.** A track whose fitter has no solution does not
   save. The check belongs in `TrackValidator` next to the overlap rules.
 
+**Done** for the closing position. Built in commits by concern: geometry, the
+closed-form solve, the stored payload, walk placement, lowering to road, validator
+rules, then the editor's fallback. The remaining limits are recorded above — a
+fitter is flat, needs matching headings, and cannot close a loop that overshoots.
+
 **Test.** The measured mixed-eight closes and compiles; a fitter in the dead zone
-fails validation with the actionable problem; deleting a ring piece while a
-fitter exists is refused; the reachability boundary is pinned by the numbers
-above; a fitter track round-trips byte-identically through encode/decode.
+fails validation with the actionable problem; the reachability boundary is pinned
+by the numbers above; a fitter track round-trips byte-identically through
+encode/decode; and a decoded fitter reproduces the authoring device's geometry
+exactly, since that is the determinism claim.
 
 ## Rejected along the way
 

@@ -38,6 +38,9 @@ extension TrackLayout {
         while padded.count < count { padded.append(.flat) }
         rotated.pitches = Array(padded[anchor...] + padded[..<anchor])
         rotated.gateSeams = gateSeams.map { ($0 - anchor + count) % count }.sorted()
+        // Fitters are keyed by piece index, so they rotate with the pieces.
+        rotated.fitters = Dictionary(
+            uniqueKeysWithValues: fitters.map { (($0.key - anchor + count) % count, $0.value) })
         // The walk starts at the new first piece, so the origin is that piece's
         // entry — its pose and its height.
         rotated.origin = walk.placed[anchor].entry

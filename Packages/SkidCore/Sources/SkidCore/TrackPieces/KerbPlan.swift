@@ -98,7 +98,14 @@ extension KerbPlan {
                     return nil
                 } ?? []
             guard !turns.isEmpty else {
-                // A straight ends the current corner.
+                // A straight ends the current corner. A FITTER lands here too:
+                // its catalog path is a placeholder (its real shape is solved per
+                // placement), so it reads as a straight — plain edge line, plus
+                // whatever exit kerb the corner it terminates carries onto it, the
+                // same as any straight after a corner. That is the right answer for
+                // a gentle lateral jog, which is not a corner a car would cut, so
+                // it is deliberate rather than an oversight to be "fixed" by
+                // teaching the planner about `PlacedPiece.fitter`.
                 if let corner = current { corners.append(corner) }
                 current = nil
                 continue
