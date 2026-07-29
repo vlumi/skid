@@ -65,6 +65,17 @@ What's left:
       hand-authored tracks and needs to come back as something you place. Not
       perfect circles — rotatable, combinable blobs. Plus surface textures for
       grass and mud eventually (asphalt stays plain gray).
+- [ ] **Flexible tracks: start line as a piece, then a fitting piece.** The
+      quantized catalog cannot close a loop that mixes axis-aligned and diagonal
+      straights — the integer and √2 parts of the gap must both reach zero, and
+      straight lengths are the only knobs, which turns designing into solving
+      simultaneous equations. Plan in
+      [docs/flexible-tracks-plan.md](docs/flexible-tracks-plan.md): the start
+      line becomes an ordinary piece (exactly one, anywhere, either direction),
+      encoding gets a canonical normalisation, stored codes convert once, and
+      then a **fitting piece** — curve + straight + curve, radius from the
+      existing three, arc angle free — closes what the catalog can't. Steps 1–3
+      are worth doing on their own merits.
 - [ ] **Crossings and jumps in the compiler.** The catalog has the geometry and
       the editor has the buttons hidden; the Phase-A compiler can't build either
       yet.
