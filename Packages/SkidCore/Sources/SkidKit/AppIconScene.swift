@@ -4,6 +4,12 @@ import SwiftUI
 /// The app icon, drawn by the game's own recipe — a red open-wheeler
 /// mid-drift through a kerbed corner, rubber arcing behind it. No image
 /// assets: `make icon` renders this at 1024×1024 into the asset catalog.
+///
+/// The car must keep matching the one the game draws (`TrackRenderer`'s
+/// `draw(car:…)`): same silhouette, same dark rim, the lit nose that tells
+/// facing, and the driver at the REAR axle like the classic single-seaters.
+/// It drifted out of date once already, when the headlight beam was replaced
+/// by the body-local facing cue and the icon kept a centred cockpit dot.
 public struct AppIconScene: View {
     public init() {}
 
@@ -88,10 +94,37 @@ public struct AppIconScene: View {
             let body = CGRect(
                 x: -CarGeometry.length / 2, y: -CarGeometry.width / 4,
                 width: CarGeometry.length, height: CarGeometry.width / 2)
-            car.fill(
-                Path(roundedRect: body, cornerRadius: CarGeometry.width / 4),
-                with: .color(.red))
-            let cockpit = CGRect(x: -4, y: -3.2, width: 6.4, height: 6.4)
+            let bodyPath = Path(roundedRect: body, cornerRadius: CarGeometry.width / 4)
+            car.fill(bodyPath, with: .color(.red))
+            // Lit nose: a sheen over the front half with warm lamp dots at the
+            // tip — the game's facing cue, so the icon shows which way the car
+            // points without a headlight beam.
+            var sheen = car
+            sheen.clip(to: bodyPath)
+            sheen.fill(
+                Path(
+                    CGRect(
+                        x: 0, y: -CarGeometry.width / 4,
+                        width: CarGeometry.length / 2, height: CarGeometry.width / 2)),
+                with: .linearGradient(
+                    Gradient(colors: [.white.opacity(0), .white.opacity(0.34)]),
+                    startPoint: .zero, endPoint: CGPoint(x: CarGeometry.length / 2, y: 0)))
+            for side in [-1.0, 1.0] {
+                let lamp = CGRect(
+                    x: CarGeometry.length / 2 - 6, y: side * 3.4 - 1.9,
+                    width: 3.8, height: 3.8)
+                sheen.fill(
+                    Path(ellipseIn: lamp),
+                    with: .color(Color(red: 1, green: 0.98, blue: 0.82)))
+            }
+            // The dark rim the in-game car carries. Thinner in car units than
+            // the game's 2, because the icon draws the car ~10× larger: at game
+            // scale that stroke is a hairline that sharpens the silhouette, but
+            // scaled up verbatim it becomes a heavy black outline that swallows
+            // the body colour.
+            car.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 0.8)
+            // The driver sits at the rear axle, like the classic single-seaters.
+            let cockpit = CGRect(x: -9.5, y: -3.2, width: 6.4, height: 6.4)
             car.fill(Path(ellipseIn: cockpit), with: .color(.black.opacity(0.65)))
         }
     }
