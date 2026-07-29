@@ -67,8 +67,37 @@ What's left:
       grass and mud eventually (asphalt stays plain gray).
 - [ ] **Crossings and jumps in the compiler.** The catalog has the geometry and
       the editor has the buttons hidden; the Phase-A compiler can't build either
-      yet. (Forked routes are further out still — they need a multi-route
-      `Track` and AI branch choice.)
+      yet.
+
+      A CROSSING is cheap, and worth doing when the pieces are: the route stays
+      one closed ring (a track already crosses itself wherever a bridge does),
+      so the centerline, gates, laps, standings and AI are all untouched. What's
+      needed is a piece the overlap validator exempts — at equal heights the two
+      stretches really do share tarmac, which `RoadProximity` currently refuses
+      — and a decision that two cars meeting there is a feature, not a bug.
+
+      FORKS AND JOINS ARE PARKED, and not for want of geometry (the catalog has
+      the pieces, ids 34–36, and `PieceCompiler` throws
+      `forkNotSupportedInPhaseA`). Two reasons, in order:
+
+      - **The canvas is too small to afford them.** A fork only earns its
+        complexity if the branches trade off — shorter but tighter against
+        longer but faster — and at today's track sizes there isn't room for two
+        routes that are meaningfully different. Revisit if
+        **Track size classes** (below) lands.
+      - **Route choice, not geometry, is the expensive part.** A branching route
+        makes the track a graph rather than a ring, and every simplification
+        built on that ring breaks at once: `centerline` stops being one array,
+        `arcPosition` stops being a single number (position on which branch?),
+        lap validity can't be "collect every gate in order" when a branch's
+        gates aren't on your path, standings need a progress metric comparable
+        across unequal paths, and the AI has to make a choice it currently
+        never makes.
+
+      A JOIN alone — a branch merging back in, carrying no gates and required by
+      no lap, like a pit lane or an alternate entrance — keeps the lap on the
+      trunk ring and skips most of that. That is the cheap half if branching is
+      ever wanted before full forks.
 - [ ] **Track size classes.** Bigger canvases for bigger screens: a track
       declares its size, and the oversized ones are iPad/Mac-only. Lets much
       more elaborate courses exist without making them unplayable on a phone.
