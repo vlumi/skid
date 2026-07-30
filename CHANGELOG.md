@@ -31,6 +31,12 @@ ships (see [AGENTS.md](AGENTS.md)).
   another straight across it. Roads that merely graze each other at a shallow
   angle are still refused, since that is nearly always a mistake rather than a
   junction.
+- **Cars can no longer end up outside the track.** Hitting a barrier hard enough
+  could push a car straight through it and leave it stranded out on the grass,
+  because the bounce worked out which way to push from where the car had already
+  got to — by then, the wrong side. Fast enough, and the barrier was missed
+  altogether. Both are fixed: a car is always put back on the side it came from,
+  at any speed.
 - **Checkpoints are edited in their own mode.** A tap on the track used to mean
   two things at once — pick the end you're building from, or add a checkpoint —
   so it was easy to move a checkpoint you never meant to touch. Tap **Gates** to
