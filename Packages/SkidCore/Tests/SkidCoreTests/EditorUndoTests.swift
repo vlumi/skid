@@ -182,9 +182,12 @@ final class EditorUndoTests: XCTestCase {
         XCTAssertEqual(
             TrackCode.encode(game.editorLayout!), before, "height shift must be undoable")
 
-        game.editorToggleGate(seam: 1)
+        // Gating only happens in gate mode now — see GateModeTests.
+        game.editorMode = .gate
+        XCTAssertTrue(game.editorToggleGate(seam: 1))
         game.editorUndo()
         XCTAssertEqual(TrackCode.encode(game.editorLayout!), before, "gating must be undoable")
+        game.editorMode = .build
     }
 
     /// A one-tap compound is one undo step, not one per primitive — the tap was
@@ -228,6 +231,7 @@ final class EditorUndoTests: XCTestCase {
         let game = editing()
         XCTAssertTrue(game.editorAppend(Catalog.shortStraight))
         let cap = CouchGame.undoDepth
+        game.editorMode = .gate
 
         // One more than the cap, so the oldest must have been dropped.
         for _ in 0..<(cap + 10) { game.editorToggleGate(seam: 1) }
