@@ -333,11 +333,13 @@ extension EditorView {
     @ViewBuilder
     var transformPad: some View {
         HStack(spacing: 6) {
+            // +eighths is counterclockwise in the ring but CLOCKWISE on screen:
+            // the canvas is y-down and `screen()` doesn't flip. Hence the signs.
             mapAction("rotate.left", tint: .white, label: "Rotate 45° left") {
-                game.editorRotate(eighths: 1)
+                game.editorRotate(eighths: -1)
             }
             mapAction("rotate.right", tint: .white, label: "Rotate 45° right") {
-                game.editorRotate(eighths: -1)
+                game.editorRotate(eighths: 1)
             }
             mapAction(
                 "arrow.up.to.line", tint: .white, label: "Raise track",
