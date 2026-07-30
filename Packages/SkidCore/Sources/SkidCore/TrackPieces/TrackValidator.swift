@@ -72,6 +72,21 @@ public enum TrackValidator {
         return placeable(candidate)
     }
 
+    /// Whether **prepending** `id` keeps the layout buildable — the same verdict
+    /// as `canAppend`, at the other end. Expanded to primitives for the same
+    /// reason, and prepended in reverse so the expansion still reads forwards
+    /// once it is in (see `TrackLayout.prependAll`).
+    ///
+    /// Also false when the piece has no exact inverse placement, since the model
+    /// declines that rather than rounding.
+    public static func canPrepend(
+        _ id: PieceID, pitch: Pitch = .flat, to layout: TrackLayout
+    ) -> Bool {
+        var candidate = layout
+        guard candidate.prependAll(PieceExpansion.expand(id, mode: pitch)) else { return false }
+        return placeable(candidate)
+    }
+
     /// The placement verdict: ignore what a work-in-progress is expected to
     /// break, refuse what can never become a track.
     private static func placeable(_ candidate: TrackLayout) -> Bool {
