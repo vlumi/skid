@@ -19,32 +19,14 @@ extension TrackLayout {
     /// (When the fitting piece exists it becomes the anchor instead, since the
     /// walk must grow both chains outward from it — see
     /// docs/flexible-tracks-plan.md.)
+    /// Choosing the anchor is all this does — `rotate(to:)` does the moving, and
+    /// is the only place index-keyed data is remapped (see `TrackLayoutMutate`).
+    /// It declines on an open chain or a broken walk, so those cases come back
+    /// unchanged without a guard here.
     public func normalized() -> TrackLayout {
-        let walk = self.walk()
-        // Only a closed ring may be rotated.
-        guard walk.openEnds.isEmpty, walk.failure == nil else { return self }
-        guard
-            let anchor = pieces.firstIndex(of: PieceCatalog.startPieceID),
-            anchor != 0
-        else { return self }
-        guard walk.placed.indices.contains(anchor) else { return self }
-
-        let count = pieces.count
+        guard let anchor = pieces.firstIndex(of: PieceCatalog.startPieceID) else { return self }
         var rotated = self
-        rotated.pieces = Array(pieces[anchor...] + pieces[..<anchor])
-        // Pitches run parallel to pieces but may be short; pad before rotating
-        // so the rotation cannot silently re-associate them.
-        var padded = pitches
-        while padded.count < count { padded.append(.flat) }
-        rotated.pitches = Array(padded[anchor...] + padded[..<anchor])
-        rotated.gateSeams = gateSeams.map { ($0 - anchor + count) % count }.sorted()
-        // Fitters are keyed by piece index, so they rotate with the pieces.
-        rotated.fitters = Dictionary(
-            uniqueKeysWithValues: fitters.map { (($0.key - anchor + count) % count, $0.value) })
-        // The walk starts at the new first piece, so the origin is that piece's
-        // entry — its pose and its height.
-        rotated.origin = walk.placed[anchor].entry
-        rotated.originHeight = walk.placed[anchor].entryHeight
+        rotated.rotate(to: anchor)
         return rotated
     }
 }
