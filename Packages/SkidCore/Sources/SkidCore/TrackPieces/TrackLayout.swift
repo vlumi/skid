@@ -62,7 +62,7 @@ public struct TrackLayout: Equatable, Sendable, Codable {
         self.originHeight = originHeight
         // Normalized to the piece count so equality is structural: trailing
         // flats and an absent array mean the same layout.
-        self.pitches = TrackLayout.trimmed(pitches)
+        self.pitches = TrackLayout.trimmedPitches(pitches)
         self.origin = origin
         self.gateSeams = gateSeams
         self.theme = theme
@@ -73,26 +73,22 @@ public struct TrackLayout: Equatable, Sendable, Codable {
         index < pitches.count ? pitches[index] : .flat
     }
 
-    /// Append resolved (piece, pitch) pairs — what expansions produce — keeping
-    /// the pitch array in step.
+    /// Append resolved (piece, pitch) pairs — what expansions produce. A run of
+    /// end-inserts, so pitches (and any keyed data, of which there is none past
+    /// the end) stay in step through the one remapping path.
     public mutating func append(contentsOf run: [(id: PieceID, pitch: Pitch)]) {
-        guard run.contains(where: { $0.pitch != .flat }) else {
-            pieces += run.map(\.id)  // all flat: the short array already says so
-            return
-        }
-        pitches += Array(repeating: .flat, count: pieces.count - pitches.count)
-        pieces += run.map(\.id)
-        pitches = TrackLayout.trimmed(pitches + run.map(\.pitch))
+        for step in run { insert(step.id, pitch: step.pitch, at: pieces.count) }
     }
 
     /// Remove the last piece and its pitch together.
     public mutating func removeLastPiece() {
-        pieces.removeLast()
-        if pitches.count > pieces.count { pitches.removeLast(pitches.count - pieces.count) }
+        remove(at: pieces.count - 1)
     }
 
     /// Trailing flats dropped, so every equal layout has one representation.
-    private static func trimmed(_ pitches: [Pitch]) -> [Pitch] {
+    /// Shared with the mutation API (`TrackLayoutMutate`), which pads to the
+    /// piece count, edits, then re-trims.
+    static func trimmedPitches(_ pitches: [Pitch]) -> [Pitch] {
         var result = pitches
         while result.last == .flat { result.removeLast() }
         return result
