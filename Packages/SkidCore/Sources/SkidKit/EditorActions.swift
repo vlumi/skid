@@ -38,6 +38,59 @@ extension CouchGame {
         return true
     }
 
+    /// Prepend a catalog piece at the **head** of the layout — the other end of
+    /// the same operation as `editorAppend`, refused on the same grounds.
+    ///
+    /// The road already drawn does not move: the list grows at index 0 and the
+    /// stored origin moves back by the new piece's own displacement (see
+    /// `TrackLayout.prepend`). A compound goes in as its primitives, in order.
+    @discardableResult
+    public func editorPrepend(_ id: PieceID, pitch: Pitch = .flat) -> Bool {
+        guard var layout = editorLayout else { return false }
+        guard TrackValidator.canPrepend(id, pitch: pitch, to: layout) else { return false }
+        guard layout.prependAll(PieceExpansion.expand(id, mode: pitch)) else { return false }
+        editorLayout = layout
+        finishIfClosed()
+        return true
+    }
+
+    /// Whether a palette piece can be prepended right now — the head-end twin of
+    /// `editorCanAppend`, memoised the same way so the palette can gray out
+    /// without validating on every SwiftUI render.
+    public func editorCanPrepend(_ id: PieceID, pitch: Pitch = .flat) -> Bool {
+        guard let layout = editorLayout else { return false }
+        if prependVerdicts.pieces != layout.pieces {
+            prependVerdicts = (layout.pieces, [:])
+        }
+        let key = VerdictKey(id: id, pitch: pitch)
+        if let verdict = prependVerdicts.byPiece[key] { return verdict }
+        let verdict = TrackValidator.canPrepend(id, pitch: pitch, to: layout)
+        prependVerdicts.byPiece[key] = verdict
+        return verdict
+    }
+
+    /// Delete a piece from anywhere on a **closed ring** — rotate it to the end
+    /// and pop it, so the surviving road stays exactly where it was.
+    ///
+    /// The ring opens at the cut. Any checkpoint on the deleted piece goes with
+    /// it, silently: save-time validation already reports an under-gated track,
+    /// and a warning per delete would just be noise.
+    @discardableResult
+    public func editorDelete(at index: Int) -> Bool {
+        guard var layout = editorLayout else { return false }
+        // An open chain has no middle to delete from — mid-chain deletion would
+        // slide the whole tail, which is never what the author means. Only its
+        // ends, and the tail end is what `editorDeleteLast` already does.
+        if !layout.walk().openEnds.isEmpty {
+            guard index == layout.pieces.count - 1 else { return false }
+            editorDeleteLast()
+            return true
+        }
+        guard layout.removeFromRing(at: index) else { return false }
+        editorLayout = layout
+        return true
+    }
+
     /// Close the loop with a **fitting piece**: place it and store its solved
     /// shape, which is the only piece whose geometry lives in the layout rather
     /// than the catalog (see `Fitter`).
