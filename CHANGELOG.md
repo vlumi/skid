@@ -31,6 +31,11 @@ ships (see [AGENTS.md](AGENTS.md)).
   another straight across it. Roads that merely graze each other at a shallow
   angle are still refused, since that is nearly always a mistake rather than a
   junction.
+- **Checkpoints are edited in their own mode.** A tap on the track used to mean
+  two things at once — pick the end you're building from, or add a checkpoint —
+  so it was easy to move a checkpoint you never meant to touch. Tap **Gates** to
+  switch: checkpoints stand out, every seam that can take one is marked, and
+  taps do nothing else until you're done.
 - **Undo and redo in the track editor.** Every edit can be taken back —
   placing pieces, deleting, gating, rotating the whole track, raising and
   lowering it — with a long history, so a wrong turn thirty pieces ago is

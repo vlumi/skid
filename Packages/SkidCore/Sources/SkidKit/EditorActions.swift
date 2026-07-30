@@ -278,17 +278,21 @@ extension CouchGame {
         }
     }
 
-    /// Toggle a seam as a checkpoint gate. Seam 0 is the start/finish and is
-    /// permanent; the rest are the author's choice, up to the 16-gate cap.
+    /// Toggle a seam as a checkpoint gate, up to the 16-gate cap. **Only in gate
+    /// mode** — outside it a seam tap means nothing, so a stray hit can't silently
+    /// re-gate the track.
     ///
     /// A lap only counts when every gate is crossed in order, so gates are what
     /// stop a track being cut — which is why a saveable track needs at least one
-    /// besides the start line.
-    public func editorToggleGate(seam: Int) {
-        recordingUndo {
-            guard var layout = editorLayout, seam != 0, seam < layout.pieces.count else {
-                return false
-            }
+    /// besides the start line. The start line's own seam is permanent: it IS the
+    /// finish line, and it is the start piece's index, not necessarily 0.
+    @discardableResult
+    public func editorToggleGate(seam: Int) -> Bool {
+        guard editorMode == .gate else { return false }
+        return recordingUndo {
+            guard var layout = editorLayout, seam < layout.pieces.count else { return false }
+            let startSeam = layout.pieces.firstIndex(of: PieceCatalog.startPieceID) ?? 0
+            guard seam != startSeam else { return false }
             if let existing = layout.gateSeams.firstIndex(of: seam) {
                 layout.gateSeams.remove(at: existing)
             } else {

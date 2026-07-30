@@ -62,8 +62,11 @@ extension EditorRenderer {
     /// A checkpoint gate across a seam: a line at the piece's ENTRY port, with a
     /// post at each road edge — the same read as the game's gates, so what you
     /// mark in the editor is what you'll drive through.
+    /// `highlighted` is gate mode: same shape, drawn to dominate — that mode is for
+    /// nothing else, so the gates should be what the eye lands on.
     static func drawGate(
-        _ placed: PlacedPiece, width: Double, transform t: Transform,
+        _ placed: PlacedPiece, width: Double, highlighted: Bool = false,
+        transform t: Transform,
         into context: inout GraphicsContext
     ) {
         // Seam N = piece N's EXIT; the marker belongs on the seam it names.
@@ -71,14 +74,14 @@ extension EditorRenderer {
         let across = Vec2(angle: pose.heading.radians).perpendicular
         let center = pose.position.vec2
         let edge = across * (width / 2)
-        let lineWidth = max(2, 6 * t.scale)
+        let lineWidth = max(2, (highlighted ? 9 : 6) * t.scale)
 
         // Across the road, solid: the part of the gate you always cross.
         var road = Path()
         road.move(to: t.screen(center - edge))
         road.addLine(to: t.screen(center + edge))
         context.stroke(
-            road, with: .color(.cyan.opacity(0.75)),
+            road, with: .color(.cyan.opacity(highlighted ? 1 : 0.75)),
             style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
 
         // Onto the grass, faded: running wide still counts, out to roughly here.
@@ -95,13 +98,32 @@ extension EditorRenderer {
         }
 
         // Posts at the road edges, so a gate reads as a gate.
-        let post = max(3, 9 * t.scale)
+        let post = max(3, (highlighted ? 13 : 9) * t.scale)
         for end in [center - edge, center + edge] {
             let box = CGRect(
                 x: t.screen(end).x - post / 2, y: t.screen(end).y - post / 2,
                 width: post, height: post)
             context.fill(Path(ellipseIn: box), with: .color(.cyan))
         }
+    }
+
+    /// A seam that COULD be gated, shown only in gate mode: a thin dashed bar
+    /// across the road. Without it the author has to guess where the taps land.
+    static func drawGateCandidate(
+        _ placed: PlacedPiece, width: Double, transform t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        let pose = placed.exits[0]
+        let across = Vec2(angle: pose.heading.radians).perpendicular
+        let center = pose.position.vec2
+        let edge = across * (width / 2)
+        let lineWidth = max(1, 3 * t.scale)
+        var bar = Path()
+        bar.move(to: t.screen(center - edge))
+        bar.addLine(to: t.screen(center + edge))
+        context.stroke(
+            bar, with: .color(.white.opacity(0.4)),
+            style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt, dash: [lineWidth * 3]))
     }
 
     static func drawStartLine(
