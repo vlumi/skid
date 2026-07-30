@@ -41,6 +41,9 @@ public final class CouchGame: ObservableObject {
     /// `editorCanAppend`. Not `@Published` on purpose: it's a cache, and
     /// invalidating views over it would defeat its point.
     var appendVerdicts: (pieces: [PieceID], byPiece: [VerdictKey: Bool]) = ([], [:])
+    /// The same cache for the head end (`editorCanPrepend`). Kept separate
+    /// because the two ends give different verdicts on the same piece.
+    var prependVerdicts: (pieces: [PieceID], byPiece: [VerdictKey: Bool]) = ([], [:])
 
     public enum Mode: CaseIterable {
         case race
