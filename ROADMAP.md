@@ -155,6 +155,32 @@ What's left:
       a long history; the closure control, complete chip and delete icon all
       move. Crossings ([docs/crossing-plan.md](docs/crossing-plan.md)) land
       first, so mid-track deletion is exercised against them.
+- [ ] **Wall contact needs mass, and a cost.** The bounce off a barrier is too
+      harsh and the car reads as weightless — worst on GLANCING hits, which
+      should scrub along the wall and instead kick out.
+
+      **The mechanism:** the whole normal component is reflected with
+      `wallRestitution` (0.45); the tangential component is untouched and no yaw
+      is applied. So a shallow hit converts sideways speed into an outward shove
+      with no scrape, and — the other half of the problem — **no loss along the
+      wall at all**.
+
+      **What it should feel like** (maintainer's spec):
+      - **Dragging along walls must not be the best strategy.** Contact should
+        cost enough speed that avoiding walls is the faster line. That means
+        real friction along the wall, which today is entirely absent.
+      - **A glancing hit should point the nose the right way** — a yaw response,
+        so the car pivots along the wall rather than skipping off it.
+      - **A hard enough glancing hit should be able to stop the car outright.**
+      - **Some bounce on harsh (near head-on) collisions is fine** — keep that;
+        it is only the shallow case that misbehaves.
+
+      Restitution scaled by approach angle covers the last two: full bounce
+      head-on, nearly none when parallel.
+
+      Reported from device 2026-07-30, after the tunnelling fix (#99) — that fix
+      changed which SIDE the car is put back on, not the bounce strength, so this
+      is pre-existing and not a regression from it.
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
