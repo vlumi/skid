@@ -17,12 +17,25 @@ extension Race {
             // Nearest approach of the car's PATH to the wall, so a fast car is
             // caught mid-span rather than only where it happened to stop.
             let closest = nearestPoint(on: wall, toPathFrom: from, to: car.position)
-            let offset = car.position - closest
-            let dist = offset.length
             let reach =
                 CarGeometry.radius + outboardThickness(of: wall, approachedFrom: from)
-            guard dist < reach, dist > 0 else { continue }
-            let normal = offset.normalized
+            // **Which side the car came FROM decides where it is put back.**
+            //
+            // Using the direction to where it ENDED UP is wrong the moment a step
+            // carries it past the wall: that direction points to the far side, so
+            // the push-out shoved it further out. Reported on the flat eight — the
+            // car went through the fence and got stuck outside the course.
+            //
+            // The approach side is the honest answer, and it also handles the
+            // crossing case below: a car that swapped sides is put back on the one
+            // it started on.
+            let crossed = crosses(wall, from: from, to: car.position)
+            let approach = sideNormal(of: wall, at: closest, from: from)
+            let offset = car.position - closest
+            let dist = offset.length
+            guard crossed || (dist < reach && dist > 0) else { continue }
+            let normal = approach.length > 0 ? approach : offset.normalized
+            guard normal.length > 0 else { continue }
             // Push out of the wall, then reflect the into-wall velocity
             // component with restitution.
             car.position = closest + normal * reach
@@ -33,6 +46,35 @@ extension Race {
             }
         }
         return hardest
+    }
+
+    /// Whether the car's path this tick actually passed through the wall segment.
+    ///
+    /// Proximity alone cannot catch a fast car: the nearest-approach test samples
+    /// three points of the movement, so a long enough step has none of them within
+    /// reach and the wall is missed entirely — 60 units through the map fence
+    /// registered nothing at all. A segment-crossing test does not care how fast
+    /// the car was going.
+    private func crosses(_ wall: Wall, from: Vec2, to: Vec2) -> Bool {
+        func side(_ p: Vec2, _ a: Vec2, _ b: Vec2) -> Double {
+            (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
+        }
+        let d1 = side(from, wall.a, wall.b)
+        let d2 = side(to, wall.a, wall.b)
+        guard (d1 < 0) != (d2 < 0) else { return false }  // same side of the line
+        let d3 = side(wall.a, from, to)
+        let d4 = side(wall.b, from, to)
+        return (d3 < 0) != (d4 < 0)  // and the wall spans the path
+    }
+
+    /// A unit normal pointing from the wall toward the side `from` is on — the side
+    /// the car came from, and so the side it belongs on.
+    private func sideNormal(of wall: Wall, at closest: Vec2, from: Vec2) -> Vec2 {
+        let offset = from - closest
+        if offset.length > 0.001 { return offset.normalized }
+        // Started exactly on the wall: fall back to its own outward face if it has
+        // one (rails record it), otherwise let the caller use the end offset.
+        return wall.outward.length > 0.001 ? wall.outward : .zero
     }
 
     /// Whether this wall stops this car.
