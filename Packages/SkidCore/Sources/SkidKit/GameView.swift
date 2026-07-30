@@ -50,6 +50,15 @@ public final class CouchGame: ObservableObject {
     @Published var undoStack: [String] = []
     @Published var redoStack: [String] = []
 
+    /// What a map tap means. One tap used to mean two things — select an end or
+    /// toggle a checkpoint — so a stray seam hit was a silent real edit.
+    public enum EditorMode: Equatable, Sendable {
+        case build
+        case gate
+    }
+
+    @Published public var editorMode: EditorMode = .build
+
     public enum Mode: CaseIterable {
         case race
         case timeTrial
@@ -193,6 +202,7 @@ public final class CouchGame: ObservableObject {
                 pieces: [PieceCatalog.startPieceID], gateSeams: [0])
             clearUndoHistory()
         }
+        editorMode = .build  // never open in a mode left on from last time
         sound.stop()
         phase = .editing
     }

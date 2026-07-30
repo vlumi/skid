@@ -40,12 +40,14 @@ enum EditorRenderer {
 
     static func draw(
         walk: WalkResult, width: Double, selectedEnd: Int?, gateSeams: [Int] = [],
-        transform t: Transform, into context: inout GraphicsContext
+        gating: Bool = false, transform t: Transform, into context: inout GraphicsContext
     ) {
         // The size limit, made visible. Under everything else, since it's a
         // boundary you build inside of.
         drawCanvasBounds(walk: walk, t: t, into: &context)
-        drawTrack(walk: walk, width: width, gateSeams: gateSeams, transform: t, into: &context)
+        drawTrack(
+            walk: walk, width: width, gateSeams: gateSeams, gating: gating, transform: t,
+            into: &context)
 
         // Loose (unbuilt) ends get a construction treatment. That's every
         // walk openEnd, PLUS the back of the start piece whenever the loop
@@ -81,7 +83,8 @@ enum EditorRenderer {
     /// painted on top of it. The editor passes the full range and draws it all at
     /// once.
     static func drawTrack(
-        walk: WalkResult, width: Double, gateSeams: [Int], transform t: Transform,
+        walk: WalkResult, width: Double, gateSeams: [Int], gating: Bool = false,
+        transform t: Transform,
         heightRange: ClosedRange<Double> = -1...2,
         into context: inout GraphicsContext
     ) {
@@ -128,10 +131,22 @@ enum EditorRenderer {
         // piece early, which showed the moment the race view (whose white chrome
         // comes from the compiled gates, correctly placed) drew both.
         let startSeam = walk.placed.firstIndex { $0.id == PieceCatalog.startPieceID }
+        // In gate mode, show every seam that COULD be gated as a faint candidate,
+        // so the author sees what is tappable instead of guessing. Under the real
+        // gates, which draw over them.
+        if gating {
+            let gated = Set(gateSeams)
+            for (seam, piece) in walk.placed.enumerated()
+            where seam != startSeam && !gated.contains(seam)
+                && heightRange.contains(piece.exitHeight)
+            {
+                drawGateCandidate(piece, width: width, transform: t, into: &context)
+            }
+        }
         for seam in gateSeams where seam != startSeam && seam < walk.placed.count {
             let piece = walk.placed[seam]
             guard heightRange.contains(piece.exitHeight) else { continue }
-            drawGate(piece, width: width, transform: t, into: &context)
+            drawGate(piece, width: width, highlighted: gating, transform: t, into: &context)
         }
 
         // Grid-slot markings, then the start/finish line at the start piece's
