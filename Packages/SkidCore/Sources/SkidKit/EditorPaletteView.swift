@@ -269,8 +269,10 @@ extension EditorView {
             let point = transform.screen(end.position.vec2)
             HStack(spacing: 8) {
                 // Delete the last piece: the chain's growing end is right here.
+                // A trash glyph, not an undo arrow — now that undo exists, the
+                // arrow belongs to it, and delete is not undo's button.
                 if walk.placed.count > 1 {
-                    mapAction("arrow.uturn.backward", tint: .white, label: "Delete last piece") {
+                    mapAction("trash", tint: .white, label: "Delete last piece") {
                         game.editorDeleteLast()
                     }
                 }
@@ -348,6 +350,20 @@ extension EditorView {
                 enabled: game.canShiftHeight(steps: -1)
             ) {
                 game.editorShiftHeight(steps: -1)
+            }
+            // Undo/redo sit with the other whole-track actions because that is
+            // what they are — every edit is undoable, not just piece placement.
+            mapAction(
+                "arrow.uturn.backward", tint: .white, label: "Undo",
+                enabled: game.editorCanUndo
+            ) {
+                game.editorUndo()
+            }
+            mapAction(
+                "arrow.uturn.forward", tint: .white, label: "Redo",
+                enabled: game.editorCanRedo
+            ) {
+                game.editorRedo()
             }
         }
     }
