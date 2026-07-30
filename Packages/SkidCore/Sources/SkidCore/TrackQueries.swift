@@ -46,8 +46,22 @@ extension Track {
     /// (respawn, or a start line at a half height): it would settle visibly over
     /// those ticks. If that ever gets reported, the cheap repair is to scale the
     /// penalty by the height difference instead of applying it flat.
+    /// **`preferHeading` disambiguates an AT-GRADE crossing**, where the height
+    /// tiebreak has nothing to work with: both roads are at the same level, so a
+    /// car in the shared zone is equally close to a stretch running across its
+    /// path. Pass the car's own heading and the road it is actually on wins,
+    /// because a legal crossing meets steeply by construction
+    /// (`RoadProximity.minCrossingAngle`) — the wrong road is far off the car's
+    /// travel, and its penalty is proportional to how far.
+    ///
+    /// Measured without it, on the eight flattened to one level: `arcPosition`
+    /// jumped 1606 units in a single tick — half the lap — as the resolver
+    /// flipped to the crossing road. Laps survived (gates are directional) but
+    /// standings would swing wildly. Unlike the mid-ramp case above this does
+    /// not self-correct, since a crossing is a place the car drives through
+    /// every lap.
     public func closestCenterlinePoint(
-        to p: Vec2, preferHeight: Double? = nil
+        to p: Vec2, preferHeight: Double? = nil, preferHeading: Double? = nil
     ) -> (segment: Int, t: Double) {
         var best = (segment: 0, t: 0.0)
         var bestScore = Double.greatestFiniteMagnitude
@@ -58,6 +72,18 @@ extension Track {
             var score = p.distance(to: closest)
             if let preferHeight, !segment(i, isAt: preferHeight) {
                 score += width  // road at another height loses ties decisively
+            }
+            if let preferHeading {
+                // Undirected: driving a stretch either way is driving that
+                // stretch, so only the LINE's alignment matters. Scaled by the
+                // road width so a perpendicular road pays about what a
+                // wrong-height road pays, and an aligned one pays nothing.
+                let along = b - a
+                if along.length > 0 {
+                    let travel = Vec2(angle: preferHeading)
+                    let alignment = abs(along.normalized.dot(travel))
+                    score += width * (1 - alignment)
+                }
             }
             if score < bestScore {
                 bestScore = score

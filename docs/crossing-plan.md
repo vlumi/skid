@@ -85,12 +85,41 @@ the road — and the per-sample rule makes it automatic: the zone is covered by
 whatever pieces happen to be there, jointly. No containment requirement, no
 special sizes.
 
-A figure-eight pinched so the lobes meet as a connected `)(` works the same
-way: the crossing area is all curves, and the rule never asks what shape a
-piece is. **One number to tune when implementing**: the angle threshold. 45°
-is the starting point, but a gently pinched `)(` crosses shallower than a
-square junction — measure real pinched eights and set the threshold so they
-pass while merges still fail, rather than trusting the round number.
+Curves cross the same way: the rule never asks what shape a piece is.
+
+### The pinched `)(` eight is a MERGE, and is parked
+
+The plan originally assumed a pinched eight — two lobes meeting as a connected
+`)(` — was a crossing that merely crossed shallower than a square junction, and
+that tuning the angle threshold would admit it. **Measured, it is not a
+crossing at all.** Three candidate rules were tried against a real pinched
+layout and a coil of four tight turns that must stay refused:
+
+| test | pinched `)(` (wanted: allow) | coil (must refuse) |
+| --- | --- | --- |
+| crossing angle | 0.2°–84° across its samples | 3° |
+| how long the overlap lingers | 1.6 road widths | 1.0 |
+| heading change while inside | 42° | 54° |
+
+Every metric puts them the wrong way round or overlapping, because the pinched
+eight's lobes **run alongside each other for about a road and a half before
+separating** — the maintainer's reading, and the right one: it is two roads
+merging and diverging, not one passing through the other. A square junction and
+a merge-then-diverge are different features, and no threshold on a single
+overlap will tell them apart.
+
+Also measured: centerline intersection *does* separate the cases in a
+fine-sampled probe, but at `RoadProximity`'s working density (20° per sample)
+the flat eight's two lobes **share a segment endpoint exactly** rather than
+straddling, so a strict intersection test cannot fire on the very case it needs
+to permit. The eight's crossing is a *pinch point*, not an overlap.
+
+**Parked as a separate feature.** Allowing merge-and-diverge means deciding what
+the road looks like where two lanes are briefly one (kerbs and edge lines along
+the merged stretch), and how the resolver picks a road where the two genuinely
+agree about direction — neither of which the crossing rule answers. Today's rule
+permits square-ish junctions and refuses everything else, which is the
+conservative half and ships on its own.
 
 ## Rejected along the way
 
@@ -119,14 +148,22 @@ pass while merges still fail, rather than trusting the round number.
 
 - **The per-sample legality rule** replacing the blanket refusal — both the
   permit (steep crossings) and the keep (shallow overlap refused), in
-  `RoadProximity`'s segment pairs where the data already lives.
+  `RoadProximity`'s segment pairs where the data already lives. **Done**: a
+  segment pair may touch when both stretches are at the same height and their
+  lines meet at ≥ 45°. Two rules, not one — the angle test alone permitted a
+  road crossing a RAMP, which shares no tarmac with it (a ramp is a solid
+  embankment); the height-model tripwires caught that.
 - **Position→road resolution in the shared zone.** `closestCenterlinePoint`
   disambiguates a bridge crossing by height; at the same height that tiebreak
   is gone, so the AI's lookahead and `arcPosition` can snap to the wrong road
   inside the zone. The tiebreak is **heading alignment** — the wrong road is
   steeply off the car's travel, by construction of the legality rule. Unlike
   the mid-ramp resolver quirk, this does not self-correct; it lands before
-  crossings ship.
+  crossings ship. **Done**: `closestCenterlinePoint` and `arcPosition` take an
+  optional heading, penalised in proportion to misalignment, and standings pass
+  the car's own. Measured on the flattened eight, progress jumped 1606 units of
+  arc in a single tick before (half the lap, where a tick of driving covers
+  about ten) and 14.7 after.
 - **Gate seams kept out of the zone.** Gates are directional, so crossing
   traffic scores ~zero along a gate's forward — but a drifting car at a
   shallow angle could tick one. Concrete, not theoretical: in the 90° straddle
