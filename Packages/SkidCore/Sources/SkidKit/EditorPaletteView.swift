@@ -269,8 +269,10 @@ extension EditorView {
             let point = transform.screen(end.position.vec2)
             HStack(spacing: 8) {
                 // Delete the last piece: the chain's growing end is right here.
+                // A trash glyph, not an undo arrow — now that undo exists, the
+                // arrow belongs to it, and delete is not undo's button.
                 if walk.placed.count > 1 {
-                    mapAction("arrow.uturn.backward", tint: .white, label: "Delete last piece") {
+                    mapAction("trash", tint: .white, label: "Delete last piece") {
                         game.editorDeleteLast()
                     }
                 }
@@ -331,11 +333,13 @@ extension EditorView {
     @ViewBuilder
     var transformPad: some View {
         HStack(spacing: 6) {
+            // +eighths is counterclockwise in the ring but CLOCKWISE on screen:
+            // the canvas is y-down and `screen()` doesn't flip. Hence the signs.
             mapAction("rotate.left", tint: .white, label: "Rotate 45° left") {
-                game.editorRotate(eighths: 1)
+                game.editorRotate(eighths: -1)
             }
             mapAction("rotate.right", tint: .white, label: "Rotate 45° right") {
-                game.editorRotate(eighths: -1)
+                game.editorRotate(eighths: 1)
             }
             mapAction(
                 "arrow.up.to.line", tint: .white, label: "Raise track",
@@ -348,6 +352,20 @@ extension EditorView {
                 enabled: game.canShiftHeight(steps: -1)
             ) {
                 game.editorShiftHeight(steps: -1)
+            }
+            // Undo/redo sit with the other whole-track actions because that is
+            // what they are — every edit is undoable, not just piece placement.
+            mapAction(
+                "arrow.uturn.backward", tint: .white, label: "Undo",
+                enabled: game.editorCanUndo
+            ) {
+                game.editorUndo()
+            }
+            mapAction(
+                "arrow.uturn.forward", tint: .white, label: "Redo",
+                enabled: game.editorCanRedo
+            ) {
+                game.editorRedo()
             }
         }
     }
@@ -367,8 +385,21 @@ extension EditorView {
                 )
                 .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
                 .opacity(enabled ? 1 : 0.35)
+                .contentShape(Circle())
         }
         .disabled(!enabled)
         .accessibilityLabel(Text(label, bundle: .module))
+        // A .disabled() button stops acting but still lets the touch through to
+        // the map's tap gesture underneath, which toggles a gate seam — a real
+        // edit that spends the redo tail. So while disabled, sit a gesture on top
+        // that swallows the tap and does nothing.
+        .overlay {
+            if !enabled {
+                Circle()
+                    .fill(.clear)
+                    .contentShape(Circle())
+                    .onTapGesture {}
+            }
+        }
     }
 }

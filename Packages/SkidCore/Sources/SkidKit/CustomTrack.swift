@@ -39,6 +39,9 @@ extension CouchGame {
             let layout = try? TrackCode.decode(code.trimmingCharacters(in: .whitespacesAndNewlines))
         else { return false }
         editorLayout = layout
+        // A different track arrives with no history — undoing back into the
+        // previous one would be a surprise, not a convenience.
+        clearUndoHistory()
         return true
     }
 

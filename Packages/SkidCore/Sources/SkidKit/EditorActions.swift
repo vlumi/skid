@@ -17,11 +17,13 @@ extension CouchGame {
     /// single byte.
     @discardableResult
     public func editorAppend(_ id: PieceID, pitch: Pitch = .flat) -> Bool {
-        guard let layout = editorLayout else { return false }
-        guard TrackValidator.canAppend(id, pitch: pitch, to: layout) else { return false }
-        editorLayout?.append(contentsOf: PieceExpansion.expand(id, mode: pitch))
-        finishIfClosed()
-        return true
+        recordingUndo {
+            guard let layout = editorLayout else { return false }
+            guard TrackValidator.canAppend(id, pitch: pitch, to: layout) else { return false }
+            editorLayout?.append(contentsOf: PieceExpansion.expand(id, mode: pitch))
+            finishIfClosed()
+            return true
+        }
     }
 
     /// Append a suggested closing run **atomically**. The run was validated as a
@@ -30,12 +32,14 @@ extension CouchGame {
     /// step read as an overlap mid-run.
     @discardableResult
     public func editorAppendRun(_ run: [PlannedPiece]) -> Bool {
-        guard let layout = editorLayout, !run.isEmpty else { return false }
-        guard TrackValidator.canAppend(run: run, to: layout) else { return false }
-        editorLayout?.append(
-            contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
-        finishIfClosed()
-        return true
+        recordingUndo {
+            guard let layout = editorLayout, !run.isEmpty else { return false }
+            guard TrackValidator.canAppend(run: run, to: layout) else { return false }
+            editorLayout?.append(
+                contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
+            finishIfClosed()
+            return true
+        }
     }
 
     /// Prepend a catalog piece at the **head** of the layout — the other end of
@@ -46,12 +50,14 @@ extension CouchGame {
     /// `TrackLayout.prepend`). A compound goes in as its primitives, in order.
     @discardableResult
     public func editorPrepend(_ id: PieceID, pitch: Pitch = .flat) -> Bool {
-        guard var layout = editorLayout else { return false }
-        guard TrackValidator.canPrepend(id, pitch: pitch, to: layout) else { return false }
-        guard layout.prependAll(PieceExpansion.expand(id, mode: pitch)) else { return false }
-        editorLayout = layout
-        finishIfClosed()
-        return true
+        recordingUndo {
+            guard var layout = editorLayout else { return false }
+            guard TrackValidator.canPrepend(id, pitch: pitch, to: layout) else { return false }
+            guard layout.prependAll(PieceExpansion.expand(id, mode: pitch)) else { return false }
+            editorLayout = layout
+            finishIfClosed()
+            return true
+        }
     }
 
     /// Whether a palette piece can be prepended right now — the head-end twin of
@@ -77,18 +83,23 @@ extension CouchGame {
     /// and a warning per delete would just be noise.
     @discardableResult
     public func editorDelete(at index: Int) -> Bool {
-        guard var layout = editorLayout else { return false }
-        // An open chain has no middle to delete from — mid-chain deletion would
-        // slide the whole tail, which is never what the author means. Only its
-        // ends, and the tail end is what `editorDeleteLast` already does.
-        if !layout.walk().openEnds.isEmpty {
-            guard index == layout.pieces.count - 1 else { return false }
-            editorDeleteLast()
+        recordingUndo {
+            guard var layout = editorLayout else { return false }
+            // An open chain has no middle to delete from — mid-chain deletion
+            // would slide the whole tail, which is never what the author means.
+            // Only its ends, and the tail end is `deleteLastPiece`.
+            if !layout.walk().openEnds.isEmpty {
+                guard index == layout.pieces.count - 1, layout.pieces.count > 1 else {
+                    return false
+                }
+                layout.removeLastPiece()
+                editorLayout = layout
+                return true
+            }
+            guard layout.removeFromRing(at: index) else { return false }
+            editorLayout = layout
             return true
         }
-        guard layout.removeFromRing(at: index) else { return false }
-        editorLayout = layout
-        return true
     }
 
     /// Close the loop with a **fitting piece**: place it and store its solved
@@ -100,15 +111,17 @@ extension CouchGame {
     /// deterministic lockstep cannot absorb an ULP of disagreement.
     @discardableResult
     public func editorAppendFitter(_ fitter: Fitter) -> Bool {
-        guard var layout = editorLayout else { return false }
-        layout.insert(PieceCatalog.fitterPieceID, at: layout.pieces.count)
-        layout.fitters[layout.pieces.count - 1] = fitter
-        // The fitter must actually close the ring — it has nothing to offer a
-        // track it leaves open, and the walk needs an inlet to pin its exit to.
-        guard layout.walk().openEnds.isEmpty else { return false }
-        editorLayout = layout
-        finishIfClosed()
-        return true
+        recordingUndo {
+            guard var layout = editorLayout else { return false }
+            layout.insert(PieceCatalog.fitterPieceID, at: layout.pieces.count)
+            layout.fitters[layout.pieces.count - 1] = fitter
+            // The fitter must actually close the ring — it has nothing to offer a
+            // track it leaves open, and the walk needs an inlet to pin its exit to.
+            guard layout.walk().openEnds.isEmpty else { return false }
+            editorLayout = layout
+            finishIfClosed()
+            return true
+        }
     }
 
     /// The moment the ring closes, finish the job: put default checkpoints in
@@ -116,10 +129,13 @@ extension CouchGame {
     /// nothing about that is the author's mistake) and center it on the
     /// canvas, since a layout that grew left or up sits at negative
     /// coordinates and would race letterboxed into a corner.
+    /// Deliberately NOT recorded for undo: this runs inside the edit that closed
+    /// the ring, and seeding gates plus centering are part of that one act. Pushing
+    /// their own snapshots would make closing a loop cost three undos.
     private func finishIfClosed() {
         guard editorLayout?.walk().openEnds.isEmpty == true else { return }
         if (editorLayout?.gateSeams.count ?? 0) < 2 { editorSeedGates() }
-        editorCenterOnCanvas()
+        centerOnCanvas()
     }
 
     /// Whether a palette piece can be placed right now — so the editor can gray
@@ -154,12 +170,22 @@ extension CouchGame {
     /// Needed because a track is built outward from wherever the origin happens
     /// to be: a layout that grows left or up runs to negative coordinates, i.e.
     /// off the canvas, and races letterboxed into a corner (or partly offscreen).
+    ///
+    /// Undoable when the author asks for it from the button; the automatic calls
+    /// (closing a loop, loading a pasted track) run inside another action and are
+    /// not separately recorded.
     public func editorCenterOnCanvas() {
-        guard var layout = editorLayout else { return }
+        recordingUndo { centerOnCanvas() }
+    }
+
+    /// The centering itself, so the public entry point is only the undo wrapper.
+    @discardableResult
+    private func centerOnCanvas() -> Bool {
+        guard var layout = editorLayout else { return false }
         let points: [Vec2] = layout.walk().placed.flatMap { $0.centerlineSamples() }
         guard let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
             let minY = points.map(\.y).min(), let maxY = points.map(\.y).max()
-        else { return }
+        else { return false }
         // Leave room for the road's half-width on every side.
         let margin = Double(PieceCatalog.width) / 2
         let target = TrackValidator.canvas
@@ -173,6 +199,7 @@ extension CouchGame {
         layout.origin = PiecePose(
             position: layout.origin.position + steps, heading: layout.origin.heading)
         editorLayout = layout
+        return true
     }
 
     /// Turn the whole layout 45° about its own center, by rotating the stored
@@ -194,6 +221,11 @@ extension CouchGame {
     /// integer loop closure everything else depends on.
     @discardableResult
     public func editorRotate(eighths: Int = 1) -> Bool {
+        recordingUndo { rotateWholeTrack(eighths: eighths) }
+    }
+
+    /// The rotation itself, so `editorRotate` is only the undo wrapper.
+    private func rotateWholeTrack(eighths: Int) -> Bool {
         guard var layout = editorLayout else { return false }
         let origin = layout.origin
         guard origin.position.canRotate45 || eighths.isMultiple(of: 2) else { return false }
@@ -207,8 +239,9 @@ extension CouchGame {
             heading: origin.heading.turnedLeft(eighths))
         editorLayout = layout
         // Rotating swings the track into another quadrant, so bring it back onto
-        // the canvas instead of leaving it at negative coordinates.
-        editorCenterOnCanvas()
+        // the canvas instead of leaving it at negative coordinates. Part of the
+        // same edit, so not separately recorded — one undo puts the track back.
+        centerOnCanvas()
         return true
     }
 
@@ -223,9 +256,12 @@ extension CouchGame {
     /// cannot move at all.
     @discardableResult
     public func editorShiftHeight(steps: Int) -> Bool {
-        guard let layout = editorLayout, canShiftHeight(steps: steps) else { return false }
-        editorLayout?.originHeight = layout.originHeight + Double(steps) * Track.levelHeight / 2
-        return true
+        recordingUndo {
+            guard let layout = editorLayout, canShiftHeight(steps: steps) else { return false }
+            editorLayout?.originHeight =
+                layout.originHeight + Double(steps) * Track.levelHeight / 2
+            return true
+        }
     }
 
     /// Whether shifting by `steps` half-levels keeps every piece in range.
@@ -249,14 +285,19 @@ extension CouchGame {
     /// stop a track being cut — which is why a saveable track needs at least one
     /// besides the start line.
     public func editorToggleGate(seam: Int) {
-        guard var layout = editorLayout, seam != 0, seam < layout.pieces.count else { return }
-        if let existing = layout.gateSeams.firstIndex(of: seam) {
-            layout.gateSeams.remove(at: existing)
-        } else {
-            guard layout.gateSeams.count < 16 else { return }
-            layout.gateSeams.append(seam)
+        recordingUndo {
+            guard var layout = editorLayout, seam != 0, seam < layout.pieces.count else {
+                return false
+            }
+            if let existing = layout.gateSeams.firstIndex(of: seam) {
+                layout.gateSeams.remove(at: existing)
+            } else {
+                guard layout.gateSeams.count < 16 else { return false }
+                layout.gateSeams.append(seam)
+            }
+            editorLayout = layout
+            return true
         }
-        editorLayout = layout
     }
 
     /// Whether a seam is currently a gate.
@@ -287,14 +328,22 @@ extension CouchGame {
     /// fitter go with it, and nothing later needs re-pointing because nothing is
     /// later. See `TrackLayoutMutate`.
     public func editorDeleteLast() {
-        guard var layout = editorLayout, layout.pieces.count > 1 else { return }
-        layout.remove(at: layout.pieces.count - 1)
-        editorLayout = layout
+        recordingUndo {
+            guard var layout = editorLayout, layout.pieces.count > 1 else { return false }
+            layout.remove(at: layout.pieces.count - 1)
+            editorLayout = layout
+            return true
+        }
     }
 
-    /// Start a fresh track (just the start piece).
+    /// Start a fresh track (just the start piece). **Undoable** — it throws away
+    /// everything the author built, which is exactly the edit that most needs
+    /// taking back.
     public func editorReset() {
-        editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID], gateSeams: [0])
+        recordingUndo {
+            editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID], gateSeams: [0])
+            return true
+        }
     }
 
     /// Whether the current layout is saveable (closed + valid).
