@@ -79,6 +79,30 @@ struct RoadProximity {
         grid = cells
     }
 
+    /// **How steeply two stretches must meet to count as a crossing** rather
+    /// than an illegal overlap.
+    ///
+    /// At-grade crossings are IMPLICIT (docs/crossing-plan.md): nothing is
+    /// declared or flagged, so geometry alone decides, and this angle is the
+    /// whole of that decision. It is a threshold rather than a permission
+    /// because everything downstream depends on the shared zone staying small:
+    ///
+    /// - a steep crossing's zone is about a road width across, so each road's
+    ///   asphalt cleanly interrupts the other's edge lines and kerbs (which is
+    ///   why crossings need no drawing code at all); a shallow merge would
+    ///   erase them along its whole length;
+    /// - the resolver's tiebreak for "which road is this car on" inside the
+    ///   zone is heading alignment, which only discriminates when the two roads
+    ///   genuinely disagree about direction;
+    /// - a shallow overlap is almost always a mistake — a track grazing itself —
+    ///   and refusing it is the only protection an author gets.
+    ///
+    /// **Tune this against real designs.** A square junction crosses at 90°; a
+    /// pinched figure-eight whose lobes meet as a connected `)(` crosses
+    /// shallower, and the number has to admit those while still refusing merges
+    /// (a measured coil of four tight 90° turns meets itself at 3°).
+    static let minCrossingAngle = 45.0
+
     /// Is any same-chain pair of segments illegally close? `exempt` carries the
     /// caller's piece-pair policy (height layers, legal crossings).
     func hasIllegalPair(exempt: (Int, Int) -> Bool) -> Bool {
@@ -94,6 +118,11 @@ struct RoadProximity {
                         < Self.minGap
                 else { return }
                 guard !nearAlongRoad(segment, candidate) else { return }
+                // A steep meeting is a crossing, not a conflict — judged per
+                // segment pair, which is what lets curves cross and lets a
+                // crossing straddle piece boundaries without anyone declaring
+                // anything. See `minCrossingAngle`.
+                guard !crossesSteeply(segment, candidate) else { return }
                 if !exempt(segment.piece, candidate.piece) { hit = true }
             }
             if hit { return true }
@@ -295,6 +324,34 @@ private struct RoadSegment {
     var arcMid: Double
     var top: Double
     var solidLow: Double
+}
+
+extension RoadProximity {
+    /// Whether these two stretches meet steeply enough to be a crossing.
+    ///
+    /// Undirected: a road crossing another head-on and tail-on are the same
+    /// junction, so the angle is taken between the segments' lines, not their
+    /// travel directions (`abs` on the dot product folds 91–180° back onto
+    /// 0–89°).
+    fileprivate func crossesSteeply(_ one: RoadSegment, _ other: RoadSegment) -> Bool {
+        // **Both stretches must be at the same height.** An at-grade crossing is
+        // two roads sharing tarmac; a road meeting a RAMP at 90° shares nothing
+        // — a ramp is a solid embankment, so that is driving into a hillside,
+        // and the sim's rails make it undrivable. Tripwire tests caught this
+        // (ground across a ramp's low half, and a half-level road crossing the
+        // ground), which is what they are for.
+        //
+        // Same height, not merely same 2D spot: compared against the tolerance
+        // the surface model already uses for "is this the road I am on".
+        guard abs(one.top - other.top) <= Track.surfaceTolerance else { return false }
+        let u = one.b - one.a
+        let v = other.b - other.a
+        let lengths = u.length * v.length
+        guard lengths > 0 else { return false }
+        let cosine = min(1, abs(u.dot(v)) / lengths)
+        let degrees = acos(cosine) * 180 / Double.pi
+        return degrees >= Self.minCrossingAngle
+    }
 }
 
 /// A cell in the spatial grid the segments are bucketed into. Cell size is one
