@@ -385,8 +385,21 @@ extension EditorView {
                 )
                 .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
                 .opacity(enabled ? 1 : 0.35)
+                .contentShape(Circle())
         }
         .disabled(!enabled)
         .accessibilityLabel(Text(label, bundle: .module))
+        // A .disabled() button stops acting but still lets the touch through to
+        // the map's tap gesture underneath, which toggles a gate seam — a real
+        // edit that spends the redo tail. So while disabled, sit a gesture on top
+        // that swallows the tap and does nothing.
+        .overlay {
+            if !enabled {
+                Circle()
+                    .fill(.clear)
+                    .contentShape(Circle())
+                    .onTapGesture {}
+            }
+        }
     }
 }

@@ -191,6 +191,7 @@ public final class CouchGame: ObservableObject {
         if editorLayout == nil {
             editorLayout = TrackLayout(
                 pieces: [PieceCatalog.startPieceID], gateSeams: [0])
+            clearUndoHistory()
         }
         sound.stop()
         phase = .editing

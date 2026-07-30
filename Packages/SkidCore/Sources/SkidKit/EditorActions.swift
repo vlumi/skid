@@ -336,11 +336,14 @@ extension CouchGame {
         }
     }
 
-    /// Start a fresh track (just the start piece). The history goes with the old
-    /// track — undoing across a reset would resurrect what the author threw away.
+    /// Start a fresh track (just the start piece). **Undoable** — it throws away
+    /// everything the author built, which is exactly the edit that most needs
+    /// taking back.
     public func editorReset() {
-        editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID], gateSeams: [0])
-        clearUndoHistory()
+        recordingUndo {
+            editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID], gateSeams: [0])
+            return true
+        }
     }
 
     /// Whether the current layout is saveable (closed + valid).
