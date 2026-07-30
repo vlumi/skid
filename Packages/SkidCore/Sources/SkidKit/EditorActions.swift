@@ -48,7 +48,7 @@ extension CouchGame {
     @discardableResult
     public func editorAppendFitter(_ fitter: Fitter) -> Bool {
         guard var layout = editorLayout else { return false }
-        layout.pieces.append(PieceCatalog.fitterPieceID)
+        layout.insert(PieceCatalog.fitterPieceID, at: layout.pieces.count)
         layout.fitters[layout.pieces.count - 1] = fitter
         // The fitter must actually close the ring — it has nothing to offer a
         // track it leaves open, and the walk needs an inlet to pin its exit to.
@@ -229,11 +229,13 @@ extension CouchGame {
     }
 
     /// Remove the last piece (never the start piece — a track must keep one).
+    ///
+    /// `remove(at:)` carries the keyed data: the dropped piece's gate seam and
+    /// fitter go with it, and nothing later needs re-pointing because nothing is
+    /// later. See `TrackLayoutMutate`.
     public func editorDeleteLast() {
         guard var layout = editorLayout, layout.pieces.count > 1 else { return }
-        layout.removeLastPiece()
-        // Drop any gate seam that no longer has a piece.
-        layout.gateSeams = layout.gateSeams.filter { $0 < layout.pieces.count }
+        layout.remove(at: layout.pieces.count - 1)
         editorLayout = layout
     }
 
