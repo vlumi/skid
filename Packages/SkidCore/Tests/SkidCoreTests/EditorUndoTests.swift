@@ -80,12 +80,8 @@ final class EditorUndoTests: XCTestCase {
         XCTAssertFalse(game.editorCanRedo, "a new edit must discard the redo tail")
     }
 
-    /// **A dead undo is inert.** With nothing to go back to it must not push its
-    /// own snapshot, and above all must not clear the redo tail — a stray tap on a
-    /// spent undo button would otherwise strand everything the author undid.
-    ///
-    /// The button is disabled at the empty stack, so this is defence behind the UI:
-    /// the guard has to sit before both stacks are touched, not after.
+    /// A spent undo must be inert: no snapshot pushed, and the redo tail intact.
+    /// The guard has to sit before either stack is touched.
     func testTappingUndoWithNothingToUndoLeavesRedoIntact() {
         let game = editing()
         XCTAssertTrue(game.editorAppend(Catalog.shortStraight))
@@ -105,6 +101,21 @@ final class EditorUndoTests: XCTestCase {
         // And redo still gets the edit back.
         game.editorRedo()
         XCTAssertEqual(TrackCode.encode(game.editorLayout!), edited)
+    }
+
+    /// Rotating after undoing discards the redo tail, and should: a new edit ends
+    /// the branch. Rotate never refuses, so it's the likeliest case.
+    func testAWholeTrackEditAfterUndoingDiscardsRedo() {
+        let game = editing()
+        for _ in 0..<3 { XCTAssertTrue(game.editorAppend(Catalog.shortStraight)) }
+        game.editorUndo()
+        game.editorUndo()
+        XCTAssertTrue(game.editorCanRedo)
+
+        XCTAssertTrue(game.editorRotate(eighths: 1), "rotate does not refuse on real tracks")
+        XCTAssertFalse(game.editorCanRedo, "a real edit must discard the redo tail")
+        // And it is itself undoable, so the author is not stranded.
+        XCTAssertTrue(game.editorCanUndo)
     }
 
     /// The mirror case: a spent redo must be just as inert.
