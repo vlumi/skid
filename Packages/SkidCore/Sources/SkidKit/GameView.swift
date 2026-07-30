@@ -45,6 +45,11 @@ public final class CouchGame: ObservableObject {
     /// because the two ends give different verdicts on the same piece.
     var prependVerdicts: (pieces: [PieceID], byPiece: [VerdictKey: Bool]) = ([], [:])
 
+    /// Undo/redo history as encoded snapshots — see `EditorUndo`. `@Published`
+    /// because the buttons' enabled state reads off them.
+    @Published var undoStack: [String] = []
+    @Published var redoStack: [String] = []
+
     public enum Mode: CaseIterable {
         case race
         case timeTrial

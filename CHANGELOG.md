@@ -31,6 +31,11 @@ ships (see [AGENTS.md](AGENTS.md)).
   another straight across it. Roads that merely graze each other at a shallow
   angle are still refused, since that is nearly always a mistake rather than a
   junction.
+- **Undo and redo in the track editor.** Every edit can be taken back —
+  placing pieces, deleting, gating, rotating the whole track, raising and
+  lowering it — with a long history, so a wrong turn thirty pieces ago is
+  still recoverable. A one-tap compound counts as one step, and the delete
+  button now wears a bin rather than an undo arrow.
 
 ### build 10 — 2026-07-29
 
