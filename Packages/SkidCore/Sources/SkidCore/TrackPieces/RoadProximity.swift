@@ -117,6 +117,20 @@ struct RoadProximity {
                     segmentDistance(segment.a, segment.b, candidate.a, candidate.b)
                         < Self.minGap
                 else { return }
+                // The real gate: do the RIBBONS interpenetrate? Centerline
+                // distance above is only the broad phase — see `overlapSlack`.
+                let penetration = Self.ribbonPenetration(
+                    segment.a, segment.b, candidate.a, candidate.b)
+                if penetration <= Self.overlapSlack {
+                    // No shared asphalt. One rule still applies: a stretch
+                    // HOVERING over the join zone at an unjoinable height
+                    // blocks the closure that must land there — the road-to-be
+                    // has no segments yet, so only nearness to the join can
+                    // see it. This protection used to ride on the over-broad
+                    // centerline gate; it is explicit now.
+                    if coversJoinZone(segment, candidate) { hit = true }
+                    return
+                }
                 guard !nearAlongRoad(segment, candidate) else { return }
                 // A steep meeting is a crossing, not a conflict — judged per
                 // segment pair, which is what lets curves cross and lets a
@@ -168,6 +182,15 @@ struct RoadProximity {
                 let joinable =
                     dh <= Track.reachTolerance
                     || (through <= Self.allowance / 2 && dh <= through * Self.steepestSlope)
+                let penetration = Self.ribbonPenetration(a, b, existing.a, existing.b)
+                if penetration <= Self.overlapSlack {
+                    // No shared asphalt: only the join-zone cover rule applies
+                    // (mirrors the validator; see `coversJoinZone`).
+                    if along > Self.allowance, through <= Self.allowance, !joinable {
+                        hit = true
+                    }
+                    return
+                }
                 if along > Self.allowance, through > Self.allowance || !joinable {
                     hit = true
                 }
@@ -176,6 +199,23 @@ struct RoadProximity {
             inPiece += length
         }
         return false
+    }
+
+    /// A pair that shares no asphalt but sits close THROUGH the join, at a
+    /// height the closing road could not reach — a shelf parked over the spot
+    /// where the ring must close. Same tiers as `nearAlongRoad`'s through
+    /// side; the difference is polarity: there, joinable means exempt — here,
+    /// NOT joinable within the join window means refused, because the covered
+    /// gap is road-to-be with no segments of its own to defend it.
+    private func coversJoinZone(_ a: RoadSegment, _ b: RoadSegment) -> Bool {
+        let along = abs(a.arcMid - b.arcMid)
+        guard along > Self.allowance else { return false }  // plain neighbours
+        let through = totalArc - along + joinGap
+        guard through <= Self.allowance else { return false }  // not near the join
+        let dh = abs(a.top - b.top)
+        if dh <= Track.reachTolerance { return false }  // same level: joinable
+        let joinable = through <= Self.allowance / 2 && dh <= through * Self.steepestSlope
+        return !joinable
     }
 
     /// Vertical clearance between two segments' SOLID ranges — the same rule
