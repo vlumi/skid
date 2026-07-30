@@ -10,9 +10,12 @@ extension Track {
     ///
     /// `preferHeight` anchors a bridge crossing to the caller's own stretch,
     /// exactly as in `height(at:)`.
-    public func arcPosition(of p: Vec2, preferHeight: Double? = nil) -> Double {
+    public func arcPosition(
+        of p: Vec2, preferHeight: Double? = nil, preferHeading: Double? = nil
+    ) -> Double {
         guard centerline.count > 1 else { return 0 }
-        let (segment, t) = closestCenterlinePoint(to: p, preferHeight: preferHeight)
+        let (segment, t) = closestCenterlinePoint(
+            to: p, preferHeight: preferHeight, preferHeading: preferHeading)
         var arc = 0.0
         for i in 0..<segment {
             arc += centerline[i].distance(to: centerline[i + 1])

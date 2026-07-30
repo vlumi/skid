@@ -90,6 +90,8 @@ What's left:
       per-sample rule itself, a heading-alignment tiebreak for the resolver in
       the shared zone, and keeping gate seams out of the zone — owed before or
       during the editor overhaul, since mid-track deletion interacts with it.
+      Square-ish junctions and the resolver tiebreak are now DONE; gate seams
+      inside the zone are still permitted, pending whether it bites in practice.
 
       A CROSSING is cheap, and worth doing when the pieces are: the route stays
       one closed ring (a track already crosses itself wherever a bridge does),
@@ -120,6 +122,14 @@ What's left:
       no lap, like a pit lane or an alternate entrance — keeps the lap on the
       trunk ring and skips most of that. That is the cheap half if branching is
       ever wanted before full forks.
+- [ ] **Merging and diverging roads.** Parked, with the measurements, in
+      [docs/crossing-plan.md](docs/crossing-plan.md): a pinched `)(` eight turns
+      out not to be a crossing at all but two roads running alongside for about
+      a road and a half before separating, and no threshold on a single overlap
+      distinguishes it from a track grazing itself (three were measured and all
+      ranked the cases wrongly). Needs its own decisions — what the road looks
+      like where two lanes are briefly one, and how the resolver picks a road
+      where both agree about direction.
 - [ ] **Track size classes.** Bigger canvases for bigger screens: a track
       declares its size, and the oversized ones are iPad/Mac-only. Lets much
       more elaborate courses exist without making them unplayable on a phone.

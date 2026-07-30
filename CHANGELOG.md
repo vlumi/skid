@@ -21,6 +21,17 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Pieces near other roads are no longer refused when nothing touches.** The
+  overlap check measured distance between road CENTERLINES, which overstates
+  wildly when a piece merely ends near another road — a rising curve with a
+  third of a road width of clear grass was refused as an overlap. It now
+  measures the asphalt itself.
+- **Roads can cross at ground level.** A track can now run across itself
+  without a bridge, so a figure-eight works flat — build one road, then take
+  another straight across it. Roads that merely graze each other at a shallow
+  angle are still refused, since that is nearly always a mistake rather than a
+  junction.
+
 ### build 10 — 2026-07-29
 
 - **A track can close even when the pieces don't quite meet.** Mixing straights

@@ -22,7 +22,15 @@ extension Race {
         let length = track.centerlineLength
         var ahead =
             track.arcPosition(of: mid, preferHeight: next.height)
-            - track.arcPosition(of: car.state.position, preferHeight: car.state.height)
+            // The car's own heading disambiguates an at-grade crossing, where
+            // both roads sit at the same height and the height tiebreak has
+            // nothing to work with. Without it, a car in a crossing's shared
+            // zone resolved onto the road running ACROSS its path and its
+            // progress jumped half a lap (measured: 1606 units in one tick on
+            // the flattened eight), which standings would show as a wild swing.
+            - track.arcPosition(
+                of: car.state.position, preferHeight: car.state.height,
+                preferHeading: car.state.heading)
         if ahead < 0 { ahead += length }
         // Fraction toward the next gate, measured over the WHOLE remaining
         // lap rather than a nominal gate span. A span of "lap ÷ gates" is
