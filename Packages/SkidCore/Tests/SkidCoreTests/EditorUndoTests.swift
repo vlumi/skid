@@ -14,9 +14,12 @@ import XCTest
 final class EditorUndoTests: XCTestCase {
     private typealias Catalog = PieceCatalog.ID
 
+    /// A fresh editor with an empty history — `editorReset` is itself an undoable
+    /// edit now, so tests that want a clean slate must not go through it.
     private func editing() -> CouchGame {
         let game = CouchGame()
         game.editorReset()
+        game.clearUndoHistory()
         return game
     }
 
@@ -198,14 +201,21 @@ final class EditorUndoTests: XCTestCase {
         XCTAssertEqual(TrackCode.encode(game.editorLayout!), before)
     }
 
-    /// Starting a fresh track clears the history: undoing across a reset would
-    /// resurrect a track the author deliberately threw away.
-    func testResetClearsTheHistory() {
-        let game = editing()
-        XCTAssertTrue(game.editorAppend(Catalog.shortStraight))
+    /// "New track" is undoable — it throws away everything built, so it's the edit
+    /// that most needs taking back.
+    func testResetIsUndoable() throws {
+        let game = CouchGame()
+        game.editorLayout = try TrackCode.decode(
+            "AS0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAA")
+        game.clearUndoHistory()
+        let built = TrackCode.encode(game.editorLayout!)
+
         game.editorReset()
-        XCTAssertFalse(game.editorCanUndo)
-        XCTAssertFalse(game.editorCanRedo)
+        XCTAssertEqual(game.editorLayout?.pieces.count, 1)
+        XCTAssertTrue(game.editorCanUndo, "a reset that cannot be undone destroys work")
+
+        game.editorUndo()
+        XCTAssertEqual(TrackCode.encode(game.editorLayout!), built)
     }
 
     /// The history is bounded, and it drops from the BOTTOM — the oldest states go,
