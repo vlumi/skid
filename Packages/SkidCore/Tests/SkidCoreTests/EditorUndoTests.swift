@@ -80,6 +80,45 @@ final class EditorUndoTests: XCTestCase {
         XCTAssertFalse(game.editorCanRedo, "a new edit must discard the redo tail")
     }
 
+    /// **A dead undo is inert.** With nothing to go back to it must not push its
+    /// own snapshot, and above all must not clear the redo tail — a stray tap on a
+    /// spent undo button would otherwise strand everything the author undid.
+    ///
+    /// The button is disabled at the empty stack, so this is defence behind the UI:
+    /// the guard has to sit before both stacks are touched, not after.
+    func testTappingUndoWithNothingToUndoLeavesRedoIntact() {
+        let game = editing()
+        XCTAssertTrue(game.editorAppend(Catalog.shortStraight))
+        let edited = TrackCode.encode(game.editorLayout!)
+
+        game.editorUndo()
+        let rewound = TrackCode.encode(game.editorLayout!)
+        XCTAssertFalse(game.editorCanUndo)
+        XCTAssertTrue(game.editorCanRedo)
+
+        // Hammer the spent undo. Nothing may move, and redo must survive.
+        for _ in 0..<3 { game.editorUndo() }
+        XCTAssertFalse(game.editorCanUndo, "a dead undo pushed its own snapshot")
+        XCTAssertTrue(game.editorCanRedo, "a dead undo cleared the redo tail")
+        XCTAssertEqual(TrackCode.encode(game.editorLayout!), rewound, "the track moved")
+
+        // And redo still gets the edit back.
+        game.editorRedo()
+        XCTAssertEqual(TrackCode.encode(game.editorLayout!), edited)
+    }
+
+    /// The mirror case: a spent redo must be just as inert.
+    func testTappingRedoWithNothingToRedoLeavesUndoIntact() {
+        let game = editing()
+        XCTAssertTrue(game.editorAppend(Catalog.shortStraight))
+        let edited = TrackCode.encode(game.editorLayout!)
+
+        for _ in 0..<3 { game.editorRedo() }
+        XCTAssertTrue(game.editorCanUndo, "a dead redo ate the undo history")
+        XCTAssertFalse(game.editorCanRedo)
+        XCTAssertEqual(TrackCode.encode(game.editorLayout!), edited, "the track moved")
+    }
+
     /// **Undo is not itself an edit.** Restoring must not push a snapshot, or undo
     /// would only ever toggle between the last two states.
     func testUndoingDoesNotPushItsOwnSnapshot() {
