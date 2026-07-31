@@ -266,43 +266,35 @@ final class EditorSelectionTests: XCTestCase {
         XCTAssertEqual(game.editorBuildEnd, .tail, "and reset the build end")
     }
 
-    /// **The closing run works from either end, and builds the same road.** The gap
-    /// is one span, so the run that fills it doesn't care which end it attaches to.
-    func testTheClosingRunClosesFromEitherEnd() {
+    /// **Closing is the same operation from either end.** The run fills the one gap
+    /// between the loose ends, so the button on the head does exactly what the one
+    /// on the tail does — same pieces, same road, same code.
+    func testClosingIsTheSameFromEitherEnd() {
         let builds: [[PieceID]] = [
             [Catalog.curve90MediumRight, Catalog.curve90MediumRight, Catalog.curve90MediumRight],
             [Catalog.shortStraight, Catalog.curve90TightRight, Catalog.curve90TightRight],
             [Catalog.curve45MediumRight, Catalog.curve45MediumRight, Catalog.longStraight],
         ]
         for build in builds {
-            let tailGame = CouchGame()
-            tailGame.editorReset()
-            tailGame.clearUndoHistory()
-            for piece in build { _ = tailGame.editorAppend(piece) }
-            let layout = tailGame.editorLayout!
-            guard let tail = layout.walk().openEnds.last,
-                case .found(let run) = layout.closingOutcome(from: tail, maxPieces: 4),
-                !run.isEmpty
-            else { continue }
-
-            // Take the run at the tail…
-            tailGame.editorBuildEnd = .tail
-            XCTAssertTrue(tailGame.editorAppendRun(run), "the run should close from the tail")
-            XCTAssertTrue(tailGame.editorLayout!.walk().openEnds.isEmpty)
-
-            // …and the SAME run at the head.
-            let headGame = CouchGame()
-            headGame.editorLayout = layout
-            headGame.clearUndoHistory()
-            headGame.editorBuildEnd = .head
-            XCTAssertTrue(headGame.editorAppendRun(run), "the run should close from the head")
-            XCTAssertTrue(headGame.editorLayout!.walk().openEnds.isEmpty)
-
-            // Same road either way — a code is an identity, so this is exact.
-            XCTAssertEqual(
-                TrackCode.encode(tailGame.editorLayout!),
-                TrackCode.encode(headGame.editorLayout!),
-                "closing from the two ends produced different tracks")
+            func closed(from end: CouchGame.BuildEnd) -> String? {
+                let game = CouchGame()
+                game.editorReset()
+                game.clearUndoHistory()
+                for piece in build { _ = game.editorAppend(piece) }
+                let layout = game.editorLayout!
+                guard let tail = layout.walk().openEnds.last,
+                    case .found(let run) = layout.closingOutcome(from: tail, maxPieces: 4),
+                    !run.isEmpty
+                else { return nil }
+                game.editorBuildEnd = end
+                guard game.editorAppendRun(run) else { return "refused" }
+                guard game.editorLayout!.walk().openEnds.isEmpty else { return "open" }
+                return TrackCode.encode(game.editorLayout!)
+            }
+            guard let fromTail = closed(from: .tail) else { continue }
+            XCTAssertEqual(fromTail, closed(from: .head), "the two ends disagreed")
+            XCTAssertNotEqual(fromTail, "refused")
+            XCTAssertNotEqual(fromTail, "open")
         }
     }
 
