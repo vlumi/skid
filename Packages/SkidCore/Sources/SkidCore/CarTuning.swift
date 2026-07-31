@@ -70,10 +70,9 @@ public struct CarTuning: Equatable, Sendable, Codable {
     /// into-wall speed. This is what makes riding a barrier slower than avoiding it
     /// — with no tangential loss at all, hugging walls was free.
     ///
-    /// Small on purpose: `press` is in units/s, so at a racing-speed graze it is in
-    /// the hundreds, and this multiplies it. Tuned DOWN twice from device feel —
-    /// 0.55 stopped the car dead on contact, then 0.012 still left only 2% of speed
-    /// after a second of dragging at 20°, which read as flypaper.
+    /// Small on purpose: it multiplies the SLIDE speed, which at racing pace is in
+    /// the hundreds. Keyed off `press` originally, which is about 1 unit/s while
+    /// dragging — so a scrape cost almost nothing however high the slider went.
     public var wallFriction: Double
     /// The share of speed a sustained drag settles at, rather than bleeding to a
     /// stop. Dragging a wall should be a viable if slow line — around half speed is
@@ -103,7 +102,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         gripScale: Double = 1.0,
         wallRestitution: Double = 0.45,
         wallGlanceBounce: Double = 0.3,
-        wallFriction: Double = 0.010,
+        wallFriction: Double = 0.002,
         wallDragFloor: Double = 0.5,
         wallYaw: Double = 0.012,
         carRestitution: Double = 0.4,

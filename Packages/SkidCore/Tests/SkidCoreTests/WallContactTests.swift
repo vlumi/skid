@@ -62,16 +62,20 @@ final class WallContactTests: XCTestCase {
             "a graze must scrub speed along the wall, not just bounce off it")
     }
 
-    /// And the harder the hit, the more it costs — a light brush is not the same as
-    /// a heavy scrape.
-    func testAHarderGrazeCostsMore() {
-        var raceSoft = race()
-        var raceHard = race()
-        let soft = graze(degrees: 4, speed: 400, into: &raceSoft)
-        let hard = graze(degrees: 25, speed: 400, into: &raceHard)
-        let softLoss = abs(soft.before.velocity.x) - abs(soft.after.velocity.x)
-        let hardLoss = abs(hard.before.velocity.x) - abs(hard.after.velocity.x)
-        XCTAssertGreaterThan(hardLoss, softLoss, "a steeper graze should cost more speed")
+    /// And a faster scrape costs more than a slow one — friction keys off the speed
+    /// ALONG the wall, which is the energy a scrape actually has to work on.
+    ///
+    /// (Not "steeper costs more": a steeper approach has LESS slide, so it scrubs less
+    /// along the wall and bounces more instead. The angle governs bounce; the slide
+    /// governs scrape.)
+    func testAFasterScrapeCostsMore() {
+        var raceSlow = race()
+        var raceFast = race()
+        let slow = graze(degrees: 8, speed: 150, into: &raceSlow)
+        let fast = graze(degrees: 8, speed: 450, into: &raceFast)
+        let slowLoss = abs(slow.before.velocity.x) - abs(slow.after.velocity.x)
+        let fastLoss = abs(fast.before.velocity.x) - abs(fast.after.velocity.x)
+        XCTAssertGreaterThan(fastLoss, slowLoss, "a faster scrape should cost more speed")
     }
 
     /// **2. A glancing hit points the nose along the wall.** The car pivots instead
