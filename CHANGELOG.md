@@ -31,6 +31,10 @@ ships (see [AGENTS.md](AGENTS.md)).
   another straight across it. Roads that merely graze each other at a shallow
   angle are still refused, since that is nearly always a mistake rather than a
   junction.
+- **Walls have weight, and cost you time.** Scraping along a barrier now slows
+  the car instead of being free, so avoiding walls is the faster line; a
+  glancing hit pulls the nose along the wall rather than pinging the car off it,
+  and a hard one can nearly stop you. Hitting a wall square on still bounces.
 - **A piece that fits is no longer refused depending on which end you build
   from.** Closing a loop could be rejected as an overlap while the very same
   piece went in fine from the other end — the check was looking at where the

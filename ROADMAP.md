@@ -155,7 +155,7 @@ What's left:
       a long history; the closure control, complete chip and delete icon all
       move. Crossings ([docs/crossing-plan.md](docs/crossing-plan.md)) land
       first, so mid-track deletion is exercised against them.
-- [ ] **Wall contact needs mass, and a cost.** The bounce off a barrier is too
+- [x] **Wall contact needs mass, and a cost.** The bounce off a barrier is too
       harsh and the car reads as weightless — worst on GLANCING hits, which
       should scrub along the wall and instead kick out.
 
