@@ -146,6 +146,11 @@ extension EditorRenderer {
     /// centerline, so it curves where the road curves — the whole point of keying
     /// decals to a laid piece rather than minting an arrow id per shape.
     ///
+    /// Built as ONE FILLED outline, the way a real road marking is painted: a
+    /// parallel-sided shaft that bends with the road, opening into a triangular
+    /// head. The first version stroked a line and a chevron instead, which read as
+    /// chalk — round caps, soft edges, a wide V for a head.
+    ///
     /// Sized in WORLD length, not as a fraction of the piece: a tight 45° is a
     /// short arc, and a fixed fraction packed a full-size arrow into it (a probe
     /// render turned every hairpin into a cluster of overlapping glyphs). Short
@@ -158,45 +163,45 @@ extension EditorRenderer {
         let samples = placed.centerlineSamples()
         guard samples.count > 1 else { return }
         let length = polylineLength(samples)
-        // About a road width of arrow, centred, but never more than 60% of the
-        // piece so consecutive arrows stay separate marks.
-        let span = min(width * 1.1, length * 0.6)
-        guard span > width * 0.3 else { return }  // too short to read
+        // About a road width and a half of arrow, centred, but never more than 70%
+        // of the piece so consecutive arrows stay separate marks.
+        let span = min(width * 1.5, length * 0.7)
+        guard span > width * 0.45 else { return }  // too short to read as an arrow
         let from = 0.5 - (span / length) / 2
         let to = 0.5 + (span / length) / 2
-        let paint = Color.white.opacity(0.5)
-        let stroke = max(1.5, width * 0.1 * t.scale)
+        // Proportions of a road arrow: a narrow shaft, a head about a third of the
+        // length and twice the shaft's width.
+        let shaftHalf = width * 0.075
+        let headHalf = width * 0.2
+        let headFraction = 0.36
 
-        // The shaft, sampled along the centerline so it bends with the road.
-        var shaft = Path()
-        for step in 0...12 {
-            let (point, _) = pointOnPolyline(
-                samples, atFraction: from + (to - from) * Double(step) / 12)
-            let screen = t.screen(point)
-            if step == 0 {
-                shaft.move(to: screen)
-            } else {
-                shaft.addLine(to: screen)
-            }
+        // Walk the shaft's two sides along the centerline, then close through the
+        // head. One subpath, so it fills as a single solid glyph.
+        let shaftEnd = to - (to - from) * headFraction
+        var left: [CGPoint] = []
+        var right: [CGPoint] = []
+        for step in 0...10 {
+            let fraction = from + (shaftEnd - from) * Double(step) / 10
+            let (point, tangent) = pointOnPolyline(samples, atFraction: fraction)
+            let side = tangent.perpendicular
+            left.append(t.screen(point + side * shaftHalf))
+            right.append(t.screen(point - side * shaftHalf))
         }
-        context.stroke(
-            shaft, with: .color(paint),
-            style: StrokeStyle(lineWidth: stroke, lineCap: .round))
+        let (tip, _) = pointOnPolyline(samples, atFraction: to)
+        let (base, baseTangent) = pointOnPolyline(samples, atFraction: shaftEnd)
+        let baseSide = baseTangent.perpendicular
 
-        // The head, hung off the shaft's own tip and tangent — taking the tangent
-        // from anywhere else let the chevron drift off the shaft on tight arcs.
-        let (tip, tangent) = pointOnPolyline(samples, atFraction: to)
-        let side = tangent.perpendicular
-        let back = span * 0.42
-        let spread = span * 0.3
-        let root = tip - tangent * back
-        var head = Path()
-        head.move(to: t.screen(root + side * spread))
-        head.addLine(to: t.screen(tip))
-        head.addLine(to: t.screen(root - side * spread))
-        context.stroke(
-            head, with: .color(paint),
-            style: StrokeStyle(lineWidth: stroke, lineCap: .round, lineJoin: .round))
+        var arrow = Path()
+        arrow.move(to: left[0])
+        for point in left.dropFirst() { arrow.addLine(to: point) }
+        arrow.addLine(to: t.screen(base + baseSide * headHalf))
+        arrow.addLine(to: t.screen(tip))
+        arrow.addLine(to: t.screen(base - baseSide * headHalf))
+        for point in right.reversed() { arrow.addLine(to: point) }
+        arrow.closeSubpath()
+        // Fully opaque, like the paint it is — the same white as the edge lines.
+        // Translucency read as chalk rather than as a marking.
+        context.fill(arrow, with: .color(kerbWhite))
     }
 
     /// Total length of a polyline, for sizing marks in world units.
