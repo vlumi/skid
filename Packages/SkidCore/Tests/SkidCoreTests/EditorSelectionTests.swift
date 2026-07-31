@@ -266,6 +266,46 @@ final class EditorSelectionTests: XCTestCase {
         XCTAssertEqual(game.editorBuildEnd, .tail, "and reset the build end")
     }
 
+    /// **The closing run works from either end, and builds the same road.** The gap
+    /// is one span, so the run that fills it doesn't care which end it attaches to.
+    func testTheClosingRunClosesFromEitherEnd() {
+        let builds: [[PieceID]] = [
+            [Catalog.curve90MediumRight, Catalog.curve90MediumRight, Catalog.curve90MediumRight],
+            [Catalog.shortStraight, Catalog.curve90TightRight, Catalog.curve90TightRight],
+            [Catalog.curve45MediumRight, Catalog.curve45MediumRight, Catalog.longStraight],
+        ]
+        for build in builds {
+            let tailGame = CouchGame()
+            tailGame.editorReset()
+            tailGame.clearUndoHistory()
+            for piece in build { _ = tailGame.editorAppend(piece) }
+            let layout = tailGame.editorLayout!
+            guard let tail = layout.walk().openEnds.last,
+                case .found(let run) = layout.closingOutcome(from: tail, maxPieces: 4),
+                !run.isEmpty
+            else { continue }
+
+            // Take the run at the tail…
+            tailGame.editorBuildEnd = .tail
+            XCTAssertTrue(tailGame.editorAppendRun(run), "the run should close from the tail")
+            XCTAssertTrue(tailGame.editorLayout!.walk().openEnds.isEmpty)
+
+            // …and the SAME run at the head.
+            let headGame = CouchGame()
+            headGame.editorLayout = layout
+            headGame.clearUndoHistory()
+            headGame.editorBuildEnd = .head
+            XCTAssertTrue(headGame.editorAppendRun(run), "the run should close from the head")
+            XCTAssertTrue(headGame.editorLayout!.walk().openEnds.isEmpty)
+
+            // Same road either way — a code is an identity, so this is exact.
+            XCTAssertEqual(
+                TrackCode.encode(tailGame.editorLayout!),
+                TrackCode.encode(headGame.editorLayout!),
+                "closing from the two ends produced different tracks")
+        }
+    }
+
     /// Gate mode owns map taps, so selection must not change under it.
     func testGateModeDoesNotSelect() throws {
         let game = try closedRing()

@@ -191,15 +191,16 @@ extension EditorView {
             closingOutcome = nil
             return
         }
-        // **Only the tail can be auto-closed.** The search walks FORWARD from an end
-        // onto the layout's origin; from the head the run would have to be walked
-        // backwards and land on the tail, which it cannot express. Offering it
-        // anyway measured the wrong direction and read "turn 180° — no close in 3".
-        guard game.editorBuildEnd == .tail else {
-            closingOutcome = nil
-            return
-        }
-        closingOutcome = layout.closingOutcome(from: end, maxPieces: 3)
+        // **Always searched from the tail, offered at either end.** The gap is one
+        // span — the run that fills it is the same set of pieces whichever end you
+        // attach it to, and the road comes out identical (verified against the
+        // normalized codes). So the search only ever runs forward, and the head just
+        // prepends the same run.
+        //
+        // Searching from the HEAD instead is what cannot work: the search walks
+        // forward onto the layout's origin, so from the head it measured the wrong
+        // direction entirely and read "turn 180° — no close in 3".
+        closingOutcome = layout.closingOutcome(from: walk.openEnds.last ?? end, maxPieces: 3)
     }
 
     /// A unit count, trimmed to look like "2U" / "1.5U".

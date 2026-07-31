@@ -72,6 +72,16 @@ public enum TrackValidator {
         return placeable(candidate)
     }
 
+    /// Whether prepending a whole run keeps the layout buildable — the head-end
+    /// twin of `canAppend(run:)`. Used by "Close it" when building at the head: the
+    /// gap is one span, so the same run closes it from either end.
+    public static func canPrepend(run: [PlannedPiece], to layout: TrackLayout) -> Bool {
+        var candidate = layout
+        let expanded = run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) }
+        guard candidate.prependAll(expanded) else { return false }
+        return placeable(candidate)
+    }
+
     /// Whether **prepending** `id` keeps the layout buildable — the same verdict
     /// as `canAppend`, at the other end. Expanded to primitives for the same
     /// reason, and prepended in reverse so the expansion still reads forwards

@@ -31,12 +31,22 @@ extension CouchGame {
     /// would re-judge every prefix and silently drop the tail if any single
     /// step read as an overlap mid-run.
     @discardableResult
+    /// Lands at whichever end is being built from: the gap is one span, so the same
+    /// run closes it either way and the road comes out identical.
     public func editorAppendRun(_ run: [PlannedPiece]) -> Bool {
         recordingUndo {
-            guard let layout = editorLayout, !run.isEmpty else { return false }
-            guard TrackValidator.canAppend(run: run, to: layout) else { return false }
-            editorLayout?.append(
-                contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
+            guard var layout = editorLayout, !run.isEmpty else { return false }
+            let expanded = run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) }
+            switch editorBuildEnd {
+            case .tail:
+                guard TrackValidator.canAppend(run: run, to: layout) else { return false }
+                layout.append(contentsOf: expanded)
+            case .head:
+                guard TrackValidator.canPrepend(run: run, to: layout),
+                    layout.prependAll(expanded)
+                else { return false }
+            }
+            editorLayout = layout
             finishIfClosed()
             return true
         }
@@ -334,15 +344,21 @@ extension CouchGame {
     /// short. The author can retune them by tapping seams.
     public func editorSeedGates() {
         guard var layout = editorLayout, layout.pieces.count >= 2 else { return }
+        // The start line's own seam is the finish line and must be gated — and it is
+        // the start PIECE's index, not 0. Prepending puts pieces ahead of it, so
+        // hardcoding 0 seeded a track with no finish line at all (measured: gates
+        // [2, 6, 9, 12] on a ring whose start piece sat at 0).
+        let start = layout.pieces.firstIndex(of: PieceCatalog.startPieceID) ?? 0
         // Three gates plus the start line reads as a lap without being fussy;
         // fall back to whatever the piece count allows on a tiny ring.
-        let wanted = min(3, layout.pieces.count - 1)
+        let count = layout.pieces.count
+        let wanted = min(3, count - 1)
         guard wanted >= 1 else { return }
-        let step = Double(layout.pieces.count) / Double(wanted + 1)
-        let seams = (1...wanted).map {
-            max(1, min(layout.pieces.count - 1, Int(Double($0) * step)))
-        }
-        layout.gateSeams = [0] + Set(seams).sorted()
+        let step = Double(count) / Double(wanted + 1)
+        // Spaced around the ring FROM the start line, so the gaps stay even
+        // wherever it happens to sit.
+        let seams = (1...wanted).map { (start + max(1, Int(Double($0) * step))) % count }
+        layout.gateSeams = ([start] + Set(seams).subtracting([start]).sorted()).sorted()
         editorLayout = layout
     }
 
