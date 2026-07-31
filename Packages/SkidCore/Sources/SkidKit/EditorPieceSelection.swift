@@ -49,12 +49,26 @@ extension EditorView {
         if let index = game.editorSelectedPiece, walk.placed.indices.contains(index) {
             let placed = walk.placed[index]
             let anchor = transform.screen(placed.centerlineSamples().midpointSample)
-            if game.editorCanDeleteSelected {
-                mapAction("trash", tint: .white, label: "Delete piece") {
-                    game.editorDeleteSelected()
+            HStack(spacing: 8) {
+                // Markings live behind a long press, not a second button: they are
+                // a rarely-used variant, and the map has little room to spare.
+                // (The plan's long-press-a-laid-piece, reached via the selection
+                // rather than a raw map gesture — SpatialTapGesture is what carries
+                // a location, and LongPressGesture does not.)
+                if game.editorCanDeleteSelected {
+                    mapAction("trash", tint: .white, label: "Delete piece") {
+                        game.editorDeleteSelected()
+                    }
                 }
-                .position(x: anchor.x, y: anchor.y - 34)
+                mapAction(
+                    game.editorLayout?.decal(at: index) == nil
+                        ? "paintbrush" : "paintbrush.fill",
+                    tint: .white, label: "Piece markings"
+                ) {
+                    configuring = .piece(index)
+                }
             }
+            .position(x: anchor.x, y: anchor.y - 34)
         }
     }
 }

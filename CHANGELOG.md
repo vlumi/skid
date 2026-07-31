@@ -31,6 +31,10 @@ ships (see [AGENTS.md](AGENTS.md)).
   another straight across it. Roads that merely graze each other at a shallow
   angle are still refused, since that is nearly always a mistake rather than a
   junction.
+- **Direction arrows can be painted on the track.** Select a piece and tap the
+  brush to mark it with an arrow showing which way the track is driven — curved
+  on corners, straight on straights, following the road itself. Tracks with no
+  markings are unaffected, and their share codes are unchanged.
 - **Kerbs no longer rearrange themselves.** A corner that happened to straddle
   the point where a loop's piece list begins was treated as two separate
   corners, so it got two apexes and two run-off kerbs — and which corner that
