@@ -18,6 +18,16 @@ extension Race {
         car: inout CarState, movedFrom from: Vec2, walls: [Wall]? = nil
     ) -> Double {
         var hardest = 0.0
+        // Debug only (see `CarState.WallContact`): what this tick's contact did. The
+        // held figures survive between ticks so a screenshot can be read.
+        let speedBefore = car.velocity.length
+        var held = car.wallContact
+        held.hits = 0
+        held.press = 0
+        held.squareness = 0
+        held.slide = 0
+        held.speedLost = 0
+        car.wallContact = held
         for wall in walls ?? track.walls where blocks(wall, car: car) {
             // Nearest approach of the car's PATH to the wall, so a fast car is
             // caught mid-span rather than only where it happened to stop.
@@ -48,11 +58,44 @@ extension Race {
             // slanted "normal" and came back off harder than it went in. The face is
             // perpendicular to the wall, signed to the side the car is on.
             let normal = faceNormal(of: wall, towards: side)
-            car.position = closest + side * reach
+            // **Push out along the FACE only — do not teleport onto the wall.**
+            //
+            // `closest + side * reach` is an absolute position on the wall's surface,
+            // recomputed every tick. `closest` tracks the car's PATH, so a car held
+            // against a rail was snapped to the same spot each tick and lost ALL its
+            // motion, not just the into-wall part. On device that read as the car
+            // being glued in place while the debug overlay showed it doing 300+ —
+            // velocity was never the problem, position was, which is why no wall
+            // tuning could touch it.
+            //
+            // Now only the overlap is removed: the car keeps every bit of travel
+            // along the wall and is nudged out just far enough to be clear.
+            let overlap = reach - (car.position - closest).dot(normal)
+            if overlap > 0 { car.position += normal * overlap }
             let intoWall = car.velocity.dot(normal)
             guard intoWall < 0 else { continue }
             respond(car: &car, normal: normal, intoWall: intoWall)
             hardest = max(hardest, -intoWall)
+            car.wallContact.hits += 1
+        }
+        // Debug bookkeeping (see `CarState.WallContact`): hold figures across a RUN of
+        // contact, because a tick is 1/60 s and no screenshot can be timed to one.
+        if car.wallContact.hits > 0 {
+            let lost = speedBefore - car.velocity.length
+            car.wallContact.speedLost = lost
+            if car.wallContact.ticks == 0 {
+                car.wallContact.worstLoss = 0
+                car.wallContact.totalLoss = 0
+                car.wallContact.speedAtStart = speedBefore
+            }
+            car.wallContact.ticks += 1
+            car.wallContact.idleTicks = 0
+            car.wallContact.worstLoss = max(car.wallContact.worstLoss, lost)
+            car.wallContact.totalLoss += lost
+        } else {
+            car.wallContact.idleTicks += 1
+            // Clear for a third of a second: this run of contact is over.
+            if car.wallContact.idleTicks > 20 { car.wallContact.ticks = 0 }
         }
         return hardest
     }
@@ -111,6 +154,12 @@ extension Race {
         // `headOnAngle` as a pure head-on, smoothly in between.
         let sine = speed > 0.001 ? min(1, press / speed) : 0
         let squareness = Self.squareness(ofSine: sine)
+        // Record the HARDEST contact of the tick, which is the one that matters.
+        if press > car.wallContact.press {
+            car.wallContact.press = press
+            car.wallContact.squareness = squareness
+            car.wallContact.slide = slide
+        }
 
         // 1. Bounce: the into-wall component comes back, scaled from a subdued
         //    glance bounce up to full restitution head-on. A pure glance keeps SOME
