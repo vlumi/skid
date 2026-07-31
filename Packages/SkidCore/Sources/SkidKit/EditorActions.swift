@@ -149,6 +149,11 @@ extension CouchGame {
     /// their own snapshots would make closing a loop cost three undos.
     private func finishIfClosed() {
         guard editorLayout?.walk().openEnds.isEmpty == true else { return }
+        // Deselect on closure (maintainer's call): the piece you were building from
+        // no longer has a free end, and normalizing re-indexes the ring anyway — a
+        // selection kept by index would jump to whatever piece took that slot.
+        selectionRaw = nil
+        editorBuildEnd = .tail
         if (editorLayout?.gateSeams.count ?? 0) < 2 { editorSeedGates() }
         centerOnCanvas()
     }
