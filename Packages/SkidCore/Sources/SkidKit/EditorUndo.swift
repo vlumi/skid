@@ -21,6 +21,17 @@ extension CouchGame {
         guard let layout = editorLayout else { return body() }
         let snapshot = TrackCode.encode(layout)
         guard body() else { return false }
+        // **Keep the live ring spelled the way its code is.**
+        //
+        // Encoding normalizes, and snapshots are codes, so a non-canonical ring
+        // came BACK from an undo re-spelled — every piece index landing on a
+        // different piece, taking the selection, the gate seams and the build end
+        // with it. Normalizing after each edit makes a snapshot round-trip a no-op.
+        // Rotation is a re-spelling, so the road does not move.
+        if let edited = editorLayout {
+            let canonical = edited.normalized()  // a no-op on an open chain
+            if canonical.pieces != edited.pieces { editorLayout = canonical }
+        }
         undoStack.append(snapshot)
         if undoStack.count > Self.undoDepth { undoStack.removeFirst() }
         redoStack.removeAll()  // a new edit ends the branch

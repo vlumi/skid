@@ -196,6 +196,56 @@ final class EditorSelectionTests: XCTestCase {
         XCTAssertEqual(TrackCode.encode(game.editorLayout!), before)
     }
 
+    /// **The in-memory ring is spelled the way its code is.**
+    ///
+    /// Encoding normalizes, and undo snapshots are codes — so if the editor held a
+    /// different spelling, an undo would silently re-spell the track and move every
+    /// piece index (the selection, the gate seams, the build end) onto a different
+    /// piece. Closing the loop makes it canonical, so a round-trip is a no-op.
+    func testAnEditLeavesTheRingCanonicalSoUndoCannotRespellIt() throws {
+        // A NON-canonical closed ring, which is what a ring built in some other
+        // order looks like in memory. (A code is always canonical, so this has to
+        // be respelled by hand rather than decoded.)
+        let game = CouchGame()
+        var respelled = try TrackCode.decode("AS0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAA")
+        respelled.rotate(to: 6)
+        XCTAssertNotEqual(
+            respelled.pieces, respelled.normalized().pieces, "fixture must be non-canonical")
+        game.editorLayout = respelled
+        game.clearUndoHistory()
+
+        // Any edit settles the spelling…
+        game.editorMode = .gate
+        XCTAssertTrue(game.editorToggleGate(seam: 4))
+        let settled = game.editorLayout!.pieces
+        XCTAssertEqual(
+            settled, game.editorLayout!.normalized().pieces,
+            "an edit should leave the ring canonical")
+
+        // …which is what makes a snapshot round-trip a no-op: undo restores from a
+        // CODE, and codes are canonical, so a non-canonical live ring would come
+        // back re-spelled — moving the selection, gate seams and build end onto
+        // different pieces.
+        game.editorUndo()
+        XCTAssertEqual(
+            game.editorLayout!.pieces, settled, "undo re-spelled the track underneath us")
+    }
+
+    /// A ring closed by BUILDING (not loaded from a code) is canonical too — that
+    /// is where `finishIfClosed` normalizes.
+    func testClosingALoopByBuildingMakesItCanonical() {
+        let game = CouchGame()
+        game.editorReset()
+        game.clearUndoHistory()
+        for _ in 0..<4 { _ = game.editorAppend(Catalog.curve90MediumRight) }
+        guard game.editorLayout!.walk().openEnds.isEmpty else {
+            return  // didn't close with this catalog; the loaded case covers the rule
+        }
+        XCTAssertEqual(
+            game.editorLayout!.pieces, game.editorLayout!.normalized().pieces,
+            "a loop should be canonical the moment it closes")
+    }
+
     /// Gate mode owns map taps, so selection must not change under it.
     func testGateModeDoesNotSelect() throws {
         let game = try closedRing()
