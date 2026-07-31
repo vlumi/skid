@@ -154,7 +154,7 @@ extension EditorView {
         configures target: PaletteTarget? = nil
     ) -> some View {
         let empty = piece == EditorView.HotbarSlot.empty
-        let placeable = !empty && game.editorCanAppend(piece, pitch: buildPitch)
+        let placeable = !empty && game.editorCanPlace(piece, pitch: buildPitch)
         let side: CGFloat = big ? 64 : 44
         ZStack {
             RoundedRectangle(cornerRadius: 10)
@@ -182,7 +182,7 @@ extension EditorView {
     ) -> some Gesture {
         let tap = TapGesture().onEnded {
             guard placeable else { return }
-            game.editorAppend(piece, pitch: buildPitch)
+            game.editorPlace(piece, pitch: buildPitch)
         }
         // `exclusively(before:)` gives the long press priority when there is one to
         // give; without a target there's nothing to configure, so tap stands alone.
@@ -267,27 +267,18 @@ extension EditorView {
     func mapActions(walk: WalkResult, transform: EditorRenderer.Transform) -> some View {
         if let end = looseEndPose(walk) {
             let point = transform.screen(end.position.vec2)
-            HStack(spacing: 8) {
-                // Delete the last piece: the chain's growing end is right here.
-                // A trash glyph, not an undo arrow — now that undo exists, the
-                // arrow belongs to it, and delete is not undo's button.
-                if walk.placed.count > 1 {
-                    mapAction("trash", tint: .white, label: "Delete last piece") {
-                        game.editorDeleteLast()
-                    }
-                }
-                closeItAction
-            }
-            // Offset clear of the end marker itself, and kept on screen.
-            .position(x: point.x, y: point.y - 34)
+            // Just Close-it now: delete moved onto the SELECTED piece, where it
+            // says what it will remove instead of always meaning "the last one".
+            closeItAction
+                // Offset clear of the end marker itself, and kept on screen.
+                .position(x: point.x, y: point.y - 34)
         }
     }
 
-    /// The loose end the actions attach to — the one a new piece would extend.
+    /// The loose end the actions attach to — the one a new piece would extend,
+    /// which follows the build-end arrows.
     private func looseEndPose(_ walk: WalkResult) -> PiecePose? {
-        if let index = effectiveSelection(walk), walk.openEnds.indices.contains(index) {
-            return walk.openEnds[index]
-        }
+        if let pose = buildEndPose(walk) { return pose }
         // A closed ring has no loose end; anchor to the start piece's entry so
         // Delete is still reachable after closing the loop.
         guard let start = walk.placed.first(where: { $0.id == PieceCatalog.startPieceID })
@@ -303,11 +294,15 @@ extension EditorView {
             mapAction("flag.checkered", tint: .yellow, label: "Close the loop") {
                 game.editorAppendRun(run)
             }
+        // Same question, different answer: no run of catalog pieces reaches, but one
+        // fitting piece does. Marked distinctly so it is clear the track is being
+        // closed by a custom-shaped piece rather than by the ordinary vocabulary.
+        //
+        // Offered wherever the chip is, and it does the same thing: closing is one
+        // operation. Which end the button sat on says nothing about the result —
+        // either way the fitter lands last, closing onto the origin inlet (that
+        // pinned exit is what keeps `Coord` exact; see `Fitter`).
         case .fits(let fitter):
-            // Same question, different answer: no run of catalog pieces reaches,
-            // but one fitting piece does. Marked distinctly so it is clear the
-            // track is being closed by a custom-shaped piece rather than by the
-            // ordinary vocabulary.
             mapAction("flag.checkered", tint: .teal, label: "Close with a fitted piece") {
                 game.editorAppendFitter(fitter)
             }
@@ -370,7 +365,7 @@ extension EditorView {
         }
     }
 
-    private func mapAction(
+    func mapAction(
         _ symbol: String, tint: Color, label: LocalizedStringKey, enabled: Bool = true,
         action: @escaping () -> Void
     ) -> some View {

@@ -1,11 +1,13 @@
 import SkidCore
 import SwiftUI
 
-/// The track editor — **editing slice**: build a track piece by piece. The
-/// partial layout renders live (open chains included) via `EditorRenderer`;
-/// tap a loose end to select it (the last one auto-selects), then tap a
-/// palette piece to extend it. Delete removes the last piece; Save is enabled
-/// once the layout closes into a valid track. (Test-drive lands with step 3.)
+/// The track editor: build a track piece by piece, with the partial layout
+/// rendered live (open chains included) via `EditorRenderer`.
+///
+/// Tap a palette piece to extend the track; tap a laid piece to SELECT it, which
+/// is what delete acts on and where the build-end arrows hang. Gating is its own
+/// mode (`EditorGateMode`). Save is enabled once the layout closes into a valid
+/// track.
 struct EditorView: View {
     @ObservedObject var game: CouchGame
 
@@ -13,9 +15,6 @@ struct EditorView: View {
     @State private var pan: CGSize = .zero
     @State private var baseZoom: CGFloat = 1
     @State private var basePan: CGSize = .zero
-    /// Index into the walk's `openEnds`; nil = none selected.
-    @State private var selectedEnd: Int?
-
     /// The corner radius the palette builds with. Persisted — it's a setting, not
     /// transient UI state — and **changed by swiping the corner pair**.
     ///
@@ -101,14 +100,17 @@ struct EditorView: View {
                         // showing a selection would promise a tap that does nothing.
                         selectedEnd: game.editorMode == .gate ? nil : effectiveSelection(walk),
                         gateSeams: layout.gateSeams, gating: game.editorMode == .gate,
+                        selectedPiece: game.editorMode == .gate ? nil : game.editorSelectedPiece,
                         transform: transform, into: &context)
                 }
                 .ignoresSafeArea()
 
-                // Delete and Close sit ON the map, at the end they act on — both
-                // build actions, so they're gone while gating.
+                // Close-it sits ON the map at the loose end; delete and the build
+                // arrows sit on the SELECTED piece. Both are build actions, so
+                // they're gone while gating.
                 if game.editorMode == .build {
                     mapActions(walk: walk, transform: transform)
+                    selectionChrome(walk: walk, transform: transform)
                 }
                 topBar
                 paletteBar(walk: walk)
@@ -121,7 +123,7 @@ struct EditorView: View {
             .task(id: ClosingKey(pieces: layout.pieces, end: nil)) {
                 refreshClosingRun(walk)
             }
-            .onChangeCompat(of: selectedEnd) { _ in refreshClosingRun(walk) }
+            .onChangeCompat(of: game.editorBuildEnd) { _ in refreshClosingRun(walk) }
             // Long-pressing a hotbar slot opens its picker. A `sheet` rather than
             // `fullScreenCover` (that one is iOS-only, and this package also builds
             // for macOS), driven by `isPresented` rather than `item:` (iOS 17+,
@@ -139,32 +141,61 @@ struct EditorView: View {
 
     // MARK: - Selection
 
-    /// The selected end, defaulting to the LAST loose end (the one you just
-    /// laid) so the common case needs no tap.
+    /// Which loose end the palette is building at, indexing the list the renderer
+    /// marks up: `walk.openEnds`, then the HEAD stub appended after them.
+    ///
+    /// Only the tail lives in `openEnds` — the origin is an inlet the walk can
+    /// close onto, not a loose end — so the head's index is `openEnds.count`, which
+    /// is exactly where `EditorRenderer.draw` appends it. Keeping both in step is
+    /// what makes the construction marker follow the arrows.
     func effectiveSelection(_ walk: WalkResult) -> Int? {
-        if let selectedEnd, walk.openEnds.indices.contains(selectedEnd) { return selectedEnd }
-        return walk.openEnds.isEmpty ? nil : walk.openEnds.count - 1
+        guard !walk.openEnds.isEmpty else { return nil }
+        switch game.editorBuildEnd {
+        case .head: return walk.openEnds.count  // the appended head stub
+        case .tail: return walk.openEnds.count - 1
+        }
     }
 
-    /// The heading a newly-appended piece will enter at — the selected loose
-    /// end's heading — so the palette icons render rotated to match where the
-    /// piece will actually land. Defaults to east.
+    /// The pose of the end being built at, head or tail — where the chrome that
+    /// belongs to "the growing end" is anchored.
+    func buildEndPose(_ walk: WalkResult) -> PiecePose? {
+        guard !walk.openEnds.isEmpty else { return nil }
+        switch game.editorBuildEnd {
+        case .tail: return walk.openEnds.last
+        case .head:
+            guard let first = walk.placed.first else { return nil }
+            return PiecePose(
+                position: first.entry.position, heading: first.entry.heading.reversed)
+        }
+    }
+
+    /// The heading the next piece will enter at, so the palette icons render
+    /// rotated to match where the piece will actually land.
+    ///
+    /// At the HEAD the piece leads *into* the origin, and the exact entry depends on
+    /// the piece's own turn — but the origin heading is what a straight would use
+    /// and is the right read for the icons.
     func appendHeading(_ walk: WalkResult) -> Heading {
+        if game.editorBuildEnd == .head, let layout = game.editorLayout {
+            return layout.origin.heading
+        }
         guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
             return .east
         }
         return walk.openEnds[i].heading
     }
 
-    /// The height a newly-appended piece will enter at — the selected loose
-    /// end's exit height — so the palette icons preview the elevated look
-    /// (deck gray + blue rail) when building on the deck. The walk doesn't
-    /// carry heights on `openEnds`, so match the end pose back to the placed
-    /// piece whose exit it is.
+    /// The height the next piece will enter at, so the palette icons preview the
+    /// elevated look (deck gray + blue rail) when building on the deck.
     func appendHeight(_ walk: WalkResult) -> Double {
+        if game.editorBuildEnd == .head {
+            return game.editorLayout?.originHeight ?? 0
+        }
         guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
             return 0
         }
+        // The walk doesn't carry heights on `openEnds`, so match the end pose back
+        // to the placed piece whose exit it is.
         let end = walk.openEnds[i]
         for placed in walk.placed where placed.exits.contains(end) {
             return placed.exitHeight
@@ -304,18 +335,21 @@ struct EditorView: View {
                 }
                 return
             }
-            // Tap a loose end to select it.
-            if let end = walk.openEnds.firstIndex(where: { end in
-                let p = transform.screen(end.position.vec2)
-                return hypot(p.x - value.location.x, p.y - value.location.y)
-                    < EditorRenderer.endHitRadius
-            }) {
-                selectedEnd = end
+            // Tap a piece to select it: that selection is what delete acts on and
+            // what the build-end arrows hang off.
+            if let index = piece(near: value.location, walk: walk, transform: transform) {
+                game.editorSelection = index
+                // Selecting a piece with exactly one free end also means "build
+                // here" — the common case, so it costs no second tap.
+                if let only = game.editorFreeEnds(of: index).first,
+                    game.editorFreeEnds(of: index).count == 1
+                {
+                    game.editorBuildEnd = only
+                }
                 return
             }
-            // A tap on nothing clears the selection (falling back to
-            // auto-select-last).
-            selectedEnd = nil
+            // A tap on nothing clears the selection.
+            game.editorSelection = nil
         }
     }
 

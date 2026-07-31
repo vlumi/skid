@@ -38,7 +38,8 @@ extension CouchGame {
         guard
             let layout = try? TrackCode.decode(code.trimmingCharacters(in: .whitespacesAndNewlines))
         else { return false }
-        editorLayout = layout
+        // Canonical in memory, matching its code — see `finishIfClosed`.
+        editorLayout = layout.normalized()
         // A different track arrives with no history — undoing back into the
         // previous one would be a surprise, not a convenience.
         clearUndoHistory()
