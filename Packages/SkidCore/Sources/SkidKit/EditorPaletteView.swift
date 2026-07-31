@@ -294,11 +294,14 @@ extension EditorView {
             mapAction("flag.checkered", tint: .yellow, label: "Close the loop") {
                 game.editorAppendRun(run)
             }
-        case .fits(let fitter):
-            // Same question, different answer: no run of catalog pieces reaches,
-            // but one fitting piece does. Marked distinctly so it is clear the
-            // track is being closed by a custom-shaped piece rather than by the
-            // ordinary vocabulary.
+        // Same question, different answer: no run of catalog pieces reaches, but one
+        // fitting piece does. Marked distinctly so it is clear the track is being
+        // closed by a custom-shaped piece rather than by the ordinary vocabulary.
+        //
+        // Tail only, unlike a catalog run: a fitter's exit is PINNED to the inlet it
+        // closes onto (that is what keeps `Coord` exact — see `Fitter`), so it has
+        // to be the piece that arrives at the joint, not the one that leaves it.
+        case .fits(let fitter) where game.editorBuildEnd == .tail:
             mapAction("flag.checkered", tint: .teal, label: "Close with a fitted piece") {
                 game.editorAppendFitter(fitter)
             }
