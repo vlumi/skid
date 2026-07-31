@@ -154,9 +154,10 @@ struct EditorView: View {
     /// what makes the construction marker follow the arrows.
     func effectiveSelection(_ walk: WalkResult) -> Int? {
         guard !walk.openEnds.isEmpty else { return nil }
-        switch game.editorBuildEnd {
+        switch game.editorActiveEnd {
         case .head: return walk.openEnds.count  // the appended head stub
         case .tail: return walk.openEnds.count - 1
+        case nil: return nil  // nothing selected: no end is live to mark
         }
     }
 
@@ -164,12 +165,13 @@ struct EditorView: View {
     /// belongs to "the growing end" is anchored.
     func buildEndPose(_ walk: WalkResult) -> PiecePose? {
         guard !walk.openEnds.isEmpty else { return nil }
-        switch game.editorBuildEnd {
+        switch game.editorActiveEnd {
         case .tail: return walk.openEnds.last
         case .head:
             guard let first = walk.placed.first else { return nil }
             return PiecePose(
                 position: first.entry.position, heading: first.entry.heading.reversed)
+        case nil: return nil
         }
     }
 
@@ -180,7 +182,7 @@ struct EditorView: View {
     /// the piece's own turn — but the origin heading is what a straight would use
     /// and is the right read for the icons.
     func appendHeading(_ walk: WalkResult) -> Heading {
-        if game.editorBuildEnd == .head, let layout = game.editorLayout {
+        if game.editorActiveEnd == .head, let layout = game.editorLayout {
             return layout.origin.heading
         }
         guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
@@ -192,7 +194,7 @@ struct EditorView: View {
     /// The height the next piece will enter at, so the palette icons preview the
     /// elevated look (deck gray + blue rail) when building on the deck.
     func appendHeight(_ walk: WalkResult) -> Double {
-        if game.editorBuildEnd == .head {
+        if game.editorActiveEnd == .head {
             return game.editorLayout?.originHeight ?? 0
         }
         guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
@@ -342,18 +344,11 @@ struct EditorView: View {
             // Tap a piece to select it: that selection is what delete acts on and
             // what the build-end arrows hang off.
             if let index = piece(near: value.location, walk: walk, transform: transform) {
-                game.editorSelection = index
-                // Selecting a piece with exactly one free end also means "build
-                // here" — the common case, so it costs no second tap.
-                if let only = game.editorFreeEnds(of: index).first,
-                    game.editorFreeEnds(of: index).count == 1
-                {
-                    game.editorBuildEnd = only
-                }
+                game.editorSelect(index)
                 return
             }
             // A tap on nothing clears the selection.
-            game.editorSelection = nil
+            game.editorSelect(nil)
         }
     }
 
