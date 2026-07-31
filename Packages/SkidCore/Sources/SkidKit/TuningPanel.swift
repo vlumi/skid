@@ -51,6 +51,19 @@ struct TuningPanel: View {
                         Text("Flip", bundle: .module), value: $settings.steerFlipBoost,
                         range: 0...12, step: 0.5, format: "%.1f")
 
+                    // Only the two knobs device play could actually tell apart. The
+                    // others (glance bounce, scrape, nose pull) are real terms but
+                    // their effect wasn't distinguishable while driving, so they keep
+                    // good defaults rather than taking up slider space — they are
+                    // still settable in `CarTuning` if that changes.
+                    section(Text("Walls", bundle: .module))
+                    slider(
+                        Text("Bounce", bundle: .module), value: $settings.wallRestitution,
+                        range: 0...1, step: 0.05, format: "%.2f")
+                    slider(
+                        Text("Drag floor", bundle: .module), value: $settings.wallDragFloor,
+                        range: 0...1, step: 0.05, format: "%.2f")
+
                     section(Text("Pace", bundle: .module))
                     slider(
                         Text("Pace", bundle: .module), value: $settings.pace,

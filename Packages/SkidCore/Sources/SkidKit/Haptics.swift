@@ -77,6 +77,23 @@ public final class GameSettings: ObservableObject {
     /// motion lags the nose longer.
     @AppStorage("skid.sim.gripScale") public var gripScale = 1.0
 
+    // MARK: - Wall contact
+    //
+    // Live-tunable because this is pure feel: it was retuned three times from
+    // device play, and arithmetic cannot settle it. See `CarTuning`'s wall section
+    // for which knob answers which complaint.
+
+    /// Bounce off a wall hit SQUARE ON, 0…1.
+    @AppStorage("skid.sim.wallRestitution") public var wallRestitution = 0.40
+    /// The bounce a pure glance keeps, as a share of the above. Zero feels dead.
+    @AppStorage("skid.sim.wallGlanceBounce") public var wallGlanceBounce = 0.3
+    /// How fast a scrape bleeds speed along the wall.
+    @AppStorage("skid.sim.wallFriction") public var wallFriction = 0.002
+    /// The share of top speed a sustained drag settles at, rather than stopping.
+    @AppStorage("skid.sim.wallDragFloor") public var wallDragFloor = 0.1
+    /// How hard a hit pulls the nose along the wall.
+    @AppStorage("skid.sim.wallYaw") public var wallYaw = 0.012
+
     /// Game pace for learning: scales acceleration + speed caps (agility
     /// stays). Applies on the next race (Reset). Hiscores only record at
     /// full pace.
@@ -117,6 +134,11 @@ public final class GameSettings: ObservableObject {
             && abs(driftRetention - stock.driftRetention) < 1e-9
             && abs(turnRate - stock.turnRate) < 1e-9
             && abs(gripScale - stock.gripScale) < 1e-9
+            && abs(wallRestitution - stock.wallRestitution) < 1e-9
+            && abs(wallGlanceBounce - stock.wallGlanceBounce) < 1e-9
+            && abs(wallFriction - stock.wallFriction) < 1e-9
+            && abs(wallDragFloor - stock.wallDragFloor) < 1e-9
+            && abs(wallYaw - stock.wallYaw) < 1e-9
     }
 
     /// The race tuning the dials describe (pace folded in).
@@ -127,7 +149,12 @@ public final class GameSettings: ObservableObject {
             aimFlipBoost: aimFlipBoost,
             steerFlipBoost: steerFlipBoost,
             driftRetention: driftRetention,
-            gripScale: gripScale
+            gripScale: gripScale,
+            wallRestitution: wallRestitution,
+            wallGlanceBounce: wallGlanceBounce,
+            wallFriction: wallFriction,
+            wallDragFloor: wallDragFloor,
+            wallYaw: wallYaw
         ).scaled(pace: pace)
     }
 
