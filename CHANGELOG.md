@@ -31,6 +31,11 @@ ships (see [AGENTS.md](AGENTS.md)).
   another straight across it. Roads that merely graze each other at a shallow
   angle are still refused, since that is nearly always a mistake rather than a
   junction.
+- **Trimming a track back is one tap per piece.** Deleting the piece at an end
+  now selects the one behind it, so you can keep tapping the bin instead of
+  reselecting between each. Building follows the selection too: the end you have
+  selected is the end pieces are added to, and with nothing selected the palette
+  greys out rather than adding somewhere you weren't looking.
 - **Direction arrows can be painted on the track.** Select a piece and tap the
   brush to mark it with an arrow showing which way the track is driven — curved
   on corners, straight on straights, following the road itself. Tracks with no

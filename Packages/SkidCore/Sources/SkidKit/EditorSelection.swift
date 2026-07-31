@@ -41,22 +41,33 @@ extension CouchGame {
         return ends
     }
 
-    /// Place a palette piece at the chosen end — append or prepend. One entry point
-    /// so the palette does not have to know which operation it is driving.
+    /// **Which end is live**, or nil when nothing is. Building is a property of a
+    /// selected end: with no selection there is no end to build from, so the palette
+    /// greys out rather than quietly appending somewhere the author isn't looking.
+    public var editorActiveEnd: BuildEnd? {
+        guard let index = editorSelectedPiece else { return nil }
+        let ends = editorFreeEnds(of: index)
+        return ends.contains(editorBuildEnd) ? editorBuildEnd : ends.first
+    }
+
+    /// Place a palette piece at the live end — append or prepend. One entry point so
+    /// the palette does not have to know which operation it is driving.
     @discardableResult
     public func editorPlace(_ id: PieceID, pitch: Pitch = .flat) -> Bool {
-        switch editorBuildEnd {
+        switch editorActiveEnd {
         case .tail: return editorAppend(id, pitch: pitch)
         case .head: return editorPrepend(id, pitch: pitch)
+        case nil: return false
         }
     }
 
     /// Whether that placement would be accepted — asked of the SAME end it would
     /// land on, since a piece can fit one end and not the other.
     public func editorCanPlace(_ id: PieceID, pitch: Pitch = .flat) -> Bool {
-        switch editorBuildEnd {
+        switch editorActiveEnd {
         case .tail: return editorCanAppend(id, pitch: pitch)
         case .head: return editorCanPrepend(id, pitch: pitch)
+        case nil: return false
         }
     }
 
@@ -102,8 +113,41 @@ extension CouchGame {
             // long-standing delete-last.
             guard index == 0 || index == layout.pieces.count - 1 else { return false }
         }
+        // **The end keeps the selection.** Showing the build arrow and being able
+        // to carry on building are properties of a SELECTED end, so deleting the
+        // piece at an end hands the selection to its neighbour — which is the new
+        // end. Otherwise trimming a few pieces means re-selecting between every
+        // tap, which is what made it tedious.
+        //
+        // A ring has no ends, so the cut opens one and the survivor next to it
+        // becomes the tail; anything else (or nothing left to select) clears.
+        let wasHead = open && index == 0
         guard editorRemove(at: index) else { return false }
-        selectionRaw = nil  // it pointed at a piece that is gone, and indices shifted
+        editorSelect(neighbourAfterDelete(wasHead: wasHead))
         return true
+    }
+
+    /// **Select a piece, and take its end.** The build end is a property of the
+    /// selected end, so selecting one that has exactly one free end also means
+    /// "build here" — no second tap, and after a delete the new end is live
+    /// immediately.
+    public func editorSelect(_ index: Int?) {
+        selectionRaw = index
+        guard let index, let only = editorFreeEnds(of: index).first,
+            editorFreeEnds(of: index).count == 1
+        else { return }
+        editorBuildEnd = only
+    }
+
+    /// The piece that inherits the selection after a delete: at the head, whatever
+    /// is now first; at the tail (and after a ring cut, which leaves the cut at the
+    /// end), whatever is now last.
+    ///
+    /// The start piece inherits it like any other — it is a perfectly good end to
+    /// build from, it just cannot itself be deleted, and the delete button already
+    /// hides itself for that.
+    private func neighbourAfterDelete(wasHead: Bool) -> Int? {
+        guard let layout = editorLayout, !layout.pieces.isEmpty else { return nil }
+        return wasHead ? 0 : layout.pieces.count - 1
     }
 }

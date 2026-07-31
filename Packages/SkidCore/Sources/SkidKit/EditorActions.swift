@@ -21,6 +21,7 @@ extension CouchGame {
             guard let layout = editorLayout else { return false }
             guard TrackValidator.canAppend(id, pitch: pitch, to: layout) else { return false }
             editorLayout?.append(contentsOf: PieceExpansion.expand(id, mode: pitch))
+            followBuildEnd()
             finishIfClosed()
             return true
         }
@@ -59,6 +60,7 @@ extension CouchGame {
             guard TrackValidator.canPrepend(id, pitch: pitch, to: layout) else { return false }
             guard layout.prependAll(PieceExpansion.expand(id, mode: pitch)) else { return false }
             editorLayout = layout
+            followBuildEnd()
             finishIfClosed()
             return true
         }
@@ -151,6 +153,14 @@ extension CouchGame {
     /// Deliberately NOT recorded for undo: this runs inside the edit that closed
     /// the ring, and seeding gates plus centering are part of that one act. Pushing
     /// their own snapshots would make closing a loop cost three undos.
+    /// After a placement the NEW piece is the end, so the selection follows it —
+    /// otherwise it would still name the piece that used to be the end and the
+    /// delete button would offer to remove the wrong one.
+    private func followBuildEnd() {
+        guard let layout = editorLayout, !layout.walk().openEnds.isEmpty else { return }
+        selectionRaw = editorBuildEnd == .head ? 0 : layout.pieces.count - 1
+    }
+
     private func finishIfClosed() {
         guard editorLayout?.walk().openEnds.isEmpty == true else { return }
         // Deselect on closure (maintainer's call): the piece you were building from

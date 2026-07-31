@@ -15,6 +15,8 @@ final class EditorSelectionTests: XCTestCase {
         game.editorReset()
         game.clearUndoHistory()
         for _ in 0..<3 { _ = game.editorAppend(Catalog.shortStraight) }
+        // Building needs a selected end now, so start where a tap would leave it.
+        game.editorSelect(game.editorLayout!.pieces.count - 1)
         return game
     }
 
@@ -41,7 +43,7 @@ final class EditorSelectionTests: XCTestCase {
         let firstBefore = game.editorLayout!.pieces.first
         let countBefore = game.editorLayout!.pieces.count
 
-        game.editorBuildEnd = .head
+        game.editorSelect(0)
         XCTAssertTrue(game.editorPlace(Catalog.curve45MediumLeft))
 
         XCTAssertEqual(game.editorLayout!.pieces.count, countBefore + 1)
@@ -55,7 +57,7 @@ final class EditorSelectionTests: XCTestCase {
     func testTheTailEndAppends() {
         let game = chain()
         let countBefore = game.editorLayout!.pieces.count
-        game.editorBuildEnd = .tail
+        game.editorSelect(game.editorLayout!.pieces.count - 1)
         XCTAssertTrue(game.editorPlace(Catalog.curve45MediumLeft))
         XCTAssertEqual(game.editorLayout!.pieces.count, countBefore + 1)
         XCTAssertEqual(game.editorLayout!.pieces.last, Catalog.curve45MediumLeft)
@@ -67,11 +69,11 @@ final class EditorSelectionTests: XCTestCase {
         let game = chain()
         // The fitter can never be prepended (nothing to invert) but is not a
         // palette piece either; use it as the known-refused case.
-        game.editorBuildEnd = .head
+        game.editorSelect(0)  // the head piece
         XCTAssertFalse(game.editorCanPlace(PieceCatalog.fitterPieceID))
         // A plain straight fits both ends of a short chain.
         XCTAssertTrue(game.editorCanPlace(Catalog.shortStraight))
-        game.editorBuildEnd = .tail
+        game.editorSelect(game.editorLayout!.pieces.count - 1)  // the tail piece
         XCTAssertTrue(game.editorCanPlace(Catalog.shortStraight))
     }
 
@@ -101,6 +103,56 @@ final class EditorSelectionTests: XCTestCase {
         XCTAssertTrue(game.editorFreeEnds(of: 1).isEmpty)
     }
 
+    /// Opening the editor leaves the growing end selected, so the palette is live
+    /// immediately rather than greyed out until the author taps something.
+    func testOpeningTheEditorSelectsTheGrowingEnd() {
+        let game = CouchGame()
+        game.editorReset()
+        game.clearUndoHistory()
+        for _ in 0..<2 { _ = game.editorAppend(Catalog.shortStraight) }
+        game.editorSelect(nil)
+        game.backToSetup()
+
+        game.openEditor()
+        XCTAssertEqual(game.editorSelection, game.editorLayout!.pieces.count - 1)
+        XCTAssertNotNil(game.editorActiveEnd, "the palette must be live on open")
+    }
+
+    /// After placing a piece the NEW one is the end, so the selection follows it —
+    /// otherwise delete would offer to remove the piece that used to be the end.
+    func testPlacingAPieceMovesTheSelectionToIt() {
+        let game = chain()
+        XCTAssertTrue(game.editorPlace(Catalog.shortStraight))
+        XCTAssertEqual(game.editorSelection, game.editorLayout!.pieces.count - 1)
+
+        game.editorSelect(0)
+        XCTAssertTrue(game.editorPlace(Catalog.curve45MediumRight))
+        XCTAssertEqual(game.editorSelection, 0, "a prepend makes the new head current")
+    }
+
+    /// **No selection, no building.** Building is a property of a selected end, so
+    /// clearing the selection (tapping empty space) greys the palette out rather
+    /// than quietly appending somewhere the author isn't looking.
+    func testNothingIsPlaceableWithNothingSelected() {
+        let game = chain()
+        XCTAssertNotNil(game.editorActiveEnd)
+        XCTAssertTrue(game.editorCanPlace(Catalog.shortStraight))
+
+        game.editorSelect(nil)
+        XCTAssertNil(game.editorActiveEnd)
+        XCTAssertFalse(game.editorCanPlace(Catalog.shortStraight))
+        XCTAssertFalse(game.editorPlace(Catalog.shortStraight))
+    }
+
+    /// Selecting a piece with no free end (mid-chain) is a delete target only —
+    /// there is nothing to build from there.
+    func testAMidChainSelectionOffersNoEnd() {
+        let game = chain()
+        game.editorSelect(1)
+        XCTAssertNil(game.editorActiveEnd)
+        XCTAssertFalse(game.editorCanPlace(Catalog.shortStraight))
+    }
+
     // MARK: - selection and delete
 
     /// Selecting a ring piece and deleting it opens the ring there, leaving the
@@ -125,13 +177,35 @@ final class EditorSelectionTests: XCTestCase {
         }
     }
 
-    /// Deleting clears the selection — it points at a piece that no longer exists,
-    /// and the indices after it have all shifted.
-    func testDeletingClearsTheSelection() throws {
+    /// **Deleting hands the selection to the new end**, so trimming several pieces
+    /// doesn't mean re-selecting between every tap. Cutting a ring opens it, and the
+    /// piece at the cut becomes the tail.
+    func testDeletingSelectsTheNewEnd() throws {
         let game = try closedRing()
         game.editorSelection = 6
         XCTAssertTrue(game.editorDeleteSelected())
-        XCTAssertNil(game.editorSelection)
+
+        let last = game.editorLayout!.pieces.count - 1
+        XCTAssertEqual(game.editorSelection, last, "the new end should be selected")
+        XCTAssertEqual(game.editorBuildEnd, .tail, "and be the end we build from")
+
+        // So a second delete needs no re-selecting.
+        XCTAssertTrue(game.editorDeleteSelected())
+        XCTAssertEqual(game.editorSelection, game.editorLayout!.pieces.count - 1)
+    }
+
+    /// Deleting at the HEAD keeps the selection at the head, so trimming backwards
+    /// works the same way.
+    func testDeletingAtTheHeadStaysAtTheHead() {
+        let game = chain()
+        game.editorSelect(0)
+        XCTAssertTrue(game.editorPlace(Catalog.curve45MediumRight))
+        XCTAssertTrue(game.editorPlace(Catalog.curve45MediumRight))
+
+        game.editorSelect(0)
+        XCTAssertTrue(game.editorDeleteSelected())
+        XCTAssertEqual(game.editorSelection, 0, "the new head should be selected")
+        XCTAssertEqual(game.editorBuildEnd, .head, "and stay the end we build from")
     }
 
     /// An open chain deletes only at its ends: cutting the middle would slide the
@@ -152,7 +226,7 @@ final class EditorSelectionTests: XCTestCase {
     /// onto the new first piece, so the rest of the road does not jump.
     func testDeletingTheHeadKeepsTheRestInPlace() {
         let game = chain()
-        game.editorBuildEnd = .head
+        game.editorSelect(0)
         XCTAssertTrue(game.editorPlace(Catalog.curve45MediumRight))
         let before = game.editorLayout!.walk()
 
@@ -286,7 +360,8 @@ final class EditorSelectionTests: XCTestCase {
                     case .found(let run) = layout.closingOutcome(from: tail, maxPieces: 4),
                     !run.isEmpty
                 else { return nil }
-                game.editorBuildEnd = end
+                game.editorSelect(
+                    end == .head ? 0 : game.editorLayout!.pieces.count - 1)
                 guard game.editorAppendRun(run) else { return "refused" }
                 guard game.editorLayout!.walk().openEnds.isEmpty else { return "open" }
                 return TrackCode.encode(game.editorLayout!)
