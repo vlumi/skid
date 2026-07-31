@@ -326,7 +326,7 @@ extension EditorView {
     @ViewBuilder
     private var closeItAction: some View {
         switch closingOutcome {
-        case .found(let run) where !run.isEmpty:
+        case .found(let run) where !run.isEmpty && game.editorActiveEnd != nil:
             mapAction("flag.checkered", tint: .yellow, label: "Close the loop") {
                 game.editorAppendRun(run)
             }
@@ -338,7 +338,7 @@ extension EditorView {
         // operation. Which end the button sat on says nothing about the result —
         // either way the fitter lands last, closing onto the origin inlet (that
         // pinned exit is what keeps `Coord` exact; see `Fitter`).
-        case .fits(let fitter):
+        case .fits(let fitter) where game.editorActiveEnd != nil:
             mapAction("flag.checkered", tint: .teal, label: "Close with a fitted piece") {
                 game.editorAppendFitter(fitter)
             }
