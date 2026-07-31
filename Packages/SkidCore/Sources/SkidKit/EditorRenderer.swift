@@ -157,6 +157,14 @@ enum EditorRenderer {
         for (index, placed) in ordered {
             drawPieceRibbon(placed, width: width, t: t, into: &context)
             drawDecal(decals[index], on: placed, width: width, t: t, into: &context)
+            // The start line and grid hashes are paint on the START piece's own
+            // road, so they belong to that piece too. Drawn after every ribbon
+            // instead, they sat on top of a deck crossing over the start line —
+            // the same fault the decals had.
+            if placed.id == PieceCatalog.startPieceID {
+                drawGridMarkings(placed, width: width, transform: t, into: &context)
+                drawStartLine(placed, width: width, transform: t, into: &context)
+            }
         }
         // Checkpoint gates across the seams the author marked, skipping the
         // START LINE's own seam — that one is drawn as the start/finish line
@@ -185,19 +193,6 @@ enum EditorRenderer {
             drawGate(piece, width: width, highlighted: gating, transform: t, into: &context)
         }
 
-        // Grid-slot markings, then the start/finish line at the start piece's
-        // exit (the line paints over the hashes).
-        // The start line and grid hatching are PAINT on the start piece's own
-        // road, so they belong to that piece's height band — the `contains`
-        // check alone let a ground-level start line draw during the elevated
-        // pass, so it showed through a bridge crossing over it.
-        if let start = walk.placed.first(where: { $0.id == PieceCatalog.startPieceID }),
-            heightRange.contains(start.exitHeight),
-            heightRange.contains(start.entryHeight)
-        {
-            drawGridMarkings(start, width: width, transform: t, into: &context)
-            drawStartLine(start, width: width, transform: t, into: &context)
-        }
     }
 
     /// Draw ONE piece as a width-varying ribbon: at each centerline sample the
