@@ -127,7 +127,44 @@ extension KerbPlan {
             }
         }
         if let corner = current { corners.append(corner) }
-        return corners
+        return joinAcrossTheSeam(corners, placed: placed)
+    }
+
+    /// **A corner that spans the list's seam is one corner, not two.**
+    ///
+    /// The grouping above walks the list linearly, so on a CLOSED ring a turn that
+    /// happens to straddle the start of the list is cut in half — its apex lands in
+    /// the middle of each fragment instead of the middle of the turn, and each
+    /// fragment grows its own exit kerb.
+    ///
+    /// That made kerbs depend on how the ring was SPELLED: the same loop written
+    /// from a different piece decorated differently. Measured on the flat eight, 13
+    /// of its 16 rotations disagreed with the canonical one. The editor holds a
+    /// ring in whatever order it was built, while copying normalizes it, so the
+    /// kerbs visibly rearranged on a copy/paste round-trip.
+    private static func joinAcrossTheSeam(_ corners: [Corner], placed: [PlacedPiece])
+        -> [Corner]
+    {
+        guard corners.count > 1, let first = corners.first, let last = corners.last,
+            // Only a closed ring wraps; an open chain's ends are genuinely ends.
+            isClosed(placed),
+            // The fragments must be the same turn, and both actual corners.
+            first.left == last.left, !first.crossing, !last.crossing,
+            // Adjacent in the ring: last piece of `last` meets first of `first`.
+            last.pieces.last == placed.count - 1, first.pieces.first == 0
+        else { return corners }
+        var joined = Array(corners.dropFirst().dropLast())
+        joined.append(Corner(pieces: last.pieces + first.pieces, left: first.left, crossing: false))
+        return joined
+    }
+
+    /// Whether the walked pieces form a closed ring — the last piece's exit meets
+    /// the first piece's entry.
+    private static func isClosed(_ placed: [PlacedPiece]) -> Bool {
+        guard let first = placed.first, let last = placed.last, placed.count > 1 else {
+            return false
+        }
+        return last.exits.contains { $0 == first.entry }
     }
 
     /// Paint one corner's kerbs: the apex on the inside, and the exit on the
