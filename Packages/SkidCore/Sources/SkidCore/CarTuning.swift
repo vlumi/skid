@@ -44,8 +44,18 @@ public struct CarTuning: Equatable, Sendable, Codable {
     /// heading faster. Scales all surfaces together, keeping their relative
     /// feel.
     public var gripScale: Double
-    /// Velocity kept along the wall normal after a bounce, 0…1.
+    /// Velocity kept along the wall normal after a bounce, 0…1 — at HEAD-ON. It
+    /// falls away as the approach flattens, so a graze scrubs instead of kicking
+    /// out (see `Race.collideWithWalls`).
     public var wallRestitution: Double
+    /// How much speed ALONG a wall a scrape takes, per unit of into-wall speed.
+    /// This is what makes riding a barrier slower than avoiding it — with no
+    /// tangential loss at all, hugging walls was free.
+    public var wallFriction: Double
+    /// How hard a graze pulls the nose parallel to the wall, in rad/s per unit of
+    /// into-wall speed. A car with mass pivots along the barrier rather than
+    /// skipping off it.
+    public var wallYaw: Double
     /// Bounciness of car–car contact, 0…1.
     public var carRestitution: Double
     /// Flight ticks per unit of speed off a launching ramp (capped at 1 s).
@@ -65,6 +75,8 @@ public struct CarTuning: Equatable, Sendable, Codable {
         driftRetention: Double = 1.0,
         gripScale: Double = 1.0,
         wallRestitution: Double = 0.45,
+        wallFriction: Double = 0.55,
+        wallYaw: Double = 0.012,
         carRestitution: Double = 0.4,
         jumpTicksPerSpeed: Double = 0.055
     ) {
@@ -81,6 +93,8 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.driftRetention = driftRetention
         self.gripScale = gripScale
         self.wallRestitution = wallRestitution
+        self.wallFriction = wallFriction
+        self.wallYaw = wallYaw
         self.carRestitution = carRestitution
         self.jumpTicksPerSpeed = jumpTicksPerSpeed
     }

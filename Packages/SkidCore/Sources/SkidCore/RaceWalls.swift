@@ -11,9 +11,14 @@ extension Race {
     /// position-only test let it straddle a thin wall between ticks and never
     /// register the hit. That was half of "I can hop onto the bridge from the
     /// grass"; the other half was the height gate below.
-    func collideWithWalls(car: inout CarState, movedFrom from: Vec2) -> Double {
+    /// `walls` defaults to the track's own — overridable so a test can put one
+    /// barrier in a known place and measure the response, rather than hunting for a
+    /// suitable wall on a real track.
+    func collideWithWalls(
+        car: inout CarState, movedFrom from: Vec2, walls: [Wall]? = nil
+    ) -> Double {
         var hardest = 0.0
-        for wall in track.walls where blocks(wall, car: car) {
+        for wall in walls ?? track.walls where blocks(wall, car: car) {
             // Nearest approach of the car's PATH to the wall, so a fast car is
             // caught mid-span rather than only where it happened to stop.
             let closest = nearestPoint(on: wall, toPathFrom: from, to: car.position)
@@ -34,18 +39,79 @@ extension Race {
             let offset = car.position - closest
             let dist = offset.length
             guard crossed || (dist < reach && dist > 0) else { continue }
-            let normal = approach.length > 0 ? approach : offset.normalized
-            guard normal.length > 0 else { continue }
-            // Push out of the wall, then reflect the into-wall velocity
-            // component with restitution.
-            car.position = closest + normal * reach
+            let side = approach.length > 0 ? approach : offset.normalized
+            guard side.length > 0 else { continue }
+            // **The push-out uses the approach side; the physics uses the wall's own
+            // FACE.** They are different vectors and conflating them was wrong: the
+            // approach direction points from the wall to wherever the car came from,
+            // which on a long wall is diagonal, so a graze got resolved against a
+            // slanted "normal" and came back off harder than it went in. The face is
+            // perpendicular to the wall, signed to the side the car is on.
+            let normal = faceNormal(of: wall, towards: side)
+            car.position = closest + side * reach
             let intoWall = car.velocity.dot(normal)
-            if intoWall < 0 {
-                car.velocity -= normal * intoWall * (1 + tuning.wallRestitution)
-                hardest = max(hardest, -intoWall)
-            }
+            guard intoWall < 0 else { continue }
+            respond(car: &car, normal: normal, intoWall: intoWall)
+            hardest = max(hardest, -intoWall)
         }
         return hardest
+    }
+
+    /// The wall's own outward face, signed to the side the car is on. Perpendicular
+    /// to the wall, unlike the approach direction, so contact is resolved against
+    /// the barrier rather than against the line back to where the car came from.
+    private func faceNormal(of wall: Wall, towards side: Vec2) -> Vec2 {
+        let run = wall.b - wall.a
+        guard run.length > 0.001 else { return side }
+        let face = run.perpendicular.normalized
+        return face.dot(side) >= 0 ? face : face * -1
+    }
+
+    /// **What hitting a wall does to the car**, given the into-wall speed.
+    ///
+    /// Three things, where the old model did only the first:
+    ///
+    /// - **Bounce**, but scaled by how square the hit is. `restitution` at head-on
+    ///   falling to nothing when parallel — reflecting the full normal component at
+    ///   every angle is what made a graze kick out instead of scrubbing along, which
+    ///   is the reported complaint. Some bounce on a near-head-on hit is wanted and
+    ///   stays.
+    /// - **Friction along the wall**, proportional to how hard it is pressed. With
+    ///   no tangential loss at all, riding a barrier cost nothing and hugging one
+    ///   was the fast line. A hard enough graze can take most of the speed out of
+    ///   the car, which is what "a wall can stop you" means.
+    /// - **Yaw**, pulling the nose parallel. A car with mass pivots along the
+    ///   barrier rather than skipping off it, and this is most of what reads as
+    ///   weight rather than as a pinball.
+    private func respond(car: inout CarState, normal: Vec2, intoWall: Double) {
+        let press = -intoWall  // positive: how hard the car is going into the wall
+        let along = normal.perpendicular  // unit, since `normal` is
+        let slide = car.velocity.dot(along)
+        let speed = car.velocity.length
+        // How square the hit is: 0 parallel, 1 head-on. Taken from the velocity, so
+        // it is about the approach rather than where the nose happens to point.
+        let squareness = speed > 0.001 ? min(1, press / speed) : 0
+
+        // 1. Bounce: the into-wall component comes back, scaled by squareness. The
+        //    outgoing normal speed is `press * restitution * squareness` — never
+        //    more than it arrived with, so contact can't inject energy.
+        let bounced = press * tuning.wallRestitution * squareness
+        // 2. Friction: the harder the press, the more speed the scrape takes. Capped
+        //    at the slide itself, so a hard graze can bring the car to a stop but
+        //    never drag it backwards along the wall.
+        let scrub = min(abs(slide), press * tuning.wallFriction)
+        let keptSlide = slide - (slide > 0 ? scrub : -scrub)
+        car.velocity = normal * bounced + along * keptSlide
+
+        // 3. Yaw toward parallel — whichever way round the wall runs, turn the nose
+        //    the short way onto it. Proportional to the press, so a brush barely
+        //    moves it and a heavy scrape swings the car straight.
+        let wallAngle = atan2(along.y, along.x)
+        let facing = car.velocity.dot(along) >= 0 ? wallAngle : wallAngle + .pi
+        var delta = atan2(sin(facing - car.heading), cos(facing - car.heading))
+        let maxTurn = press * tuning.wallYaw * Race.dt
+        delta = max(-maxTurn, min(maxTurn, delta))
+        car.heading += delta
     }
 
     /// Whether the car's path this tick actually passed through the wall segment.
