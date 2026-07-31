@@ -30,23 +30,17 @@ extension CouchGame {
     /// unit by the search, so it lands as a unit — applying it piece by piece
     /// would re-judge every prefix and silently drop the tail if any single
     /// step read as an overlap mid-run.
+    ///
+    /// **Closing is one operation.** The run fills the one gap between the two loose
+    /// ends, so the end result is the same closed track whichever end the button was
+    /// on — no prepend, no mirroring, no branch. Same for the fitter.
     @discardableResult
-    /// Lands at whichever end is being built from: the gap is one span, so the same
-    /// run closes it either way and the road comes out identical.
     public func editorAppendRun(_ run: [PlannedPiece]) -> Bool {
         recordingUndo {
-            guard var layout = editorLayout, !run.isEmpty else { return false }
-            let expanded = run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) }
-            switch editorBuildEnd {
-            case .tail:
-                guard TrackValidator.canAppend(run: run, to: layout) else { return false }
-                layout.append(contentsOf: expanded)
-            case .head:
-                guard TrackValidator.canPrepend(run: run, to: layout),
-                    layout.prependAll(expanded)
-                else { return false }
-            }
-            editorLayout = layout
+            guard let layout = editorLayout, !run.isEmpty else { return false }
+            guard TrackValidator.canAppend(run: run, to: layout) else { return false }
+            editorLayout?.append(
+                contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
             finishIfClosed()
             return true
         }
