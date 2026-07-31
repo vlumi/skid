@@ -88,7 +88,7 @@ public final class GameSettings: ObservableObject {
     /// The bounce a pure glance keeps, as a share of the above. Zero feels dead.
     @AppStorage("skid.sim.wallGlanceBounce") public var wallGlanceBounce = 0.3
     /// How fast a scrape bleeds speed along the wall.
-    @AppStorage("skid.sim.wallFriction") public var wallFriction = 0.010
+    @AppStorage("skid.sim.wallFriction") public var wallFriction = 0.002
     /// The share of top speed a sustained drag settles at, rather than stopping.
     @AppStorage("skid.sim.wallDragFloor") public var wallDragFloor = 0.5
     /// How hard a hit pulls the nose along the wall.

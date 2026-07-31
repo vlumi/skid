@@ -61,7 +61,7 @@ struct TuningPanel: View {
                         range: 0...1, step: 0.05, format: "%.2f")
                     slider(
                         Text("Scrape", bundle: .module), value: $settings.wallFriction,
-                        range: 0...0.05, step: 0.002, format: "%.3f")
+                        range: 0...0.008, step: 0.0005, format: "%.4f")
                     slider(
                         Text("Drag floor", bundle: .module), value: $settings.wallDragFloor,
                         range: 0...1, step: 0.05, format: "%.2f")

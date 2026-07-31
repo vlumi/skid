@@ -165,9 +165,22 @@ extension Race {
         //    glance bounce up to full restitution head-on. A pure glance keeps SOME
         //    kick — zero read as flypaper on device — and the scale is never above 1,
         //    so contact can't inject energy.
-        let bounceScale =
-            tuning.wallGlanceBounce + (1 - tuning.wallGlanceBounce) * squareness
-        let bounced = press * tuning.wallRestitution * bounceScale
+        // **A glance bounce must not be proportional to `press`.** While dragging,
+        // `press` is about 1 unit/s — so `press * restitution * scale` came out under
+        // half a unit however high the slider went, and the glance bounce did nothing
+        // at all (device: "no glance bounce no matter what value I put in"). The kick
+        // a graze gives comes from the speed the car is carrying ALONG the wall, which
+        // is the energy actually available.
+        // A glance's kick comes from the slide, but must never EXCEED what a square
+        // hit at the same speed would give — otherwise a shallow graze bounces harder
+        // than a head-on one, which is backwards. Capped at the press-based bounce a
+        // fully square hit would produce.
+        let squareBounce = press * tuning.wallRestitution * squareness
+        let glanceCeiling = abs(slide) * tuning.wallRestitution
+        let glanceBounce = min(
+            glanceCeiling * tuning.wallGlanceBounce * (1 - squareness) * 0.05,
+            press * tuning.wallRestitution)
+        let bounced = squareBounce + glanceBounce
         // 2. Friction: a RATE per tick, not an absolute cut, and it EASES OFF toward
         //    a floor rather than bleeding to a stop. Dragging a wall should be a
         //    viable if slow line — device feel says around half speed is fine for
@@ -176,9 +189,13 @@ extension Race {
         //
         //    `headroom` is how far above the floor the car still is, so the scrub
         //    fades as it settles: fast means real cost, at the floor means none.
+        // Friction also keys off the SLIDE, not the press. Pressed lightly against a
+        // barrier the car is still scraping along it at speed, and that is what a
+        // scrape costs — keying off `press` meant dragging was nearly free (device:
+        // "the car could slow down some more when dragging").
         let floor = tuning.maxSpeed * tuning.wallDragFloor
         let headroom = max(0, (abs(slide) - floor) / max(floor, 1))
-        let bite = press * tuning.wallFriction * Race.dt * min(1, headroom)
+        let bite = abs(slide) * tuning.wallFriction * Race.dt * min(1, headroom)
         let scrub = min(abs(slide), abs(slide) * min(1, bite))
         let keptSlide = slide - (slide > 0 ? scrub : -scrub)
         car.velocity = normal * bounced + along * keptSlide
