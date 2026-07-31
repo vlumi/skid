@@ -246,6 +246,26 @@ final class EditorSelectionTests: XCTestCase {
             "a loop should be canonical the moment it closes")
     }
 
+    /// **Closing a loop deselects.** The piece you were building from has no free
+    /// end any more, and normalizing re-indexes the ring — so a selection kept by
+    /// index would silently land on whatever piece took that slot, which is how the
+    /// same piece ended up selected wherever the loop was closed.
+    func testClosingALoopDeselects() {
+        let game = CouchGame()
+        game.editorReset()
+        game.clearUndoHistory()
+        for _ in 0..<3 { _ = game.editorAppend(Catalog.curve90MediumRight) }
+        game.editorSelection = 1
+        XCTAssertNotNil(game.editorSelectedPiece)
+
+        _ = game.editorAppend(Catalog.curve90MediumRight)
+        guard game.editorLayout!.walk().openEnds.isEmpty else {
+            return  // didn't close with this catalog
+        }
+        XCTAssertNil(game.editorSelection, "closing a loop should clear the selection")
+        XCTAssertEqual(game.editorBuildEnd, .tail, "and reset the build end")
+    }
+
     /// Gate mode owns map taps, so selection must not change under it.
     func testGateModeDoesNotSelect() throws {
         let game = try closedRing()

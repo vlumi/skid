@@ -30,7 +30,15 @@ extension CouchGame {
         // Rotation is a re-spelling, so the road does not move.
         if let edited = editorLayout {
             let canonical = edited.normalized()  // a no-op on an open chain
-            if canonical.pieces != edited.pieces { editorLayout = canonical }
+            if canonical.pieces != edited.pieces {
+                editorLayout = canonical
+                // Rotating re-indexes every piece, so a selection kept by index
+                // would silently jump to whatever piece took that slot — reported
+                // as "the same piece is selected after closing, wherever I close".
+                // There is nothing sensible to keep pointing at: closing a loop
+                // takes away the free end that made the selection meaningful.
+                selectionRaw = nil
+            }
         }
         undoStack.append(snapshot)
         if undoStack.count > Self.undoDepth { undoStack.removeFirst() }

@@ -19,8 +19,13 @@ extension EditorView {
         // the gap reading is useless advice ("turn 180° left" — with what?).
         // Without this, a size-blocked palette had no explanation at all.
         if let full = sizeLimitHint(walk) { return full }
-        let gap = layout.closureGap(from: end)
-        guard let advice = advice(for: gap, facing: end.heading) else { return nil }
+        // The gap is always measured the way traffic FLOWS — from the tail's exit
+        // to the head's entry. Building at the head does not change the gap, only
+        // which end you are adding pieces to, so measure the same span either way
+        // rather than from the head outwards (which read as a 180° turn).
+        let flowEnd = walk.openEnds.last ?? end
+        let gap = layout.closureGap(from: flowEnd)
+        guard let advice = advice(for: gap, facing: flowEnd.heading) else { return nil }
         let parts = gapParts(gap)
         // The search's verdict now belongs here. It used to sit on the Close
         // button, which has moved onto the map and only appears when there IS a
@@ -183,6 +188,14 @@ extension EditorView {
         guard key != closingRunKey else { return }
         closingRunKey = key
         guard let layout = game.editorLayout, let end else {
+            closingOutcome = nil
+            return
+        }
+        // **Only the tail can be auto-closed.** The search walks FORWARD from an end
+        // onto the layout's origin; from the head the run would have to be walked
+        // backwards and land on the tail, which it cannot express. Offering it
+        // anyway measured the wrong direction and read "turn 180° — no close in 3".
+        guard game.editorBuildEnd == .tail else {
             closingOutcome = nil
             return
         }

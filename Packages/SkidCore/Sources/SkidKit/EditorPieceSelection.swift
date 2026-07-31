@@ -38,39 +38,23 @@ extension EditorView {
         return hypot(point.x - (a.x + dx * t), point.y - (a.y + dy * t))
     }
 
-    /// Delete, anchored ON the selected piece rather than at a fixed spot, and the
-    /// build-end arrows. Only what the selection actually offers appears: a ring
-    /// piece has no free end, so it gets delete alone.
+    /// Delete, anchored ON the selected piece rather than at a fixed spot.
+    ///
+    /// No build-end arrows: a piece has at most one free end (head at index 0, tail
+    /// at the last), and selecting it already chooses that end — so the arrow was
+    /// always the already-active one and tapping it did nothing. The construction
+    /// marker shows which end is live.
     @ViewBuilder
     func selectionChrome(walk: WalkResult, transform: EditorRenderer.Transform) -> some View {
         if let index = game.editorSelectedPiece, walk.placed.indices.contains(index) {
             let placed = walk.placed[index]
-            let ends = game.editorFreeEnds(of: index)
             let anchor = transform.screen(placed.centerlineSamples().midpointSample)
-            HStack(spacing: 8) {
-                ForEach(ends, id: \.self) { end in
-                    buildEndArrow(end)
+            if game.editorCanDeleteSelected {
+                mapAction("trash", tint: .white, label: "Delete piece") {
+                    game.editorDeleteSelected()
                 }
-                if game.editorCanDeleteSelected {
-                    mapAction("trash", tint: .white, label: "Delete piece") {
-                        game.editorDeleteSelected()
-                    }
-                }
+                .position(x: anchor.x, y: anchor.y - 34)
             }
-            .position(x: anchor.x, y: anchor.y - 34)
-        }
-    }
-
-    /// One end arrow. Highlighted when it is the end the palette is building from,
-    /// so "where does the next piece go" is answered without a tap.
-    private func buildEndArrow(_ end: CouchGame.BuildEnd) -> some View {
-        let active = game.editorBuildEnd == end
-        return mapAction(
-            end == .head ? "arrow.left.circle.fill" : "arrow.right.circle.fill",
-            tint: active ? .yellow : .white,
-            label: end == .head ? "Build from the start" : "Build from the end"
-        ) {
-            game.editorBuildEnd = end
         }
     }
 }
