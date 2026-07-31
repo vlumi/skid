@@ -298,6 +298,44 @@ final class EditorSelectionTests: XCTestCase {
         }
     }
 
+    // MARK: - markings
+
+    /// A decal is applied in place: the geometry, the seams and every index are
+    /// untouched, so only the paint changes.
+    func testSettingADecalChangesNothingButThePaint() throws {
+        let game = try closedRing()
+        let before = game.editorLayout!
+        XCTAssertTrue(game.editorSetDecal(.directionArrow, at: 3))
+
+        let after = game.editorLayout!
+        XCTAssertEqual(after.decal(at: 3), .directionArrow)
+        XCTAssertEqual(after.pieces, before.pieces)
+        XCTAssertEqual(after.gateSeams, before.gateSeams)
+        XCTAssertEqual(after.origin, before.origin)
+        XCTAssertEqual(after.walk().placed.map(\.entry), before.walk().placed.map(\.entry))
+    }
+
+    /// Clearing one works the same way, and re-applying the same decal is a no-op
+    /// (so it doesn't fill the undo history with nothing).
+    func testClearingADecalAndRedundantSetsAreNoOps() throws {
+        let game = try closedRing()
+        XCTAssertTrue(game.editorSetDecal(.directionArrow, at: 3))
+        XCTAssertFalse(
+            game.editorSetDecal(.directionArrow, at: 3), "setting the same decal again")
+        XCTAssertTrue(game.editorSetDecal(nil, at: 3))
+        XCTAssertNil(game.editorLayout!.decal(at: 3))
+        XCTAssertFalse(game.editorSetDecal(nil, at: 3), "clearing an unpainted piece")
+    }
+
+    /// And it's undoable, one tap at a time.
+    func testDecalsAreUndoable() throws {
+        let game = try closedRing()
+        let before = TrackCode.encode(game.editorLayout!)
+        XCTAssertTrue(game.editorSetDecal(.directionArrow, at: 3))
+        game.editorUndo()
+        XCTAssertEqual(TrackCode.encode(game.editorLayout!), before)
+    }
+
     /// Gate mode owns map taps, so selection must not change under it.
     func testGateModeDoesNotSelect() throws {
         let game = try closedRing()

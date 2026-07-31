@@ -32,7 +32,9 @@ extension TrackLayout {
         padded.insert(pitch, at: index)
         pitches = Self.trimmedPitches(padded)
         gateSeams = gateSeams.map { $0 >= index ? $0 + 1 : $0 }.sorted()
-        fitters = remapped(fitters) { $0 >= index ? $0 + 1 : $0 }
+        let shift = { (key: Int) in key >= index ? key + 1 : key }
+        fitters = remapped(fitters, by: shift)
+        decals = remapped(decals, by: shift)
     }
 
     /// Remove the piece at `index`, pulling everything after it back one place.
@@ -48,7 +50,9 @@ extension TrackLayout {
         pitches = Self.trimmedPitches(padded)
         gateSeams = gateSeams.compactMap { $0 == index ? nil : ($0 > index ? $0 - 1 : $0) }
             .sorted()
-        fitters = remapped(fitters.filter { $0.key != index }) { $0 > index ? $0 - 1 : $0 }
+        let pullBack = { (key: Int) in key > index ? key - 1 : key }
+        fitters = remapped(fitters.filter { $0.key != index }, by: pullBack)
+        decals = remapped(decals.filter { $0.key != index }, by: pullBack)
     }
 
     /// **Re-spell a closed ring to begin at `index`.** The same ring, written from
@@ -75,7 +79,9 @@ extension TrackLayout {
         let padded = paddedPitches(count: count)
         pitches = Self.trimmedPitches(Array(padded[index...] + padded[..<index]))
         gateSeams = gateSeams.map { ($0 - index + count) % count }.sorted()
-        fitters = remapped(fitters) { ($0 - index + count) % count }
+        let rotate = { (key: Int) in (key - index + count) % count }
+        fitters = remapped(fitters, by: rotate)
+        decals = remapped(decals, by: rotate)
         // The walk now starts at the new first piece, so the origin is that
         // piece's entry — its pose and its height.
         origin = walk.placed[index].entry
@@ -90,10 +96,12 @@ extension TrackLayout {
         pitches + Array(repeating: .flat, count: max(0, count - pitches.count))
     }
 
-    /// Fitter keys moved by `move`, which is total: every surviving entry lands
-    /// somewhere, and two never collide (all three remaps are order-preserving
-    /// bijections on the surviving indices).
-    private func remapped(_ table: [Int: Fitter], by move: (Int) -> Int) -> [Int: Fitter] {
+    /// Index-keyed entries moved by `move`, which is total: every surviving entry
+    /// lands somewhere, and two never collide (every remap here is an
+    /// order-preserving bijection on the surviving indices).
+    private func remapped<Value>(_ table: [Int: Value], by move: (Int) -> Int)
+        -> [Int: Value]
+    {
         Dictionary(uniqueKeysWithValues: table.map { (move($0.key), $0.value) })
     }
 }
