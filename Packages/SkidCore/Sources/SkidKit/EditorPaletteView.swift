@@ -275,11 +275,10 @@ extension EditorView {
         }
     }
 
-    /// The loose end the actions attach to — the one a new piece would extend.
+    /// The loose end the actions attach to — the one a new piece would extend,
+    /// which follows the build-end arrows.
     private func looseEndPose(_ walk: WalkResult) -> PiecePose? {
-        if let index = effectiveSelection(walk), walk.openEnds.indices.contains(index) {
-            return walk.openEnds[index]
-        }
+        if let pose = buildEndPose(walk) { return pose }
         // A closed ring has no loose end; anchor to the start piece's entry so
         // Delete is still reachable after closing the loop.
         guard let start = walk.placed.first(where: { $0.id == PieceCatalog.startPieceID })

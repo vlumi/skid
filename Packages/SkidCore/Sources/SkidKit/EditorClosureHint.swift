@@ -14,14 +14,11 @@ extension EditorView {
     /// generic, localized hint).
     func closureHint(_ walk: WalkResult) -> String? {
         let layout = game.editorLayout ?? TrackLayout(pieces: [PieceCatalog.startPieceID])
-        guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
-            return closedLoopHint(layout)
-        }
+        guard let end = buildEndPose(walk) else { return closedLoopHint(layout) }
         // Being out of ROOM outranks the gap: when every piece is grayed out,
         // the gap reading is useless advice ("turn 180° left" — with what?).
         // Without this, a size-blocked palette had no explanation at all.
         if let full = sizeLimitHint(walk) { return full }
-        let end = walk.openEnds[i]
         let gap = layout.closureGap(from: end)
         guard let advice = advice(for: gap, facing: end.heading) else { return nil }
         let parts = gapParts(gap)
@@ -181,9 +178,7 @@ extension EditorView {
     /// Called from a task, never from `body`: the search is far too slow to run
     /// per frame (it made the editor jam).
     func refreshClosingRun(_ walk: WalkResult) {
-        let end = effectiveSelection(walk).flatMap { i in
-            walk.openEnds.indices.contains(i) ? walk.openEnds[i] : nil
-        }
+        let end = buildEndPose(walk)
         let key = ClosingKey(pieces: game.editorLayout?.pieces ?? [], end: end)
         guard key != closingRunKey else { return }
         closingRunKey = key

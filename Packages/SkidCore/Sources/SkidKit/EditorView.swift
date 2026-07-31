@@ -141,15 +141,32 @@ struct EditorView: View {
 
     // MARK: - Selection
 
-    /// The loose end the palette appends at, as an index into `walk.openEnds`.
+    /// Which loose end the palette is building at, indexing the list the renderer
+    /// marks up: `walk.openEnds`, then the HEAD stub appended after them.
     ///
-    /// **Only the TAIL lives in `openEnds`.** The origin is an inlet the walk can
-    /// close onto, not a loose end, so a chain open at both ends still lists one —
-    /// which is why the renderer draws the head separately ("the back of the start
-    /// piece"). Head-end building is therefore driven by `editorBuildEnd`, not by
-    /// an index here.
+    /// Only the tail lives in `openEnds` — the origin is an inlet the walk can
+    /// close onto, not a loose end — so the head's index is `openEnds.count`, which
+    /// is exactly where `EditorRenderer.draw` appends it. Keeping both in step is
+    /// what makes the construction marker follow the arrows.
     func effectiveSelection(_ walk: WalkResult) -> Int? {
-        walk.openEnds.isEmpty ? nil : walk.openEnds.count - 1
+        guard !walk.openEnds.isEmpty else { return nil }
+        switch game.editorBuildEnd {
+        case .head: return walk.openEnds.count  // the appended head stub
+        case .tail: return walk.openEnds.count - 1
+        }
+    }
+
+    /// The pose of the end being built at, head or tail — where the chrome that
+    /// belongs to "the growing end" is anchored.
+    func buildEndPose(_ walk: WalkResult) -> PiecePose? {
+        guard !walk.openEnds.isEmpty else { return nil }
+        switch game.editorBuildEnd {
+        case .tail: return walk.openEnds.last
+        case .head:
+            guard let first = walk.placed.first else { return nil }
+            return PiecePose(
+                position: first.entry.position, heading: first.entry.heading.reversed)
+        }
     }
 
     /// The heading the next piece will enter at, so the palette icons render

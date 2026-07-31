@@ -56,18 +56,20 @@ enum EditorRenderer {
         }
 
         // Loose (unbuilt) ends get a construction treatment. That's every
-        // walk openEnd, PLUS the back of the start piece whenever the loop
-        // isn't closed (it's the closure target, so the walk doesn't list it,
-        // but it's an open stub until something connects to it).
+        // walk openEnd, PLUS the HEAD of the chain whenever the loop isn't
+        // closed — the origin is an inlet the walk can close onto rather than a
+        // loose end, so it never appears in `openEnds`, but it is an open stub
+        // until something connects to it (and, since prepend, somewhere you can
+        // build).
+        //
+        // The head is piece 0's entry, not the START piece's: the start line is
+        // an ordinary piece that may sit anywhere on the ring, so keying off it
+        // drew the stub mid-chain on any track that doesn't begin with it.
         var looseEnds = walk.openEnds
-        if !walk.openEnds.isEmpty,
-            let start = walk.placed.first(where: {
-                $0.id == PieceCatalog.startPieceID
-            })
-        {
-            // The start's entry pose, facing OUT of the piece (back down the road).
+        if !walk.openEnds.isEmpty, let first = walk.placed.first {
+            // Facing OUT of the piece (back down the road).
             looseEnds.append(
-                PiecePose(position: start.entry.position, heading: start.entry.heading.reversed))
+                PiecePose(position: first.entry.position, heading: first.entry.heading.reversed))
         }
         for (i, end) in looseEnds.enumerated() {
             drawLooseEnd(end, width: width, selected: i == selectedEnd, t: t, into: &context)
