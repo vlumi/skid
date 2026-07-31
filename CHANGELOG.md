@@ -31,6 +31,10 @@ ships (see [AGENTS.md](AGENTS.md)).
   another straight across it. Roads that merely graze each other at a shallow
   angle are still refused, since that is nearly always a mistake rather than a
   junction.
+- **A piece that fits is no longer refused depending on which end you build
+  from.** Closing a loop could be rejected as an overlap while the very same
+  piece went in fine from the other end — the check was looking at where the
+  piece list happened to start rather than at the road.
 - **Trimming a track back is one tap per piece.** Deleting the piece at an end
   now selects the one behind it, so you can keep tapping the bin instead of
   reselecting between each. Building follows the selection too: the end you have
