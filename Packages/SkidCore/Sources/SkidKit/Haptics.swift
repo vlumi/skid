@@ -84,13 +84,13 @@ public final class GameSettings: ObservableObject {
     // for which knob answers which complaint.
 
     /// Bounce off a wall hit SQUARE ON, 0…1.
-    @AppStorage("skid.sim.wallRestitution") public var wallRestitution = 0.45
+    @AppStorage("skid.sim.wallRestitution") public var wallRestitution = 0.40
     /// The bounce a pure glance keeps, as a share of the above. Zero feels dead.
     @AppStorage("skid.sim.wallGlanceBounce") public var wallGlanceBounce = 0.3
     /// How fast a scrape bleeds speed along the wall.
     @AppStorage("skid.sim.wallFriction") public var wallFriction = 0.002
     /// The share of top speed a sustained drag settles at, rather than stopping.
-    @AppStorage("skid.sim.wallDragFloor") public var wallDragFloor = 0.5
+    @AppStorage("skid.sim.wallDragFloor") public var wallDragFloor = 0.1
     /// How hard a hit pulls the nose along the wall.
     @AppStorage("skid.sim.wallYaw") public var wallYaw = 0.012
 
