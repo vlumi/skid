@@ -14,10 +14,16 @@ final class DecalLookProbe: XCTestCase {
         guard let out = ProcessInfo.processInfo.environment["DECAL_PROBE_OUT"] else {
             throw XCTSkip("set DECAL_PROBE_OUT to render the probe sheet")
         }
-        var layout = try TrackCode.decode(
-            try XCTUnwrap(TrackLibrary.builtins.first { $0.id == "clover" }).code)
-        // An arrow on every piece: the point is to see all the shapes at once.
-        for index in layout.pieces.indices { layout.decals[index] = .directionArrow }
+        // Default: the clover with an arrow on EVERY piece, so all the shapes show
+        // at once. Override with DECAL_PROBE_CODE to look at a specific track.
+        var layout: TrackLayout
+        if let code = ProcessInfo.processInfo.environment["DECAL_PROBE_CODE"] {
+            layout = try TrackCode.decode(code)
+        } else {
+            layout = try TrackCode.decode(
+                try XCTUnwrap(TrackLibrary.builtins.first { $0.id == "clover" }).code)
+            for index in layout.pieces.indices { layout.decals[index] = .directionArrow }
+        }
         let walk = layout.walk()
         XCTAssertNil(walk.failure)
 

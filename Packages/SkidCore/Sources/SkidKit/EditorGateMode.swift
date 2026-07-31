@@ -134,3 +134,23 @@ private struct SeamHit {
     /// near-ties against empty seams.
     var isGate: Bool
 }
+
+extension EditorView {
+    /// What a markings option is called in the picker.
+    static func decalLabel(_ decal: Decal?) -> LocalizedStringKey {
+        switch decal {
+        case nil: return "None"
+        case .directionArrow: return "Direction"
+        case .warningArrow: return "Warning"
+        }
+    }
+
+    /// The colour a markings option is painted in, so the picker shows the paint
+    /// rather than naming it.
+    static func decalTint(_ decal: Decal?) -> Color {
+        switch decal {
+        case .warningArrow: return EditorRenderer.arrowYellow
+        default: return .white
+        }
+    }
+}
