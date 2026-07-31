@@ -157,7 +157,8 @@ extension EditorRenderer {
     /// pieces get a proportionally shorter arrow, and one too short to read is
     /// skipped rather than drawn as a blob.
     static func drawDirectionArrow(
-        _ placed: PlacedPiece, width: Double, transform t: Transform,
+        _ placed: PlacedPiece, width: Double, paint: Color = kerbWhite,
+        transform t: Transform,
         into context: inout GraphicsContext
     ) {
         let samples = placed.centerlineSamples()
@@ -199,9 +200,9 @@ extension EditorRenderer {
         arrow.addLine(to: t.screen(base - baseSide * headHalf))
         for point in right.reversed() { arrow.addLine(to: point) }
         arrow.closeSubpath()
-        // Fully opaque, like the paint it is — the same white as the edge lines.
-        // Translucency read as chalk rather than as a marking.
-        context.fill(arrow, with: .color(kerbWhite))
+        // Fully opaque, like the paint it is. Translucency read as chalk rather
+        // than as a marking.
+        context.fill(arrow, with: .color(paint))
     }
 
     /// Total length of a polyline, for sizing marks in world units.

@@ -15,18 +15,21 @@ public enum Pitch: Int, Equatable, Sendable, Codable, CaseIterable {
     public var delta: Double { Double(rawValue) * Track.levelHeight / 2 }
 }
 
-/// A track as the piece model stores it: an ordered piece-id list with each
-/// piece's pitch, an origin pose (the start line, on the fixed canvas), the
-/// gate seam indices, and a theme. This is exactly what the share code
-/// carries. Geometry is never stored — it derives from walking the list.
 /// Markings painted on a piece's road. Geometry is untouched — a decal changes
 /// only what the piece looks like.
 public enum Decal: Int, Equatable, Sendable, Codable, CaseIterable {
     /// An arrow along the road showing the driving direction, following the
     /// piece's own centerline (so it curves on a curve).
     case directionArrow = 1
+    /// The same arrow in warning yellow — for the corner you want the driver
+    /// looking at, not just the direction of travel.
+    case warningArrow = 2
 }
 
+/// A track as the piece model stores it: an ordered piece-id list with each
+/// piece's pitch, an origin pose (the start line, on the fixed canvas), the
+/// gate seam indices, and a theme. This is exactly what the share code
+/// carries. Geometry is never stored — it derives from walking the list.
 public struct TrackLayout: Equatable, Sendable, Codable {
     public enum Theme: Int, Equatable, Sendable, Codable {
         case normal = 0, snow = 1, sand = 2

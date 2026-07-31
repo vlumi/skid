@@ -13,6 +13,9 @@ enum EditorRenderer {
     /// Bridge guardrail — a bold light blue so walls read unmistakably as
     /// barriers, distinct from the gray road/kerb.
     private static let bridgeRail = Color(red: 0.55, green: 0.78, blue: 0.95)
+    /// Warning-marking yellow: the road-paint amber, warm enough to separate from
+    /// the white lines at a glance without going orange-red like the kerbs.
+    static let arrowYellow = Color(red: 0.98, green: 0.76, blue: 0.09)
 
     /// Screen radius of a loose-end tap dot.
     static let endHitRadius: CGFloat = 26
@@ -76,6 +79,25 @@ enum EditorRenderer {
         }
     }
 
+    /// One piece's paint, laid immediately after its own asphalt: on top of it (so
+    /// it isn't clipped away, the way edge decoration deliberately is), but under
+    /// anything drawn later — which is what keeps a decal on the road under a bridge
+    /// from ending up on the bridge.
+    private static func drawDecal(
+        _ decal: Decal?, on placed: PlacedPiece, width: Double, t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        switch decal {
+        case .directionArrow:
+            drawDirectionArrow(placed, width: width, transform: t, into: &context)
+        case .warningArrow:
+            drawDirectionArrow(
+                placed, width: width, paint: arrowYellow, transform: t, into: &context)
+        case nil:
+            break
+        }
+    }
+
     /// **The track itself** — shadows, edge decoration, asphalt, ramp markings,
     /// gates, grid and start line. No editor chrome.
     ///
@@ -127,19 +149,14 @@ enum EditorRenderer {
         drawAllEdges(
             walk: walk, kerbs: kerbs, width: width, t: t, heightRange: heightRange,
             into: &context)
-        for (_, placed) in ordered {
+        // Asphalt then its own paint, PIECE BY PIECE in height order — not all the
+        // ribbons and then all the decals. Drawing the decals in a second sweep put
+        // a ground road's arrow on top of the bridge that crosses over it, because
+        // the deck's asphalt had already been laid. (The race view bands by storey
+        // so it never saw this; the editor draws every height in one pass.)
+        for (index, placed) in ordered {
             drawPieceRibbon(placed, width: width, t: t, into: &context)
-        }
-        // Decals are PAINT: on top of the asphalt (so they aren't clipped away by
-        // it, the way edge decoration deliberately is), under the gates and start
-        // line, which are structure.
-        for (index, placed) in ordered where decals[index] != nil {
-            switch decals[index] {
-            case .directionArrow:
-                drawDirectionArrow(placed, width: width, transform: t, into: &context)
-            case nil:
-                break
-            }
+            drawDecal(decals[index], on: placed, width: width, t: t, into: &context)
         }
         // Checkpoint gates across the seams the author marked, skipping the
         // START LINE's own seam — that one is drawn as the start/finish line

@@ -236,10 +236,11 @@ extension EditorView {
             VStack(spacing: 6) {
                 Image(systemName: decal == nil ? "slash.circle" : "arrow.up")
                     .font(.system(size: 22, weight: .bold))
-                Text(decal == nil ? "None" : "Direction", bundle: .module)
+                    .foregroundStyle(EditorView.decalTint(decal))
+                Text(EditorView.decalLabel(decal), bundle: .module)
                     .font(.caption2)
+                    .foregroundStyle(.white)
             }
-            .foregroundStyle(.white)
             .frame(width: 84, height: 68)
             .background(.black.opacity(chosen ? 0.5 : 0.22), in: RoundedRectangle(cornerRadius: 10))
             .overlay(
