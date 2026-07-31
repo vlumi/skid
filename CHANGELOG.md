@@ -31,6 +31,12 @@ ships (see [AGENTS.md](AGENTS.md)).
   another straight across it. Roads that merely graze each other at a shallow
   angle are still refused, since that is nearly always a mistake rather than a
   junction.
+- **Kerbs no longer rearrange themselves.** A corner that happened to straddle
+  the point where a loop's piece list begins was treated as two separate
+  corners, so it got two apexes and two run-off kerbs — and which corner that
+  was depended on where the loop started, meaning the same track could paint
+  differently after a copy and paste. A loop's kerbs are now the same however
+  it was built.
 - **Build from either end of a track, and delete any piece of a loop.** Tap a
   piece to select it — the bin now sits on the piece it will remove, instead of
   always taking the last one you laid. On a closed loop you can delete anywhere
