@@ -200,6 +200,10 @@ extension EditorView {
         // Searching from the HEAD instead is what cannot work: the search walks
         // forward onto the layout's origin, so from the head it measured the wrong
         // direction entirely and read "turn 180° — no close in 3".
+        guard game.editorActiveEnd != nil else {
+            closingOutcome = nil  // nothing selected: no end to close from
+            return
+        }
         closingOutcome = layout.closingOutcome(from: walk.openEnds.last ?? end, maxPieces: 3)
     }
 

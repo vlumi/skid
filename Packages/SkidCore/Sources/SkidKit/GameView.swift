@@ -213,6 +213,10 @@ public final class CouchGame: ObservableObject {
             clearUndoHistory()
         }
         editorMode = .build  // never open in a mode left on from last time
+        // Open with the growing end selected, so the palette is live without a tap.
+        // Building is a property of a SELECTED end now, so with nothing selected the
+        // editor would greet the author with a greyed-out palette.
+        editorSelect((editorLayout?.pieces.count ?? 1) - 1)
         sound.stop()
         phase = .editing
     }
