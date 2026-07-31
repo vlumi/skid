@@ -100,11 +100,17 @@ extension Race {
         return hardest
     }
 
-    /// Below this the hit is a pure glance — no bounce at all, just scrape. An
-    /// arcade car clipping a barrier at 30° should slide along it, not come off.
-    static let glancingAngle = 30.0
+    /// Below this the hit is a pure glance — no square bounce, just scrape and the
+    /// subdued glance kick. An arcade car clipping a barrier at 25° should slide
+    /// along it, not come off.
+    static let glancingAngle = 25.0
     /// At or above this it is a pure head-on, with the full bounce.
-    static let headOnAngle = 75.0
+    ///
+    /// 60°, not 75°: on device only a near-square hit bounced at all, and really bad
+    /// cornering deserves punishing. Lowering it means a 60° mistake gets the full
+    /// kick and the band 25…60 ramps up through it, so a sloppy apex costs something
+    /// visible rather than just scrubbing along.
+    static let headOnAngle = 60.0
 
     /// Remap the approach sine onto 0…1 across the glance→head-on band.
     static func squareness(ofSine sine: Double) -> Double {

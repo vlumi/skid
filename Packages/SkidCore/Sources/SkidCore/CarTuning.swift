@@ -100,10 +100,10 @@ public struct CarTuning: Equatable, Sendable, Codable {
         steerFlipBoost: Double = 5,
         driftRetention: Double = 1.0,
         gripScale: Double = 1.0,
-        wallRestitution: Double = 0.45,
+        wallRestitution: Double = 0.40,
         wallGlanceBounce: Double = 0.3,
         wallFriction: Double = 0.002,
-        wallDragFloor: Double = 0.5,
+        wallDragFloor: Double = 0.1,
         wallYaw: Double = 0.012,
         carRestitution: Double = 0.4,
         jumpTicksPerSpeed: Double = 0.055

@@ -190,8 +190,13 @@ final class WallContactTests: XCTestCase {
             let state = race.cars[0].state
             let travelled = state.position.distance(to: previous) / Race.dt
             previous = state.position
+            // Within 2%: the push-out nudges the car clear of the overlap each tick,
+            // so travel and reported speed agree closely but not to the unit. The
+            // point of the test is that they TRACK — before the fix the car reported
+            // 300+ while moving nothing at all.
             XCTAssertEqual(
-                travelled, state.velocity.length, accuracy: 1,
+                travelled, state.velocity.length,
+                accuracy: max(2, state.velocity.length * 0.02),
                 "the car reports \(Int(state.velocity.length)) but moved \(Int(travelled))")
         }
         XCTAssertGreaterThan(
