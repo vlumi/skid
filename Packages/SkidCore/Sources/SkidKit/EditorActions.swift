@@ -75,24 +75,39 @@ extension CouchGame {
         return verdict
     }
 
-    /// Delete a piece from anywhere on a **closed ring** — rotate it to the end
-    /// and pop it, so the surviving road stays exactly where it was.
+    /// Remove the piece at `index`: anywhere on a **closed ring** (rotate it to the
+    /// end and pop it, so the surviving road stays exactly where it was), or at
+    /// either END of an open chain.
     ///
-    /// The ring opens at the cut. Any checkpoint on the deleted piece goes with
-    /// it, silently: save-time validation already reports an under-gated track,
-    /// and a warning per delete would just be noise.
+    /// A mid-chain cut is refused — it would slide the whole tail, which is never
+    /// what the author means. Deleting the HEAD is prepend's inverse: the origin
+    /// moves forward onto the new first piece, so again nothing already drawn moves.
+    ///
+    /// A checkpoint on the removed piece goes with it, silently: save-time
+    /// validation already reports an under-gated track, and a warning per delete
+    /// would just be noise.
     @discardableResult
-    public func editorDelete(at index: Int) -> Bool {
+    public func editorRemove(at index: Int) -> Bool {
         recordingUndo {
-            guard var layout = editorLayout else { return false }
-            // An open chain has no middle to delete from — mid-chain deletion
-            // would slide the whole tail, which is never what the author means.
-            // Only its ends, and the tail end is `deleteLastPiece`.
-            if !layout.walk().openEnds.isEmpty {
-                guard index == layout.pieces.count - 1, layout.pieces.count > 1 else {
-                    return false
+            guard var layout = editorLayout, layout.pieces.indices.contains(index),
+                layout.pieces.count > 1
+            else { return false }
+            guard layout.walk().openEnds.isEmpty else {
+                switch index {
+                case layout.pieces.count - 1:
+                    layout.removeLastPiece()
+                case 0:
+                    // The origin must move to what becomes piece 0, or the whole
+                    // chain jumps back by the removed piece's displacement.
+                    let walk = layout.walk()
+                    guard walk.placed.indices.contains(1) else { return false }
+                    let next = walk.placed[1]
+                    layout.remove(at: 0)
+                    layout.origin = next.entry
+                    layout.originHeight = next.entryHeight
+                default:
+                    return false  // mid-chain: would slide the tail
                 }
-                layout.removeLastPiece()
                 editorLayout = layout
                 return true
             }
@@ -324,20 +339,6 @@ extension CouchGame {
         }
         layout.gateSeams = [0] + Set(seams).sorted()
         editorLayout = layout
-    }
-
-    /// Remove the last piece (never the start piece — a track must keep one).
-    ///
-    /// `remove(at:)` carries the keyed data: the dropped piece's gate seam and
-    /// fitter go with it, and nothing later needs re-pointing because nothing is
-    /// later. See `TrackLayoutMutate`.
-    public func editorDeleteLast() {
-        recordingUndo {
-            guard var layout = editorLayout, layout.pieces.count > 1 else { return false }
-            layout.remove(at: layout.pieces.count - 1)
-            editorLayout = layout
-            return true
-        }
     }
 
     /// Start a fresh track (just the start piece). **Undoable** — it throws away

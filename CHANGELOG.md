@@ -31,6 +31,12 @@ ships (see [AGENTS.md](AGENTS.md)).
   another straight across it. Roads that merely graze each other at a shallow
   angle are still refused, since that is nearly always a mistake rather than a
   junction.
+- **Build from either end of a track, and delete any piece of a loop.** Tap a
+  piece to select it — the bin now sits on the piece it will remove, instead of
+  always taking the last one you laid. On a closed loop you can delete anywhere
+  and the rest of the road stays exactly where it is; on an unfinished track,
+  arrows on the selected end piece choose which end the palette builds from, so
+  a track can grow backwards from its start line as well as forwards.
 - **Cars can no longer end up outside the track.** Hitting a barrier hard enough
   could push a car straight through it and leave it stranded out on the grass,
   because the bounce worked out which way to push from where the car had already

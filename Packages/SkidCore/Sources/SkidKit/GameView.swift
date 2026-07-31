@@ -57,7 +57,17 @@ public final class CouchGame: ObservableObject {
         case gate
     }
 
-    @Published public var editorMode: EditorMode = .build
+    @Published public var editorMode: EditorMode = .build {
+        // Gate mode owns map taps, so a piece selection would be stale chrome
+        // pointing at something you can no longer act on.
+        didSet { if editorMode == .gate { selectionRaw = nil } }
+    }
+
+    /// The selected piece's index — see `EditorSelection`.
+    @Published var selectionRaw: Int?
+    /// Which end of an open chain the palette builds from. Remembered so the common
+    /// case stays one tap.
+    @Published public var editorBuildEnd: CouchGame.BuildEnd = .tail
 
     public enum Mode: CaseIterable {
         case race
