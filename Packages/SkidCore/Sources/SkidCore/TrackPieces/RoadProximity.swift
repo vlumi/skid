@@ -50,8 +50,12 @@ struct RoadProximity {
     /// road-to-be that the through-metric charges for. Zero once closed;
     /// infinite when there is nothing to join.
     let joinGap: Double
+    /// Whether the ring is actually CLOSED, which `joinGap` cannot answer: a
+    /// stretch can land on the start entry's position half a level above it, so
+    /// the gap measures zero while the road is still open. Only the walk knows.
+    let isClosed: Bool
 
-    init(placed: [PlacedPiece], joinGap: Double) {
+    init(placed: [PlacedPiece], joinGap: Double, isClosed: Bool = false) {
         var built: [RoadSegment] = []
         var arc = 0.0
         for (index, piece) in placed.enumerated() {
@@ -70,6 +74,7 @@ struct RoadProximity {
         segments = built
         totalArc = arc
         self.joinGap = joinGap
+        self.isClosed = isClosed
         var cells: [GridKey: [Int]] = [:]
         for (index, segment) in built.enumerated() {
             for key in GridKey.covering(segment.a, segment.b, pad: 0) {
@@ -207,7 +212,16 @@ struct RoadProximity {
     /// side; the difference is polarity: there, joinable means exempt — here,
     /// NOT joinable within the join window means refused, because the covered
     /// gap is road-to-be with no segments of its own to defend it.
+    ///
+    /// **Only while there IS a join to protect.** On a closed ring the gap is
+    /// already road, with its own segments, and the two stretches either side of
+    /// the seam are ordinary neighbours — a ramp meeting flat road, say. Which
+    /// pieces land there is pure spelling, so applying this to a closed ring made
+    /// legality depend on where the piece list happened to start: the reported
+    /// track was refused as built and accepted respelled, and the shipped clover
+    /// disagreed with itself at four of its rotations.
     private func coversJoinZone(_ a: RoadSegment, _ b: RoadSegment) -> Bool {
+        guard !isClosed else { return false }  // closed: nothing left to defend
         let along = abs(a.arcMid - b.arcMid)
         guard along > Self.allowance else { return false }  // plain neighbours
         let through = totalArc - along + joinGap
