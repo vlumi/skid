@@ -107,25 +107,6 @@ extension EditorRenderer {
         }
     }
 
-    /// A seam that COULD be gated, shown only in gate mode: a thin dashed bar
-    /// across the road. Without it the author has to guess where the taps land.
-    static func drawGateCandidate(
-        _ placed: PlacedPiece, width: Double, transform t: Transform,
-        into context: inout GraphicsContext
-    ) {
-        let pose = placed.exits[0]
-        let across = Vec2(angle: pose.heading.radians).perpendicular
-        let center = pose.position.vec2
-        let edge = across * (width / 2)
-        let lineWidth = max(1, 3 * t.scale)
-        var bar = Path()
-        bar.move(to: t.screen(center - edge))
-        bar.addLine(to: t.screen(center + edge))
-        context.stroke(
-            bar, with: .color(.white.opacity(0.4)),
-            style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt, dash: [lineWidth * 3]))
-    }
-
     static func drawStartLine(
         _ start: PlacedPiece, width: Double, transform t: Transform,
         into context: inout GraphicsContext
