@@ -59,6 +59,45 @@ public struct CarState: Equatable, Sendable, Codable {
     /// Signed speed along the heading.
     public var forwardSpeed: Double { velocity.dot(forward) }
 
+    /// **What the last tick's wall contact did**, for the debug overlay only.
+    ///
+    /// Wall feel could not be diagnosed from tests: every probe either missed
+    /// contact or measured its own harness, while the device reported the car
+    /// gluing to walls. So the sim records what it actually did and the overlay
+    /// shows it. Not part of the sim's behaviour — nothing reads these but the
+    /// overlay — but it IS part of the state, so lockstep replays carry it.
+    public struct WallContact: Equatable, Sendable, Codable {
+        /// How many wall segments were responded to in the tick.
+        public var hits = 0
+        /// Into-wall closing speed of the hardest one.
+        public var press = 0.0
+        /// 0 = a pure glance, 1 = head-on.
+        public var squareness = 0.0
+        /// Speed the car had along the wall, before the response.
+        public var slide = 0.0
+        /// Speed the whole car lost across the tick (wall AND everything else).
+        public var speedLost = 0.0
+
+        // **Held values, so a screenshot is readable.** A single tick is 1/60 s and
+        // nobody can time a screen grab to one — so the overlay shows sustained
+        // figures too: how long contact has run, the worst tick in it, and the total
+        // it has cost. They reset once the car has been clear for a moment.
+
+        /// Consecutive ticks with contact (0 once clear).
+        public var ticks = 0
+        /// Ticks since the last contact, so a brief bounce doesn't reset the run.
+        public var idleTicks = 0
+        /// Worst single-tick speed loss during this run of contact.
+        public var worstLoss = 0.0
+        /// Total speed lost across this run of contact.
+        public var totalLoss = 0.0
+        /// Speed when this run of contact began, to compare against now.
+        public var speedAtStart = 0.0
+    }
+
+    /// Last tick's wall contact — debug only, see `WallContact`.
+    public var wallContact = WallContact()
+
     /// Magnitude of velocity perpendicular to the heading — how hard the car
     /// is sliding. This is what skid marks key off.
     public var slipSpeed: Double {

@@ -162,6 +162,38 @@ final class WallContactTests: XCTestCase {
             "a slow scrape should cost proportionally less than a fast one")
     }
 
+    /// **The car must actually MOVE at the speed it says.** The push-out used to be
+    /// an absolute snap onto the wall's surface, recomputed each tick, so a car held
+    /// against a barrier was returned to the same spot every tick and lost all its
+    /// travel — not just the into-wall part. On device that read as being glued in
+    /// place while the debug overlay showed 300+ units/s: velocity was fine, position
+    /// was being deleted, which is why no amount of wall tuning could fix it.
+    func testAHeldCarTravelsAtTheSpeedItReports() {
+        var race = race()
+        var car = race.cars[0].state
+        car.height = 0
+        car.position = Vec2(200, CarGeometry.radius + 1)
+        car.heading = -20 * Double.pi / 180
+        car.velocity = Vec2(angle: car.heading) * 350
+        race.cars[0].state = car
+
+        // Skip the first tick: the initial overlap resolution legitimately moves the
+        // car further than one tick of travel.
+        race.advance(inputs: [PlayerID(0): CarInput(steer: -1, throttle: 1)])
+        var previous = race.cars[0].state.position
+        for _ in 0..<15 {
+            race.advance(inputs: [PlayerID(0): CarInput(steer: -1, throttle: 1)])
+            let state = race.cars[0].state
+            let travelled = state.position.distance(to: previous) / Race.dt
+            previous = state.position
+            XCTAssertEqual(
+                travelled, state.velocity.length, accuracy: 1,
+                "the car reports \(Int(state.velocity.length)) but moved \(Int(travelled))")
+        }
+        XCTAssertGreaterThan(
+            previous.x, 250, "a car sliding along a wall should get somewhere")
+    }
+
     /// Contact must never ADD speed, at any angle — an energy check the old model
     /// could fail, since it reflected with restitution and touched nothing else.
     func testContactNeverAddsSpeed() {

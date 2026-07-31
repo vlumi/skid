@@ -31,6 +31,9 @@ ships (see [AGENTS.md](AGENTS.md)).
   another straight across it. Roads that merely graze each other at a shallow
   angle are still refused, since that is nearly always a mistake rather than a
   junction.
+- **The car no longer sticks to walls.** Leaning on a barrier pinned the car in
+  place — it kept its speed, and simply stopped travelling. Sliding along a wall
+  now moves you along it, losing speed rather than all momentum.
 - **Walls have weight, and cost you time.** Scraping along a barrier now slows
   the car instead of being free, so avoiding walls is the faster line; a
   glancing hit pulls the nose along the wall rather than pinging the car off it,
