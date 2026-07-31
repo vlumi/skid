@@ -44,18 +44,41 @@ public struct CarTuning: Equatable, Sendable, Codable {
     /// heading faster. Scales all surfaces together, keeping their relative
     /// feel.
     public var gripScale: Double
+    // MARK: - Wall contact
+    //
+    // **Five knobs, because this is pure feel and was retuned three times from
+    // device play.** Which one to turn:
+    //
+    // - bounces too hard head-on → `wallRestitution` down
+    // - brushing a wall feels dead / like flypaper → `wallGlanceBounce` up
+    // - wall-riding is too fast a line → `wallFriction` up
+    // - dragging a wall grinds to a halt → `wallDragFloor` up (or friction down)
+    // - the car doesn't pivot along the wall / fights steering → `wallYaw`
+    //
+    // The angle band itself (what counts as a glance vs head-on) lives in
+    // `Race.glancingAngle` / `Race.headOnAngle`.
+
     /// Velocity kept along the wall normal after a bounce, 0…1 — at HEAD-ON. It
     /// falls away as the approach flattens, so a graze scrubs instead of kicking
     /// out (see `Race.collideWithWalls`).
     public var wallRestitution: Double
+    /// The bounce a pure GLANCE still gets, as a share of `wallRestitution`. Not
+    /// zero: no bounce at all made brushing a wall feel like flypaper, so a graze
+    /// keeps a subdued kick.
+    public var wallGlanceBounce: Double
     /// How much speed ALONG a wall a scrape takes, as a per-second rate per unit of
     /// into-wall speed. This is what makes riding a barrier slower than avoiding it
     /// — with no tangential loss at all, hugging walls was free.
     ///
     /// Small on purpose: `press` is in units/s, so at a racing-speed graze it is in
-    /// the hundreds, and this multiplies it. The first value (0.55) took the whole
-    /// slide in a single tick at any angle — the car simply stopped dead on contact.
+    /// the hundreds, and this multiplies it. Tuned DOWN twice from device feel —
+    /// 0.55 stopped the car dead on contact, then 0.012 still left only 2% of speed
+    /// after a second of dragging at 20°, which read as flypaper.
     public var wallFriction: Double
+    /// The share of speed a sustained drag settles at, rather than bleeding to a
+    /// stop. Dragging a wall should be a viable if slow line — around half speed is
+    /// fine for balance — so friction eases off as the car approaches this.
+    public var wallDragFloor: Double
     /// How hard a graze pulls the nose parallel to the wall, in rad/s per unit of
     /// into-wall speed. A car with mass pivots along the barrier rather than
     /// skipping off it.
@@ -79,7 +102,9 @@ public struct CarTuning: Equatable, Sendable, Codable {
         driftRetention: Double = 1.0,
         gripScale: Double = 1.0,
         wallRestitution: Double = 0.45,
-        wallFriction: Double = 0.012,
+        wallGlanceBounce: Double = 0.3,
+        wallFriction: Double = 0.010,
+        wallDragFloor: Double = 0.5,
         wallYaw: Double = 0.012,
         carRestitution: Double = 0.4,
         jumpTicksPerSpeed: Double = 0.055
@@ -97,7 +122,9 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.driftRetention = driftRetention
         self.gripScale = gripScale
         self.wallRestitution = wallRestitution
+        self.wallGlanceBounce = wallGlanceBounce
         self.wallFriction = wallFriction
+        self.wallDragFloor = wallDragFloor
         self.wallYaw = wallYaw
         self.carRestitution = carRestitution
         self.jumpTicksPerSpeed = jumpTicksPerSpeed

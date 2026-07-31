@@ -112,16 +112,24 @@ extension Race {
         let sine = speed > 0.001 ? min(1, press / speed) : 0
         let squareness = Self.squareness(ofSine: sine)
 
-        // 1. Bounce: the into-wall component comes back, scaled by squareness. The
-        //    outgoing normal speed is `press * restitution * squareness` — never
-        //    more than it arrived with, so contact can't inject energy.
-        let bounced = press * tuning.wallRestitution * squareness
-        // 2. Friction: a RATE per tick, not an absolute cut. `press * friction` as a
-        //    flat subtraction took the whole slide at any real speed — the reported
-        //    "the car instantly stops touching the wall at any angle". Scaled by dt
-        //    and by how hard the wall is pressed, so a brush costs a little and a
-        //    heavy scrape costs a lot, over time rather than instantly.
-        let bite = press * tuning.wallFriction * Race.dt
+        // 1. Bounce: the into-wall component comes back, scaled from a subdued
+        //    glance bounce up to full restitution head-on. A pure glance keeps SOME
+        //    kick — zero read as flypaper on device — and the scale is never above 1,
+        //    so contact can't inject energy.
+        let bounceScale =
+            tuning.wallGlanceBounce + (1 - tuning.wallGlanceBounce) * squareness
+        let bounced = press * tuning.wallRestitution * bounceScale
+        // 2. Friction: a RATE per tick, not an absolute cut, and it EASES OFF toward
+        //    a floor rather than bleeding to a stop. Dragging a wall should be a
+        //    viable if slow line — device feel says around half speed is fine for
+        //    balance — where the first two attempts left 0% and then 2% of speed
+        //    after a second of dragging, which is flypaper, not a scrape.
+        //
+        //    `headroom` is how far above the floor the car still is, so the scrub
+        //    fades as it settles: fast means real cost, at the floor means none.
+        let floor = tuning.maxSpeed * tuning.wallDragFloor
+        let headroom = max(0, (abs(slide) - floor) / max(floor, 1))
+        let bite = press * tuning.wallFriction * Race.dt * min(1, headroom)
         let scrub = min(abs(slide), abs(slide) * min(1, bite))
         let keptSlide = slide - (slide > 0 ? scrub : -scrub)
         car.velocity = normal * bounced + along * keptSlide
