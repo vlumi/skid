@@ -40,15 +40,15 @@ enum EditorRenderer {
 
     static func draw(
         walk: WalkResult, width: Double, selectedEnd: Int?, gateSeams: [Int] = [],
-        gating: Bool = false, selectedPiece: Int? = nil,
+        gating: Bool = false, selectedPiece: Int? = nil, decals: [Int: Decal] = [:],
         transform t: Transform, into context: inout GraphicsContext
     ) {
         // The size limit, made visible. Under everything else, since it's a
         // boundary you build inside of.
         drawCanvasBounds(walk: walk, t: t, into: &context)
         drawTrack(
-            walk: walk, width: width, gateSeams: gateSeams, gating: gating, transform: t,
-            into: &context)
+            walk: walk, width: width, gateSeams: gateSeams, gating: gating, decals: decals,
+            transform: t, into: &context)
         // Over the road, under the end markers: the selected piece is a thing you
         // act on, so it should read on top of the asphalt but not hide the chrome.
         if let selectedPiece, walk.placed.indices.contains(selectedPiece) {
@@ -92,7 +92,7 @@ enum EditorRenderer {
     /// once.
     static func drawTrack(
         walk: WalkResult, width: Double, gateSeams: [Int], gating: Bool = false,
-        transform t: Transform,
+        decals: [Int: Decal] = [:], transform t: Transform,
         heightRange: ClosedRange<Double> = -1...2,
         into context: inout GraphicsContext
     ) {
@@ -129,6 +129,17 @@ enum EditorRenderer {
             into: &context)
         for (_, placed) in ordered {
             drawPieceRibbon(placed, width: width, t: t, into: &context)
+        }
+        // Decals are PAINT: on top of the asphalt (so they aren't clipped away by
+        // it, the way edge decoration deliberately is), under the gates and start
+        // line, which are structure.
+        for (index, placed) in ordered where decals[index] != nil {
+            switch decals[index] {
+            case .directionArrow:
+                drawDirectionArrow(placed, width: width, transform: t, into: &context)
+            case nil:
+                break
+            }
         }
         // Checkpoint gates across the seams the author marked, skipping the
         // START LINE's own seam — that one is drawn as the start/finish line

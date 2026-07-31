@@ -19,6 +19,14 @@ public enum Pitch: Int, Equatable, Sendable, Codable, CaseIterable {
 /// piece's pitch, an origin pose (the start line, on the fixed canvas), the
 /// gate seam indices, and a theme. This is exactly what the share code
 /// carries. Geometry is never stored — it derives from walking the list.
+/// Markings painted on a piece's road. Geometry is untouched — a decal changes
+/// only what the piece looks like.
+public enum Decal: Int, Equatable, Sendable, Codable, CaseIterable {
+    /// An arrow along the road showing the driving direction, following the
+    /// piece's own centerline (so it curves on a curve).
+    case directionArrow = 1
+}
+
 public struct TrackLayout: Equatable, Sendable, Codable {
     public enum Theme: Int, Equatable, Sendable, Codable {
         case normal = 0, snow = 1, sand = 2
@@ -50,14 +58,25 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     /// numbers (see `Fitter`). An index with no entry is a fitter that has not
     /// been solved, which the validator refuses.
     public var fitters: [Int: Fitter]
+    /// **Paint on laid pieces**, keyed by piece index — not pieces of their own.
+    ///
+    /// A decal is the same geometry with different markings, so making each one a
+    /// catalog id would need an id per shape (and per pitch, and per future
+    /// variant). Keyed here instead, one arrow serves every shape there is or will
+    /// be, and a track with no decals costs nothing: the code section is omitted.
+    ///
+    /// Being index-keyed makes these the fourth thing every mutation remaps, with
+    /// `gateSeams`, `fitters` and `pitches` — see `TrackLayoutMutate`.
+    public var decals: [Int: Decal]
     public var theme: Theme
 
     public init(
         pieces: [PieceID], pitches: [Pitch] = [], origin: PiecePose = .origin,
         originHeight: Double = 0, gateSeams: [Int] = [0], theme: Theme = .normal,
-        fitters: [Int: Fitter] = [:]
+        fitters: [Int: Fitter] = [:], decals: [Int: Decal] = [:]
     ) {
         self.fitters = fitters
+        self.decals = decals
         self.pieces = pieces
         self.originHeight = originHeight
         // Normalized to the piece count so equality is structural: trailing
@@ -72,6 +91,9 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     public func pitch(at index: Int) -> Pitch {
         index < pitches.count ? pitches[index] : .flat
     }
+
+    /// The decal painted on piece `index`, if any.
+    public func decal(at index: Int) -> Decal? { decals[index] }
 
     /// Append resolved (piece, pitch) pairs — what expansions produce. A run of
     /// end-inserts, so pitches (and any keyed data, of which there is none past
