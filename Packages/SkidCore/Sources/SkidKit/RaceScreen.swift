@@ -62,6 +62,10 @@ struct RaceScreen: View {
                         for aim in aims {
                             OverlayRenderer.drawAim(aim, into: &context)
                         }
+                        // Screen-space, so it stays legible however the map scales.
+                        if game.settings.debugOverlay {
+                            DebugOverlay.drawWallReadout(race, in: size, into: &context)
+                        }
                     }
                     InputSurface(rig: rig)
                     RaceHUD(

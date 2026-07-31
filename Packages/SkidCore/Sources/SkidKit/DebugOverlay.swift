@@ -13,6 +13,58 @@ import SwiftUI
 /// Everything here reads sim state and draws; nothing feeds back.
 enum DebugOverlay {
     /// The sim's centerline, its height ramp, walls, gates, and per-car readouts.
+    /// **The wall-contact readout**, for player 1's car — a plain box in the corner.
+    ///
+    /// Screen space, not world space, so it stays put and legible however the map is
+    /// scaled; and drawn from HELD figures (see `CarState.WallContact`) because a
+    /// tick is 1/60 s and no screenshot can be timed to one.
+    public static func drawWallReadout(
+        _ race: Race, in size: CGSize, into context: inout GraphicsContext
+    ) {
+        guard let car = race.cars.first else { return }
+        let w = car.state.wallContact
+        let speed = car.state.velocity.length
+        let kept =
+            w.speedAtStart > 1 ? "\(Int(speed / w.speedAtStart * 100))%" : "—"
+        let lines: [(String, String)] = [
+            ("speed", "\(Int(speed))"),
+            ("slip", "\(Int(car.state.slipSpeed))"),
+            ("", ""),
+            ("contact ticks", w.ticks > 0 ? "\(w.ticks)" : "—"),
+            ("hits this tick", "\(w.hits)"),
+            ("press", "\(Int(w.press))"),
+            ("squareness", String(format: "%.2f", w.squareness)),
+            ("slide", "\(Int(w.slide))"),
+            ("", ""),
+            ("lost this tick", String(format: "%.1f", w.speedLost)),
+            ("worst tick", String(format: "%.1f", w.worstLoss)),
+            ("lost in run", "\(Int(w.totalLoss))"),
+            ("kept of start", kept),
+        ]
+        let lineHeight = 15.0
+        let boxWidth = 168.0
+        let boxHeight = Double(lines.count) * lineHeight + 12
+        let origin = CGPoint(x: 8, y: size.height - boxHeight - 8)
+        context.fill(
+            Path(
+                roundedRect: CGRect(
+                    x: origin.x, y: origin.y, width: boxWidth, height: boxHeight),
+                cornerRadius: 4),
+            with: .color(.black.opacity(0.72)))
+        for (index, line) in lines.enumerated() {
+            guard !line.0.isEmpty else { continue }
+            let y = origin.y + 6 + Double(index) * lineHeight
+            context.draw(
+                Text(verbatim: line.0).font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7)),
+                at: CGPoint(x: origin.x + 7, y: y), anchor: .topLeading)
+            context.draw(
+                Text(verbatim: line.1).font(.system(size: 11, weight: .bold).monospacedDigit())
+                    .foregroundColor(.white),
+                at: CGPoint(x: origin.x + boxWidth - 7, y: y), anchor: .topTrailing)
+        }
+    }
+
     static func draw(scene: WorldScene, into context: inout GraphicsContext) {
         let track = scene.race.track
         drawCenterline(track, into: &context)
