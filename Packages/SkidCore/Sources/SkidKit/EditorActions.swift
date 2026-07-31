@@ -30,6 +30,10 @@ extension CouchGame {
     /// unit by the search, so it lands as a unit — applying it piece by piece
     /// would re-judge every prefix and silently drop the tail if any single
     /// step read as an overlap mid-run.
+    ///
+    /// **Closing is one operation.** The run fills the one gap between the two loose
+    /// ends, so the end result is the same closed track whichever end the button was
+    /// on — no prepend, no mirroring, no branch. Same for the fitter.
     @discardableResult
     public func editorAppendRun(_ run: [PlannedPiece]) -> Bool {
         recordingUndo {
@@ -75,24 +79,39 @@ extension CouchGame {
         return verdict
     }
 
-    /// Delete a piece from anywhere on a **closed ring** — rotate it to the end
-    /// and pop it, so the surviving road stays exactly where it was.
+    /// Remove the piece at `index`: anywhere on a **closed ring** (rotate it to the
+    /// end and pop it, so the surviving road stays exactly where it was), or at
+    /// either END of an open chain.
     ///
-    /// The ring opens at the cut. Any checkpoint on the deleted piece goes with
-    /// it, silently: save-time validation already reports an under-gated track,
-    /// and a warning per delete would just be noise.
+    /// A mid-chain cut is refused — it would slide the whole tail, which is never
+    /// what the author means. Deleting the HEAD is prepend's inverse: the origin
+    /// moves forward onto the new first piece, so again nothing already drawn moves.
+    ///
+    /// A checkpoint on the removed piece goes with it, silently: save-time
+    /// validation already reports an under-gated track, and a warning per delete
+    /// would just be noise.
     @discardableResult
-    public func editorDelete(at index: Int) -> Bool {
+    public func editorRemove(at index: Int) -> Bool {
         recordingUndo {
-            guard var layout = editorLayout else { return false }
-            // An open chain has no middle to delete from — mid-chain deletion
-            // would slide the whole tail, which is never what the author means.
-            // Only its ends, and the tail end is `deleteLastPiece`.
-            if !layout.walk().openEnds.isEmpty {
-                guard index == layout.pieces.count - 1, layout.pieces.count > 1 else {
-                    return false
+            guard var layout = editorLayout, layout.pieces.indices.contains(index),
+                layout.pieces.count > 1
+            else { return false }
+            guard layout.walk().openEnds.isEmpty else {
+                switch index {
+                case layout.pieces.count - 1:
+                    layout.removeLastPiece()
+                case 0:
+                    // The origin must move to what becomes piece 0, or the whole
+                    // chain jumps back by the removed piece's displacement.
+                    let walk = layout.walk()
+                    guard walk.placed.indices.contains(1) else { return false }
+                    let next = walk.placed[1]
+                    layout.remove(at: 0)
+                    layout.origin = next.entry
+                    layout.originHeight = next.entryHeight
+                default:
+                    return false  // mid-chain: would slide the tail
                 }
-                layout.removeLastPiece()
                 editorLayout = layout
                 return true
             }
@@ -134,6 +153,11 @@ extension CouchGame {
     /// their own snapshots would make closing a loop cost three undos.
     private func finishIfClosed() {
         guard editorLayout?.walk().openEnds.isEmpty == true else { return }
+        // Deselect on closure (maintainer's call): the piece you were building from
+        // no longer has a free end, and normalizing re-indexes the ring anyway — a
+        // selection kept by index would jump to whatever piece took that slot.
+        selectionRaw = nil
+        editorBuildEnd = .tail
         if (editorLayout?.gateSeams.count ?? 0) < 2 { editorSeedGates() }
         centerOnCanvas()
     }
@@ -314,30 +338,22 @@ extension CouchGame {
     /// short. The author can retune them by tapping seams.
     public func editorSeedGates() {
         guard var layout = editorLayout, layout.pieces.count >= 2 else { return }
+        // The start line's own seam is the finish line and must be gated — and it is
+        // the start PIECE's index, not 0. Prepending puts pieces ahead of it, so
+        // hardcoding 0 seeded a track with no finish line at all (measured: gates
+        // [2, 6, 9, 12] on a ring whose start piece sat at 0).
+        let start = layout.pieces.firstIndex(of: PieceCatalog.startPieceID) ?? 0
         // Three gates plus the start line reads as a lap without being fussy;
         // fall back to whatever the piece count allows on a tiny ring.
-        let wanted = min(3, layout.pieces.count - 1)
+        let count = layout.pieces.count
+        let wanted = min(3, count - 1)
         guard wanted >= 1 else { return }
-        let step = Double(layout.pieces.count) / Double(wanted + 1)
-        let seams = (1...wanted).map {
-            max(1, min(layout.pieces.count - 1, Int(Double($0) * step)))
-        }
-        layout.gateSeams = [0] + Set(seams).sorted()
+        let step = Double(count) / Double(wanted + 1)
+        // Spaced around the ring FROM the start line, so the gaps stay even
+        // wherever it happens to sit.
+        let seams = (1...wanted).map { (start + max(1, Int(Double($0) * step))) % count }
+        layout.gateSeams = ([start] + Set(seams).subtracting([start]).sorted()).sorted()
         editorLayout = layout
-    }
-
-    /// Remove the last piece (never the start piece — a track must keep one).
-    ///
-    /// `remove(at:)` carries the keyed data: the dropped piece's gate seam and
-    /// fitter go with it, and nothing later needs re-pointing because nothing is
-    /// later. See `TrackLayoutMutate`.
-    public func editorDeleteLast() {
-        recordingUndo {
-            guard var layout = editorLayout, layout.pieces.count > 1 else { return false }
-            layout.remove(at: layout.pieces.count - 1)
-            editorLayout = layout
-            return true
-        }
     }
 
     /// Start a fresh track (just the start piece). **Undoable** — it throws away

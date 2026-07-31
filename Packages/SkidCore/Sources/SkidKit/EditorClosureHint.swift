@@ -14,16 +14,18 @@ extension EditorView {
     /// generic, localized hint).
     func closureHint(_ walk: WalkResult) -> String? {
         let layout = game.editorLayout ?? TrackLayout(pieces: [PieceCatalog.startPieceID])
-        guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
-            return closedLoopHint(layout)
-        }
+        guard let end = buildEndPose(walk) else { return closedLoopHint(layout) }
         // Being out of ROOM outranks the gap: when every piece is grayed out,
         // the gap reading is useless advice ("turn 180° left" — with what?).
         // Without this, a size-blocked palette had no explanation at all.
         if let full = sizeLimitHint(walk) { return full }
-        let end = walk.openEnds[i]
-        let gap = layout.closureGap(from: end)
-        guard let advice = advice(for: gap, facing: end.heading) else { return nil }
+        // The gap is always measured the way traffic FLOWS — from the tail's exit
+        // to the head's entry. Building at the head does not change the gap, only
+        // which end you are adding pieces to, so measure the same span either way
+        // rather than from the head outwards (which read as a 180° turn).
+        let flowEnd = walk.openEnds.last ?? end
+        let gap = layout.closureGap(from: flowEnd)
+        guard let advice = advice(for: gap, facing: flowEnd.heading) else { return nil }
         let parts = gapParts(gap)
         // The search's verdict now belongs here. It used to sit on the Close
         // button, which has moved onto the map and only appears when there IS a
@@ -181,9 +183,7 @@ extension EditorView {
     /// Called from a task, never from `body`: the search is far too slow to run
     /// per frame (it made the editor jam).
     func refreshClosingRun(_ walk: WalkResult) {
-        let end = effectiveSelection(walk).flatMap { i in
-            walk.openEnds.indices.contains(i) ? walk.openEnds[i] : nil
-        }
+        let end = buildEndPose(walk)
         let key = ClosingKey(pieces: game.editorLayout?.pieces ?? [], end: end)
         guard key != closingRunKey else { return }
         closingRunKey = key
@@ -191,7 +191,16 @@ extension EditorView {
             closingOutcome = nil
             return
         }
-        closingOutcome = layout.closingOutcome(from: end, maxPieces: 3)
+        // **Always searched from the tail, offered at either end.** The gap is one
+        // span — the run that fills it is the same set of pieces whichever end you
+        // attach it to, and the road comes out identical (verified against the
+        // normalized codes). So the search only ever runs forward, and the head just
+        // prepends the same run.
+        //
+        // Searching from the HEAD instead is what cannot work: the search walks
+        // forward onto the layout's origin, so from the head it measured the wrong
+        // direction entirely and read "turn 180° — no close in 3".
+        closingOutcome = layout.closingOutcome(from: walk.openEnds.last ?? end, maxPieces: 3)
     }
 
     /// A unit count, trimmed to look like "2U" / "1.5U".

@@ -40,7 +40,8 @@ enum EditorRenderer {
 
     static func draw(
         walk: WalkResult, width: Double, selectedEnd: Int?, gateSeams: [Int] = [],
-        gating: Bool = false, transform t: Transform, into context: inout GraphicsContext
+        gating: Bool = false, selectedPiece: Int? = nil,
+        transform t: Transform, into context: inout GraphicsContext
     ) {
         // The size limit, made visible. Under everything else, since it's a
         // boundary you build inside of.
@@ -48,20 +49,27 @@ enum EditorRenderer {
         drawTrack(
             walk: walk, width: width, gateSeams: gateSeams, gating: gating, transform: t,
             into: &context)
+        // Over the road, under the end markers: the selected piece is a thing you
+        // act on, so it should read on top of the asphalt but not hide the chrome.
+        if let selectedPiece, walk.placed.indices.contains(selectedPiece) {
+            drawSelection(walk.placed[selectedPiece], width: width, t: t, into: &context)
+        }
 
         // Loose (unbuilt) ends get a construction treatment. That's every
-        // walk openEnd, PLUS the back of the start piece whenever the loop
-        // isn't closed (it's the closure target, so the walk doesn't list it,
-        // but it's an open stub until something connects to it).
+        // walk openEnd, PLUS the HEAD of the chain whenever the loop isn't
+        // closed — the origin is an inlet the walk can close onto rather than a
+        // loose end, so it never appears in `openEnds`, but it is an open stub
+        // until something connects to it (and, since prepend, somewhere you can
+        // build).
+        //
+        // The head is piece 0's entry, not the START piece's: the start line is
+        // an ordinary piece that may sit anywhere on the ring, so keying off it
+        // drew the stub mid-chain on any track that doesn't begin with it.
         var looseEnds = walk.openEnds
-        if !walk.openEnds.isEmpty,
-            let start = walk.placed.first(where: {
-                $0.id == PieceCatalog.startPieceID
-            })
-        {
-            // The start's entry pose, facing OUT of the piece (back down the road).
+        if !walk.openEnds.isEmpty, let first = walk.placed.first {
+            // Facing OUT of the piece (back down the road).
             looseEnds.append(
-                PiecePose(position: start.entry.position, heading: start.entry.heading.reversed))
+                PiecePose(position: first.entry.position, heading: first.entry.heading.reversed))
         }
         for (i, end) in looseEnds.enumerated() {
             drawLooseEnd(end, width: width, selected: i == selectedEnd, t: t, into: &context)
@@ -162,83 +170,6 @@ enum EditorRenderer {
             drawGridMarkings(start, width: width, transform: t, into: &context)
             drawStartLine(start, width: width, transform: t, into: &context)
         }
-    }
-
-    /// A loose (unbuilt) end: fade the last stretch of road toward grass and
-    /// stamp a hazard-striped bar across the opening, so it clearly needs
-    /// finishing — never a clean rounded cap that looks intentional.
-    private static func drawLooseEnd(
-        _ end: PiecePose, width: Double, selected: Bool, t: Transform,
-        into context: inout GraphicsContext
-    ) {
-        let w = width * t.scale
-        let fwd = Vec2(angle: end.heading.radians)
-        let side = fwd.perpendicular
-        let tip = end.position.vec2
-        // No grass-fade: on an elevated loose end it faded the deck into grass
-        // mid-air (wrong), and now that piece ends are cut square (butt caps)
-        // there's no round overhang to cover. The hazard bar + arrow alone read
-        // clearly as "unfinished, build here".
-
-        // Hazard-striped cap bar across the opening — fully WORLD-scaled (band
-        // + dash proportional to the on-screen road width `w`), so it zooms
-        // with the piece it marks and always reads proportionate, like the
-        // kerbs and start line.
-        let capA = t.screen(tip - side * (Double(width) / 2))
-        let capB = t.screen(tip + side * (Double(width) / 2))
-        var cap = Path()
-        cap.move(to: capA)
-        cap.addLine(to: capB)
-        let capBand = max(2, w * 0.22)
-        let capDash = max(2, w * 0.18)
-        context.stroke(
-            cap, with: .color(selected ? .yellow : Color(red: 0.95, green: 0.75, blue: 0.1)),
-            style: StrokeStyle(
-                lineWidth: capBand, lineCap: .butt, dash: [capDash, capDash]))
-        context.stroke(
-            cap, with: .color(.black.opacity(0.55)),
-            style: StrokeStyle(
-                lineWidth: capBand, lineCap: .butt, dash: [capDash, capDash], dashPhase: capDash))
-
-        // On the SELECTED end, a forward arrow showing where the next piece
-        // will attach — the "build here" cue. Scaled to the road width too.
-        if selected {
-            drawAppendArrow(tip: tip, fwd: fwd, roadOnScreen: w, t: t, into: &context)
-        }
-    }
-
-    /// A yellow forward arrow at the selected loose end, pointing where the
-    /// next piece will attach. WORLD-scaled to the on-screen road width, so it
-    /// zooms with the piece and always reads proportionate.
-    private static func drawAppendArrow(
-        tip: Vec2, fwd: Vec2, roadOnScreen: CGFloat, t: Transform,
-        into context: inout GraphicsContext
-    ) {
-        let base = t.screen(tip)
-        // Screen-space forward / side unit vectors (y-down canvas).
-        let f = CGVector(dx: fwd.x, dy: fwd.y)
-        let sdv = CGVector(dx: -fwd.y, dy: fwd.x)
-        // Proportional to the road width, so it scales with zoom.
-        let reach = roadOnScreen * 0.55
-        let wing = reach * 0.5
-        func pt(_ along: CGFloat, _ across: CGFloat) -> CGPoint {
-            CGPoint(
-                x: base.x + f.dx * along + sdv.dx * across,
-                y: base.y + f.dy * along + sdv.dy * across)
-        }
-        var arrow = Path()
-        arrow.move(to: pt(reach * 0.5, 0))
-        arrow.addLine(to: pt(reach, 0))
-        var wings = Path()
-        wings.move(to: pt(reach - wing, wing))
-        wings.addLine(to: pt(reach, 0))
-        wings.addLine(to: pt(reach - wing, -wing))
-        let lw = max(2, reach * 0.16)
-        context.stroke(
-            arrow, with: .color(.yellow), style: StrokeStyle(lineWidth: lw, lineCap: .round))
-        context.stroke(
-            wings, with: .color(.yellow),
-            style: StrokeStyle(lineWidth: lw, lineCap: .round, lineJoin: .round))
     }
 
     /// Draw ONE piece as a width-varying ribbon: at each centerline sample the
