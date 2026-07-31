@@ -5,7 +5,7 @@ import SwiftUI
 extension EditorRenderer {
 
     /// Point + unit tangent at `frac` (0…1) of a polyline's total length.
-    private static func pointOnPolyline(_ poly: [Vec2], atFraction frac: Double)
+    static func pointOnPolyline(_ poly: [Vec2], atFraction frac: Double)
         -> (Vec2, Vec2)
     {
         var lengths: [Double] = []
@@ -142,4 +142,66 @@ extension EditorRenderer {
         }
     }
 
+    /// **A direction arrow painted on a piece's road.** Follows the piece's own
+    /// centerline, so it curves where the road curves — the whole point of keying
+    /// decals to a laid piece rather than minting an arrow id per shape.
+    ///
+    /// Sized in WORLD length, not as a fraction of the piece: a tight 45° is a
+    /// short arc, and a fixed fraction packed a full-size arrow into it (a probe
+    /// render turned every hairpin into a cluster of overlapping glyphs). Short
+    /// pieces get a proportionally shorter arrow, and one too short to read is
+    /// skipped rather than drawn as a blob.
+    static func drawDirectionArrow(
+        _ placed: PlacedPiece, width: Double, transform t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        let samples = placed.centerlineSamples()
+        guard samples.count > 1 else { return }
+        let length = polylineLength(samples)
+        // About a road width of arrow, centred, but never more than 60% of the
+        // piece so consecutive arrows stay separate marks.
+        let span = min(width * 1.1, length * 0.6)
+        guard span > width * 0.3 else { return }  // too short to read
+        let from = 0.5 - (span / length) / 2
+        let to = 0.5 + (span / length) / 2
+        let paint = Color.white.opacity(0.5)
+        let stroke = max(1.5, width * 0.1 * t.scale)
+
+        // The shaft, sampled along the centerline so it bends with the road.
+        var shaft = Path()
+        for step in 0...12 {
+            let (point, _) = pointOnPolyline(
+                samples, atFraction: from + (to - from) * Double(step) / 12)
+            let screen = t.screen(point)
+            if step == 0 {
+                shaft.move(to: screen)
+            } else {
+                shaft.addLine(to: screen)
+            }
+        }
+        context.stroke(
+            shaft, with: .color(paint),
+            style: StrokeStyle(lineWidth: stroke, lineCap: .round))
+
+        // The head, hung off the shaft's own tip and tangent — taking the tangent
+        // from anywhere else let the chevron drift off the shaft on tight arcs.
+        let (tip, tangent) = pointOnPolyline(samples, atFraction: to)
+        let side = tangent.perpendicular
+        let back = span * 0.42
+        let spread = span * 0.3
+        let root = tip - tangent * back
+        var head = Path()
+        head.move(to: t.screen(root + side * spread))
+        head.addLine(to: t.screen(tip))
+        head.addLine(to: t.screen(root - side * spread))
+        context.stroke(
+            head, with: .color(paint),
+            style: StrokeStyle(lineWidth: stroke, lineCap: .round, lineJoin: .round))
+    }
+
+    /// Total length of a polyline, for sizing marks in world units.
+    private static func polylineLength(_ poly: [Vec2]) -> Double {
+        guard poly.count > 1 else { return 0 }
+        return (1..<poly.count).reduce(0) { $0 + (poly[$1] - poly[$1 - 1]).length }
+    }
 }

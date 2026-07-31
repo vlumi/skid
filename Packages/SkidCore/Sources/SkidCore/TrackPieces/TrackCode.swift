@@ -19,6 +19,8 @@ public enum TrackCode {
         /// The fitters section was malformed: not a whole number of 8-byte
         /// entries, or a radius index the catalog doesn't have.
         case badFitter
+        /// The decals section wasn't a whole number of 2-byte entries.
+        case badDecal
     }
 
     public static let version = 1
@@ -54,6 +56,10 @@ public enum TrackCode {
         /// Omitted entirely when a track has no fitters, so codes for ordinary
         /// tracks are byte-identical to before this existed.
         case fitters = 6
+        /// Decals on laid pieces, 2 bytes each: piece index, then the decal's
+        /// raw value. Sparse and omitted entirely when a track has no decals, so
+        /// codes for undecorated tracks stay byte-identical.
+        case decals = 7
     }
 
     // MARK: - Encode
@@ -78,6 +84,9 @@ public enum TrackCode {
         }
         if !layout.fitters.isEmpty {
             appendSection(&body, .fitters, encodeFitters(layout.fitters))
+        }
+        if !layout.decals.isEmpty {
+            appendSection(&body, .decals, encodeDecals(layout.decals, count: layout.pieces.count))
         }
         if layout.originHeight != 0 {
             let halves = Int((layout.originHeight / (Track.levelHeight / 2)).rounded())
@@ -139,13 +148,17 @@ public enum TrackCode {
             try sections[.fitters].map {
                 try decodeFitters($0, pieceCount: pieces.count)
             } ?? [:]
+        let decals =
+            try sections[.decals].map {
+                try decodeDecals($0, count: pieces.count)
+            } ?? [:]
         // Hostile input: a baseline outside the world's storeys is refused here,
         // before anything walks or allocates.
         guard Track.withinLevels(originHeight) else { throw DecodeError.tooLarge }
 
         return TrackLayout(
             pieces: pieces, pitches: pitches, origin: origin, originHeight: originHeight,
-            gateSeams: gates, theme: theme, fitters: fitters)
+            gateSeams: gates, theme: theme, fitters: fitters, decals: decals)
     }
 
     /// Parse the TLV body into known sections, bounds-checking every step.
@@ -196,6 +209,34 @@ public enum TrackCode {
             out.append(UInt8(radius) | (fitter.stepsLeft ? 0x80 : 0))
             out.append(contentsOf: bytes24(Fitter.quantizedAngle(fitter.angle)))
             out.append(contentsOf: bytes24(Fitter.quantizedLength(fitter.length)))
+        }
+        return out
+    }
+
+    /// Two bytes per decal: piece index, then the decal's raw value. Sorted by
+    /// index so the bytes are canonical, and entries outside the piece list are
+    /// dropped rather than encoded — a decal on a piece that isn't there is not a
+    /// track feature, it's a stale key.
+    private static func encodeDecals(_ decals: [Int: Decal], count: Int) -> [UInt8] {
+        var out: [UInt8] = []
+        for (index, decal) in decals.sorted(by: { $0.key < $1.key })
+        where (0..<count).contains(index) {
+            out.append(UInt8(truncatingIfNeeded: index))
+            out.append(UInt8(truncatingIfNeeded: decal.rawValue))
+        }
+        return out
+    }
+
+    /// Decals from their section, hostile input assumed: a wrong length, an index
+    /// past the pieces, or an unknown decal id is dropped rather than trusted.
+    private static func decodeDecals(_ bytes: [UInt8], count: Int) throws -> [Int: Decal] {
+        guard bytes.count % 2 == 0 else { throw DecodeError.badDecal }
+        var out: [Int: Decal] = [:]
+        for pair in stride(from: 0, to: bytes.count, by: 2) {
+            let index = Int(bytes[pair])
+            guard (0..<count).contains(index), let decal = Decal(rawValue: Int(bytes[pair + 1]))
+            else { continue }
+            out[index] = decal
         }
         return out
     }
