@@ -78,7 +78,7 @@ final class WallContactTests: XCTestCase {
     /// of skipping off, which is what "having mass" reads as.
     func testAGrazeTurnsTheNoseTowardTheWallDirection() {
         var race = race()
-        let (before, after) = graze(degrees: 20, speed: 400, into: &race)
+        let (before, after) = graze(degrees: 40, speed: 400, into: &race)
         // The wall runs along +x, the car came in 20° into it. Its nose should end
         // up closer to parallel than it started.
         let offBefore = abs(atan2(sin(before.heading), cos(before.heading)))
@@ -105,26 +105,57 @@ final class WallContactTests: XCTestCase {
             let (before, after) = graze(degrees: degrees, speed: 400, into: &race)
             return after.velocity.y / abs(before.velocity.y)
         }
-        let shallow = rebound(6)
-        let medium = rebound(30)
-        let steep = rebound(80)
-        XCTAssertLessThan(shallow, medium, "a 6° graze should bounce less than a 30° hit")
-        XCTAssertLessThan(medium, steep, "a 30° hit should bounce less than an 80° one")
-        // And the shallow case specifically: a graze must not kick out at anywhere
-        // near the fixed restitution an unscaled bounce would give it.
-        XCTAssertLessThan(
-            shallow, 0.15,
-            "a 6° graze returned \(shallow) of its approach speed — that is a kick, not a scrub")
+        // The band the maintainer asked for: 30° is still a GLANCE in an arcade
+        // game, near-90° is a head-on. So no bounce at all up to 30, full by 75.
+        XCTAssertEqual(rebound(6), 0, accuracy: 0.001, "a 6° graze must not bounce")
+        XCTAssertEqual(rebound(30), 0, accuracy: 0.001, "30° is still a glance")
+        XCTAssertLessThan(rebound(45), rebound(60), "the band should rise through it")
+        XCTAssertLessThan(rebound(60), rebound(80), "and keep rising toward head-on")
+        XCTAssertGreaterThan(rebound(88), 0.3, "a square hit should properly bounce")
     }
 
-    /// **3. A hard enough glancing hit can stop the car.** Not literally zero, but
-    /// most of the speed gone rather than redirected.
-    func testAHardGrazeCanNearlyStopTheCar() {
+    /// **3. A hard enough glancing hit can stop the car** — over a scrape, not in a
+    /// single tick. One tick at 60 Hz is 17 ms of contact; taking most of a car's
+    /// speed in that would be the instant-stop the first version of this shipped
+    /// with (reported as "the car instantly stops touching the wall at any angle").
+    func testAScrapeBleedsTheCarDown() {
         var race = race()
-        let (before, after) = graze(degrees: 45, speed: 520, into: &race)
+        var car = race.cars[0].state
+        car.height = 0
+        let radians = 45.0 * Double.pi / 180
+        car.velocity = Vec2(cos(radians), -sin(radians)) * 520
+        car.heading = atan2(car.velocity.y, car.velocity.x)
+        let start = car.velocity.length
+
+        // Half a second of HELD contact: each tick the car is put back just inside
+        // the wall, still angled into it — a driver leaning on the barrier. Without
+        // re-establishing both the position and the into-wall velocity, the first
+        // bounce lifts it clear and every later tick is a no-op (which is what the
+        // first version of this loop measured: one tick's worth, thirty times).
+        for _ in 0..<30 {
+            let speed = car.velocity.length
+            guard speed > 1 else { break }
+            car.velocity = Vec2(cos(radians), -sin(radians)) * speed
+            let from = Vec2(car.position.x, CarGeometry.radius + 1)
+            car.position = Vec2(car.position.x + car.velocity.x * Race.dt, CarGeometry.radius - 1)
+            _ = race.collideWithWalls(car: &car, movedFrom: from, walls: [wall])
+        }
         XCTAssertLessThan(
-            after.velocity.length, before.velocity.length * 0.6,
-            "a hard 45° hit should take most of the speed out of the car")
+            car.velocity.length, start * 0.5,
+            "half a second of scraping should cost most of the speed")
+    }
+
+    /// And the cost EASES at low speed, so nudging along a wall while sorting
+    /// yourself out is fine — it is proportional to how hard the wall is pressed.
+    func testTheCostEasesAtLowSpeed() {
+        func keptPerTick(_ speed: Double) -> Double {
+            var race = race()
+            let (before, after) = graze(degrees: 20, speed: speed, into: &race)
+            return abs(after.velocity.x) / abs(before.velocity.x)
+        }
+        XCTAssertGreaterThan(
+            keptPerTick(60), keptPerTick(400),
+            "a slow scrape should cost proportionally less than a fast one")
     }
 
     /// Contact must never ADD speed, at any angle — an energy check the old model

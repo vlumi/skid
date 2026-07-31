@@ -57,6 +57,22 @@ extension Race {
         return hardest
     }
 
+    /// Below this the hit is a pure glance — no bounce at all, just scrape. An
+    /// arcade car clipping a barrier at 30° should slide along it, not come off.
+    static let glancingAngle = 30.0
+    /// At or above this it is a pure head-on, with the full bounce.
+    static let headOnAngle = 75.0
+
+    /// Remap the approach sine onto 0…1 across the glance→head-on band.
+    static func squareness(ofSine sine: Double) -> Double {
+        let low = sin(glancingAngle * .pi / 180)
+        let high = sin(headOnAngle * .pi / 180)
+        guard sine > low else { return 0 }
+        guard sine < high else { return 1 }
+        let t = (sine - low) / (high - low)
+        return t * t * (3 - 2 * t)  // smoothstep, so the band has no hard edges
+    }
+
     /// The wall's own outward face, signed to the side the car is on. Perpendicular
     /// to the wall, unlike the approach direction, so contact is resolved against
     /// the barrier rather than against the line back to where the car came from.
@@ -88,28 +104,46 @@ extension Race {
         let along = normal.perpendicular  // unit, since `normal` is
         let slide = car.velocity.dot(along)
         let speed = car.velocity.length
-        // How square the hit is: 0 parallel, 1 head-on. Taken from the velocity, so
-        // it is about the approach rather than where the nose happens to point.
-        let squareness = speed > 0.001 ? min(1, press / speed) : 0
+        // **How square the hit is: 0 a glance, 1 head-on.** Not the raw sine of the
+        // approach angle — for an arcade game 30° is still very much a glance, and
+        // only near-90° is a real head-on. So the sine is remapped through a band:
+        // everything under `glancingAngle` reads as a pure glance, everything over
+        // `headOnAngle` as a pure head-on, smoothly in between.
+        let sine = speed > 0.001 ? min(1, press / speed) : 0
+        let squareness = Self.squareness(ofSine: sine)
 
         // 1. Bounce: the into-wall component comes back, scaled by squareness. The
         //    outgoing normal speed is `press * restitution * squareness` — never
         //    more than it arrived with, so contact can't inject energy.
         let bounced = press * tuning.wallRestitution * squareness
-        // 2. Friction: the harder the press, the more speed the scrape takes. Capped
-        //    at the slide itself, so a hard graze can bring the car to a stop but
-        //    never drag it backwards along the wall.
-        let scrub = min(abs(slide), press * tuning.wallFriction)
+        // 2. Friction: a RATE per tick, not an absolute cut. `press * friction` as a
+        //    flat subtraction took the whole slide at any real speed — the reported
+        //    "the car instantly stops touching the wall at any angle". Scaled by dt
+        //    and by how hard the wall is pressed, so a brush costs a little and a
+        //    heavy scrape costs a lot, over time rather than instantly.
+        let bite = press * tuning.wallFriction * Race.dt
+        let scrub = min(abs(slide), abs(slide) * min(1, bite))
         let keptSlide = slide - (slide > 0 ? scrub : -scrub)
         car.velocity = normal * bounced + along * keptSlide
 
-        // 3. Yaw toward parallel — whichever way round the wall runs, turn the nose
-        //    the short way onto it. Proportional to the press, so a brush barely
-        //    moves it and a heavy scrape swings the car straight.
+        // 3. Yaw toward parallel — a NUDGE, not a grip. Whichever way round the wall
+        //    runs, turn the nose the short way onto it, scaled by both the press and
+        //    the squareness so a light graze barely moves it and a heavy one swings
+        //    the car straight.
+        //
+        //    Deliberately weak enough that steering beats it: pinned against a wall
+        //    and wanting out, DRAG-TURNING has to work (backing up and three-point
+        //    turning is tedious), so this must not hold the nose parallel against the
+        //    driver's input. `steerRate` is 9 rad/s at full lock; this peaks around a
+        //    tenth of that.
+        //
+        //    Which way along the wall the car is GOING comes from the slide BEFORE
+        //    the bounce: after a square hit the new velocity points away from the
+        //    wall, and aiming at that turned the nose further off instead of onto it.
         let wallAngle = atan2(along.y, along.x)
-        let facing = car.velocity.dot(along) >= 0 ? wallAngle : wallAngle + .pi
+        let facing = slide >= 0 ? wallAngle : wallAngle + .pi
         var delta = atan2(sin(facing - car.heading), cos(facing - car.heading))
-        let maxTurn = press * tuning.wallYaw * Race.dt
+        let maxTurn = press * tuning.wallYaw * squareness * Race.dt
         delta = max(-maxTurn, min(maxTurn, delta))
         car.heading += delta
     }

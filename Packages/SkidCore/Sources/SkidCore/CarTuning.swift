@@ -48,9 +48,13 @@ public struct CarTuning: Equatable, Sendable, Codable {
     /// falls away as the approach flattens, so a graze scrubs instead of kicking
     /// out (see `Race.collideWithWalls`).
     public var wallRestitution: Double
-    /// How much speed ALONG a wall a scrape takes, per unit of into-wall speed.
-    /// This is what makes riding a barrier slower than avoiding it — with no
-    /// tangential loss at all, hugging walls was free.
+    /// How much speed ALONG a wall a scrape takes, as a per-second rate per unit of
+    /// into-wall speed. This is what makes riding a barrier slower than avoiding it
+    /// — with no tangential loss at all, hugging walls was free.
+    ///
+    /// Small on purpose: `press` is in units/s, so at a racing-speed graze it is in
+    /// the hundreds, and this multiplies it. The first value (0.55) took the whole
+    /// slide in a single tick at any angle — the car simply stopped dead on contact.
     public var wallFriction: Double
     /// How hard a graze pulls the nose parallel to the wall, in rad/s per unit of
     /// into-wall speed. A car with mass pivots along the barrier rather than
@@ -75,7 +79,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         driftRetention: Double = 1.0,
         gripScale: Double = 1.0,
         wallRestitution: Double = 0.45,
-        wallFriction: Double = 0.55,
+        wallFriction: Double = 0.012,
         wallYaw: Double = 0.012,
         carRestitution: Double = 0.4,
         jumpTicksPerSpeed: Double = 0.055
