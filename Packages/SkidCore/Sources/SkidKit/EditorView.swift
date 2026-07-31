@@ -41,10 +41,14 @@ struct EditorView: View {
     /// a carousel, configured by swiping, and the straight has nothing to configure.
     enum PaletteTarget: Identifiable, Equatable {
         case hotbar(Int)
+        /// A LAID piece's variants — decals, and the start line's facing. Applied
+        /// in place: same geometry, different markings.
+        case piece(Int)
 
         var id: String {
             switch self {
             case .hotbar(let slot): return "hotbar\(slot)"
+            case .piece(let index): return "piece\(index)"
             }
         }
     }
@@ -101,7 +105,7 @@ struct EditorView: View {
                         selectedEnd: game.editorMode == .gate ? nil : effectiveSelection(walk),
                         gateSeams: layout.gateSeams, gating: game.editorMode == .gate,
                         selectedPiece: game.editorMode == .gate ? nil : game.editorSelectedPiece,
-                        transform: transform, into: &context)
+                        decals: layout.decals, transform: transform, into: &context)
                 }
                 .ignoresSafeArea()
 

@@ -13,6 +13,9 @@ enum EditorRenderer {
     /// Bridge guardrail — a bold light blue so walls read unmistakably as
     /// barriers, distinct from the gray road/kerb.
     private static let bridgeRail = Color(red: 0.55, green: 0.78, blue: 0.95)
+    /// Warning-marking yellow: the road-paint amber, warm enough to separate from
+    /// the white lines at a glance without going orange-red like the kerbs.
+    static let arrowYellow = Color(red: 0.98, green: 0.76, blue: 0.09)
 
     /// Screen radius of a loose-end tap dot.
     static let endHitRadius: CGFloat = 26
@@ -40,15 +43,15 @@ enum EditorRenderer {
 
     static func draw(
         walk: WalkResult, width: Double, selectedEnd: Int?, gateSeams: [Int] = [],
-        gating: Bool = false, selectedPiece: Int? = nil,
+        gating: Bool = false, selectedPiece: Int? = nil, decals: [Int: Decal] = [:],
         transform t: Transform, into context: inout GraphicsContext
     ) {
         // The size limit, made visible. Under everything else, since it's a
         // boundary you build inside of.
         drawCanvasBounds(walk: walk, t: t, into: &context)
         drawTrack(
-            walk: walk, width: width, gateSeams: gateSeams, gating: gating, transform: t,
-            into: &context)
+            walk: walk, width: width, gateSeams: gateSeams, gating: gating, decals: decals,
+            transform: t, into: &context)
         // Over the road, under the end markers: the selected piece is a thing you
         // act on, so it should read on top of the asphalt but not hide the chrome.
         if let selectedPiece, walk.placed.indices.contains(selectedPiece) {
@@ -76,6 +79,25 @@ enum EditorRenderer {
         }
     }
 
+    /// One piece's paint, laid immediately after its own asphalt: on top of it (so
+    /// it isn't clipped away, the way edge decoration deliberately is), but under
+    /// anything drawn later — which is what keeps a decal on the road under a bridge
+    /// from ending up on the bridge.
+    private static func drawDecal(
+        _ decal: Decal?, on placed: PlacedPiece, width: Double, t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        switch decal {
+        case .directionArrow:
+            drawDirectionArrow(placed, width: width, transform: t, into: &context)
+        case .warningArrow:
+            drawDirectionArrow(
+                placed, width: width, paint: arrowYellow, transform: t, into: &context)
+        case nil:
+            break
+        }
+    }
+
     /// **The track itself** — shadows, edge decoration, asphalt, ramp markings,
     /// gates, grid and start line. No editor chrome.
     ///
@@ -92,7 +114,7 @@ enum EditorRenderer {
     /// once.
     static func drawTrack(
         walk: WalkResult, width: Double, gateSeams: [Int], gating: Bool = false,
-        transform t: Transform,
+        decals: [Int: Decal] = [:], transform t: Transform,
         heightRange: ClosedRange<Double> = -1...2,
         into context: inout GraphicsContext
     ) {
@@ -127,8 +149,22 @@ enum EditorRenderer {
         drawAllEdges(
             walk: walk, kerbs: kerbs, width: width, t: t, heightRange: heightRange,
             into: &context)
-        for (_, placed) in ordered {
+        // Asphalt then its own paint, PIECE BY PIECE in height order — not all the
+        // ribbons and then all the decals. Drawing the decals in a second sweep put
+        // a ground road's arrow on top of the bridge that crosses over it, because
+        // the deck's asphalt had already been laid. (The race view bands by storey
+        // so it never saw this; the editor draws every height in one pass.)
+        for (index, placed) in ordered {
             drawPieceRibbon(placed, width: width, t: t, into: &context)
+            drawDecal(decals[index], on: placed, width: width, t: t, into: &context)
+            // The start line and grid hashes are paint on the START piece's own
+            // road, so they belong to that piece too. Drawn after every ribbon
+            // instead, they sat on top of a deck crossing over the start line —
+            // the same fault the decals had.
+            if placed.id == PieceCatalog.startPieceID {
+                drawGridMarkings(placed, width: width, transform: t, into: &context)
+                drawStartLine(placed, width: width, transform: t, into: &context)
+            }
         }
         // Checkpoint gates across the seams the author marked, skipping the
         // START LINE's own seam — that one is drawn as the start/finish line
@@ -157,19 +193,6 @@ enum EditorRenderer {
             drawGate(piece, width: width, highlighted: gating, transform: t, into: &context)
         }
 
-        // Grid-slot markings, then the start/finish line at the start piece's
-        // exit (the line paints over the hashes).
-        // The start line and grid hatching are PAINT on the start piece's own
-        // road, so they belong to that piece's height band — the `contains`
-        // check alone let a ground-level start line draw during the elevated
-        // pass, so it showed through a bridge crossing over it.
-        if let start = walk.placed.first(where: { $0.id == PieceCatalog.startPieceID }),
-            heightRange.contains(start.exitHeight),
-            heightRange.contains(start.entryHeight)
-        {
-            drawGridMarkings(start, width: width, transform: t, into: &context)
-            drawStartLine(start, width: width, transform: t, into: &context)
-        }
     }
 
     /// Draw ONE piece as a width-varying ribbon: at each centerline sample the

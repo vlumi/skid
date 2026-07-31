@@ -60,6 +60,20 @@ extension CouchGame {
         }
     }
 
+    /// **Set or clear a piece's decal** — paint applied in place, so the geometry,
+    /// the seams and every index are untouched.
+    @discardableResult
+    public func editorSetDecal(_ decal: Decal?, at index: Int) -> Bool {
+        recordingUndo {
+            guard var layout = editorLayout, layout.pieces.indices.contains(index),
+                layout.decals[index] != decal
+            else { return false }
+            layout.decals[index] = decal
+            editorLayout = layout
+            return true
+        }
+    }
+
     /// Whether the selected piece can be removed — so the button can be absent
     /// rather than present and refusing.
     public var editorCanDeleteSelected: Bool {
