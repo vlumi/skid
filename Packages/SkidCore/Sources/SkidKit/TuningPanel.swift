@@ -51,6 +51,24 @@ struct TuningPanel: View {
                         Text("Flip", bundle: .module), value: $settings.steerFlipBoost,
                         range: 0...12, step: 0.5, format: "%.1f")
 
+                    section(Text("Walls", bundle: .module))
+                    slider(
+                        Text("Bounce", bundle: .module), value: $settings.wallRestitution,
+                        range: 0...1, step: 0.05, format: "%.2f")
+                    slider(
+                        Text("Glance bounce", bundle: .module),
+                        value: $settings.wallGlanceBounce,
+                        range: 0...1, step: 0.05, format: "%.2f")
+                    slider(
+                        Text("Scrape", bundle: .module), value: $settings.wallFriction,
+                        range: 0...0.05, step: 0.002, format: "%.3f")
+                    slider(
+                        Text("Drag floor", bundle: .module), value: $settings.wallDragFloor,
+                        range: 0...1, step: 0.05, format: "%.2f")
+                    slider(
+                        Text("Nose pull", bundle: .module), value: $settings.wallYaw,
+                        range: 0...0.06, step: 0.002, format: "%.3f")
+
                     section(Text("Pace", bundle: .module))
                     slider(
                         Text("Pace", bundle: .module), value: $settings.pace,
