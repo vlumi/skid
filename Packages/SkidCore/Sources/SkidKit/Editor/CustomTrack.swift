@@ -80,7 +80,52 @@ extension CouchGame {
 
     /// The persisted custom slot, if there is a readable one.
     static func restoredCustomTrack() -> TrackLayout? {
-        guard let code = UserDefaults.standard.string(forKey: customTrackKey) else { return nil }
+        guard let code = restoredCustomTrackCode() else { return nil }
         return try? TrackCode.decode(code)
+    }
+
+    /// The slot's raw stored code, for the library migration to fold in.
+    /// Deliberately NOT removed once migrated: it costs a few dozen bytes and
+    /// is the only way back if the library turns out to have eaten something.
+    static func restoredCustomTrackCode() -> String? {
+        UserDefaults.standard.string(forKey: customTrackKey)
+    }
+
+    /// The library after folding in the old slot, run on every launch.
+    ///
+    /// Idempotent through `TrackLibraryBook.migrating` — the guard is "the book
+    /// is empty" — so this is a no-op from the second launch on, and cannot
+    /// duplicate the track.
+    static func migratedLibrary(_ book: TrackLibraryBook, slot: String?) -> TrackLibraryBook {
+        TrackLibraryBook.migrating(
+            legacyCode: slot, into: book, now: Date(),
+            name: String(localized: "My track", bundle: .module))
+    }
+}
+
+extension CouchGame {
+    /// Mirror the edited track into the library as it changes.
+    ///
+    /// Identity is the CODE, so every edit is a new entry rather than an update
+    /// in place — which would leave a trail of half-built rings. So the entry
+    /// this edit replaces is dropped, keeping its name and dates: one row that
+    /// follows the track being worked on.
+    func syncEditedTrackToLibrary() {
+        guard let layout = editorLayout else { return }
+        let code = TrackCode.encode(layout)
+        guard !library.contains(code: code) else { return }
+        var book = library
+        let previous = editedEntryID.flatMap { book.entry(id: $0) }
+        if let previous { book.remove(id: previous.id) }
+        book.put(
+            TrackLibraryBook.Entry(
+                name: previous?.name ?? String(localized: "My track", bundle: .module),
+                code: code,
+                createdAt: previous?.createdAt ?? Date(),
+                importedAt: previous?.importedAt,
+                updatedAt: Date()))
+        editedEntryID = TrackCode.contentCode(of: code)
+        library = book
+        saveLibrary()
     }
 }

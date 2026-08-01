@@ -17,7 +17,10 @@ public final class CouchGame: ObservableObject {
     /// the track survives quitting the app — and the same code is what gets
     /// pasted into the repo to promote a design to a built-in.
     @Published public var editorLayout: TrackLayout? {
-        didSet { saveCustomTrack() }
+        didSet {
+            saveCustomTrack()
+            syncEditedTrackToLibrary()
+        }
     }
 
     /// Placement verdicts memoised for the current piece list — see
@@ -84,6 +87,16 @@ public final class CouchGame: ObservableObject {
     public let settings = GameSettings()
 
     private let hiscoreFile = HiscoreFile()
+    private let libraryFile = TrackLibraryFile()
+    /// Your saved tracks. Written on every editor change, but not yet READ by
+    /// anything — the custom slot is still authoritative until the picker moves
+    /// over, so a migration that gets this wrong cannot lose the slot.
+    @Published public internal(set) var library = TrackLibraryBook()
+    /// Which library row the editor is currently updating, so an edit replaces
+    /// it rather than piling up a row per keystroke.
+    var editedEntryID: String?
+
+    func saveLibrary() { libraryFile.save(library) }
     /// Where the author identity comes from. Injectable so tests can supply a
     /// key (or none) without a Keychain.
     let signingKeys: SigningKeyStore
@@ -110,6 +123,9 @@ public final class CouchGame: ObservableObject {
         // reads it. (Set the stored value, not the property — the property's
         // observer would just re-save what we only read.)
         editorLayout = Self.restoredCustomTrack()
+        library = Self.migratedLibrary(libraryFile.load(), slot: Self.restoredCustomTrackCode())
+        editedEntryID = Self.restoredCustomTrackCode().map { TrackCode.contentCode(of: $0) }
+        libraryFile.save(library)
         // Push persisted render knobs (elevation feel) into their globals
         // before the first frame draws.
         settings.applyRenderTuning()
