@@ -145,14 +145,6 @@ extension CouchGame {
         }
     }
 
-    /// The moment the ring closes, finish the job: put default checkpoints in
-    /// (a closed loop with only the start line marked is unsaveable, and
-    /// nothing about that is the author's mistake) and center it on the
-    /// canvas, since a layout that grew left or up sits at negative
-    /// coordinates and would race letterboxed into a corner.
-    /// Deliberately NOT recorded for undo: this runs inside the edit that closed
-    /// the ring, and seeding gates plus centering are part of that one act. Pushing
-    /// their own snapshots would make closing a loop cost three undos.
     /// After a placement the NEW piece is the end, so the selection follows it —
     /// otherwise it would still name the piece that used to be the end and the
     /// delete button would offer to remove the wrong one.
@@ -161,6 +153,15 @@ extension CouchGame {
         selectionRaw = editorBuildEnd == .head ? 0 : layout.pieces.count - 1
     }
 
+    /// The moment the ring closes, finish the job: seed default checkpoints (a
+    /// closed loop with only the start line marked is unsaveable, and nothing
+    /// about that is the author's mistake) and center it on the canvas, since a
+    /// layout that grew left or up sits at negative coordinates and would race
+    /// letterboxed into a corner.
+    ///
+    /// Deliberately NOT recorded for undo: this runs inside the edit that closed
+    /// the ring, so seeding and centering are part of that one act. Their own
+    /// snapshots would make closing a loop cost three undos.
     private func finishIfClosed() {
         guard editorLayout?.walk().openEnds.isEmpty == true else { return }
         // Deselect on closure (maintainer's call): the piece you were building from

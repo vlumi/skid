@@ -12,7 +12,6 @@ public enum TrackCode {
         case badCRC
         case missingSection
         case duplicateSection
-        case trailingGarbage
         case tooLarge
         /// Origin position wasn't a whole-unit integer (u16 range).
         case badOrigin
@@ -102,8 +101,7 @@ public enum TrackCode {
 
     /// Decode a share code. Treats the input as **hostile**: the string
     /// length is capped before decoding, every TLV length is bounds-checked,
-    /// sections may not repeat or leave trailing bytes, and the piece/gate
-    /// counts are capped — so a crafted URL can only ever produce a bounded,
+    /// sections may not repeat, and the piece/gate counts are capped — so a crafted URL can only ever produce a bounded,
     /// well-formed `TrackLayout` or a thrown error, never a crash or a
     /// runaway allocation. (Whether that layout is *saveable* is a separate
     /// question for the validator / compiler.)
@@ -180,7 +178,10 @@ public enum TrackCode {
             }
             i = start + len
         }
-        guard i == body.count else { throw DecodeError.trailingGarbage }
+        // Every advance is bounded by the guard above, so this cannot overrun.
+        // An assertion, not a thrown error: tripping it means the loop changed,
+        // not that the input was bad.
+        assert(i == body.count)
         return sections
     }
 

@@ -146,13 +146,8 @@ extension PieceCompiler {
         ]
     }
 
-    /// The map fence: a rectangle just inside the track's own bounds, on both
-    /// layers, so a car can't drive off into the surrounding void.
-    ///
-    /// Piece-built tracks had none of this — you could drive out of the map
-    /// entirely and off under the control band. Legacy `TrackDesign` tracks
-    /// always had it (`boundaryWalls`), which is why this only showed up on
-    /// editor tracks.
+    /// The map fence: a rectangle just inside the track's own bounds, so a car
+    /// can't drive off into the surrounding void.
     static func boundaryWalls(size: Vec2) -> [Wall] {
         let inset = 8.0
         let corners = [
