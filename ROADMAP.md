@@ -50,11 +50,19 @@ What's left:
       feature: placeable scenery that never touches the sim. Placed in the
       editor. Fold in the **ramp-wall vs deck-rail visual distinction** — a ramp
       wall reaches the ground, a deck rail only exists up top, and today they
-      look identical, so where a car can pass underneath isn't readable.
+      look identical, so where a car can pass underneath isn't readable — that
+      one is a pure rendering fix, since the compiler already knows which is
+      which, and can ship on its own. Split into tiers, by what each actually
+      costs to encode, in
+      [docs/hazards-and-scenery-plan.md](docs/hazards-and-scenery-plan.md).
 - [ ] **Hazards as placeable pieces.** Water/oil/mud left with the old
-      hand-authored tracks and needs to come back as something you place. Not
-      perfect circles — rotatable, combinable blobs. Plus surface textures for
-      grass and mud eventually (asphalt stays plain gray).
+      hand-authored tracks and needs to come back as something you place.
+      Smaller than it looks: `Surface` already has all three tuned, and
+      `SurfacePatch` + `surface(at:height:)` already do the sim half — what is
+      missing is encoding, editor placement and rendering. Free position rather
+      than anchored to a piece, since an oil slick's whole point is sitting at a
+      chosen spot on the racing line. Design in
+      [docs/hazards-and-scenery-plan.md](docs/hazards-and-scenery-plan.md).
 
 - [ ] **Jumps in the compiler** (crossings are DONE). Crossings shipped as
       IMPLICIT — nothing declared, flagged or encoded. A segment pair may share
