@@ -1,4 +1,3 @@
-import CoreGraphics
 import XCTest
 
 @testable import SkidCore
@@ -47,7 +46,7 @@ final class FloatingStickTests: XCTestCase {
     /// clamp bites, the origin holds and the knob points at the finger at full
     /// deflection, so steering keeps its full range.
     func testAnOutOfZoneFingerAimsTheStick() {
-        let zone = CGRect(x: 0, y: 59, width: 390, height: 300)
+        let zone = Rect(x: 0, y: 59, width: 390, height: 300)
         let radius = 48.0
         let origin = Vec2(200, 120)
         func bearing(_ dx: Double) -> Double {
@@ -72,7 +71,7 @@ final class FloatingStickTests: XCTestCase {
     /// zone still drags the origin, so the rim behaviour the scheme is built on
     /// is unchanged.
     func testAFingerInsideTheZoneStillDragsTheOrigin() {
-        let zone = CGRect(x: 0, y: 0, width: 390, height: 600)
+        let zone = Rect(x: 0, y: 0, width: 390, height: 600)
         let origin = Vec2(200, 300)
         let (moved, knob) = floatingStick(
             origin: origin, finger: Vec2(200, 420), radius: 48, bounds: zone)
@@ -83,11 +82,27 @@ final class FloatingStickTests: XCTestCase {
     func testTrailingOriginStaysInsideBounds() {
         // A zone with little room: dragging far right can't push the stick's
         // travel circle out of the zone — the origin re-clamps.
-        let bounds = CGRect(x: 0, y: 0, width: 400, height: 400)
-        let (newOrigin, _) = floatingStick(
+        //
+        // Values are spelled out rather than recomputed from `radius + 18`:
+        // sharing the formula with the source made the old assertion pass at any
+        // margin, since a larger one still satisfies an upper bound.
+        let bounds = Rect(x: 0, y: 0, width: 400, height: 400)
+        let (newOrigin, knob) = floatingStick(
             origin: Vec2(200, 200), finger: Vec2(10000, 200), radius: radius, bounds: bounds)
-        let margin = radius + 18
-        XCTAssertLessThanOrEqual(newOrigin.x, bounds.maxX - margin + 1e-9)
-        XCTAssertGreaterThanOrEqual(newOrigin.x, bounds.minX + margin - 1e-9)
+        // The origin holds where it was — a clamped stick does NOT chase the
+        // finger sideways — and the knob takes the finger's bearing at full
+        // deflection.
+        XCTAssertEqual(newOrigin.x, 200, accuracy: 1e-9)
+        XCTAssertEqual(newOrigin.y, 200, accuracy: 1e-9)
+        XCTAssertEqual(knob.length, radius, accuracy: 1e-9)
+    }
+
+    /// The clamp itself, at the one value that decides how close to a zone edge
+    /// a stick may sit. Pinned, so a changed margin fails here.
+    func testClampKeepsTheTravelCircleInsideTheZone() {
+        let bounds = Rect(x: 0, y: 0, width: 400, height: 400)
+        let clamped = clampStick(Vec2(10000, 200), radius: radius, bounds: bounds)
+        XCTAssertEqual(clamped.x, 334, accuracy: 1e-9)  // 400 − 48 radius − 18 margin
+        XCTAssertEqual(clamped.y, 200, accuracy: 1e-9)
     }
 }

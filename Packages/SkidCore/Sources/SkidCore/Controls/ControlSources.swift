@@ -1,6 +1,4 @@
-import CoreGraphics
 import Foundation
-import SkidCore
 
 /// Identifies one finger for its whole down–move–up life.
 public typealias TouchID = Int
@@ -74,7 +72,7 @@ func quantizedAxis(
 /// from the clamped origin keeps full deflection and full steering range: the
 /// clamp then bounds where the stick is DRAWN, not what the input MEANS.
 func floatingStick(
-    origin: Vec2, finger: Vec2, radius: Double, bounds: CGRect?
+    origin: Vec2, finger: Vec2, radius: Double, bounds: Rect?
 ) -> (origin: Vec2, knob: Vec2) {
     let offset = finger - origin
     let distance = offset.length
@@ -96,14 +94,14 @@ func floatingStick(
 
 /// Keep a floating stick's origin far enough inside `bounds` that its whole
 /// travel circle stays in the zone (shared by touchBegan + drag re-center).
-func clampStick(_ p: Vec2, radius: Double, bounds: CGRect?) -> Vec2 {
+func clampStick(_ p: Vec2, radius: Double, bounds: Rect?) -> Vec2 {
     guard let bounds else { return p }
     let margin = radius + 18
-    let rect = bounds.insetBy(dx: margin, dy: margin)
+    let rect = bounds.insetBy(margin)
     guard rect.width > 0, rect.height > 0 else {
-        return Vec2(bounds.midX, bounds.midY)
+        return bounds.center
     }
-    return Vec2(min(max(p.x, rect.minX), rect.maxX), min(max(p.y, rect.minY), rect.maxY))
+    return rect.clamping(p)
 }
 
 /// Virtual d-pad, the current default: a d-pad materializes where the thumb
@@ -128,7 +126,7 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     /// The zone's local "up" in screen coordinates.
     public var up = Vec2(0, -1)
     /// The player's control zone; the pad is clamped to stay fully inside.
-    public var bounds: CGRect?
+    public var bounds: Rect?
 
     /// Where the pad materialized; nil while not touching.
     public private(set) var origin: Vec2?
@@ -207,7 +205,7 @@ public final class AimControlSource: HeadingAwareControlSource {
     /// through the drift.
     public var throttleEase = 0.25
     /// The player's control zone; the stick is clamped to stay inside.
-    public var bounds: CGRect?
+    public var bounds: Rect?
 
     /// Where the stick materialized; nil while not touching.
     public private(set) var origin: Vec2?
