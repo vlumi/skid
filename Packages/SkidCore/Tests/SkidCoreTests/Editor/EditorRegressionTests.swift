@@ -69,7 +69,7 @@ final class EditorRegressionTests: XCTestCase {
     /// land the ring closed on the ground.
     func testTheSolverClosesFromAHalfLevel() throws {
         let layout = try TrackCode.decode(
-            "ASEBGh8PeQMDAR4BDwMDAR4BDwMDAR4BDwMDAXoAAgEAAwUAAAAAAA")
+            TestTracks.Code.cloverOpen)
         let end = try XCTUnwrap(layout.walk().openEnds.first)
         let run = try XCTUnwrap(
             layout.closingRun(from: end), "one pitched-down short closes this")

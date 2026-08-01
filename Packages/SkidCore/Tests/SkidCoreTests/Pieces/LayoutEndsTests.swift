@@ -28,7 +28,7 @@ final class LayoutEndsTests: XCTestCase {
     /// self-crossing — the awkward case for anything that re-spells a ring.
     private func closedRing() throws -> TrackLayout {
         try TrackCode.decode(
-            "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI")
+            TestTracks.Code.clover)
     }
 
     // MARK: - the inverse placement

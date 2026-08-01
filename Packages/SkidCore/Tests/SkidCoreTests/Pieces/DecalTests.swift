@@ -58,7 +58,7 @@ final class DecalTests: XCTestCase {
     /// Rotating a ring carries them too.
     func testRotateCarriesDecals() throws {
         var layout = try TrackCode.decode(
-            "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI")
+            TestTracks.Code.clover)
         let count = layout.pieces.count
         layout.decals = [3: .directionArrow]
         layout.rotate(to: 5)
@@ -120,7 +120,7 @@ final class DecalTests: XCTestCase {
     /// Decals round-trip, and cost bytes only when present.
     func testDecalsRoundTrip() throws {
         var layout = try TrackCode.decode(
-            "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI")
+            TestTracks.Code.clover)
         let bare = TrackCode.encode(layout)
         layout.decals = [1: .directionArrow, 7: .directionArrow]
         let coded = TrackCode.encode(layout)
@@ -135,7 +135,7 @@ final class DecalTests: XCTestCase {
     /// Normalization carries decals, so one track is still one code.
     func testNormalizingCarriesDecals() throws {
         let canonical = try TrackCode.decode(
-            "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI")
+            TestTracks.Code.clover)
         var respelled = canonical
         respelled.rotate(to: 4)
         respelled.decals = [2: .directionArrow]
