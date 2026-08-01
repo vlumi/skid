@@ -96,13 +96,6 @@ What's left:
       JUMPS remain: the catalog has the geometry and the editor has the buttons
       hidden, but the compiler cannot build them.
 
-      A CROSSING is cheap, and worth doing when the pieces are: the route stays
-      one closed ring (a track already crosses itself wherever a bridge does),
-      so the centerline, gates, laps, standings and AI are all untouched. What's
-      needed is a piece the overlap validator exempts — at equal heights the two
-      stretches really do share tarmac, which `RoadProximity` currently refuses
-      — and a decision that two cars meeting there is a feature, not a bug.
-
       FORKS AND JOINS ARE PARKED, and not for want of geometry (the catalog has
       the pieces, ids 34–36, and `PieceCompiler` throws
       `forkNotSupportedInPhaseA`). Two reasons, in order:
