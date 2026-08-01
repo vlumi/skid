@@ -1,5 +1,9 @@
 # Height model: fix plan
 
+> **Steps 1–3 and 5 shipped** (v0.5–v0.6); step 4 (tunnels) is a written
+> spec awaiting sign-off. Per-step status is marked in the headings below.
+> What the height model does *now* is [ARCHITECTURE.md](../ARCHITECTURE.md).
+
 Ordered steps for the known soft spots in the ramp/bridge/height model, sized
 so each is one verifiable change. Do them in order — 1 and 2 are prerequisites
 for tunnels (4) and curved ramps (5). Ground rules for every step: write the
