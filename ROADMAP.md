@@ -45,7 +45,9 @@ What's left:
 
 - [ ] **Catalog beyond road pieces.** More road pieces (the palette is still
       small), plus **decorations**: on-road arrows, trees, buildings, walls
-      (scenery + directional markers, not just track segments). Placed in the
+      (scenery + directional markers, not just track segments), and **spectator
+      dressing** — stands, trackside props, crowd texture, which is the same
+      feature: placeable scenery that never touches the sim. Placed in the
       editor. Fold in the **ramp-wall vs deck-rail visual distinction** — a ramp
       wall reaches the ground, a deck rail only exists up top, and today they
       look identical, so where a car can pass underneath isn't readable.
@@ -256,7 +258,6 @@ is useful on its own:
       wants more chaos
 - [ ] Finnish/Japanese localization (String Catalog makes this
       translation-only)
-- [ ] Spectator dressing: stands, trackside props, crowd texture
 - [ ] **Different vehicles** — maybe; only if they stay balance-neutral
       (distinct look/feel, same competitive envelope)
 - [ ] *(Parked)* **Portable profiles**: bring your profile to someone else's
