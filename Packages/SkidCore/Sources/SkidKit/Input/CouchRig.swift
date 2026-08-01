@@ -44,9 +44,9 @@ public final class PlayerControls {
         self.up = up
         // The stick clamps to the content rect (inside the safe area), not the
         // full box — so full deflection is always reachable, never off-screen.
-        pro.bounds = content
+        pro.bounds = content.asRect
         pro.up = up
-        casual.bounds = content
+        casual.bounds = content.asRect
     }
 
     public func releaseAll() {

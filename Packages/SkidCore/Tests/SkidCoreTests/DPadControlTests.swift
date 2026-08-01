@@ -1,4 +1,3 @@
-import CoreGraphics
 import XCTest
 
 @testable import SkidCore
@@ -14,7 +13,7 @@ final class DPadControlTests: XCTestCase {
 
     private func pad() -> VirtualDPadControlSource {
         let source = VirtualDPadControlSource()
-        source.bounds = CGRect(x: 0, y: 0, width: 1000, height: 1000)
+        source.bounds = Rect(x: 0, y: 0, width: 1000, height: 1000)
         source.touchBegan(id: 1, at: Vec2(500, 500))
         return source
     }

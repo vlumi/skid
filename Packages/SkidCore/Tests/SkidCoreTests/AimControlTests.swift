@@ -1,4 +1,3 @@
-import CoreGraphics
 import XCTest
 
 @testable import SkidCore
@@ -15,7 +14,7 @@ final class AimControlTests: XCTestCase {
     /// aimed heading is its angle directly (world = screen, no y-flip).
     private func aim(offset: Vec2, heading: Double, speed: Double) -> AimControlSource {
         let source = AimControlSource()
-        source.bounds = CGRect(x: 0, y: 0, width: 1000, height: 1000)
+        source.bounds = Rect(x: 0, y: 0, width: 1000, height: 1000)
         source.setCar(heading: heading, speed: speed)
         source.touchBegan(id: 1, at: Vec2(500, 500))
         source.touchMoved(id: 1, at: Vec2(500, 500) + offset)
