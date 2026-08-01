@@ -1,23 +1,6 @@
 import SkidCore
 import SwiftUI
 
-/// Mutable box for the AI drivers (their stuck-recovery memory mutates
-/// tick to tick).
-@MainActor
-final class AIFleet {
-    var drivers: [PlayerID: AIDriver] = [:]
-
-    func input(for player: PlayerID, in race: Race) -> CarInput {
-        guard var driver = drivers[player],
-            race.cars.indices.contains(player.rawValue)
-        else { return .coast }
-        let input = driver.input(car: race.cars[player.rawValue].state, track: race.track)
-        drivers[player] = driver
-        return input
-    }
-}
-
-/// Top-level couch-game state: setup → race/time-trial → (results) → again.
 @MainActor
 public final class CouchGame: ObservableObject {
     public enum Phase {
@@ -353,59 +336,5 @@ public final class CouchGame: ObservableObject {
     public var carColors: [Color] {
         let humanColors = rig?.players.map(\.colorIndex) ?? Array(colorIndices.prefix(playerCount))
         return (humanColors + aiColorIndices).map { Self.palette[$0] }
-    }
-}
-
-/// The whole app: setup screen or the race.
-public struct GameView: View {
-    @StateObject private var game = CouchGame()
-
-    public init() {}
-
-    public var body: some View {
-        ZStack {
-            switch game.phase {
-            case .setup:
-                SetupView(game: game)
-            case .racing:
-                if let session = game.session, let rig = game.rig {
-                    RaceScreen(game: game, session: session, rig: rig)
-                }
-            case .editing:
-                EditorView(game: game)
-            }
-        }
-        .statusBarHiddenIfAvailable()
-        .persistentSystemOverlays(.hidden)
-    }
-}
-
-extension View {
-    func statusBarHiddenIfAvailable() -> some View {
-        #if os(iOS)
-        return statusBarHidden(true)
-        #else
-        return self
-        #endif
-    }
-
-    /// Thumbs live at the screen edges during play: make system edge swipes
-    /// (home indicator, notification/control center) require the deliberate
-    /// double-swipe — but only while actually racing. Menus, pause, and
-    /// results keep normal one-swipe system gestures.
-    func defersEdgeSwipes(_ active: Bool) -> some View {
-        #if os(iOS)
-        return defersSystemGestures(on: active ? .all : [])
-        #else
-        return self
-        #endif
-    }
-
-    func pillStyle() -> some View {
-        font(.callout.bold())
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(.black.opacity(0.35), in: Capsule())
-            .foregroundStyle(.white)
     }
 }
