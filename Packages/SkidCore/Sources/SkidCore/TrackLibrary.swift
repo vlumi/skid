@@ -3,9 +3,8 @@ import Foundation
 /// The built-in tracks, as **share codes** — the exact strings the editor's Copy
 /// button produces.
 ///
-/// This replaces the old bundled-JSON `TrackDesign` library and its separate
-/// compiler. A built-in is now just a track someone built in the editor and
-/// pasted here, compiled by the same `PieceCompiler` as a player's own design.
+/// A built-in is just a track someone built in the editor and pasted here,
+/// compiled by the same `PieceCompiler` as a player's own design.
 /// One code path, one geometry model, and a built-in can be opened in the editor
 /// and tweaked like anything else.
 ///

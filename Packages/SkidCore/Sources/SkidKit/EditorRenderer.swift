@@ -224,8 +224,6 @@ enum EditorRenderer {
             strokeDeckRails(left: e.left, right: e.right, t: t, into: &context)
         }
         fillRoad(outline, placed: placed, samples: e.samples, t: t, into: &context)
-        if elevated {
-        }
     }
 
     /// The elevated piece's drop shadow — offset scales with the height at each
