@@ -12,7 +12,15 @@ import XCTest
 @MainActor
 final class LibraryMigrationTests: XCTestCase {
     private func game() -> CouchGame {
-        CouchGame(signingKeys: NoSigningKey())
+        CouchGame(signingKeys: NoSigningKey(), libraryFilename: "test-\(UUID()).json")
+    }
+
+    /// `CouchGame()` reads the REAL UserDefaults, so a slot left by another test
+    /// migrates into the library at init and the counts here become whatever ran
+    /// first. Same hazard `TuningWireTests` documents for `@AppStorage`.
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.removeObject(forKey: "skid.editor.customTrack")
     }
 
     /// The slot becomes a library entry, keyed by its own code.

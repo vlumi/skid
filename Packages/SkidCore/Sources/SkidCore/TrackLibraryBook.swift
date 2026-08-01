@@ -39,6 +39,12 @@ public struct TrackLibraryBook: Equatable, Sendable, Codable {
         /// every render, which is the mistake the compile-per-frame slot made.
         public var authorKey: [UInt8]?
         public var signatureIsValid: Bool
+        /// Whether this compiles into a raceable track — closed, valid, the lot.
+        ///
+        /// Cached, and for the same reason as the signature verdict: the picker
+        /// asked `customTrack() != nil` per render, which COMPILED the layout
+        /// every frame. Fine for one slot, O(n) compiles per frame for a library.
+        public var isRaceable: Bool
         /// Made here. For an imported track this is when it arrived, since the
         /// author's own clock isn't something this device can know.
         public var createdAt: Date
@@ -49,10 +55,11 @@ public struct TrackLibraryBook: Equatable, Sendable, Codable {
 
         public init(
             name: String, code: String, authorKey: [UInt8]? = nil,
-            signatureIsValid: Bool = false, createdAt: Date, importedAt: Date? = nil,
-            updatedAt: Date
+            signatureIsValid: Bool = false, isRaceable: Bool = false, createdAt: Date,
+            importedAt: Date? = nil, updatedAt: Date
         ) {
             self.id = TrackCode.contentCode(of: code)
+            self.isRaceable = isRaceable
             self.name = name
             self.code = code
             self.authorKey = authorKey
@@ -70,6 +77,9 @@ public struct TrackLibraryBook: Equatable, Sendable, Codable {
         /// Whether this entry came from somewhere else.
         public var isImported: Bool { importedAt != nil }
     }
+
+    /// The tracks a race can actually start on, newest first.
+    public var raceable: [Entry] { byRecency.filter(\.isRaceable) }
 
     /// Newest activity first — what a picker shows.
     public var byRecency: [Entry] {
