@@ -70,6 +70,28 @@ final class LibraryMigrationTests: XCTestCase {
         XCTAssertEqual(second.createdAt, first.createdAt, "so does when it was made")
     }
 
+    /// **A crash between edits must not orphan a row.** `editedEntryID` is
+    /// in-memory, rebuilt on launch from the slot — so simulate a relaunch and
+    /// check the next edit still replaces rather than accumulates.
+    func testARelaunchMidEditStillReplacesTheRow() throws {
+        var book = CouchGame.migratedLibrary(
+            TrackLibraryBook(), slot: TestTracks.Code.bridgeRing)
+        XCTAssertEqual(book.tracks.count, 1)
+
+        // Relaunch: editedEntryID comes back from the slot's own code, which the
+        // same didSet wrote, so the two cannot disagree.
+        let afterRelaunch = TrackCode.contentCode(of: TestTracks.Code.bridgeRing)
+        XCTAssertNotNil(book.entry(id: afterRelaunch), "the row the editor will update")
+
+        // The next edit replaces that row rather than adding beside it.
+        book.remove(id: afterRelaunch)
+        book.put(
+            TrackLibraryBook.Entry(
+                name: "My track", code: TestTracks.Code.clover,
+                createdAt: Date(), updatedAt: Date()))
+        XCTAssertEqual(book.tracks.count, 1)
+    }
+
     /// Re-encoding the same track must not add a row.
     func testReSavingTheSameTrackChangesNothing() throws {
         let game = game()
