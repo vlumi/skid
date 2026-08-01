@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Your tracks are a library, not one slot.** Every track you build or paste in
+  is kept, and they all show up as choices in the setup picker rather than a
+  single "My track". A pasted track keeps its signature so you can pass it on
+  intact, and keeps whatever name you give it if it arrives again. Tracks you
+  are still building are saved but not offered to race until they close.
+
 - **A shared track can say who made it.** Copying a track now signs it, so
   whoever you send it to can see it came from you — and a track you receive
   shows whether its signature still matches, which is the only sign it was
