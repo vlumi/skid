@@ -12,6 +12,7 @@ help:  ## List the available commands
 # Inputs xcodegen reads — regenerate the project when any of these change.
 PROJECT_INPUTS := project.yml \
 	$(wildcard Sources/*/Info.plist) \
+	$(wildcard Sources/*/*.entitlements) \
 	$(wildcard Sources/*/*.xcstrings)
 
 Skid.xcodeproj: $(PROJECT_INPUTS)
