@@ -16,17 +16,21 @@ public struct TrackLibraryBook: Equatable, Sendable, Codable {
 
     /// One track in the library.
     ///
-    /// **Identity is a UUID, never the name.** Two imported tracks will be
-    /// called "Hairpin" sooner or later, and hiscores key on the track id — so a
-    /// rename must not orphan them.
+    /// **The code is the identity.** It is canonical — one track, one code — so
+    /// two people who build the same road independently arrive at the same
+    /// entry, and re-importing something you already have is recognized rather
+    /// than duplicated. There is no separate id to keep in step with it.
     ///
-    /// The name and the dates live HERE, not in the share code: a code carries
+    /// The name and the dates live HERE, not in the code: a code carries
     /// content only, so a signature attests to the road rather than to what one
     /// device happens to call it.
     public struct Entry: Equatable, Sendable, Codable, Identifiable {
-        public var id: UUID
+        /// The share code, **without any signature** — the road itself, so a
+        /// signed and an unsigned share of one track are one entry. The signed
+        /// code, when there is one, is kept alongside for re-sharing.
+        public var id: String
         public var name: String
-        /// The share code — the content, and the source of truth for the track.
+        /// The code as received, signature and all. `id` is its content half.
         public var code: String
         /// Who signed the code this entry was created from, if anyone, and
         /// whether it checked out **at that moment**.
@@ -44,11 +48,11 @@ public struct TrackLibraryBook: Equatable, Sendable, Codable {
         public var updatedAt: Date
 
         public init(
-            id: UUID, name: String, code: String, authorKey: [UInt8]? = nil,
+            name: String, code: String, authorKey: [UInt8]? = nil,
             signatureIsValid: Bool = false, createdAt: Date, importedAt: Date? = nil,
             updatedAt: Date
         ) {
-            self.id = id
+            self.id = TrackCode.contentCode(of: code)
             self.name = name
             self.code = code
             self.authorKey = authorKey
@@ -58,9 +62,10 @@ public struct TrackLibraryBook: Equatable, Sendable, Codable {
             self.updatedAt = updatedAt
         }
 
-        /// The id a compiled `Track` races under, so hiscores keep working
-        /// unchanged — they key on a string, and built-ins keep their slugs.
-        public var trackID: String { id.uuidString }
+        /// The id a compiled `Track` races under. Hiscores key on this, so
+        /// times follow the ROAD: renaming keeps them, and editing the track
+        /// starts fresh — which is honest, since it is no longer the same road.
+        public var trackID: String { id }
 
         /// Whether this entry came from somewhere else.
         public var isImported: Bool { importedAt != nil }
@@ -71,8 +76,13 @@ public struct TrackLibraryBook: Equatable, Sendable, Codable {
         tracks.sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    public func entry(id: UUID) -> Entry? {
+    public func entry(id: String) -> Entry? {
         tracks.first { $0.id == id }
+    }
+
+    /// Whether this code is already in the library, signed or not.
+    public func contains(code: String) -> Bool {
+        entry(id: TrackCode.contentCode(of: code)) != nil
     }
 
     /// Add a track, or replace one with the same id.
@@ -84,7 +94,7 @@ public struct TrackLibraryBook: Equatable, Sendable, Codable {
         }
     }
 
-    public mutating func remove(id: UUID) {
+    public mutating func remove(id: String) {
         tracks.removeAll { $0.id == id }
     }
 
@@ -110,15 +120,11 @@ extension TrackLibraryBook {
     /// a book that already has tracks is left alone, so a second run cannot
     /// duplicate the entry.
     public static func migrating(
-        legacyCode: String?, into book: TrackLibraryBook, id: UUID, now: Date,
-        name: String
+        legacyCode: String?, into book: TrackLibraryBook, now: Date, name: String
     ) -> TrackLibraryBook {
         guard book.tracks.isEmpty, let legacyCode, !legacyCode.isEmpty else { return book }
         var migrated = book
-        migrated.put(
-            Entry(
-                id: id, name: name, code: legacyCode,
-                createdAt: now, updatedAt: now))
+        migrated.put(Entry(name: name, code: legacyCode, createdAt: now, updatedAt: now))
         return migrated
     }
 }
