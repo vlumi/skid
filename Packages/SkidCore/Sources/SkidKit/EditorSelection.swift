@@ -110,6 +110,27 @@ extension CouchGame {
         }
     }
 
+    /// Whether the track can be turned around: only a closed ring has a driving
+    /// direction to flip, so the button greys out rather than refusing a tap.
+    public var editorCanReverseDirection: Bool {
+        guard let layout = editorLayout, layout.pieces.count > 1 else { return false }
+        let walk = layout.walk()
+        return walk.openEnds.isEmpty && walk.failure == nil
+    }
+
+    /// **Turn the track around** — see `TrackLayout.reverseDirection`. The start
+    /// line ends up facing the other way, which is what decides the driving
+    /// direction, and the grid, gates and centerline all follow from the geometry.
+    @discardableResult
+    public func editorReverseDirection() -> Bool {
+        recordingUndo {
+            guard var layout = editorLayout, layout.reverseDirection() else { return false }
+            editorLayout = layout
+            selectionRaw = nil  // every index moved
+            return true
+        }
+    }
+
     /// Whether the selected piece can be removed — so the button can be absent
     /// rather than present and refusing.
     public var editorCanDeleteSelected: Bool {
