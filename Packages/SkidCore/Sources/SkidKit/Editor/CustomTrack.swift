@@ -26,10 +26,27 @@ extension CouchGame {
     }
 
     /// The share code for the custom slot — what you copy out to make a design
-    /// permanent, and what the slot is persisted as.
+    /// permanent, and what the slot is persisted as. Unsigned: this is also the
+    /// undo snapshot's encoding, and signing it would cost a key operation per
+    /// edit.
     public func customTrackCode() -> String? {
         editorLayout.map { TrackCode.encode($0) }
     }
+
+    /// The code to hand to someone else, **signed when a key is available**.
+    ///
+    /// Falls back to the unsigned code rather than failing: an unavailable
+    /// Keychain (or a device that has never signed) should still let you share.
+    /// `signed: false` asks for the short one on purpose — a signature costs
+    /// ~135 characters, which is worth skipping when the link is disposable.
+    public func shareCode(signed: Bool = true) -> String? {
+        guard let layout = editorLayout else { return nil }
+        guard signed, let signer = signingKeys.signer() else { return TrackCode.encode(layout) }
+        return (try? TrackCode.encode(layout, signedBy: signer)) ?? TrackCode.encode(layout)
+    }
+
+    /// What the last pasted code claimed about its author.
+    public var pastedAttribution: TrackAttribution { pastedAttributionRaw }
 
     /// Replace the custom slot from a share code. Returns false if the code is
     /// unreadable, so the editor can say so rather than silently doing nothing.
@@ -43,6 +60,11 @@ extension CouchGame {
         // A different track arrives with no history — undoing back into the
         // previous one would be a surprise, not a convenience.
         clearUndoHistory()
+        // Read once, here — never per render. Verification is cheap but not
+        // free, and the setup picker's compile-per-frame is the cautionary tale.
+        pastedAttributionRaw = TrackAttribution.of(
+            code.trimmingCharacters(in: .whitespacesAndNewlines),
+            myPublicKey: signingKeys.signer()?.publicKey)
         return true
     }
 
