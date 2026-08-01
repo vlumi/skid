@@ -73,6 +73,13 @@ final class AttributionTests: XCTestCase {
         XCTAssertEqual(try TrackCode.decode(signed), try TrackCode.decode(short))
     }
 
+    /// The id the app boots on must be a real built-in. It was
+    /// `"practice-loop"`, which does not exist — masked by `track(id:)`'s
+    /// silent fallback, so the lobby read hiscores for a nonexistent track.
+    func testTheDefaultTrackIDResolves() {
+        XCTAssertNotNil(TrackLibrary.builtin(id: CouchGame(signingKeys: NoSigningKey()).trackID))
+    }
+
     /// With no key available, sharing still works — unsigned.
     func testSharingWithoutAKeyFallsBackToUnsigned() throws {
         let game = CouchGame(signingKeys: NoSigningKey())
