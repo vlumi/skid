@@ -43,23 +43,6 @@ tracks (start line as a piece, canonical codes, the fitting piece), at-grade
 crossings, decals on laid pieces, and the editor overhaul bar its chrome pass.
 What's left:
 
-- [ ] **Primitives in the model, compounds in the code.** Reduce the catalog to a
-      short straight + 45° corners (everything else composes exactly), which buys a
-      checkpoint at a hairpin's apex, removes the variant holes, and shrinks the
-      palette. Compounds survive as *encoding* virtual elements — one id per run,
-      roughly halving the pieces section, better than RLE. Comes with: varint seam
-      indices (today's single byte silently truncates past 255), sparse varint
-      `pos:decalId` decal pairs, two distinct caps (encoded elements vs expanded
-      length — a hairpin is one id but four primitives, and the length must stay
-      under 128 since a seam index addresses a primitive), and "Close it" proposing
-      compound runs rather than single primitives. One format version bump; spec
-      settled in [docs/track-pieces.md](docs/track-pieces.md).
-- [x] **Decal variants on laid pieces.** Select a piece and tap the brush to mark
-      it. Decals are PAINT keyed by piece index in their own code section, not a
-      catalog id per decorated shape — so one arrow serves every geometry present
-      and future, and an undecorated track's code is byte-identical to before.
-      Direction and warning (yellow) arrows ship; they follow the piece's own
-      centerline, so they curve on a curve.
 - [ ] **Catalog beyond road pieces.** More road pieces (the palette is still
       small), plus **decorations**: on-road arrows, trees, buildings, walls
       (scenery + directional markers, not just track segments). Placed in the
@@ -70,13 +53,6 @@ What's left:
       hand-authored tracks and needs to come back as something you place. Not
       perfect circles — rotatable, combinable blobs. Plus surface textures for
       grass and mud eventually (asphalt stays plain gray).
-- [x] **Flexible tracks: start line as a piece, then a fitting piece.** All
-      shipped — see [docs/flexible-tracks-plan.md](docs/flexible-tracks-plan.md).
-      The start line is an ordinary piece (exactly one, anywhere, either
-      direction); `normalized()` gives one track one code; and the **fitting
-      piece** closes gaps the quantized catalog cannot (curve + straight +
-      mirrored curve, free arc angle). Step 3's conversion proved unnecessary —
-      no format change, and every track already anchored at its start line.
 
 - [ ] **Jumps in the compiler** (crossings are DONE). Crossings shipped as
       IMPLICIT — nothing declared, flagged or encoded. A segment pair may share
@@ -132,12 +108,6 @@ What's left:
 - [ ] **A real track library.** Many named tracks with stable identity (UUID),
       not one "My track" slot — plus import by link/QR, and signing so a shared
       track carries its author. See docs/track-pieces.md for the settled plan.
-- [ ] **Carousel polish** (parked mid-round; it works, it just isn't nice yet).
-      Two known faults: the motion isn't smooth, and **both carousels share one
-      `dragOffset`**, so dragging the corner group visibly slides the straight too
-      (its value doesn't change — the settle logic is per-carousel — but it moves).
-      The state has to be per-carousel, and the animation wants a proper
-      interactive spring rather than a spring applied only to the settled index.
 - [ ] **The editor overhaul — step 7 only** (chrome relocations). Steps 1–6 have
       shipped; the plan and every settled decision are in
       [docs/editor-overhaul-plan.md](docs/editor-overhaul-plan.md).
@@ -165,6 +135,7 @@ What's left:
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
+
 ## v0.7.0 — Platforms & input
 
 The game only runs one way on one kind of device: portrait, on a phone, driven
