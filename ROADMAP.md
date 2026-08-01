@@ -37,8 +37,10 @@ editor with a small piece catalog is the answer, and its data becomes the
 sharing format. Design settled — see [docs/track-pieces.md](docs/track-pieces.md).
 
 Most of this milestone has landed: the piece model, the editor, share codes,
-continuous-height bridges, and the built-ins rebuilt from pieces (the old
-free-form `TrackDesign` path is gone, so there is now exactly one track engine).
+continuous-height bridges, the built-ins rebuilt from pieces (the old free-form
+`TrackDesign` path is gone, so there is now exactly one track engine), flexible
+tracks (start line as a piece, canonical codes, the fitting piece), at-grade
+crossings, decals on laid pieces, and the editor overhaul bar its chrome pass.
 What's left:
 
 - [ ] **Primitives in the model, compounds in the code.** Reduce the catalog to a
@@ -52,9 +54,12 @@ What's left:
       under 128 since a seam index addresses a primitive), and "Close it" proposing
       compound runs rather than single primitives. One format version bump; spec
       settled in [docs/track-pieces.md](docs/track-pieces.md).
-- [ ] **Decal variants on laid pieces.** Long-press a piece already on the track to
-      cycle its decal variants, rather than choosing a variant when placing. Needs
-      the decal section above.
+- [x] **Decal variants on laid pieces.** Select a piece and tap the brush to mark
+      it. Decals are PAINT keyed by piece index in their own code section, not a
+      catalog id per decorated shape — so one arrow serves every geometry present
+      and future, and an undecorated track's code is byte-identical to before.
+      Direction and warning (yellow) arrows ship; they follow the piece's own
+      centerline, so they curve on a curve.
 - [ ] **Catalog beyond road pieces.** More road pieces (the palette is still
       small), plus **decorations**: on-road arrows, trees, buildings, walls
       (scenery + directional markers, not just track segments). Placed in the
@@ -65,33 +70,31 @@ What's left:
       hand-authored tracks and needs to come back as something you place. Not
       perfect circles — rotatable, combinable blobs. Plus surface textures for
       grass and mud eventually (asphalt stays plain gray).
-- [ ] **Flexible tracks: start line as a piece, then a fitting piece.** The
-      quantized catalog cannot close a loop that mixes axis-aligned and diagonal
-      straights — the integer and √2 parts of the gap must both reach zero, and
-      straight lengths are the only knobs, which turns designing into solving
-      simultaneous equations. Plan in
-      [docs/flexible-tracks-plan.md](docs/flexible-tracks-plan.md): the start
-      line becomes an ordinary piece (exactly one, anywhere, either direction),
-      encoding gets a canonical normalization, and then a **fitting piece** — curve + straight + curve, radius from the
-      existing three, arc angle free — closes what the catalog can't. Steps 1–3
-      are worth doing on their own merits.
-- [ ] **Crossings and jumps in the compiler.** The catalog has the geometry and
-      the editor has the buttons hidden; the Phase-A compiler can't build either
-      yet. Crossings are DESIGNED — see
-      [docs/crossing-plan.md](docs/crossing-plan.md): crossings are IMPLICIT.
-      Nothing is declared, flagged or placed — draw a road across a road, and
-      steep same-height overlap is legal while shallow overlap stays refused.
-      Nothing stored (deletion cannot dangle), zero encoding, no editor
-      controls; a pinched )( eight works since the rule never asks what shape
-      a piece is; rendering verified correct from the existing paint order
-      alone, and the angle threshold is what keeps zones small enough for
-      kerbs/walls/decals to stay tractable. Ground level only at first (flat
-      pieces have no rails, so no wall problem). Remaining engine work: the
-      per-sample rule itself, a heading-alignment tiebreak for the resolver in
-      the shared zone, and keeping gate seams out of the zone — owed before or
-      during the editor overhaul, since mid-track deletion interacts with it.
-      Square-ish junctions and the resolver tiebreak are now DONE; gate seams
-      inside the zone are still permitted, pending whether it bites in practice.
+- [x] **Flexible tracks: start line as a piece, then a fitting piece.** All
+      shipped — see [docs/flexible-tracks-plan.md](docs/flexible-tracks-plan.md).
+      The start line is an ordinary piece (exactly one, anywhere, either
+      direction); `normalized()` gives one track one code; and the **fitting
+      piece** closes gaps the quantized catalog cannot (curve + straight +
+      mirrored curve, free arc angle). Step 3's conversion proved unnecessary —
+      no format change, and every track already anchored at its start line.
+
+- [ ] **Jumps in the compiler** (crossings are DONE). Crossings shipped as
+      IMPLICIT — nothing declared, flagged or encoded. A segment pair may share
+      tarmac where both stretches are at the same height AND their lines meet at
+      ≥ 45°; shallow overlap stays refused. The height half is load-bearing: the
+      angle test alone permitted a road crossing a RAMP, which is a solid
+      embankment. Shipped with a heading-alignment tiebreak for the resolver in
+      the shared zone (measured 1606 units of arc jump per tick before, 14.7
+      after). Design and the rejected alternatives are in
+      [docs/crossing-plan.md](docs/crossing-plan.md).
+
+      Still open on crossings: gate seams inside a shared zone are permitted,
+      pending whether it bites in practice. Elevated crossings are out of scope
+      until someone wants a double-decker junction (two decks crossing would each
+      throw a rail across the other's lane).
+
+      JUMPS remain: the catalog has the geometry and the editor has the buttons
+      hidden, but the compiler cannot build them.
 
       A CROSSING is cheap, and worth doing when the pieces are: the route stays
       one closed ring (a track already crosses itself wherever a bridge does),
@@ -142,45 +145,30 @@ What's left:
       (its value doesn't change — the settle logic is per-carousel — but it moves).
       The state has to be per-carousel, and the animation wants a proper
       interactive spring rather than a spring applied only to the settled index.
-- [ ] **The editor overhaul.** Planned — see
-      [docs/editor-overhaul-plan.md](docs/editor-overhaul-plan.md), which
-      absorbs and settles everything this entry used to debate. In one line
-      each: selection is a piece with arrows at its free ends; build from
-      either end; open chains delete at their ends, closed rings delete
-      anywhere (rotate-then-pop — the surviving geometry stays put by
-      construction, the payoff of the flexible-track groundwork that already
-      shipped); gating becomes an edit MODE with gates highlighted; variants
-      are applied in place by long-press (the start line's facing first,
-      decals when they land; pitch-in-place explicitly disallowed); undo with
-      a long history; the closure control, complete chip and delete icon all
-      move. Crossings ([docs/crossing-plan.md](docs/crossing-plan.md)) land
-      first, so mid-track deletion is exercised against them.
-- [x] **Wall contact needs mass, and a cost.** The bounce off a barrier is too
-      harsh and the car reads as weightless — worst on GLANCING hits, which
-      should scrub along the wall and instead kick out.
+- [ ] **The editor overhaul — step 7 only** (chrome relocations). Steps 1–6 have
+      shipped; the plan and every settled decision are in
+      [docs/editor-overhaul-plan.md](docs/editor-overhaul-plan.md).
 
-      **The mechanism:** the whole normal component is reflected with
-      `wallRestitution` (0.45); the tangential component is untouched and no yaw
-      is applied. So a shallow hit converts sideways speed into an outward shove
-      with no scrape, and — the other half of the problem — **no loss along the
-      wall at all**.
+      Done: one mutation API remapping `gateSeams`/`fitters`/`pitches`/`decals`
+      together (identity, not index); prepend and delete-anywhere-on-a-ring
+      (rotate-then-pop, so the surviving road stays put by construction); undo
+      and redo over encoded snapshots; gating as its own MODE, which resolved the
+      seam-tap vs piece-tap conflict outright; piece selection, with delete on
+      the selection and the build end as a property of the selected end; and
+      in-place decal variants.
 
-      **What it should feel like** (maintainer's spec):
-      - **Dragging along walls must not be the best strategy.** Contact should
-        cost enough speed that avoiding walls is the faster line. That means
-        real friction along the wall, which today is entirely absent.
-      - **A glancing hit should point the nose the right way** — a yaw response,
-        so the car pivots along the wall rather than skipping off it.
-      - **A hard enough glancing hit should be able to stop the car outright.**
-      - **Some bounce on harsh (near head-on) collisions is fine** — keep that;
-        it is only the shallow case that misbehaves.
+      Left: **step 7**, the chrome — where the closure control lands, the "track
+      complete" chip out of the button column. Explicitly a decide-on-device
+      step, once everything above has been driven.
 
-      Restitution scaled by approach angle covers the last two: full bounce
-      head-on, nearly none when parallel.
+      Also still open from step 6: the **start line's facing**. The plan is clear
+      it belongs in the COMPILER (emit the lowered centerline reversed, gates in
+      reversed seam order with flipped forwards, the grid on the other side of
+      the line) — NOT a reversed piece list, since the same loop driven the other
+      way is a different track. It also needs a left/right mirror mapping the
+      catalog does not have, and the UI's up/down and left/right want reversing
+      when building from the head.
 
-      Reported from device 2026-07-30, after the tunnelling fix (#99) — that fix
-      changed which SIDE the car is put back on, not the bounce strength, so this
-      is pre-existing and not a regression from it.
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
