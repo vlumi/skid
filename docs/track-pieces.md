@@ -387,29 +387,32 @@ unsaveable, never a crash.
 
 ## Compile
 
-`origin + [PieceID] + gate seams → Track`, directly — and this is now the only
-track compiler, since the hand-authored `TrackDesign` path and its bundled JSON
-were deleted once the built-ins became share codes:
+`origin + [PieceID] + gate seams → Track`, directly, and this is the only track
+compiler — the hand-authored path and its bundled JSON were deleted once the
+built-ins became share codes.
 
 1. Walk the graph from the **stored origin pose** with exact coordinates.
 2. Emit the centerline: straights as segment endpoints, arcs sampled at the
-   existing ≤ 6°/segment convention; lower to `Vec2` here.
-3. Mark layer-1 stretches as `elevatedSegments`; emit `Ramp`s at ramp-piece
-   seams (up = launches).
-4. Emit `Gate`s at marked seams (cross-section of the road there), start
-   slots via `startGrid`.
-5. The track's `size` **is the fixed canvas** — the layout sits wherever the
-   author put it, leaving deliberate room for decorations. ("Center on
-   canvas" is an editor convenience that adjusts the origin, not a compile
-   step.)
+   ≤ 6°/segment convention; lower to `Vec2` here.
+3. Emit a **height per centerline point** (and `deckTops`, the top of the piece
+   each point belongs to), plus `Ramp`s at ramp seams. Height is continuous —
+   see "Height, ramps, bridges"; there is no per-segment layer.
+4. Emit `Gate`s at marked seams (cross-section of the road there), start slots
+   via `startGrid`, and the walls — deck rails, ramp embankments, boundary
+   fence.
+5. **Re-frame onto the track's own footprint**: `size` becomes the extent the
+   track actually occupies and the geometry shifts to start at the origin,
+   with `layoutOffset` recording the shift so layout-space drawing still
+   matches. Reporting the whole canvas instead drew every piece-built track at
+   the scale of the largest *permitted* one, shoved off to a corner.
 
-Compilation lands in the two phases from "Beyond the ring": **Phase A**
-compiles rings + crossings + jumps onto today's single-centerline `Track`
-(wall clipping at crossing mouths, no-flip launch); **Phase B** teaches
-`Track` multiple routes and the AI a branch choice before fork pieces
-compile. Built-ins migrate to this model **only if** the forcing-function
-rebuild proves the catalog expressive enough — decided with the editor in
-hand, per the roadmap.
+Forks are the one thing this can't compile: they need a multi-route `Track` and
+an AI that chooses a branch, so `PieceCompiler` rejects fork pieces
+(`forkNotSupportedInPhaseA`). See "Beyond the ring". Crossings compile today;
+jumps have catalog geometry but no compiler support yet.
+
+**The built-ins did migrate** — all four are share codes in `TrackLibrary`, so
+the catalog proved expressive enough.
 
 ## Primitives in the model, compounds in the code
 
@@ -518,7 +521,21 @@ then TLV sections, each: 1 byte tag · 1 byte length · payload
                  the start line's pose on the canvas)
   tag 4  THEME   payload = u8: 0 normal · 1 snow · 2 sand   (optional,
                  default normal — anticipated now, rendered later)
+  tag 5  HEIGHT  payload = i8, the baseline in HALF levels   (optional,
+                 omitted at ground level)
+  tag 6  FITTERS payload = 8 bytes each: piece index, radius (optional)
+                 index + side, angle and middle as fixed point
+  tag 7  DECALS  payload = 2 bytes each: piece index, decal  (optional)
 ```
+
+Optional sections are **omitted entirely** when empty, so adding one costs
+nothing for tracks that don't use it, and unknown tags are **skipped by
+length** — a decoder tolerates sections it doesn't know. Nothing is
+positional: encode writes `1,2,3,4,6,7,5`, out of numeric order.
+
+Gate seams are written **ascending**; order carries no meaning (a lap collects
+them all), so letting it reach the bytes meant one track could have two codes.
+`TrackLayout` enforces the sort, since a code is used as an identity.
 
 **Piece ids are varints**: ids 0–127 encode as one byte; a set high bit
 means a two-byte id (`((b0 & 0x7F) << 8) | b1`, 15-bit space, ~32k ids).
@@ -543,10 +560,12 @@ QR byte capacities at M error correction):
 
 | track | bytes | code chars | URL chars | QR fits in |
 |---|---:|---:|---:|---|
-| small (12 pieces, 4 gates) | 29 | 39 | 65 | V5 (84 B) |
-| typical (20 pieces, 4 of them decals, 6 gates, themed) | 46 | 62 | 88 | V6 (106 B) |
+| *measured:* Small track / Big oval | 24 | 32 | 58 | V4 (62 B) |
+| *measured:* Eight | 27 | 36 | 62 | V5 (84 B) |
+| *measured:* Clover (47 pieces) | 44 | 59 | 85 | V6 (106 B) |
+| signed (+ PUBKEY 34 B + SIG 66 B) | 124–144 | 166–192 | 192–218 | V8 (152 B) |
 | excessive (64 pieces, 8 decals, 16 gates, themed) | 104 | 139 | 165 | V9 (180 B) |
-| future: excessive + ~60 B of decorations | ~164 | ~219 | ~245 | V11 (251 B) |
+| excessive, signed | 204 | 272 | 298 | V10 (213 B) |
 
 Even the worst case with a future decoration layer sits in a mid-size,
 easily scannable QR. **Keep this table honest as sections are added** — the
@@ -746,23 +765,42 @@ The custom slot in the setup picker is the first step; the shape it grows into:
   "pick a new name" gate before you can start.
 - **The share code stays pure content.** It carries pieces, gates, origin and
   theme — deliberately no id, because the receiving device mints its own UUID
-  on import. The *name* travels alongside as a new optional TLV section
-  (tag 5 `NAME`), which the budget table already has room for.
+  on import.
+- **The name stays local, not in the code.** A signed code attests to exact
+  bytes, so a name inside it could not be renamed on import — and duplicate
+  imported names are guaranteed. It is also the only variable-length section,
+  which is what would make `appendSection`'s 255-byte ceiling reachable. When
+  import-by-link lands, a name can ride as an unsigned URL query parameter:
+  renameable, and free when omitted.
 
-**Signed tracks** *(wanted; sizing decided, not built)*. Each device holds an
-Ed25519 keypair in the Keychain with `kSecAttrSynchronizable` so it follows
-the user's iCloud, and a published track carries author + signature (tags 6
-`AUTHOR`, 7 `SIG`). What that buys is **attribution**, not integrity against a
-malicious sharer — anyone can strip a signature and re-sign as themselves,
-because nothing vouches for which key is whom. Useful for "by *author*" and
-for keying hiscores by (track, author); not an anti-cheat mechanism.
+**Signed tracks** *(decided, not built)*. Each device holds an Ed25519 keypair
+in the Keychain with `kSecAttrSynchronizable`, so identity follows the user's
+iCloud. A published track carries two sections at the **top of the tag range** —
+`PUBKEY = 254` (a 32-byte raw public key, strictly that length) and
+`SIG = 255`.
 
-The catch is the **QR budget**: 32-byte key + 64-byte signature = 96 B, which
-roughly triples a typical 46 B track and pushes the worst case past the V11
-ceiling the format promises to stay inside. So signing is an **optional
-section**, not mandatory: bare codes stay QR-sized, signatures ride along on
-links (or on a truncated 32-byte signature, which is ample for attribution).
-Keep the budget table honest when it lands.
+High tags on purpose: a tag is a `UInt8` with no range check and unknown tags
+skip by length, so 254 costs exactly what 8 costs. Reserving the top for
+**envelope** sections keeps the low contiguous range for **content**, where the
+catalog keeps growing, and `SIG = 255` reads as the last thing in the record.
+It is named PUBKEY rather than AUTHOR because it holds a key, not a name — and
+real author names arrive with profiles in v0.9.
+
+**SIG must be the last record**, enforced at parse, and the signature covers the
+body minus its own record — located by tag, not by a fixed byte count, so the
+signature size is not frozen into the format. Verification runs over the
+*received* bytes, never a re-encode: `parseSections` discards order, so a
+reordered blob would re-encode canonically and wrongly verify.
+
+What this buys is **attribution**, not integrity against a malicious sharer:
+anyone can strip a signature and re-sign as themselves, because nothing vouches
+for which key is whom. Useful for "by *author*" and for keying hiscores by
+(track, author); not anti-cheat.
+
+**The QR budget is comfortable** — measured, not estimated. Real tracks are
+24–44 B, so +100 B of envelope lands them at 120–140 B ≈ 186–216 URL chars,
+inside QR V8/V9; even a 64-piece worst case stays within V11. Full Ed25519 fits,
+so there is no reason to truncate the signature.
 
 ## Open until wired up
 
@@ -775,7 +813,8 @@ Keep the budget table honest when it lands.
   per-port grip widths, outboard kerb band, per-edge kerb styling (red/white
   on curve outers vs. plain white on straights — renderer styling keyed off
   piece kind + side, a decal, not geometry).
-- The **canvas constant** (ties to the ~1.2:1 taller-aspect convention;
-  likely ~1600×1333) — fixed per format version once chosen.
 - Gate-span shape at seams on tight curves (cross-section may need a nudge).
-- Built-ins: migrate vs. stay free-form — after the rebuild experiment.
+
+Settled since this list was written: the **canvas constant** is 1600×1333
+(`TrackValidator.canvas`), and the **built-ins did migrate** — all four are
+share codes, so the catalog proved expressive enough.
