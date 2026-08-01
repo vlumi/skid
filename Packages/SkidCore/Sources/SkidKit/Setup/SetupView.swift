@@ -63,7 +63,7 @@ struct SetupView: View {
                 // The custom slot: one permanent place for your own design,
                 // raced with the full setup (players, AI, laps) like any
                 // built-in. Only selectable once it compiles to a real track.
-                customTrackChoice
+                customTrackChoices
             }
 
             if game.mode == .race {
@@ -278,36 +278,41 @@ struct SetupView: View {
         }
     }
 
-    /// The custom-track slot. Disabled until the editor's design is a valid,
-    /// closed track — so it can't be selected into a race that won't work.
-    @ViewBuilder private var customTrackChoice: some View {
-        let ready = game.customTrack() != nil
-        let selected = game.trackID == CouchGame.customTrackID
-        Button {
-            game.trackID = CouchGame.customTrackID
-        } label: {
-            Text("My track", bundle: .module)
-                .font(.callout.bold())
-                .padding(.horizontal, 18)
-                .padding(.vertical, 9)
-                .background(
-                    selected ? Color.white.opacity(0.9) : .black.opacity(0.25), in: Capsule()
-                )
-                .foregroundStyle(selected ? .black : .white.opacity(ready ? 1 : 0.35))
+    /// Your own tracks, newest first.
+    ///
+    /// Only the raceable ones appear — an unfinished ring in the editor is not
+    /// a choice, and greying out every draft would be noise. Raceability is read
+    /// from the entry, never recompiled: this used to ask `customTrack() != nil`
+    /// per render, which compiled the layout every frame.
+    @ViewBuilder private var customTrackChoices: some View {
+        ForEach(game.library.raceable) { entry in
+            choice(
+                Text(entry.name), selected: game.trackID == entry.trackID,
+                badge: entry.signatureIsValid ? "seal" : nil
+            ) {
+                game.trackID = entry.trackID
+            }
         }
-        .disabled(!ready)
     }
 
-    private func choice(_ label: Text, selected: Bool, action: @escaping () -> Void) -> some View {
+    /// `badge` marks a track that arrived signed — the verdict is read from the
+    /// entry, computed once at import.
+    private func choice(
+        _ label: Text, selected: Bool, badge: String? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
-            label
-                .font(.callout.bold())
-                .padding(.horizontal, 18)
-                .padding(.vertical, 9)
-                .background(
-                    selected ? Color.white.opacity(0.9) : .black.opacity(0.25), in: Capsule()
-                )
-                .foregroundStyle(selected ? .black : .white)
+            HStack(spacing: 5) {
+                label
+                if let badge { Image(systemName: badge).font(.caption2) }
+            }
+            .font(.callout.bold())
+            .padding(.horizontal, 18)
+            .padding(.vertical, 9)
+            .background(
+                selected ? Color.white.opacity(0.9) : .black.opacity(0.25), in: Capsule()
+            )
+            .foregroundStyle(selected ? .black : .white)
         }
     }
 

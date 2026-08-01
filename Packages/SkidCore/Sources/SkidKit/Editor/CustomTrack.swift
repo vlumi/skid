@@ -11,8 +11,20 @@ extension CouchGame {
     /// A custom slot that isn't a valid track falls back rather than refusing
     /// to start (the setup picker already grays it out in that state).
     func selectedTrack() -> Track {
-        guard trackID == Self.customTrackID else { return TrackLibrary.track(id: trackID) }
-        return customTrack() ?? TrackLibrary.all[0]
+        if let builtin = TrackLibrary.builtin(id: trackID) { return builtin }
+        if let mine = libraryTrack(id: trackID) { return mine }
+        // The legacy slot, for a build that raced it before the library existed.
+        if trackID == Self.customTrackID, let slot = customTrack() { return slot }
+        return TrackLibrary.all[0]
+    }
+
+    /// Compile one of your own tracks. Nil if the entry is gone or no longer
+    /// compiles — the caller falls back rather than refusing to start.
+    func libraryTrack(id: String) -> Track? {
+        guard let entry = library.entry(id: id),
+            let layout = try? TrackCode.decode(entry.code)
+        else { return nil }
+        return try? PieceCompiler.compile(layout, id: entry.trackID)
     }
 
     /// The track id the custom slot races under.
@@ -55,17 +67,46 @@ extension CouchGame {
         guard
             let layout = try? TrackCode.decode(code.trimmingCharacters(in: .whitespacesAndNewlines))
         else { return false }
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Read once, here — never per render. Verification is cheap but not
+        // free, and the setup picker's compile-per-frame is the cautionary tale.
+        pastedAttributionRaw = TrackAttribution.of(
+            trimmed, myPublicKey: signingKeys.signer()?.publicKey)
+        // File it BEFORE assigning the layout. That assignment mirrors the
+        // editor into the library, and it only has the plain re-encode to work
+        // from — so importing after it would overwrite the signed code and its
+        // author with an unsigned copy of the same road.
+        importIntoLibrary(code: trimmed, layout: layout)
         // Canonical in memory, matching its code — see `finishIfClosed`.
         editorLayout = layout.normalized()
         // A different track arrives with no history — undoing back into the
         // previous one would be a surprise, not a convenience.
         clearUndoHistory()
-        // Read once, here — never per render. Verification is cheap but not
-        // free, and the setup picker's compile-per-frame is the cautionary tale.
-        pastedAttributionRaw = TrackAttribution.of(
-            code.trimmingCharacters(in: .whitespacesAndNewlines),
-            myPublicKey: signingKeys.signer()?.publicKey)
         return true
+    }
+
+    /// File an arriving track under its own row, keeping the SIGNED code so it
+    /// can be passed on intact, and recording who signed it.
+    ///
+    /// A track that is already in the library keeps the row it has — including
+    /// the name you gave it. Arriving again is not a reason to rename it.
+    private func importIntoLibrary(code: String, layout: TrackLayout) {
+        guard !library.contains(code: code) else { return }
+        let signature = TrackCode.signature(of: code)
+        var book = library
+        book.put(
+            TrackLibraryBook.Entry(
+                name: String(localized: "Imported track", bundle: .module),
+                code: code,
+                authorKey: signature?.publicKey,
+                signatureIsValid: signature?.isValid ?? false,
+                isRaceable: (try? PieceCompiler.compile(layout)) != nil,
+                createdAt: Date(), importedAt: Date(), updatedAt: Date()))
+        library = book
+        // The editor now works on the imported row, so the first edit replaces
+        // it rather than leaving the import behind as a stray.
+        editedEntryID = TrackCode.contentCode(of: code)
+        saveLibrary()
     }
 
     static let customTrackKey = "skid.editor.customTrack"
@@ -121,6 +162,7 @@ extension CouchGame {
             TrackLibraryBook.Entry(
                 name: previous?.name ?? String(localized: "My track", bundle: .module),
                 code: code,
+                isRaceable: (try? PieceCompiler.compile(layout)) != nil,
                 createdAt: previous?.createdAt ?? Date(),
                 importedAt: previous?.importedAt,
                 updatedAt: Date()))

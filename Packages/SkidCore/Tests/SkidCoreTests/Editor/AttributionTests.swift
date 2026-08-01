@@ -15,7 +15,15 @@ final class AttributionTests: XCTestCase {
     private let theirs = InMemorySigningKey()
 
     private func game() -> CouchGame {
-        CouchGame(signingKeys: FixedStore(key: mine))
+        CouchGame(signingKeys: FixedStore(key: mine), libraryFilename: "test-\(UUID()).json")
+    }
+
+    /// `CouchGame()` reads the REAL UserDefaults, so a slot left by another test
+    /// migrates into the library at init and the counts here become whatever ran
+    /// first. Same hazard `TuningWireTests` documents for `@AppStorage`.
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.removeObject(forKey: "skid.editor.customTrack")
     }
 
     private var layout: TrackLayout {
