@@ -81,7 +81,19 @@ public enum TrackCode {
         case pubkey = 254
         /// The signature, over everything before it. Must be the LAST record.
         case sig = 255
+
+        /// Whether this section describes the ROAD, as opposed to who shared it
+        /// or what they call it.
+        ///
+        /// The split is the tag range itself, not a list to keep in step: the
+        /// low contiguous range is content, the top is envelope. A new envelope
+        /// section is therefore excluded from a track's identity by default,
+        /// which is the safe direction to fail.
+        var isContent: Bool { rawValue < firstEnvelopeTag }
     }
+
+    /// Where the envelope range starts. Content sections live below it.
+    static let firstEnvelopeTag: UInt8 = 128
 
     // MARK: - Encode
 

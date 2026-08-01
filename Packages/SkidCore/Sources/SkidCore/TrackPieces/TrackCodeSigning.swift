@@ -74,6 +74,36 @@ extension TrackCode {
         return Signature(publicKey: key, isValid: valid)
     }
 
+    /// **A track's identity: the CONTENT sections only.**
+    ///
+    /// The road, and nothing about who shared it or what they call it — so a
+    /// signed and an unsigned share of one track are one track, and re-importing
+    /// something you already have is recognized rather than duplicated.
+    ///
+    /// Built by KEEPING content records rather than by stripping known envelope
+    /// ones: a future envelope section is then excluded automatically, instead
+    /// of silently forking the identity until someone remembers to exclude it.
+    /// An unknown tag is treated as content if it sits in the content range,
+    /// since that is where content lives.
+    ///
+    /// Byte-level, no decode and no re-encode, so it cannot disagree with what
+    /// the bytes actually say.
+    public static func contentCode(of code: String) -> String {
+        guard let blob = base64urlDecode(code), blob.count >= 2 else { return code }
+        var content: [UInt8] = []
+        var index = 2
+        while index + 2 <= blob.count {
+            let length = Int(blob[index + 1])
+            let stop = index + 2 + length
+            guard stop <= blob.count else { return code }
+            if blob[index] < firstEnvelopeTag {
+                content.append(contentsOf: blob[index..<stop])
+            }
+            index = stop
+        }
+        return finish(content)
+    }
+
     /// The SIG record and the bytes it covers — everything before it.
     ///
     /// Located **by tag**, walking the records, rather than by slicing a fixed
