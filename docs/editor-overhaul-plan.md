@@ -34,10 +34,15 @@ retrofitted underneath it.
   everything downstream anyway; delete and rebuild is honest).
 - **Variants are applied in place, by long-press.** Decals go onto *laid*
   pieces (a 1:1 id swap — same geometry, different paint), not into the
-  palette as pre-decaled pieces that would multiply it. The **start line's
-  facing** is the first such variant: long-press the start piece, pick the
-  direction. That is also the *only* reversal mechanism — there is no
-  whole-track reverse operation.
+  palette as pre-decaled pieces that would multiply it.
+- **Reversal is a whole-track transform, not a start-line variant.** This plan
+  originally routed it through a long-press on the start piece, with the
+  compiler honouring a facing flag. Reversing the LAYOUT turned out to be both
+  simpler and less invasive: mirror the pieces, run the list backwards, invert
+  the pitches. The compiler already derives the centerline, the gate order and
+  the grid from the walked pieces, so all three follow for free and nothing
+  downstream learns a new concept. It sits with rotate and raise/lower, which
+  are the same class of operation.
 - **Gating becomes an edit mode**, with gates substantially highlighted while
   it is active. This resolves the seam-tap vs piece-tap conflict outright:
   seam taps toggle checkpoints only in gate mode; piece taps select only in
@@ -116,21 +121,31 @@ taps toggle checkpoints. Outside it, seam taps do nothing and piece taps
 select. The existing gate tap logic (bar hit-testing, near-tie rules) moves
 behind the mode unchanged.
 
-## 6. In-place variants: long-press
+## 6. Reversing the driving direction — DONE
 
-Long-press a laid piece opens a variant picker. First occupant: the **start
-line's facing** (two directions). Decals join when they land, as 1:1 id swaps.
+A whole-track button, next to rotate and raise/lower. `reverseDirection()`
+mirrors every piece, runs the list backwards and inverts every pitch; the
+origin moves to the old ring's last exit, reversed. Gates, fitters and decals
+remap with their pieces.
 
-The start-facing variant has a model consequence the UI must not hide: the
-compiled track must come out in the *driving direction the start line faces* —
-a reversed facing means the compiler emits the lowered centerline reversed,
-gates in reversed seam order with flipped forwards, and the grid on the other
-side of the line. The AI, arc position and standings all follow the centerline
-direction, so they come along for free once the compiler emits it.
+The start line moves to the **other end of the start piece** — it is that
+piece's exit by definition (`TrackValidator.gatesValid` keys the finish to that
+index), and driving the other way you cross the start piece from its far side.
+The grid, the gate order and the centerline then follow the walk with no
+compiler change at all.
 
-**Test.** The AI laps a reversed-facing track; a reversed-facing code differs
-from the forward code (already pinned by the normalization tests); grid slots
-sit behind the line relative to travel in both facings.
+Refused on an open chain (nothing has settled a direction yet) and on any piece
+without an exact mirror — the same exact-or-nothing rule the rest of the model
+keeps. `normalized()` deliberately does not normalize reversal away, so the two
+spellings stay distinct codes.
+
+**Tested,** each part confirmed by sabotage: the road doesn't move, the track
+still validates, the direction flips, the AI laps it, reversing twice is the
+identity, it's undoable, an open chain is refused, and grid slots sit behind
+the line in both facings.
+
+Still open from this step: a long-press variant picker (for deleting and
+reassigning the start line), which reversal no longer depends on.
 
 ## 7. Chrome relocations
 

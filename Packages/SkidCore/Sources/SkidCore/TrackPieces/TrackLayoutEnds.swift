@@ -63,6 +63,70 @@ extension TrackLayout {
         return true
     }
 
+    /// **Turn a closed ring around** — the same road, driven the other way.
+    ///
+    /// The list runs backwards, every piece becomes its mirror (a left turn driven
+    /// one way is a right turn driven the other), and every pitch inverts (a climb
+    /// becomes a descent). The origin moves to what is now the first piece's entry,
+    /// which is the old ring's last exit, reversed.
+    ///
+    /// Done on the LAYOUT rather than as a flag the compiler honours — which is what
+    /// the overhaul plan originally sketched. The compiler already derives the
+    /// centerline, the gate order and the grid from the walked pieces, so a reversed
+    /// ring gives all three at once and nothing downstream needs to know.
+    ///
+    /// Refused on an open chain: a track still being drawn has no settled driving
+    /// direction, and reversing one would move the loose end the author is working
+    /// at. Refused too if any piece has no exact mirror, rather than reshaping the
+    /// road — the same exact-or-nothing rule the rest of the model keeps.
+    ///
+    /// A reversed track is a DIFFERENT track: `normalized()` deliberately does not
+    /// normalize reversal away, so the two spellings keep distinct codes.
+    @discardableResult
+    public mutating func reverseDirection() -> Bool {
+        let walk = self.walk()
+        guard walk.openEnds.isEmpty, walk.failure == nil, pieces.count > 1 else {
+            return false
+        }
+        let count = pieces.count
+        // Mirrored, in reverse order. Index i of the new list is old index
+        // count-1-i, which is the remap every keyed field below follows.
+        var flipped: [PieceID] = []
+        for id in pieces.reversed() {
+            guard let mirror = PieceCatalog.mirrored[id] else { return false }
+            flipped.append(mirror)
+        }
+        let flippedPitches = (0..<count).map { index -> Pitch in
+            switch pitch(at: count - 1 - index) {
+            case .flat: return .flat
+            case .up: return .down
+            case .down: return .up
+            }
+        }
+        // The new first piece is the old last one, entered from its own exit —
+        // the ring's own geometry, so this stays exact.
+        guard let last = walk.placed.last, let exit = last.exits.first else { return false }
+
+        pieces = flipped
+        pitches = Self.trimmedPitches(flippedPitches)
+        origin = PiecePose(position: exit.position, heading: exit.heading.reversed)
+        originHeight = last.exitHeight
+        // Keyed data follows its piece to the mirrored index.
+        //
+        // Seams reverse with their pieces. A seam is a piece's EXIT, and the start
+        // line is the start PIECE's exit by definition (`TrackValidator.gatesValid`
+        // keys the finish to that index), so reversing genuinely moves the painted
+        // line to the other end of the start piece. That is the correct reading: the
+        // line marks where a lap ends, and driving the other way you cross the start
+        // piece from its far side.
+        gateSeams = gateSeams.map { count - 1 - $0 }.sorted()
+        fitters = Dictionary(
+            uniqueKeysWithValues: fitters.map { (count - 1 - $0.key, $0.value) })
+        decals = Dictionary(
+            uniqueKeysWithValues: decals.map { (count - 1 - $0.key, $0.value) })
+        return true
+    }
+
     /// **Remove any piece from a closed ring**, opening it at the cut.
     ///
     /// Rotate the victim to the end, then pop it: rotation re-spells the ring
