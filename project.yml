@@ -18,14 +18,17 @@ targets:
     sources:
       - path: Sources/iOS
       - path: Sources/Shared
+    entitlements:
+      path: Sources/iOS/Skid.entitlements
     info:
       path: Sources/iOS/Info.plist
       properties:
         CFBundleDisplayName: Skid Jam
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        # No encryption → declare it so every TestFlight/App Store upload skips
-        # the export-compliance prompt.
+        # Ed25519 track signing is authentication, not confidentiality, so the
+        # standard export exemption applies and this stays false — re-checked
+        # when signing landed rather than inherited.
         ITSAppUsesNonExemptEncryption: false
         LSApplicationCategoryType: public.app-category.racing
         # System-default launch screen (plain background) — the track fades in.
