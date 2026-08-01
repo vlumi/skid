@@ -72,7 +72,7 @@ public final class CouchGame: ObservableObject {
     @Published public var schemes: [ControlScheme] = [.casual, .casual, .casual, .casual]
     @Published public var carContact = true
     /// The chosen circuit (a `Track.id` from `TrackLibrary.all`).
-    @Published public var trackID = "practice-loop"
+    @Published public var trackID = TrackLibrary.builtins[0].id
     /// 2P seating: side-by-side vs face-to-face.
     @Published public var faceToFace = false
     /// 3P seating: which quadrant stays open.
