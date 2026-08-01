@@ -1,5 +1,9 @@
 # Flexible tracks: fix plan
 
+> **Shipped in full** (#87–#89, v0.6). Kept for the reasoning and the
+> rejected alternatives; step 3 turned out unnecessary. What the model does
+> *now* is [ARCHITECTURE.md](../ARCHITECTURE.md).
+
 Ordered steps toward tracks that are pleasant to *build*, ending with a fitting
 piece that closes a loop the quantized catalog cannot. Steps 1–3 stand on their
 own and are worth doing whether or not step 4 pans out — that is the point of

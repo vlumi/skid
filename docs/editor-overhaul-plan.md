@@ -1,5 +1,9 @@
 # Editor overhaul: plan
 
+> **Steps 1–6 shipped** (#95–#108, v0.6); only step 7, the chrome pass,
+> is left and it is explicitly decide-on-device. What the editor does *now*
+> is [ARCHITECTURE.md](../ARCHITECTURE.md).
+
 Ordered steps for making the editor edit — both ends, the middle, closed rings
 — instead of only appending to one growing end. Ground rules per step: model
 before UI, failing test first, **measure before asserting**; `swift build` /

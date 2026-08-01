@@ -1,5 +1,10 @@
 # At-grade crossings: design
 
+> **Shipped** (#94, v0.6). Kept for the reasoning and the rejected
+> alternatives. Still open: gate seams inside a shared zone are permitted,
+> parked until it bites. What crossings do *now* is
+> [ARCHITECTURE.md](../ARCHITECTURE.md).
+
 What it takes to let two stretches of road share tarmac at the same height —
 the bridgeless-8 intersection. This decides the model before the editor
 overhaul touches deletion, because "what happens when you delete a crossing"

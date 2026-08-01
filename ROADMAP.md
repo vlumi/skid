@@ -107,9 +107,14 @@ What's left:
 - [ ] **Track size classes.** Bigger canvases for bigger screens: a track
       declares its size, and the oversized ones are iPad/Mac-only. Lets much
       more elaborate courses exist without making them unplayable on a phone.
-- [ ] **A real track library.** Many named tracks with stable identity (UUID),
-      not one "My track" slot — plus import by link/QR, and signing so a shared
-      track carries its author. See docs/track-pieces.md for the settled plan.
+- [ ] **Track signing, then a real track library.** Signing comes first, to see
+      its real impact on the sharing flow: Ed25519 attribution, `PUBKEY = 254`
+      and `SIG = 255` at the top of the tag range, keypair in the iCloud-synced
+      Keychain. Attribution, not integrity — anyone can strip a signature and
+      re-sign as themselves. Then the library: many named tracks with UUID
+      identity, replacing the one "My track" slot, with names kept local rather
+      than in the code. Import by link/QR after that; clipboard works today.
+      See docs/track-pieces.md for the settled decisions.
 - [ ] **The editor overhaul — step 7 only** (chrome relocations). Steps 1–6 have
       shipped; the plan and every settled decision are in
       [docs/editor-overhaul-plan.md](docs/editor-overhaul-plan.md).
@@ -119,20 +124,17 @@ What's left:
       (rotate-then-pop, so the surviving road stays put by construction); undo
       and redo over encoded snapshots; gating as its own MODE, which resolved the
       seam-tap vs piece-tap conflict outright; piece selection, with delete on
-      the selection and the build end as a property of the selected end; and
-      in-place decal variants.
+      the selection and the build end as a property of the selected end;
+      in-place decal variants; and reversing the driving direction.
 
       Left: **step 7**, the chrome — where the closure control lands, the "track
       complete" chip out of the button column. Explicitly a decide-on-device
       step, once everything above has been driven.
 
-      Also still open from step 6: the **start line's facing**. The plan is clear
-      it belongs in the COMPILER (emit the lowered centerline reversed, gates in
-      reversed seam order with flipped forwards, the grid on the other side of
-      the line) — NOT a reversed piece list, since the same loop driven the other
-      way is a different track. It also needs a left/right mirror mapping the
-      catalog does not have, and the UI's up/down and left/right want reversing
-      when building from the head.
+      Also still open from step 6: a **long-press variant picker**, for deleting
+      and reassigning the start line. Reversing the driving direction shipped
+      without it (#108) — as a whole-track transform on the LAYOUT, not the
+      compiler flag this plan sketched.
 
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
