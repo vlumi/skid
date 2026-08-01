@@ -201,26 +201,19 @@ public struct Race: Equatable, Sendable {
         }
         guard !car.state.isAirborne else { return }
 
-        // **Only the road the car is physically standing on may carry it.**
+        // **Only the road the car is physically standing on may carry it** — the
+        // nearest road AT the car's own height, within the real asphalt
+        // half-width, no margin. Off-road the car keeps the height it has.
         //
-        // The question has to be "which road am I on?", not "is there road near
-        // my height?". Asking it the second way is what let a car on the grass
-        // beside a ramp be judged on-road: it sat 60 units from the ground road
-        // but 47 from the ramp, and 47 was inside the generous margin, so it took
-        // the ramp's height, climbed, and arrived on the bridge without ever
-        // driving up anything. Reported as "if I drive under the bridge on grass,
-        // the car appears on the bridge".
+        // Asking "is there road near my height?" instead is what let a car on the
+        // grass beside a ramp be judged on-road: 60 units from the ground road but
+        // 47 from the ramp, inside the old margin, so it took the ramp's height and
+        // arrived on the bridge without driving up anything.
         //
-        // So: find the nearest road AT the car's own height, and require the car
-        // to be within the real asphalt half-width of it — no margin. Anything
-        // else is off-road, and off-road the car keeps the height it has, which on
-        // the ground simply means driving on the grass. (Sitting still on the
-        // grass must not creep upward either; that was the earlier bouncing bug.)
-        // Judged at BOTH ends of this tick's movement: a car must have been on the
-        // road it takes height from. The car moves before this runs, so testing only
-        // where it arrived let it cross from grass onto ramp asphalt within one tick
-        // and inherit the slope — how driving on the grass under the bridge put you
-        // on the bridge (20 of 520 such runs reached the deck).
+        // Judged at BOTH ends of the tick's movement, because the car moves before
+        // this runs: testing only where it arrived let it cross from grass onto
+        // ramp asphalt within one tick and inherit the slope (20 of 520 runs
+        // reached the deck).
         let height = car.state.height
         func onOwnRoad(_ position: Vec2) -> Bool {
             track.distanceToCenterline(position, height: height)

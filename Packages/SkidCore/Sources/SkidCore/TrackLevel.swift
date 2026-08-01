@@ -39,21 +39,15 @@ extension Track {
     public static let reachTolerance = levelHeight / 5
 
     /// How closely a car's height must match a stretch of road to be standing
-    /// **on** it. Much tighter than `heightTolerance`, and deliberately so.
+    /// **on** it — a much stricter question than being *at* a level, which is why
+    /// it is not `reachTolerance`.
     ///
     /// Derived from the sim: a climbing car's height moves at most
     /// `Race.maxHeightChangePerTick` per tick, so a car genuinely driving a slope
-    /// is always within about one tick's climb of it. A shade over that keeps hold
-    /// of the road under the car and nothing else.
-    ///
-    /// These were the same number, and that single fact produced a family of
-    /// bugs. At 0.35 a car at height 0 counted as standing on a ramp that was
-    /// already 0.22 above it — measured as "asphalt / on road" from 50 units away
-    /// while the car was in fact underneath the slope. It got asphalt grip there,
-    /// and could then take the ramp's height and ride up onto the bridge from the
-    /// grass. Being *on* a surface is a much stricter question than being *at* a
-    /// level, so it gets its own, tighter answer: a shade over one tick's climb,
-    /// so a car driving a ramp keeps hold of it and nothing else does.
+    /// stays within about one tick's climb of it. A shade over that keeps hold of
+    /// the road under the car and nothing else — sharing the old 0.35 let a car on
+    /// the grass claim asphalt grip from a ramp overhead and ride up onto the
+    /// bridge (see `heightEpsilon`).
     public static let surfaceTolerance = 0.12  // ≈1.5 ticks of climb
 
     /// Which storey a height belongs to — the nearest whole level.

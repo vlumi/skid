@@ -49,32 +49,21 @@ extension Race {
             let offset = car.position - closest
             let dist = offset.length
             guard crossed || (dist < reach && dist > 0) else { continue }
-            let side = approach.length > 0 ? approach : offset.normalized
-            guard side.length > 0 else { continue }
-            // **The push-out uses the approach side; the physics uses the wall's own
-            // FACE.** They are different vectors and conflating them was wrong: the
-            // approach direction points from the wall to wherever the car came from,
-            // which on a long wall is diagonal, so a graze got resolved against a
-            // slanted "normal" and came back off harder than it went in. The face is
-            // perpendicular to the wall, signed to the side the car is on.
-            let normal = faceNormal(of: wall, towards: side)
-            // **Push out along the FACE only — do not teleport onto the wall.**
-            //
-            // `closest + side * reach` is an absolute position on the wall's surface,
-            // recomputed every tick. `closest` tracks the car's PATH, so a car held
-            // against a rail was snapped to the same spot each tick and lost ALL its
-            // motion, not just the into-wall part. On device that read as the car
-            // being glued in place while the debug overlay showed it doing 300+ —
-            // velocity was never the problem, position was, which is why no wall
-            // tuning could touch it.
-            //
-            // Now only the overlap is removed: the car keeps every bit of travel
-            // along the wall and is nudged out just far enough to be clear.
-            let overlap = reach - (car.position - closest).dot(normal)
-            if overlap > 0 { car.position += normal * overlap }
-            let intoWall = car.velocity.dot(normal)
+            let approachSide = approach.length > 0 ? approach : offset.normalized
+            guard approachSide.length > 0 else { continue }
+            // Physics resolves against the wall's FACE, not the approach direction:
+            // the latter is diagonal on a long wall, and a graze resolved against a
+            // slanted normal came off harder than it went in.
+            let wallFace = faceNormal(of: wall, towards: approachSide)
+            // Remove only the overlap. Assigning `closest + approachSide * reach` is
+            // an absolute position recomputed each tick, and `closest` tracks the
+            // car's PATH — so a car held against a rail lost ALL its travel, not just
+            // the into-wall part (device: glued in place while the overlay read 300+).
+            let overlap = reach - (car.position - closest).dot(wallFace)
+            if overlap > 0 { car.position += wallFace * overlap }
+            let intoWall = car.velocity.dot(wallFace)
             guard intoWall < 0 else { continue }
-            respond(car: &car, normal: normal, intoWall: intoWall)
+            respond(car: &car, normal: wallFace, intoWall: intoWall)
             hardest = max(hardest, -intoWall)
             car.wallContact.hits += 1
         }
@@ -167,38 +156,23 @@ extension Race {
             car.wallContact.slide = slide
         }
 
-        // 1. Bounce: the into-wall component comes back, scaled from a subdued
-        //    glance bounce up to full restitution head-on. A pure glance keeps SOME
-        //    kick — zero read as flypaper on device — and the scale is never above 1,
-        //    so contact can't inject energy.
-        // **A glance bounce must not be proportional to `press`.** While dragging,
-        // `press` is about 1 unit/s — so `press * restitution * scale` came out under
-        // half a unit however high the slider went, and the glance bounce did nothing
-        // at all (device: "no glance bounce no matter what value I put in"). The kick
-        // a graze gives comes from the speed the car is carrying ALONG the wall, which
-        // is the energy actually available.
-        // A glance's kick comes from the slide, but must never EXCEED what a square
-        // hit at the same speed would give — otherwise a shallow graze bounces harder
-        // than a head-on one, which is backwards. Capped at the press-based bounce a
-        // fully square hit would produce.
+        // 1. Bounce, scaled from a subdued glance to full restitution head-on. A
+        //    pure glance keeps SOME kick (zero read as flypaper on device) and the
+        //    scale never exceeds 1, so contact can't inject energy. The glance kick
+        //    comes from the SLIDE — see `CarTuning.wallFriction` for why press is
+        //    useless here — capped at what a square hit would give, so a graze can
+        //    never bounce harder than a head-on.
         let squareBounce = press * tuning.wallRestitution * squareness
         let glanceCeiling = abs(slide) * tuning.wallRestitution
         let glanceBounce = min(
             glanceCeiling * tuning.wallGlanceBounce * (1 - squareness) * 0.05,
             press * tuning.wallRestitution)
         let bounced = squareBounce + glanceBounce
-        // 2. Friction: a RATE per tick, not an absolute cut, and it EASES OFF toward
-        //    a floor rather than bleeding to a stop. Dragging a wall should be a
-        //    viable if slow line — device feel says around half speed is fine for
-        //    balance — where the first two attempts left 0% and then 2% of speed
-        //    after a second of dragging, which is flypaper, not a scrape.
-        //
-        //    `headroom` is how far above the floor the car still is, so the scrub
-        //    fades as it settles: fast means real cost, at the floor means none.
-        // Friction also keys off the SLIDE, not the press. Pressed lightly against a
-        // barrier the car is still scraping along it at speed, and that is what a
-        // scrape costs — keying off `press` meant dragging was nearly free (device:
-        // "the car could slow down some more when dragging").
+        // 2. Friction: a RATE per tick, not an absolute cut, easing off toward a
+        //    floor rather than bleeding to a stop. Dragging should be a viable if
+        //    slow line (~half speed); the first two attempts left 0% then 2% of
+        //    speed after a second, which is flypaper. `headroom` is how far above
+        //    the floor the car still is, so the scrub fades as it settles.
         let floor = tuning.maxSpeed * tuning.wallDragFloor
         let headroom = max(0, (abs(slide) - floor) / max(floor, 1))
         let bite = abs(slide) * tuning.wallFriction * Race.dt * min(1, headroom)
@@ -206,20 +180,12 @@ extension Race {
         let keptSlide = slide - (slide > 0 ? scrub : -scrub)
         car.velocity = normal * bounced + along * keptSlide
 
-        // 3. Yaw toward parallel — a NUDGE, not a grip. Whichever way round the wall
-        //    runs, turn the nose the short way onto it, scaled by both the press and
-        //    the squareness so a light graze barely moves it and a heavy one swings
-        //    the car straight.
-        //
-        //    Deliberately weak enough that steering beats it: pinned against a wall
-        //    and wanting out, DRAG-TURNING has to work (backing up and three-point
-        //    turning is tedious), so this must not hold the nose parallel against the
-        //    driver's input. `steerRate` is 9 rad/s at full lock; this peaks around a
-        //    tenth of that.
-        //
-        //    Which way along the wall the car is GOING comes from the slide BEFORE
-        //    the bounce: after a square hit the new velocity points away from the
-        //    wall, and aiming at that turned the nose further off instead of onto it.
+        // 3. Yaw toward parallel — a NUDGE, not a grip. Deliberately weak enough
+        //    that steering beats it, so a car pinned against a wall can drag-turn
+        //    out: `steerRate` is 9 rad/s at full lock and this peaks near a tenth of
+        //    that. Direction comes from the slide BEFORE the bounce — after a square
+        //    hit the new velocity points away, and aiming at that turned the nose
+        //    further off the wall instead of onto it.
         let wallAngle = atan2(along.y, along.x)
         let facing = slide >= 0 ? wallAngle : wallAngle + .pi
         var delta = atan2(sin(facing - car.heading), cos(facing - car.heading))
@@ -273,18 +239,12 @@ extension Race {
     ///   blocked a ground car, walling off the road that passes *underneath* the
     ///   bridge.
     ///
-    /// The floor is what separates those cases. A ramp rail at 0.5 has floor 0, so
-    /// it fences the whole climb from the grass beside it. A deck rail at 1.0 has
-    /// floor 1, so it stops cars on the deck and lets the road below run clear.
-    ///
-    /// **No tolerance on the top.** A wall's height *is* where its top is, so a car
-    /// above it is over it — full stop. Adding a tolerance there gave every wall
-    /// invisible extra reach, which is what made the ramp's end cap block the
-    /// legitimate climb: the cap sat at 0.8 but effectively reached 1.15, and a car
-    /// arriving at the mouth at 0.99 hit its own exit. (0.99, not 1.0, because the
-    /// per-tick clamp means the climb approaches deck height asymptotically.)
-    /// The floor keeps a tolerance — that end is about which level the wall belongs
-    /// to, and a car's own size matters there.
+    /// **No tolerance on the top.** A wall's height *is* its top, so a car above it
+    /// is over it. A tolerance there gave every wall invisible reach, which made a
+    /// ramp's end cap block the legitimate climb: the cap sat at 0.8 but reached
+    /// 1.15, and a climber arrives at the mouth at 0.99 (not 1.0 — the per-tick
+    /// clamp approaches deck height asymptotically). The floor keeps its tolerance:
+    /// that end is about which level the wall belongs to, where a car's size counts.
     func blocks(_ wall: Wall, car: CarState) -> Bool {
         switch wall.kind {
         case .boundary:
