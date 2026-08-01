@@ -107,7 +107,6 @@ public struct TrackLayout: Equatable, Sendable, Codable {
         index < pitches.count ? pitches[index] : .flat
     }
 
-    /// The decal painted on piece `index`, if any.
     public func decal(at index: Int) -> Decal? { decals[index] }
 
     /// Append resolved (piece, pitch) pairs — what expansions produce. A run of
@@ -117,7 +116,6 @@ public struct TrackLayout: Equatable, Sendable, Codable {
         for step in run { insert(step.id, pitch: step.pitch, at: pieces.count) }
     }
 
-    /// Remove the last piece and its pitch together.
     public mutating func removeLastPiece() {
         remove(at: pieces.count - 1)
     }

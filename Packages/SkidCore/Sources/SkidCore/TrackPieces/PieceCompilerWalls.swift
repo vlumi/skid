@@ -3,24 +3,17 @@ import Foundation
 /// The walls a piece-built track carries: deck guard rails, ramp embankment
 /// sides and caps, and the map boundary fence.
 ///
-/// Split from `PieceCompiler` to keep that file inside the length budget. These
-/// are pure geometry — `collideWithWalls` only tests walls on the car's OWN
-/// layer, so which layer each wall claims is what decides whether it stops
-/// anything.
+/// Split from `PieceCompiler` to keep that file inside the length budget. Pure
+/// geometry: each wall carries the height it guards, and `Race.blocks` decides
+/// from that whether it stops a given car.
 extension PieceCompiler {
     /// Guard rails down both edges of an elevated piece, as runtime walls.
     ///
-    /// Follows the piece's own samples so a curved deck gets a curved rail, and
-    /// offsets by the SAME height-scaled half-width the renderer uses
-    /// (`Elevation.scale`) — otherwise the barrier a car hits would sit somewhere
-    /// other than the edge it can see.
+    /// Follows the piece's own samples, so a curved deck gets a curved rail.
     ///
-    /// A ramp is treated as a solid **embankment**: walled all the way round,
-    /// with exactly two openings — its low end open at height 0, its high end
-    /// open at height 1. That is the only way in or out, so you can't drive onto
-    /// a ramp from its flank, and you can't drive *under* it from the ground
-    /// while it climbs. (Before this, a ramp's road was reachable from any
-    /// direction: its sides were unwalled and its ends open on both layers.)
+    /// A ramp is a solid **embankment**: walled all the way round bar two
+    /// openings, its low end at height 0 and its high end at 1. So you cannot
+    /// drive onto a ramp from its flank, or under it while it climbs.
     static func deckRails(of placed: PlacedPiece, capHighEnd: Bool = true) -> [Wall] {
         let samples = placed.heightedSamples(degreesPerSample: degreesPerSample)
         guard samples.count >= 2 else { return [] }
@@ -75,27 +68,15 @@ extension PieceCompiler {
         return rails
     }
 
-    /// Whether this elevated piece owns the **high end of a climb**, and so should be
-    /// capped underneath.
+    /// Whether this piece owns the **high end of a climb**, and so needs capping
+    /// underneath. Only a climbing placement has a mouth with open air beneath it;
+    /// a deck piece is an ordinary shape that happens to sit at height 1.
     ///
-    /// The cap belongs to the elevated RUN, not to each piece in it. A ramp climbs,
-    /// then flat deck carries on at the same height, then another ramp descends — and
-    /// only where the slope meets the deck is there a mouth with open air beneath it.
-    ///
-    /// Deciding this per piece was wrong the moment a deck could be more than one
-    /// piece. With primitives it always is (a 2U deck is two short straights), so
-    /// every deck piece claimed its own "high end" and dropped a 0.9 cap straight
-    /// across the bridge — walling off the road below at each seam. The old catalog
-    /// hid the fault behind a one-piece deck.
-    ///
-    /// So: **only a climbing placement has a mouth**, and a placement says so —
-    /// `climb != 0` (the piece's own delta or its pitch). Deck pieces are
-    /// ordinary shapes that happen to sit at height 1; nothing about one marks
-    /// it as the end of anything.
-    ///
-    /// Asking the placement beats inferring from its sampled endpoint heights,
-    /// which pick up floating-point drift on level pieces and would answer
-    /// "yes" for any future piece that changes height for some other reason.
+    /// Deciding it per piece by endpoint height was wrong the moment a deck could
+    /// be more than one piece — with primitives it always is (a 2U deck is two
+    /// short straights), so every deck piece claimed its own high end and dropped
+    /// a cap across the bridge, walling off the road below at each seam. Asking
+    /// the placement also avoids the float drift a sampled height picks up.
     static func capsHighEnd(_ piece: PlacedPiece) -> Bool {
         piece.climb != 0
     }
