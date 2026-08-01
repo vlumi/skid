@@ -52,23 +52,48 @@ extension CouchGame {
 
     /// Place a palette piece at the live end — append or prepend. One entry point so
     /// the palette does not have to know which operation it is driving.
+    ///
+    /// **The palette speaks the author's direction.** At the head that is the
+    /// reverse of the driving direction, so what is drawn and what is stored are
+    /// mirrors: a left turn drawn away from the head is a right turn to a car
+    /// arriving at it, and a climb away from the head is a descent into it.
+    /// Reported from device — wanting an up-left ramp there meant tapping
+    /// down-right, which is the stored piece rather than the drawn one.
     @discardableResult
     public func editorPlace(_ id: PieceID, pitch: Pitch = .flat) -> Bool {
         switch editorActiveEnd {
         case .tail: return editorAppend(id, pitch: pitch)
-        case .head: return editorPrepend(id, pitch: pitch)
+        case .head:
+            let drawn = Self.asDrawnBackwards(id, pitch)
+            return editorPrepend(drawn.id, pitch: drawn.pitch)
         case nil: return false
         }
     }
 
     /// Whether that placement would be accepted — asked of the SAME end it would
-    /// land on, since a piece can fit one end and not the other.
+    /// land on, since a piece can fit one end and not the other, and of the piece
+    /// that would actually be STORED there.
     public func editorCanPlace(_ id: PieceID, pitch: Pitch = .flat) -> Bool {
         switch editorActiveEnd {
         case .tail: return editorCanAppend(id, pitch: pitch)
-        case .head: return editorCanPrepend(id, pitch: pitch)
+        case .head:
+            let drawn = Self.asDrawnBackwards(id, pitch)
+            return editorCanPrepend(drawn.id, pitch: drawn.pitch)
         case nil: return false
         }
+    }
+
+    /// What the author's tap means when they are building BACKWARDS: the mirrored
+    /// shape, climbing the other way. A straight and a flat pitch are their own
+    /// mirrors, so this is the identity for them.
+    static func asDrawnBackwards(_ id: PieceID, _ pitch: Pitch) -> (id: PieceID, pitch: Pitch) {
+        let flipped: Pitch
+        switch pitch {
+        case .flat: flipped = .flat
+        case .up: flipped = .down
+        case .down: flipped = .up
+        }
+        return (PieceCatalog.mirrored[id] ?? id, flipped)
     }
 
     /// **Set or clear a piece's decal** — paint applied in place, so the geometry,

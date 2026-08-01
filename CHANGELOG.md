@@ -42,6 +42,10 @@ ships (see [AGENTS.md](AGENTS.md)).
   from.** Closing a loop could be rejected as an overlap while the very same
   piece went in fine from the other end — the check was looking at where the
   piece list happened to start rather than at the road.
+- **Building backwards now matches what you draw.** Extending a track from its
+  start end, a left-hand corner was laid as a right-hander and a climb came out
+  as a descent — the buttons described the piece as a car would meet it, not as
+  you were drawing it. Tap what you want to see.
 - **Trimming a track back is one tap per piece.** Deleting the piece at an end
   now selects the one behind it, so you can keep tapping the bin instead of
   reselecting between each. Building follows the selection too: the end you have
