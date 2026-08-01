@@ -52,7 +52,15 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     /// Seam indices that are checkpoint gates. The start line's own seam is
     /// always among them — it is the finish line — and that seam is the start
     /// piece's index, not necessarily 0.
-    public var gateSeams: [Int]
+    ///
+    /// **Always ascending**, enforced here rather than asked of every caller:
+    /// order carries no meaning (a lap collects them all), so an unsorted
+    /// spelling is the same track with a different code — and the share code is
+    /// used as an identity. A `didSet` because this is a `public var` that the
+    /// editor assigns directly; sorting only in `init` left that path open.
+    public var gateSeams: [Int] {
+        didSet { if !gateSeams.isSorted { gateSeams.sort() } }
+    }
     /// **Solved shapes for the fitting pieces**, keyed by piece index.
     ///
     /// Every other piece's geometry comes from the catalog; a fitter's is solved
@@ -86,7 +94,11 @@ public struct TrackLayout: Equatable, Sendable, Codable {
         // flats and an absent array mean the same layout.
         self.pitches = TrackLayout.trimmedPitches(pitches)
         self.origin = origin
-        self.gateSeams = gateSeams
+        // Sorted for the same reason pitches are trimmed: one representation
+        // per layout. Gate ORDER carries nothing — a lap collects them all —
+        // so two spellings that differ only in order encoded to two codes,
+        // which breaks the identity the share code is used for.
+        self.gateSeams = gateSeams.sorted()
         self.theme = theme
     }
 
@@ -423,5 +435,14 @@ extension TrackLayout {
             axisX: Double(dx.a) / 2 / unit, axisY: Double(dy.a) / 2 / unit,
             diagonalX: Double(dx.b) / unit, diagonalY: Double(dy.b) / unit,
             headingEighths: ((goal.heading.step - end.heading.step) % 8 + 8) % 8)
+    }
+}
+
+extension Array where Element: Comparable {
+    /// Cheaper than `self == sorted()` — no allocation, and bails at the first
+    /// descent. Worth it on a path that runs on every assignment.
+    var isSorted: Bool {
+        guard count > 1 else { return true }
+        return !indices.dropFirst().contains { self[$0 - 1] > self[$0] }
     }
 }

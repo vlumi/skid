@@ -332,7 +332,7 @@ extension CouchGame {
                 layout.gateSeams.remove(at: existing)
             } else {
                 guard layout.gateSeams.count < 16 else { return false }
-                layout.gateSeams.append(seam)
+                layout.gateSeams = (layout.gateSeams + [seam]).sorted()
             }
             editorLayout = layout
             return true
