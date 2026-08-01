@@ -36,8 +36,12 @@ final class EditorSelectionTests: XCTestCase {
         XCTAssertEqual(game.editorBuildEnd, .tail)
     }
 
-    /// Choosing the head end makes the palette prepend — that's what the arrows
-    /// are for, and prepend has had no way to be reached until now.
+    /// Selecting the head makes the palette prepend.
+    ///
+    /// The piece STORED is the mirror of the one tapped — the palette speaks the
+    /// author's direction and the model stores the driving one (see
+    /// `HeadBuildTests`), so a left curve drawn backwards is a right curve driven
+    /// forwards.
     func testTheHeadEndPrepends() {
         let game = chain()
         let firstBefore = game.editorLayout!.pieces.first
@@ -47,7 +51,7 @@ final class EditorSelectionTests: XCTestCase {
         XCTAssertTrue(game.editorPlace(Catalog.curve45MediumLeft))
 
         XCTAssertEqual(game.editorLayout!.pieces.count, countBefore + 1)
-        XCTAssertEqual(game.editorLayout!.pieces.first, Catalog.curve45MediumLeft)
+        XCTAssertEqual(game.editorLayout!.pieces.first, Catalog.curve45MediumRight)
         XCTAssertEqual(
             game.editorLayout!.pieces[1], firstBefore,
             "the old first piece should now be second")

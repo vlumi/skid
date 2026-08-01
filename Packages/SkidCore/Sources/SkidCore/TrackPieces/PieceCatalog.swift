@@ -175,6 +175,44 @@ public enum PieceCatalog {
         return c
     }()
 
+    /// **The same shape turning the other way**, or the piece itself when it has no
+    /// handedness (a straight, the start line).
+    ///
+    /// Derived by comparing GEOMETRY, not by pairing ids: `addPair` happens to lay
+    /// left and right down consecutively, but nothing enforces that, and a piece
+    /// added out of order would silently mirror to the wrong shape.
+    ///
+    /// Needed because building BACKWARDS draws the mirror of what gets stored — a
+    /// left turn drawn away from the head is a right turn to a car driving into it.
+    /// See `CouchGame.editorPlace`.
+    public static let mirrored: [PieceID: PieceID] = {
+        var map: [PieceID: PieceID] = [:]
+        for (id, piece) in all {
+            guard let path = piece.paths.first else { continue }
+            // No arcs, no handedness: the piece IS its own mirror. Without this an
+            // id-order search matches some other straight with the same path —
+            // several pieces are a plain 1U straight, so 29 "mirrored" to 31.
+            let handed = path.contains { segment in
+                if case .arc = segment { return true }
+                return false
+            }
+            guard handed else {
+                map[id] = id
+                continue
+            }
+            let flipped = path.map { segment -> Piece.Segment in
+                if case .arc(let radius, let eighths, let left) = segment {
+                    return .arc(radius: radius, eighths: eighths, left: !left)
+                }
+                return segment
+            }
+            map[id] =
+                all.first { $0.value.paths.first == flipped && $0.value.kind == piece.kind }?.key
+                ?? id
+        }
+        return map
+    }()
+
     /// Named ids for the pieces callers reach for by name (tests, the editor
     /// palette, the context-aware ramp button). Ids themselves stay data — the
     /// registry is frozen only at the format's first public release — so
