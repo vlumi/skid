@@ -18,17 +18,12 @@ extension EditorRenderer {
     static func drawCanvasBounds(
         walk: WalkResult, t: Transform, into context: inout GraphicsContext
     ) {
-        let points = walk.placed.flatMap { $0.centerlineSamples() }
-        guard let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
-            let minY = points.map(\.y).min(), let maxY = points.map(\.y).max()
-        else { return }
-
-        // Same half-width padding the validator measures with, so the drawn box
-        // is the rule rather than an approximation of it.
-        let half = Double(PieceCatalog.width) / 2
-        let used = Vec2((maxX - minX) + 2 * half, (maxY - minY) + 2 * half)
+        // The same padded footprint the validator measures, so the drawn box is
+        // the rule rather than an approximation of it.
+        guard let footprint = walk.paddedFootprint() else { return }
+        let used = footprint.size
         let limit = TrackValidator.canvas
-        let center = Vec2((minX + maxX) / 2, (minY + maxY) / 2)
+        let center = footprint.center
 
         let box = CGRect(
             x: (center.x - limit.x / 2) * t.scale + t.offset.width,

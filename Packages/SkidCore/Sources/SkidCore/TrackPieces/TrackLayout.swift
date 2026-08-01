@@ -335,23 +335,6 @@ public struct PlacedPiece: Equatable, Sendable {
     }
 }
 
-/// The result of walking a layout: every piece placed in exact coordinates,
-/// plus whatever ports are still open (loose ends) and any error that stopped
-/// the walk. A fork-free ring that closes leaves `openEnds` empty.
-public struct WalkResult: Equatable, Sendable {
-    public enum Failure: Equatable, Sendable {
-        case unknownPiece(PieceID)
-        case emptyLayout
-    }
-
-    public var placed: [PlacedPiece]
-    /// Poses still awaiting a mate (loose ends). Empty ⇒ fully connected.
-    public var openEnds: [PiecePose]
-    public var failure: Failure?
-
-    public var isConnected: Bool { failure == nil && openEnds.isEmpty }
-}
-
 /// How far a loose end is from closing, split into the two currencies the unit
 /// system spends: whole units along the axes, and whole units of *diagonal*
 /// travel (the √2 part). The split is what tells an author which kind of piece

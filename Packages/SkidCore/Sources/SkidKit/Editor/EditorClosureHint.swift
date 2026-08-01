@@ -69,17 +69,13 @@ extension EditorView {
     /// Nil unless the room really has run out, so this never crowds out the gap
     /// reading during normal building.
     func sizeLimitHint(_ walk: WalkResult) -> String? {
-        let points = walk.placed.flatMap { $0.centerlineSamples() }
-        guard let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
-            let minY = points.map(\.y).min(), let maxY = points.map(\.y).max()
-        else { return nil }
-        let half = Double(PieceCatalog.width) / 2
+        guard let used = walk.paddedFootprint() else { return nil }
         let limit = TrackValidator.canvas
         // The smallest piece that could still be laid: if even a short straight
         // won't fit, the palette is empty for size reasons and needs saying.
         let smallest = Double(PieceCatalog.shortStraight)
-        let freeX = limit.x - ((maxX - minX) + 2 * half)
-        let freeY = limit.y - ((maxY - minY) + 2 * half)
+        let freeX = limit.x - used.width
+        let freeY = limit.y - used.height
         guard freeX < smallest || freeY < smallest else { return nil }
         let axis: String
         if freeX < smallest && freeY < smallest {
