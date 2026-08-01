@@ -7,9 +7,9 @@ A top-down, drift-happy local-multiplayer racing game for Apple platforms — a
 modern heir to the keyboard-era couch racers of the DOS days, rebuilt around
 controls that actually work on a phone.
 
-> **Status: prototyping.** "Skid" is the short repo/target name; the game
-> ships as **Skid Jam**. The first goal is only to find out whether the
-> *driving* is fun — see [AGENTS.md](AGENTS.md).
+> **Status: beta.** "Skid" is the short repo/target name; the game ships as
+> **Skid Jam**. How it's built: [ARCHITECTURE.md](ARCHITECTURE.md). How to work
+> on it: [AGENTS.md](AGENTS.md). What's next: [ROADMAP.md](ROADMAP.md).
 
 ## The idea
 
