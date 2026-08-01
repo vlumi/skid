@@ -57,7 +57,7 @@ public enum TrackCode {
         encode(layout).count
     }
 
-    private enum Tag: UInt8 {
+    enum Tag: UInt8 {
         case pieces = 1
         case gates = 2
         case origin = 3
@@ -75,11 +75,24 @@ public enum TrackCode {
         /// raw value. Sparse and omitted entirely when a track has no decals, so
         /// codes for undecorated tracks stay byte-identical.
         case decals = 7
+        /// A 32-byte raw Ed25519 public key — who signed this. High on purpose:
+        /// tags cost the same wherever they sit, so the low contiguous range
+        /// stays for CONTENT and the top holds the envelope.
+        case pubkey = 254
+        /// The signature, over everything before it. Must be the LAST record.
+        case sig = 255
     }
 
     // MARK: - Encode
 
     public static func encode(_ layout: TrackLayout) -> String {
+        finish(encodedBody(layout))
+    }
+
+    /// The TLV records for a layout, without the version+CRC header — the part
+    /// a signature covers. Shared with `encode(_:signedBy:)`, which appends its
+    /// own sections before framing.
+    static func encodedBody(_ layout: TrackLayout) -> [UInt8] {
         // One track, one code: a closed ring is rotated to its canonical
         // starting piece first, so the same track built from different starting
         // points does not produce different codes. An open chain is untouched.
@@ -107,7 +120,13 @@ public enum TrackCode {
             let halves = Int((layout.originHeight / (Track.levelHeight / 2)).rounded())
             appendSection(&body, .baseHeight, [UInt8(bitPattern: Int8(halves))])
         }
+        return body
+    }
 
+    /// Version byte, CRC over the body, then the body. The CRC covers a
+    /// signature section too — it is an integrity check over the final artifact,
+    /// while the signature covers content, so they nest rather than overlap.
+    static func finish(_ body: [UInt8]) -> String {
         var blob: [UInt8] = [UInt8(version), crc8(body)]
         blob.append(contentsOf: body)
         return base64urlEncode(blob)
@@ -203,7 +222,7 @@ public enum TrackCode {
 
     // MARK: - Sections
 
-    private static func appendSection(_ body: inout [UInt8], _ tag: Tag, _ payload: [UInt8]) {
+    static func appendSection(_ body: inout [UInt8], _ tag: Tag, _ payload: [UInt8]) {
         // A wrapped length desynchronizes the parser, so `encode` would emit a
         // code its own `decode` rejects — silently, since `encode` cannot throw.
         // Unreachable by construction today; this catches the encoder growing a
@@ -375,14 +394,14 @@ public enum TrackCode {
 
     // MARK: - base64url (no padding)
 
-    private static func base64urlEncode(_ bytes: [UInt8]) -> String {
+    static func base64urlEncode(_ bytes: [UInt8]) -> String {
         let b64 = Data(bytes).base64EncodedString()
         return b64.replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
     }
 
-    private static func base64urlDecode(_ s: String) -> [UInt8]? {
+    static func base64urlDecode(_ s: String) -> [UInt8]? {
         var b64 = s.replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
         while b64.count % 4 != 0 { b64.append("=") }
