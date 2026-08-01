@@ -389,6 +389,14 @@ extension EditorView {
             ) {
                 game.editorShiftHeight(steps: -1)
             }
+            // Reversing is a whole-track transform like rotating: same road, driven
+            // the other way. Only a closed ring has a settled direction to flip.
+            mapAction(
+                "arrow.triangle.2.circlepath", tint: .white, label: "Reverse direction",
+                enabled: game.editorCanReverseDirection
+            ) {
+                game.editorReverseDirection()
+            }
             // Undo/redo sit with the other whole-track actions because that is
             // what they are — every edit is undoable, not just piece placement.
             mapAction(

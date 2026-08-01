@@ -21,6 +21,13 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Tracks can be turned around in the editor.** A new button on a closed ring
+  reverses the driving direction: the same road, driven the other way. Every
+  curve mirrors, every climb becomes a descent, and the start line moves to the
+  other end of the start piece — so the grid, the gates and the lap all follow
+  the new direction. Reversing twice gives back exactly the track you had, and
+  a reversed track keeps its own share code.
+
 - **Pieces near other roads are no longer refused when nothing touches.** The
   overlap check measured distance between road CENTERLINES, which overstates
   wildly when a piece merely ends near another road — a rising curve with a
