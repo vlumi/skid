@@ -24,28 +24,19 @@ extension Track {
     /// parameter along it). `preferHeight` breaks the tie where two stretches of
     /// road overlap in 2D (a bridge crossing): anchor to the car's own height.
     ///
-    /// **The penalty is flat, and mid-ramp that looks alarming in isolation.**
-    /// A ramp's climb is eased, so partway up it no nearby segment matches the
-    /// car's current height — every candidate takes the penalty, it stops
-    /// discriminating, and the nearest road can lose. Probed on the clover: a
-    /// car AT h 0 standing where the road is 0.392 resolves to a segment 41
-    /// units away at 0.098.
+    /// **The penalty is flat, which looks alarming mid-ramp and isn't.** A ramp's
+    /// climb is eased, so partway up no nearby segment matches the car's height,
+    /// every candidate takes the penalty, and the nearest road can lose (probed on
+    /// the clover: a car at h 0 where the road is 0.392 resolved to a segment 41
+    /// units away at 0.098).
     ///
-    /// That is a transient, not a bug, which is why this is a comment and not a
-    /// fix. It is a feedback loop that converges: the car's height moves toward
-    /// the (too low) target, which puts it nearer the real road, which makes the
-    /// next resolve better. Measured from that same worst case, the car climbed
-    /// to the correct 0.392 in six ticks and stayed. Over a full AI lap,
-    /// `surface(at:)` never once reported grass while on asphalt and the on-road
-    /// test never reported off-road while on road; every height gap found was a
-    /// genuine crossing, resolved correctly.
-    ///
-    /// So don't "fix" this from a static probe — a car standing mid-ramp at the
-    /// wrong height is a state driving passes through in a few ticks, not one it
-    /// sits in. The one case that could show is a car placed there abruptly
-    /// (respawn, or a start line at a half height): it would settle visibly over
-    /// those ticks. If that ever gets reported, the cheap repair is to scale the
-    /// penalty by the height difference instead of applying it flat.
+    /// It converges rather than persisting — the car's height moves toward the too
+    /// low target, which puts it nearer the real road, which resolves better next
+    /// tick. From that same worst case it reached the correct 0.392 in six ticks;
+    /// over a full AI lap `surface(at:)` never reported grass while on asphalt.
+    /// So don't "fix" it from a static probe. A car placed there abruptly (respawn,
+    /// or a start line at a half height) would settle visibly over those ticks; if
+    /// that is ever reported, scale the penalty by the height difference.
     /// **`preferHeading` disambiguates an AT-GRADE crossing**, where the height
     /// tiebreak has nothing to work with: both roads are at the same level, so a
     /// car in the shared zone is equally close to a stretch running across its

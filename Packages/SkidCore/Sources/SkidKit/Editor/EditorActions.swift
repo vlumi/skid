@@ -336,7 +336,6 @@ extension CouchGame {
         }
     }
 
-    /// Whether a seam is currently a gate.
     public func editorIsGate(seam: Int) -> Bool {
         editorLayout?.gateSeams.contains(seam) ?? false
     }
@@ -374,7 +373,6 @@ extension CouchGame {
         }
     }
 
-    /// Whether the current layout is saveable (closed + valid).
     public func editorIsSaveable() -> Bool {
         guard let editorLayout else { return false }
         return TrackValidator.validate(editorLayout).isSaveable

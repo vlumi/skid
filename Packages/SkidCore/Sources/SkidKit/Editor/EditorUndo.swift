@@ -5,9 +5,7 @@ import SkidCore
 extension CouchGame {
     public static let undoDepth = 200
 
-    /// Whether there is a state to go back to.
     public var editorCanUndo: Bool { !undoStack.isEmpty }
-    /// Whether an undone state can be replayed.
     public var editorCanRedo: Bool { !redoStack.isEmpty }
 
     /// Run an edit, recording the state before it. Every mutating action goes

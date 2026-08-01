@@ -11,16 +11,8 @@ import Foundation
 /// construction rather than by re-walking and hoping.
 extension TrackLayout {
     /// **Add a piece at the head**, leading into what used to be the first piece.
-    ///
-    /// The list grows at index 0 and `origin` moves *back* to the new piece's
-    /// entry — the inverse of appending, where the list grows at the tail and the
-    /// origin stays. Nothing already placed changes pose, because every existing
-    /// coordinate derives from an origin that has been moved by exactly the new
-    /// piece's own displacement.
-    ///
-    /// Heights work the same way: a pitched prepend lowers `originHeight` by the
-    /// piece's climb, so the piece climbs *into* the old baseline instead of
-    /// shifting every height after it.
+    /// The list grows at index 0 and `origin` moves back by exactly the new
+    /// piece's displacement, so nothing already placed changes pose.
     ///
     /// Returns false, changing nothing, when the piece has no exact inverse
     /// placement (see `entryPose(of:leadingTo:)`) — declining beats rounding,
@@ -34,22 +26,18 @@ extension TrackLayout {
 
         insert(id, pitch: pitch, at: 0)
         origin = entry
-        // The new piece's climb happens BEFORE the old first piece, so the
-        // baseline it starts from is that much lower — leaving every height the
-        // author already had exactly where it was.
+        // The climb happens BEFORE the old first piece, so the baseline drops by
+        // it and every height the author already had stays put.
         originHeight -= piece.heightDelta + pitch.delta
         return true
     }
 
     /// **Prepend a whole run** — what a compound expands to — keeping its order.
     ///
-    /// Each piece is prepended in turn, so the run goes in **back to front**: the
-    /// last piece of the run must end up adjacent to the old first piece, which
-    /// means it is the first one prepended. Getting this backwards would reverse
-    /// every hairpin and jog laid at the head.
-    ///
-    /// All or nothing: if any piece has no exact inverse placement the layout is
-    /// left untouched, so a refused prepend cannot leave half a compound behind.
+    /// Goes in **back to front**: the run's last piece ends up adjacent to the old
+    /// first piece, so it is prepended first. Backwards would mirror every hairpin
+    /// and jog laid at the head. All or nothing, so a refused prepend cannot leave
+    /// half a compound behind.
     @discardableResult
     public mutating func prependAll(_ run: [(id: PieceID, pitch: Pitch)]) -> Bool {
         guard !run.isEmpty else { return false }
@@ -65,20 +53,14 @@ extension TrackLayout {
 
     /// **Turn a closed ring around** — the same road, driven the other way.
     ///
-    /// The list runs backwards, every piece becomes its mirror (a left turn driven
-    /// one way is a right turn driven the other), and every pitch inverts (a climb
-    /// becomes a descent). The origin moves to what is now the first piece's entry,
-    /// which is the old ring's last exit, reversed.
+    /// Done on the LAYOUT rather than as a compiler flag, which is what the
+    /// overhaul plan sketched: the compiler already derives the centerline, the
+    /// gate order and the grid from the walked pieces, so reversing the pieces
+    /// gives all three and nothing downstream learns a new concept.
     ///
-    /// Done on the LAYOUT rather than as a flag the compiler honours — which is what
-    /// the overhaul plan originally sketched. The compiler already derives the
-    /// centerline, the gate order and the grid from the walked pieces, so a reversed
-    /// ring gives all three at once and nothing downstream needs to know.
-    ///
-    /// Refused on an open chain: a track still being drawn has no settled driving
-    /// direction, and reversing one would move the loose end the author is working
-    /// at. Refused too if any piece has no exact mirror, rather than reshaping the
-    /// road — the same exact-or-nothing rule the rest of the model keeps.
+    /// Refused on an open chain (no settled direction yet, and it would move the
+    /// end the author is working at) and on any piece without an exact mirror —
+    /// the exact-or-nothing rule the rest of the model keeps.
     ///
     /// A reversed track is a DIFFERENT track: `normalized()` deliberately does not
     /// normalize reversal away, so the two spellings keep distinct codes.
