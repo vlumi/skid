@@ -244,6 +244,9 @@ struct EditorView: View {
                 iconButton(copiedCode ? "checkmark.circle.fill" : "doc.on.doc", "Copy code") {
                     copyCode()
                 }
+                // Long-press copies the SHORT code, without a signature.
+                .simultaneousGesture(
+                    LongPressGesture().onEnded { _ in copyCode(signed: false) })
                 // …and paste one back in to load it. Separate buttons on purpose:
                 // one that did both could silently replace the track you're on.
                 // A failed paste shows a warning icon rather than "Bad code".
@@ -253,6 +256,7 @@ struct EditorView: View {
                 ) {
                     pasteCode()
                 }
+                attributionChip
             }
             .padding()
             Spacer()
@@ -260,6 +264,33 @@ struct EditorView: View {
     }
 
     /// A compact icon pill, for the view/layout tools. The label is the
+    /// Who signed the track that was pasted in. Absent for an unsigned one,
+    /// which is the norm — every built-in is unsigned, and saying so on each
+    /// would be noise. A signature that does not verify DOES show: it is the
+    /// only sign that a track was edited after signing.
+    ///
+    /// No name and no fingerprint yet; that arrives with profiles in v0.9.
+    @ViewBuilder
+    private var attributionChip: some View {
+        let attribution = game.pastedAttribution
+        if attribution.isWorthShowing {
+            let broken = attribution == .broken
+            Image(systemName: broken ? "seal.slash" : "seal")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(broken ? .orange : .white.opacity(0.85))
+                .accessibilityLabel(Text(attributionLabel(attribution), bundle: .module))
+        }
+    }
+
+    private func attributionLabel(_ attribution: TrackAttribution) -> LocalizedStringKey {
+        switch attribution {
+        case .mine: return "Signed by you"
+        case .other: return "Signed"
+        case .broken: return "Signature doesn't match"
+        case .unsigned: return "Not signed"
+        }
+    }
+
     /// accessibility name — the icon carries the meaning visually, but a
     /// glyph alone tells a screen reader nothing.
     private func iconButton(
