@@ -26,6 +26,12 @@ public final class TrackLibraryFile {
         return book
     }
 
+    /// **Atomic**: `.atomic` writes a temp file and renames, so a crash
+    /// mid-write leaves the previous file intact rather than a truncated one.
+    ///
+    /// The caller hands over a whole book, already edited in memory, so a
+    /// remove-then-add is one write — there is no window where the file exists
+    /// without the row being replaced.
     public func save(_ book: TrackLibraryBook) {
         guard let data = try? book.encoded() else { return }
         try? data.write(to: url, options: .atomic)
