@@ -107,7 +107,7 @@ final class HeightOverlapTests: XCTestCase {
     /// and would butt a step-shelf against the start line.)
     func testADescendingClosureIsPlaceable() throws {
         let layout = try TrackCode.decode(
-            "ASEBGh8PeQMDAR4BDwMDAR4BDwMDAR4BDwMDAXoAAgEAAwUAAAAAAA")
+            TestTracks.Code.cloverOpen)
         typealias Catalog = PieceCatalog.ID
         XCTAssertFalse(
             TrackValidator.canAppend(Catalog.shortStraight, to: layout),
