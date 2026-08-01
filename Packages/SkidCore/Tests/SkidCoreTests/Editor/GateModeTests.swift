@@ -14,7 +14,7 @@ final class GateModeTests: XCTestCase {
     private func closedRing() throws -> CouchGame {
         let game = CouchGame()
         game.editorLayout = try TrackCode.decode(
-            "AS0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAA")
+            TestTracks.Code.bridgeRing)
         game.clearUndoHistory()
         return game
     }

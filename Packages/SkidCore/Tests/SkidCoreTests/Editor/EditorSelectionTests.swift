@@ -23,7 +23,7 @@ final class EditorSelectionTests: XCTestCase {
     private func closedRing() throws -> CouchGame {
         let game = CouchGame()
         game.editorLayout = try TrackCode.decode(
-            "AS0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAA")
+            TestTracks.Code.bridgeRing)
         game.clearUndoHistory()
         return game
     }
@@ -285,7 +285,7 @@ final class EditorSelectionTests: XCTestCase {
         // order looks like in memory. (A code is always canonical, so this has to
         // be respelled by hand rather than decoded.)
         let game = CouchGame()
-        var respelled = try TrackCode.decode("AS0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAA")
+        var respelled = try TrackCode.decode(TestTracks.Code.bridgeRing)
         respelled.rotate(to: 6)
         XCTAssertNotEqual(
             respelled.pieces, respelled.normalized().pieces, "fixture must be non-canonical")

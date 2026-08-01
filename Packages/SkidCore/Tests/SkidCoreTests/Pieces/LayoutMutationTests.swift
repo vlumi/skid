@@ -111,7 +111,7 @@ final class LayoutMutationTests: XCTestCase {
     /// chain's ends are not interchangeable), so the fixture has to be one.
     private func closedRing() throws -> TrackLayout {
         try TrackCode.decode(
-            "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI")
+            TestTracks.Code.clover)
     }
 
     /// Rotation is a re-spelling: the surviving geometry must not move, which is

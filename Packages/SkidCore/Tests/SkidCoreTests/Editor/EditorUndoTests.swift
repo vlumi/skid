@@ -209,7 +209,7 @@ final class EditorUndoTests: XCTestCase {
     func testResetIsUndoable() throws {
         let game = CouchGame()
         game.editorLayout = try TrackCode.decode(
-            "AS0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAA")
+            TestTracks.Code.bridgeRing)
         game.clearUndoHistory()
         let built = TrackCode.encode(game.editorLayout!)
 
