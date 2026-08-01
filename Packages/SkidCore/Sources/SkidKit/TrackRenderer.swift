@@ -351,28 +351,6 @@ enum TrackRenderer {
         }
     }
 
-    /// Grid-slot markings painted on the pavement: a hash across the front edge
-    /// of each start slot, so the grid is visible on the track itself (matching
-    /// what the editor paints on the start piece).
-    private static func drawGridMarkings(track: Track, into context: inout GraphicsContext) {
-        guard !track.startSlots.isEmpty else { return }
-        let fwd = Vec2(angle: track.startHeading)
-        let side = fwd.perpendicular
-        let halfHash = CarGeometry.width * 0.62
-        let ahead = CarGeometry.length / 2
-        for slot in track.startSlots {
-            let front = slot + fwd * ahead
-            let a = front - side * halfHash
-            let b = front + side * halfHash
-            var hash = Path()
-            hash.move(to: CGPoint(x: a.x, y: a.y))
-            hash.addLine(to: CGPoint(x: b.x, y: b.y))
-            context.stroke(
-                hash, with: .color(.white.opacity(0.8)),
-                style: StrokeStyle(lineWidth: 3, lineCap: .butt))
-        }
-    }
-
     static func drawMarks(
         _ marks: MarkStore, elevated: Bool = false, into context: inout GraphicsContext
     ) {

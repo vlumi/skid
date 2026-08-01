@@ -5,8 +5,7 @@ import Foundation
 /// need a multi-route `Track`; that's Phase B, and the compiler rejects fork
 /// pieces until then.)
 ///
-/// No `TrackDesign` detour — this lands straight on `Track`, alongside the
-/// free-form path. Coordinates lower to `Vec2` here and only here.
+/// Coordinates lower to `Vec2` here and only here.
 public enum PieceCompiler {
     public enum Failure: Error, Equatable {
         case notSaveable([Validation.Problem])
@@ -74,8 +73,8 @@ public enum PieceCompiler {
         // piece-built track was drawn at the scale of the largest *permitted*
         // track and centered on the canvas rather than on itself — so a 1200×960
         // oval rendered small and shoved off to one side, with part of it off
-        // screen. Built-in tracks never showed this because a `TrackDesign`
-        // carries a hand-authored `size` that matches its layout.
+        // screen. The old hand-authored tracks never showed this: their `size`
+        // was authored to match their layout.
         //
         // Two halves, both required: measure the real footprint, AND move the
         // geometry so it starts at the origin, since the renderer assumes the
