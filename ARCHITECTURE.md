@@ -28,7 +28,7 @@ compose instead of each being a rewrite.
 | | `SkidCore` | `SkidKit` |
 |---|---|---|
 | holds | physics, track model, race state, piece model | SwiftUI rendering, input capture, editor UI, persistence I/O |
-| imports | Foundation only | SwiftUI, UIKit, CoreGraphics, AVFoundation, SkidCore |
+| imports | Foundation, CryptoKit | SwiftUI, UIKit, CoreGraphics, AVFoundation, SkidCore |
 | tested | headless, coverage-gated | coverage-ignored |
 
 The rule: **testable logic goes in SkidCore.** Where a feature needs platform
@@ -37,6 +37,11 @@ shim in SkidKit — `HiscoreBook`/`HiscoreFile` is the reference pair. The line 
 worth defending: the control schemes are pure input math and sat in SkidKit,
 outside the coverage gate, until four `CGRect` references were the only thing
 holding them there.
+
+CryptoKit is the one framework beyond Foundation in SkidCore: it is Apple's,
+not a third-party dependency, and Ed25519 verification is a pure function of
+bytes. Anything with I/O, entropy, or a UI stays out — key *generation* and
+storage are SkidKit's.
 
 Both targets and the tests group **by domain, not by type** —
 `SkidKit/Editor/`, `SkidKit/Input/`, `SkidCore/TrackPieces/`,
