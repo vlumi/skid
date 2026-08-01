@@ -84,6 +84,11 @@ public final class CouchGame: ObservableObject {
     public let settings = GameSettings()
 
     private let hiscoreFile = HiscoreFile()
+    /// Where the author identity comes from. Injectable so tests can supply a
+    /// key (or none) without a Keychain.
+    let signingKeys: SigningKeyStore
+    /// What the last pasted code claimed — computed on paste, never on render.
+    @Published var pastedAttributionRaw: TrackAttribution = .unsigned
     private let aiFleet = AIFleet()
     private let sound = SoundEngine()
     private let haptics = Haptics()
@@ -96,7 +101,10 @@ public final class CouchGame: ObservableObject {
     private var notedLapCount = 0
     private var notedFinish = false
 
-    public init() {
+    /// `signingKeys` is injectable so tests can run without a Keychain, which
+    /// they must: `swift test` is headless and unentitled.
+    public init(signingKeys: SigningKeyStore = KeychainSigningKeyStore()) {
+        self.signingKeys = signingKeys
         hiscores = hiscoreFile.load()
         // The custom track slot survives quitting: restore it before anything
         // reads it. (Set the stored value, not the property — the property's

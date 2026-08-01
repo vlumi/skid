@@ -21,6 +21,14 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **A shared track can say who made it.** Copying a track now signs it, so
+  whoever you send it to can see it came from you — and a track you receive
+  shows whether its signature still matches, which is the only sign it was
+  edited along the way. A track with a broken signature still loads and races
+  normally; this is attribution, not a lock. **Long-press Copy** for a shorter
+  unsigned code when the link is disposable. Sharing keeps working when no
+  signing key is available; the code is simply unsigned.
+
 - **One track, one share code.** Checkpoint order carries no meaning — a lap
   collects them all — but it was reaching the code, so the same track could
   produce two different codes depending on the order its checkpoints happened

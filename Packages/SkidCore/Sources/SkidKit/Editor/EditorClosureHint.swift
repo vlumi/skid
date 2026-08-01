@@ -145,8 +145,12 @@ extension EditorView {
     /// device to be pasted into the repo as a built-in (or shared). Copy only:
     /// a button that also *loaded* a clipboard code could silently replace the
     /// track you're working on.
-    func copyCode() {
-        guard let code = game.customTrackCode() else { return }
+    /// `signed: false` copies the short code instead — a signature costs about
+    /// 135 characters, worth skipping for a link that is disposable. What each
+    /// is FOR is a question for closer to release; both exist so that decision
+    /// isn't blocked on the format.
+    func copyCode(signed: Bool = true) {
+        guard let code = game.shareCode(signed: signed) else { return }
         #if canImport(UIKit)
         UIPasteboard.general.string = code
         #endif
