@@ -165,6 +165,14 @@ What's left:
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
+## v0.7.0 — Platforms & input
+
+The game only runs one way on one kind of device: portrait, on a phone, driven
+by thumbs on glass. This milestone is about the OTHER ways in, and it sits here
+because networking (v0.8) wants the input and orientation questions settled
+first — a Mac joining a couch race needs a keyboard scheme to exist, and a
+locked orientation is one less thing to synchronise.
+
 - [ ] macOS target (Universal Purchase, same bundle id), sim untouched —
       only render/input capture differ
 - [ ] Keyboard scheme (arrows/WASD, 1–2 players) and GameController support
