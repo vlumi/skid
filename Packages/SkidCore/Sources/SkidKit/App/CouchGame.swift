@@ -87,7 +87,7 @@ public final class CouchGame: ObservableObject {
     public let settings = GameSettings()
 
     private let hiscoreFile = HiscoreFile()
-    private let libraryFile = TrackLibraryFile()
+    private let libraryFile: TrackLibraryFile
     /// Your saved tracks. Written on every editor change, but not yet READ by
     /// anything — the custom slot is still authoritative until the picker moves
     /// over, so a migration that gets this wrong cannot lose the slot.
@@ -116,8 +116,15 @@ public final class CouchGame: ObservableObject {
 
     /// `signingKeys` is injectable so tests can run without a Keychain, which
     /// they must: `swift test` is headless and unentitled.
-    public init(signingKeys: SigningKeyStore = KeychainSigningKeyStore()) {
+    /// `signingKeys` and `libraryFilename` are injectable so tests can run
+    /// without a Keychain and without sharing one library file across the run —
+    /// both are process-wide state that leaks between test methods otherwise.
+    public init(
+        signingKeys: SigningKeyStore = KeychainSigningKeyStore(),
+        libraryFilename: String = "tracks.json"
+    ) {
         self.signingKeys = signingKeys
+        self.libraryFile = TrackLibraryFile(filename: libraryFilename)
         hiscores = hiscoreFile.load()
         // The custom track slot survives quitting: restore it before anything
         // reads it. (Set the stored value, not the property — the property's
