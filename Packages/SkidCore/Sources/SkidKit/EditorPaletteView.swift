@@ -160,6 +160,11 @@ extension EditorView {
             RoundedRectangle(cornerRadius: 10)
                 .fill(.black.opacity(placeable ? 0.3 : 0.12))
             if !empty {
+                // At the HEAD the icon previews what will be DRAWN, which is the
+                // author's own direction — the road runs out of the head, so the
+                // heading is reversed and the pitch is taken as tapped. The stored
+                // piece is the mirror of this (see `CouchGame.editorPlace`); showing
+                // that instead would put a right-hand curve under a left-hand button.
                 PieceIcon(
                     id: icon ?? piece, entryHeading: appendHeading(walk),
                     entryHeight: appendHeight(walk), pitch: buildPitch
