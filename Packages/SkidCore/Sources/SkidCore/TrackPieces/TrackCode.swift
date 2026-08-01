@@ -40,6 +40,22 @@ public enum TrackCode {
     /// 5,866 — about 2.6 laps of the outer edge.
     public static let maxLength = 127
     public static let maxGates = 16
+    /// Longest payload a TLV section can carry: the length is one byte.
+    ///
+    /// Not slack — decals are 2 bytes each and `maxLength` caps a layout at 127
+    /// primitives, so a fully decorated track sits at 254, one byte under.
+    public static let maxSectionPayload = 255
+
+    /// Bytes a section of `n` decals would occupy, for the tests that pin how
+    /// close that is to the ceiling.
+    static func sectionPayloadSize(decals count: Int) -> Int { count * 2 }
+
+    /// The length `encode` would produce. Defined as the encode itself, so the
+    /// two cannot drift; keep it off render paths, which already pay for one
+    /// encode per edit through the undo snapshot.
+    public static func encodedSize(_ layout: TrackLayout) -> Int {
+        encode(layout).count
+    }
 
     private enum Tag: UInt8 {
         case pieces = 1
@@ -188,8 +204,15 @@ public enum TrackCode {
     // MARK: - Sections
 
     private static func appendSection(_ body: inout [UInt8], _ tag: Tag, _ payload: [UInt8]) {
+        // A wrapped length desynchronizes the parser, so `encode` would emit a
+        // code its own `decode` rejects — silently, since `encode` cannot throw.
+        // Unreachable by construction today; this catches the encoder growing a
+        // section past what a one-byte length can describe.
+        precondition(
+            payload.count <= maxSectionPayload,
+            "section \(tag) payload \(payload.count) exceeds the one-byte length")
         body.append(tag.rawValue)
-        body.append(UInt8(truncatingIfNeeded: payload.count))
+        body.append(UInt8(payload.count))
         body.append(contentsOf: payload)
     }
 
