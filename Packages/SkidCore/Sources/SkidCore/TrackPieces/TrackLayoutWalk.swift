@@ -109,3 +109,41 @@ extension TrackLayout {
         end == inlet
     }
 }
+
+/// The result of walking a layout: every piece placed in exact coordinates,
+/// plus whatever ports are still open (loose ends) and any error that stopped
+/// the walk. A fork-free ring that closes leaves `openEnds` empty.
+public struct WalkResult: Equatable, Sendable {
+    public enum Failure: Equatable, Sendable {
+        case unknownPiece(PieceID)
+        case emptyLayout
+    }
+
+    public var placed: [PlacedPiece]
+    /// Poses still awaiting a mate (loose ends). Empty ⇒ fully connected.
+    public var openEnds: [PiecePose]
+    public var failure: Failure?
+
+    public var isConnected: Bool { failure == nil && openEnds.isEmpty }
+
+    /// **The ground the road covers**, centerline bounds grown by `padding`.
+    ///
+    /// One definition, because the editor's canvas box, its out-of-room hint and
+    /// its centering all describe the SAME rule and have to agree — they were
+    /// three separate transcriptions of it. Nil for a layout with no samples.
+    public func footprint(padding: Double = 0) -> Rect? {
+        let points = placed.flatMap { $0.centerlineSamples() }
+        guard let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
+            let minY = points.map(\.y).min(), let maxY = points.map(\.y).max()
+        else { return nil }
+        return Rect(
+            x: minX - padding, y: minY - padding,
+            width: (maxX - minX) + 2 * padding, height: (maxY - minY) + 2 * padding)
+    }
+
+    /// The footprint padded by the road's half-width — the extent the validator
+    /// measures against the canvas.
+    public func paddedFootprint() -> Rect? {
+        footprint(padding: Double(PieceCatalog.width) / 2)
+    }
+}

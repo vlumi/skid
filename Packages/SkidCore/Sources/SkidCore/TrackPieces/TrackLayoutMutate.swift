@@ -31,8 +31,8 @@ extension TrackLayout {
         var padded = paddedPitches(count: pieces.count - 1)
         padded.insert(pitch, at: index)
         pitches = Self.trimmedPitches(padded)
-        gateSeams = gateSeams.map { $0 >= index ? $0 + 1 : $0 }.sorted()
         let shift = { (key: Int) in key >= index ? key + 1 : key }
+        gateSeams = remapped(gateSeams, by: shift)
         fitters = remapped(fitters, by: shift)
         decals = remapped(decals, by: shift)
     }
@@ -48,9 +48,8 @@ extension TrackLayout {
         var padded = paddedPitches(count: pieces.count + 1)
         padded.remove(at: index)
         pitches = Self.trimmedPitches(padded)
-        gateSeams = gateSeams.compactMap { $0 == index ? nil : ($0 > index ? $0 - 1 : $0) }
-            .sorted()
         let pullBack = { (key: Int) in key > index ? key - 1 : key }
+        gateSeams = remapped(gateSeams.filter { $0 != index }, by: pullBack)
         fitters = remapped(fitters.filter { $0.key != index }, by: pullBack)
         decals = remapped(decals.filter { $0.key != index }, by: pullBack)
     }
@@ -78,8 +77,8 @@ extension TrackLayout {
         pieces = Array(pieces[index...] + pieces[..<index])
         let padded = paddedPitches(count: count)
         pitches = Self.trimmedPitches(Array(padded[index...] + padded[..<index]))
-        gateSeams = gateSeams.map { ($0 - index + count) % count }.sorted()
         let rotate = { (key: Int) in (key - index + count) % count }
+        gateSeams = remapped(gateSeams, by: rotate)
         fitters = remapped(fitters, by: rotate)
         decals = remapped(decals, by: rotate)
         // The walk now starts at the new first piece, so the origin is that
@@ -103,5 +102,12 @@ extension TrackLayout {
         -> [Int: Value]
     {
         Dictionary(uniqueKeysWithValues: table.map { (move($0.key), $0.value) })
+    }
+
+    /// The same move over a bare index list. An overload so the three keyed
+    /// fields read alike at every call site — `gateSeams` was remapped by hand
+    /// beside the very closure the other two used.
+    private func remapped(_ indices: [Int], by move: (Int) -> Int) -> [Int] {
+        indices.map(move)
     }
 }

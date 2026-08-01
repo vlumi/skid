@@ -217,15 +217,12 @@ extension CouchGame {
     @discardableResult
     private func centerOnCanvas() -> Bool {
         guard var layout = editorLayout else { return false }
-        let points: [Vec2] = layout.walk().placed.flatMap { $0.centerlineSamples() }
-        guard let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
-            let minY = points.map(\.y).min(), let maxY = points.map(\.y).max()
-        else { return false }
+        guard let used = layout.walk().footprint() else { return false }
         // Leave room for the road's half-width on every side.
         let margin = Double(PieceCatalog.width) / 2
         let target = TrackValidator.canvas
-        let shiftX = (target.x - (maxX - minX)) / 2 - minX
-        let shiftY = (target.y - (maxY - minY)) / 2 - minY
+        let shiftX = (target.x - used.width) / 2 - used.minX
+        let shiftY = (target.y - used.height) / 2 - used.minY
         // The origin is exact, so shift by whole units to keep it that way.
         let unit = Double(PieceCatalog.unit)
         let steps = CoordPoint(
