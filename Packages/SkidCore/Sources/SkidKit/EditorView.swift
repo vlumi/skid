@@ -183,7 +183,11 @@ struct EditorView: View {
     /// and is the right read for the icons.
     func appendHeading(_ walk: WalkResult) -> Heading {
         if game.editorActiveEnd == .head, let layout = game.editorLayout {
-            return layout.origin.heading
+            // REVERSED: the origin heading points into piece 0 (the driving
+            // direction), but the author is building the other way, and the icons
+            // preview what they will DRAW. Same reason the construction marker at
+            // the head faces out of the track.
+            return layout.origin.heading.reversed
         }
         guard let i = effectiveSelection(walk), walk.openEnds.indices.contains(i) else {
             return .east
