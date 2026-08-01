@@ -33,7 +33,15 @@ compose instead of each being a rewrite.
 
 The rule: **testable logic goes in SkidCore.** Where a feature needs platform
 I/O, the pattern is a versioned `Codable` model in SkidCore plus a dumb I/O
-shim in SkidKit — `HiscoreBook`/`HiscoreFile` is the reference pair.
+shim in SkidKit — `HiscoreBook`/`HiscoreFile` is the reference pair. The line is
+worth defending: the control schemes are pure input math and sat in SkidKit,
+outside the coverage gate, until four `CGRect` references were the only thing
+holding them there.
+
+Both targets and the tests group **by domain, not by type** —
+`SkidKit/Editor/`, `SkidKit/Input/`, `SkidCore/TrackPieces/`,
+`Tests/SkidCoreTests/Sim/`. A renderer that only the editor uses belongs with
+the editor, not with the other renderers.
 
 ## The simulation
 
@@ -155,13 +163,10 @@ entirely when empty, so adding one costs zero bytes for tracks that don't use it
 
 Real tracks are **24–44 bytes** (32–59 code chars), comfortably inside a QR.
 
-Codes are meant to be canonical — one track, one code — which is what lets a
-code serve as an identity for dedup and per-track hiscores. **Today they aren't,
-quite**: `gateSeams` is only sorted by `rotate(to:)`, which early-returns when
-the start piece is already at index 0, so the ordinary encode path can emit two
-different codes for the same track. The shipped `eight` built-in carries
-unsorted gates because of it. Fixing this is a prerequisite for signing, which
-would otherwise attest to an arbitrary spelling.
+**One track, one code** — what lets a code serve as an identity for dedup and
+per-track hiscores. `normalized()` handles the ring's rotation; `gateSeams` is
+kept ascending by `TrackLayout` itself, because gate order carries no meaning
+and letting it reach the bytes gave one track several codes.
 
 A code carries **content only**. No id (the receiving device mints its own), and
 no name.
