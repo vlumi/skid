@@ -21,6 +21,13 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **One track, one share code.** Checkpoint order carries no meaning — a lap
+  collects them all — but it was reaching the code, so the same track could
+  produce two different codes depending on the order its checkpoints happened
+  to be marked in. Codes are an identity (dedup, per-track records), so that
+  had to hold. The **Eight built-in's code changed** as a result; it is the same
+  track, and the old code still opens it.
+
 - **Tracks can be turned around in the editor.** A new button on a closed ring
   reverses the driving direction: the same road, driven the other way. Every
   curve mirrors, every climb becomes a descent, and the start line moves to the
