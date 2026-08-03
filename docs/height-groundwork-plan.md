@@ -141,10 +141,27 @@ which is what makes it robust. What changes is only the **sideways** rule.
 You may drive **off** a ramp's side; you may not drive **into** it. Today the
 flanks are `.rail` — symmetric — so a railless ramp would still trap you on it.
 
-This holds for **every** ramp, railed or not. A railed ramp's rail stops you
-because a rail is a barrier; the embankment underneath is one-way regardless.
-That keeps rails purely additive rather than secretly structural — a cosmetic
-attribute must not change what the ground is.
+**Attempted and reverted once. The lesson: a rail and an embankment are two
+WALLS, not one wall with a flag.** A climbing piece currently emits a single set
+of edge walls doing both jobs, and adding `oneWay` to them made *every* rail on
+a ramp one-way — 128 of 136 on the eight, which is mostly climbing pieces — so
+you could drive through railings almost anywhere. A rail is a symmetric barrier
+and cosmetic; an embankment is one-way and structural. **They must be emitted
+separately**, which is work step 4 needs regardless: a railless ramp is
+impossible until the two are distinct objects.
+
+Two things that attempt also proved, worth not rediscovering:
+
+- **"Was the car on road?" is the wrong side test.** It is true of the
+  legitimate driver too, so it opens the barrier for exactly the person it
+  should hold in.
+- **The nearest wall's `outward` is also wrong.** A flank is a chain of short
+  walls along a curve, so it answers "which side of this SEGMENT", a different
+  question.
+
+The side test wants to be about the RAMP, and cheaply — a per-wall centerline
+search took the suite from 36s to 47s, which is the cost this file already warns
+about.
 
 Needs a new `Wall.Kind`, alongside the `cuttingRail` the tunnel spec already
 plans; both are one-way walls, so they likely share an implementation. The side
@@ -157,7 +174,14 @@ the height lost, landing on whatever is beneath.
 
 ## 4. Rails become a placement attribute
 
-`hasRails` per piece, defaulting to off-ground so existing tracks are unchanged.
+`hasRails` per piece — **defaulting to OFF**, and existing tracks simply lose
+their railings until an author toggles them back on. Decided rather than
+inferred: a default that reproduces today's look would mean the encoding has to
+distinguish "no toggle recorded" from "toggled off", and there are few enough
+tracks that adding rails back by hand is cheaper than carrying that ambiguity.
+
+Toggled on an already-placed piece, like a decal — not chosen at placement
+time — so the editor gains a rails mode rather than doubling the palette.
 
 Unlocks both directions the roadmap wants: **bridges without railings** (drive
 off the edge — the fall path already exists) and **railings on flat pieces**.
