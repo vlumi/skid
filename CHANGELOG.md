@@ -28,6 +28,9 @@ ships (see [AGENTS.md](AGENTS.md)).
   onto your thumb — and straight back if that's where you point. The body-flip
   still takes over inside the forward arc, or when you are driving forward at
   speed.
+- **Two new Casual tuning sliders**, Forward arc and Tail swing, for the two
+  angles the reverse actually turns on. "Reverse under" is now "Reverse under
+  speed" — it sets a speed, not an angle, which its old name hid.
 
 - **Bridge railings behave consistently.** Driving on the grass beside a bridge,
   the railing above used to stop you in some places and not others, and hitting
