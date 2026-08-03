@@ -117,12 +117,18 @@ public enum PieceCompiler {
         }
         framed.walls =
             track.walls.map { wall in
-                // `outward` is a DIRECTION: it survives the shift unchanged.
-                // Rebuilding a wall field-by-field here is how it would quietly
-                // get lost, so keep this exhaustive.
-                Wall(
-                    from: wall.a + shift, to: wall.b + shift, height: wall.height,
-                    kind: wall.kind, outward: wall.outward)
+                // COPY and move, rather than rebuild field-by-field. The old
+                // form listed every field by hand, so anything added to `Wall`
+                // was silently dropped here — which cost a session: a new flag
+                // reached the walls and vanished at framing, and the walls
+                // looked correct everywhere it was set.
+                //
+                // Only the POSITIONS shift; `outward` is a direction, and
+                // nothing else depends on where the wall sits.
+                var moved = wall
+                moved.a = wall.a + shift
+                moved.b = wall.b + shift
+                return moved
             }
             // The fence goes on AFTER re-framing, since it's defined against the
             // final `size` rather than against the walked coordinates.
