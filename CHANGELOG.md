@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Bridge railings behave consistently.** Driving on the grass beside a bridge,
+  the railing above used to stop you in some places and not others, and hitting
+  it near a ramp could fling the car straight through to the other side. A
+  railing now guards the road it edges — the ground beneath a bridge runs clear,
+  as it looks like it should — while a ramp keeps a solid bank along its sides.
+
 - **Cars now arc through the air.** Driving off a bridge used to drop you to the
   ground instantly and then play a short hop; now you fall, gathering speed, and
   land on whatever is beneath you — which may be a lower deck rather than the
