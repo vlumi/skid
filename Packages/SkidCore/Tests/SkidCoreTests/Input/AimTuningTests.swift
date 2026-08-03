@@ -37,17 +37,17 @@ final class AimTuningTests: XCTestCase {
         atan2(source.knob.y, source.knob.x) * 180 / .pi
     }
 
-    /// Widening the forward arc moves the boundary: a thumb at 100° is a
-    /// forward chase under the stock 120° arc but a reverse under a 90° one.
+    /// Widening the forward arc moves the boundary: a thumb at 130° is a
+    /// forward chase under the stock 150° arc but a reverse under a 120° one.
     func testTheForwardArcMovesTheReverseBoundary() {
-        for (arc, reverses) in [(120.0, false), (90.0, true)] {
-            let source = source(forwardArc: arc, tailSwing: 60)
-            aim(source, degrees: 100)
+        for (arc, reverses) in [(150.0, false), (120.0, true)] {
+            let source = source(forwardArc: arc, tailSwing: 45)
+            aim(source, degrees: 130)
             source.setCar(heading: 0, forwardSpeed: 0, speed: 0)
             let input = source.input(for: PlayerID(0), at: Tick(0))
             XCTAssertEqual(
                 input.aim == nil, reverses,
-                "a 100° thumb with a \(arc)° forward arc")
+                "a 130° thumb with a \(arc)° forward arc")
         }
     }
 
@@ -128,8 +128,8 @@ final class AimTuningTests: XCTestCase {
     /// change can't silently invalidate them.
     func testStockDefaults() {
         let source = AimControlSource()
-        XCTAssertEqual(source.reverseThreshold, .pi * 2 / 3, accuracy: 1e-9, "120°")
-        XCTAssertEqual(source.fullSteerError, .pi / 3, accuracy: 1e-9, "60°")
+        XCTAssertEqual(source.reverseThreshold, .pi * 5 / 6, accuracy: 1e-9, "150°")
+        XCTAssertEqual(source.fullSteerError, .pi / 4, accuracy: 1e-9, "45°")
         XCTAssertEqual(source.reverseBelowSpeed, 90)
         XCTAssertEqual(source.releaseMargin, .pi / 6, accuracy: 1e-9, "30°")
     }

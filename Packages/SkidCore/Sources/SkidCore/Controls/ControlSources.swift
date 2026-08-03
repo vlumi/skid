@@ -196,13 +196,15 @@ public final class AimControlSource: HeadingAwareControlSource {
     /// barely-nudged thumb coasts rather than snapping to a direction.
     public var deadzone: Double = 10
     /// Steer ramp for the REVERSE maneuver: full lock once the target is
-    /// this many radians off the tail.
-    public var fullSteerError = Double.pi / 3
+    /// this many radians off the tail. 45°, chosen on device: it swings the
+    /// tail around briskly without the wheel feeling twitchy.
+    public var fullSteerError = Double.pi / 4
     /// The forward arc: a target within this much of the nose is chased
-    /// forwards, anything outside it (the rear 60° either side) is reversed
-    /// toward. 120° leaves a rear wedge a thumb can actually hold — the old
-    /// rule needed a near-perfect 180° to keep reversing.
-    public var reverseThreshold = Double.pi * 2 / 3
+    /// forwards, anything outside it is reversed toward. 150°, chosen on
+    /// device, leaves a 30°-either-side rear wedge — enough for a thumb to hold
+    /// deliberately, while keeping the body-flip available for most of the
+    /// circle. (The old rule needed a near-perfect 180° to keep reversing.)
+    public var reverseThreshold = Double.pi * 5 / 6
     /// How far INSIDE the forward arc the aim must come before a running
     /// reverse gives up. Hysteresis: entering and leaving can't chatter on one
     /// boundary while the maneuver itself rotates the car. Derived from
