@@ -196,8 +196,13 @@ public struct Race: Equatable, Sendable {
     private func applyRamps(car: inout Car, movedFrom from: Vec2) {
         guard !car.state.isAirborne else { return }
         for ramp in track.ramps where ramp.crossing(movingFrom: from, to: car.state.position) == 1 {
-            let flight = Int(car.state.velocity.length * tuning.jumpTicksPerSpeed)
-            car.state.airborneTicks = min(60, flight)
+            // Kick scaled by speed, so distance stays QUADRATIC in speed — a
+            // fixed kick would give the same flight time at any speed, making
+            // a gap far easier to clear slowly.
+            car.state.verticalSpeed = car.state.velocity.length * tuning.launchPerSpeed
+            car.state.airborneTicks = 1
+            // Same tick-ordering reason as a fall: rise now, not next tick.
+            car.state.height += car.state.verticalSpeed * Race.dt
         }
         guard !car.state.isAirborne else { return }
 
@@ -225,8 +230,16 @@ public struct Race: Equatable, Sendable {
             // Falling off the deck drops to the GROUND, which is a real floor
             // regardless of where the track's grid sits.
             if car.state.height > Track.heightEpsilon {
-                car.state.height = 0
-                car.state.airborneTicks = 8
+                // Fall from where the car actually is, rather than snapping to
+                // the ground and then flying — which put it at the bottom
+                // before it visually landed.
+                //
+                // `applyRamps` runs AFTER `step`, so the tick that notices the
+                // car left the road has already moved it as if grounded. Take
+                // this tick's descent here, or the fall visibly starts late.
+                car.state.airborneTicks = 1
+                car.state.verticalSpeed -= tuning.gravity * Race.dt
+                car.state.height += car.state.verticalSpeed * Race.dt
             }
             return
         }
@@ -237,6 +250,21 @@ public struct Race: Equatable, Sendable {
         let target = track.height(at: car.state.position, preferHeight: car.state.height)
         let step = Self.maxHeightChangePerTick
         car.state.height += max(-step, min(step, target - car.state.height))
+    }
+
+    /// **What a falling car lands on**: the road beneath it, or the ground.
+    ///
+    /// `preferHeight` is the height the car is falling THROUGH, so the resolver
+    /// picks the road nearest below rather than the one it just left — that is
+    /// what lets a fall from the top storey settle on a deck instead of dropping
+    /// through it. Off the road entirely, the ground is the floor.
+    private func landingHeight(under position: Vec2, fallingFrom height: Double) -> Double {
+        let road = track.height(at: position, preferHeight: height)
+        guard road <= height + Track.reachTolerance,
+            track.distanceToCenterline(position, height: road)
+                <= track.halfWidth(atHeight: road)
+        else { return 0 }
+        return road
     }
 
     /// The most the car's height can change in one tick. A ramp climbs over many
@@ -303,11 +331,25 @@ public struct Race: Equatable, Sendable {
     private func step(car: inout CarState, input: CarInput) -> Double {
         let dt = Race.dt
         if car.isAirborne {
-            // Ballistic: no steering, no throttle, no grip, no drag — the
-            // car flies straight until it lands.
-            car.airborneTicks -= 1
+            // Ballistic: no steering, no throttle, no grip, no drag. Horizontal
+            // velocity is carried unchanged; only height is acted on.
+            car.verticalSpeed -= tuning.gravity * dt
+            car.height += car.verticalSpeed * dt
             let before = car.position
             car.position += car.velocity * dt
+            // **Flight ends by meeting a surface, not by a timer.** The ground
+            // the car came down onto is whatever is under it — so a fall from
+            // the top storey lands on a deck below rather than through it.
+            let floor = landingHeight(under: car.position, fallingFrom: car.height)
+            if car.verticalSpeed <= 0, car.height <= floor {
+                car.height = floor
+                car.verticalSpeed = 0
+                car.airborneTicks = 0
+            } else {
+                // Kept only so `isAirborne` stays true and the counter remains
+                // readable in the debug overlay; the arc decides when to land.
+                car.airborneTicks = min(600, car.airborneTicks + 1)
+            }
             return collideWithWalls(car: &car, movedFrom: before)
         }
         let surface = track.surface(at: car.position, height: car.height)
