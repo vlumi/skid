@@ -69,6 +69,56 @@ final class RailAndEmbankmentTests: XCTestCase {
             "a fence with holes in it is the reported 'railing works erratically'")
     }
 
+    /// **A rail mid-climb guards the car actually driving that stretch.**
+    ///
+    /// Rounding a rail's height to the nearest level promoted one at 0.52–0.75 to
+    /// storey 1 and then demanded `height >= 0.8` — so it blocked nobody, and a
+    /// drag along the barrier walked out through it. `onClimb` is why the wall can
+    /// tell this from a sagging deck at the same height.
+    func testAClimbRailGuardsItsOwnStretch() {
+        let race = race()
+        for height in [0.3, 0.52, 0.75, 0.98] {
+            let rail = Wall(
+                from: Vec2(0, 0), to: Vec2(100, 0), height: height, kind: .rail,
+                outward: Vec2(0, 1), onClimb: true)
+            XCTAssertTrue(
+                race.blocks(rail, car: car(atHeight: height)),
+                "a rail at \(height) on a climb must hold the car driving there")
+        }
+    }
+
+    /// And the sagging-deck case keeps its old answer at the SAME heights: a flat
+    /// rail belongs to its level, so the ground still passes underneath.
+    func testASaggingDeckRailStillClearsTheGround() {
+        let race = race()
+        for height in [0.96, 0.99, 1.0] {
+            let rail = Wall(
+                from: Vec2(0, 0), to: Vec2(100, 0), height: height, kind: .rail,
+                outward: Vec2(0, 1), onClimb: false)
+            XCTAssertFalse(
+                race.blocks(rail, car: car(atHeight: 0)),
+                "a flat deck rail at \(height) must not fence the ground")
+            XCTAssertTrue(race.blocks(rail, car: car(atHeight: 1)), "but holds the deck")
+        }
+    }
+
+    /// The compiler records it, so real tracks get the distinction.
+    func testTheCompilerMarksClimbingRails() throws {
+        let track = try PieceCompiler.compile(
+            TrackCode.decode(TestTracks.Code.bridgeRing), id: "t")
+        let rails = track.walls.filter { $0.kind == .rail }
+        XCTAssertFalse(rails.isEmpty)
+        XCTAssertFalse(
+            rails.filter(\.onClimb).isEmpty, "a bridge ring climbs, so some rails are on a climb")
+        // And a mid-climb rail actually holds a car at its own height.
+        let race = Race(track: track, players: [PlayerID(0)])
+        for rail in rails.filter({ $0.onClimb && $0.height > 0.4 && $0.height < 0.9 }) {
+            XCTAssertTrue(
+                race.blocks(rail, car: car(atHeight: rail.height)),
+                "mid-climb rail at \(rail.height) must hold a car on that stretch")
+        }
+    }
+
     // MARK: - Embankments are the earth under a climb
 
     /// An embankment fences the ground beside a ramp, whatever height the road

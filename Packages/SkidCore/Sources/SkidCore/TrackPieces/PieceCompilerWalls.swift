@@ -64,7 +64,7 @@ extension PieceCompiler {
                 rails.append(
                     Wall(
                         from: edge[index - 1], to: edge[index], height: height,
-                        outward: outward))
+                        outward: outward, onClimb: placed.climb != 0))
                 // A climbing stretch also stands on earth. Same line, same
                 // height — what differs is what it blocks: the railing guards
                 // the road's own level, this fills everything below it.

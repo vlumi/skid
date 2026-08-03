@@ -21,6 +21,9 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Railings mid-ramp actually hold you.** A railing partway up a climb was
+  being assigned to the storey above, so it stopped nobody — you could drive
+  through it by dragging the car along the barrier. Deck railings are unchanged.
 - **Ramp sides are one-way.** You can drive off the side of a ramp — and fall,
   following the same arc as any other drop — but you still can't drive into one
   from below. Railings are unchanged: they hold you from both sides, as before.
