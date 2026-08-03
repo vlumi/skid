@@ -23,11 +23,11 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 - **Holding back keeps reversing.** In Casual, pushing back reversed for a moment
   and then tried to swing the car around instead — which made backing out of a
-  tight spot much harder than it should be. The rear 60° either side of the tail
-  now reverses for as long as you hold it there, swinging the car's tail around
+  tight spot much harder than it should be. Aim within 30° of straight back and
+  the car now reverses for as long as you hold it there, swinging its tail around
   onto your thumb — and straight back if that's where you point. The body-flip
-  still takes over inside the forward arc, or when you are driving forward at
-  speed.
+  still takes over anywhere inside the forward arc, or when you are driving
+  forward at speed.
 - **Two new Casual tuning sliders**, Forward arc and Tail swing, for the two
   angles the reverse actually turns on. "Reverse under" is now "Reverse under
   speed" — it sets a speed, not an angle, which its old name hid.

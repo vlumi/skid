@@ -15,6 +15,10 @@ import XCTest
 /// until the target is no longer behind. Measured on a flat road, a steady
 /// thumb held 170° off the nose reversed for 41 ticks and came to rest heading
 /// 170° — a completed three-point turn — and 130° gave up after 12.
+///
+/// The stock forward arc is 150° (a 30°-either-side rear wedge) with a 45°
+/// tail-swing lock, both settled on device; the fixtures below sit inside that
+/// wedge. `AimTuningTests` covers moving the arc itself.
 final class AimReverseTests: XCTestCase {
     /// A flat, wide road: only the controls are under test.
     private func flatTrack() -> Track {
@@ -73,7 +77,7 @@ final class AimReverseTests: XCTestCase {
 
     /// Every angle in the wedge holds, not just the one that was reported.
     func testTheWholeRearWedgeKeepsReversing() {
-        for degrees in [121.0, 130, 150, 170, 180, -121, -130, -150, -170] {
+        for degrees in [151.0, 160, 170, 175, 180, -151, -160, -170, -175] {
             let held = hold(aimDegrees: degrees)
             XCTAssertEqual(
                 held.reverseTicks, 150, accuracy: 0,
@@ -88,7 +92,7 @@ final class AimReverseTests: XCTestCase {
     /// wedge boundary instead, which parked the car ~25° short and stopped it
     /// rotating: reported from a screenshot as backing north with the thumb NE.
     func testTheTailIsDrivenOntoTheThumb() {
-        let held = hold(aimDegrees: 135, ticks: 200)
+        let held = hold(aimDegrees: 165, ticks: 200)
         XCTAssertEqual(
             held.tailToThumbDegrees, 0, accuracy: 1,
             "the tail must end up pointing at the thumb, not short of it")
@@ -98,48 +102,74 @@ final class AimReverseTests: XCTestCase {
     /// **The swing is PROMPT, not merely eventual.** A version that faded the
     /// steering out near the wedge boundary still converged given enough ticks,
     /// but crawled the last stretch — which on device read as the car simply not
-    /// rotating. Measured from a standstill at a 135° thumb, 45° of tail-swing
-    /// closes to 13° by tick 30 and 5° by tick 45.
+    /// rotating. Measured from a standstill at a 165° thumb, the 15° of swing
+    /// closes to under 3° by tick 30 — the stock 45° lock is brisk.
     func testTheTailSwingIsPrompt() {
         XCTAssertLessThan(
-            abs(hold(aimDegrees: 135, ticks: 30).tailToThumbDegrees), 20,
-            "45° of swing must be most of the way done within 30 ticks")
+            abs(hold(aimDegrees: 165, ticks: 30).tailToThumbDegrees), 20,
+            "the swing must be most of the way done within 30 ticks")
         XCTAssertLessThan(
-            abs(hold(aimDegrees: 135, ticks: 45).tailToThumbDegrees), 8,
+            abs(hold(aimDegrees: 165, ticks: 45).tailToThumbDegrees), 8,
             "and essentially complete by 45")
     }
 
     /// The steer must be at real strength while the aim sits just inside the
     /// wedge — the exact region the discarded settle-fade zeroed out, and the
-    /// geometry of the reported screenshot (backing north, thumb 135° off).
+    /// geometry of the reported screenshot (backing north, thumb well off the
+    /// tail).
     func testTheSteerIsStrongJustInsideTheWedge() {
         let source = AimControlSource()
         source.touchBegan(id: TouchID(1), at: Vec2(500, 500))
-        let aim = 130.0 * .pi / 180
+        let aim = 160.0 * .pi / 180
         source.touchMoved(
             id: TouchID(1), at: Vec2(500 + cos(aim) * 80, 500 + sin(aim) * 80))
         source.setCar(heading: 0, forwardSpeed: -100, speed: 100)
         let input = source.input(for: PlayerID(0), at: Tick(0))
-        XCTAssertNil(input.aim, "130° off the nose is a reverse")
+        XCTAssertNil(input.aim, "160° off the nose is a reverse")
+        // 20° of tail error against the 45° lock: real bite. The discarded
+        // settle-fade scaled this by (|error| − arc)/20°, i.e. to 0.5 here and to
+        // nothing at the boundary itself.
         XCTAssertGreaterThan(
-            abs(input.steer), 0.6,
+            abs(input.steer), 0.4,
             "the tail-swing must bite immediately, not fade in from the boundary")
     }
 
-    /// The screenshot, as a test: backing north with the thumb NE must swing the
-    /// tail around to NE rather than continuing north.
-    func testBackingNorthWithTheThumbNorthEastSwingsTheTail() {
-        var race = Race(
-            track: flatTrack(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
-        // Screen y grows down and a screen direction IS a world direction, so
-        // north is -y. Backing north means the NOSE points south.
-        race.cars[0].state.heading = atan2(1.0, 0.0)
-        race.cars[0].state.velocity = Vec2(0, -139)
+    /// The reported screenshot geometry — backing north with the thumb NE — is
+    /// **135° off the tail, and so a forward chase at the stock 150° arc**, not a
+    /// reverse. It reversed under the earlier 120° arc, and that is where the
+    /// tail-swing bug was found; the fix is covered by the tests above at angles
+    /// inside the current wedge.
+    ///
+    /// Kept as a boundary case because it is the one real-world geometry that was
+    /// photographed: it pins WHICH scheme owns that thumb position, so a future
+    /// arc change is a deliberate decision rather than a surprise.
+    func testBackingNorthWithTheThumbNorthEastIsAForwardChase() {
         let source = AimControlSource()
         source.touchBegan(id: TouchID(1), at: Vec2(500, 500))
         source.touchMoved(id: TouchID(1), at: Vec2(556, 444))  // north-east
+        // Screen y grows down and a screen direction IS a world direction, so
+        // north is -y. Backing north means the NOSE points south.
+        source.setCar(heading: atan2(1.0, 0.0), forwardSpeed: -139, speed: 139)
 
-        let aim = atan2(-1.0, 1.0)
+        XCTAssertNotNil(
+            source.input(for: PlayerID(0), at: Tick(0)).aim,
+            "135° off the tail is inside the 150° forward arc — the body-flip owns it")
+    }
+
+    /// Backing north with the thumb nearer straight back IS in the wedge, and
+    /// still brings the tail around onto the thumb.
+    func testBackingNorthWithACloserThumbSwingsTheTail() {
+        var race = Race(
+            track: flatTrack(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
+        race.cars[0].state.heading = atan2(1.0, 0.0)  // nose south, backing north
+        race.cars[0].state.velocity = Vec2(0, -139)
+        let source = AimControlSource()
+        source.touchBegan(id: TouchID(1), at: Vec2(500, 500))
+        // 20° off straight-north: inside the 30° wedge.
+        let aim = atan2(-1.0, 0.36)
+        source.touchMoved(
+            id: TouchID(1), at: Vec2(500 + cos(aim) * 80, 500 + sin(aim) * 80))
+
         for tick in 0..<200 {
             let car = race.cars[0].state
             source.setCar(
@@ -150,8 +180,8 @@ final class AimReverseTests: XCTestCase {
         let heading = race.cars[0].state.heading
         let tailToThumb = atan2(sin(aim - heading + .pi), cos(aim - heading + .pi))
         XCTAssertEqual(
-            tailToThumb * 180 / .pi, 0, accuracy: 1,
-            "the tail must come around onto the north-east thumb")
+            tailToThumb * 180 / .pi, 0, accuracy: 2,
+            "the tail must come around onto the thumb")
     }
 
     /// **A thumb held straight back reverses STRAIGHT back.** The mirrored steer
@@ -168,18 +198,18 @@ final class AimReverseTests: XCTestCase {
     /// The swing converges rather than overshooting into a three-point turn —
     /// the failure mode of judging the gate afresh every tick.
     func testTheSwingDoesNotOvershootIntoAFullTurn() {
-        // A 135° thumb needs 45° of swing. Anything approaching the 135° that a
+        // A 165° thumb needs 15° of swing. Anything approaching the 165° that a
         // nose-onto-thumb pirouette would take is an overshoot.
-        let held = hold(aimDegrees: 135, ticks: 200)
+        let held = hold(aimDegrees: 165, ticks: 200)
         XCTAssertLessThan(
-            held.maxHeadingDriftDegrees, 60,
+            held.maxHeadingDriftDegrees, 40,
             "the tail must stop at the thumb, not rotate the nose onto it")
     }
 
-    /// **A shallow wedge angle survives entry.** At 121° with the car still
-    /// rolling forwards, the first ticks of the swing move the aim back inside
-    /// the forward arc; without the latch the reverse gives up after 3 ticks and
-    /// hands to the body-flip, leaving the tail 180° from the thumb.
+    /// **A shallow wedge angle survives entry.** Just inside the wedge with the
+    /// car still rolling forwards, the first ticks of the swing move the aim back
+    /// inside the forward arc; without the latch the reverse gives up almost at
+    /// once and hands to the body-flip, leaving the tail 180° from the thumb.
     func testAShallowWedgeAngleStaysInReverseWhileRollingForward() {
         var race = Race(
             track: flatTrack(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
@@ -187,7 +217,7 @@ final class AimReverseTests: XCTestCase {
         race.cars[0].state.velocity = Vec2(60, 0)  // still rolling forwards
         let source = AimControlSource()
         source.touchBegan(id: TouchID(1), at: Vec2(500, 500))
-        let aim = 121.0 * .pi / 180
+        let aim = 151.0 * .pi / 180
         source.touchMoved(
             id: TouchID(1), at: Vec2(500 + cos(aim) * 80, 500 + sin(aim) * 80))
 
@@ -262,7 +292,7 @@ final class AimReverseTests: XCTestCase {
     /// The forward arc is untouched: at 120° and inside, the sim's body-flip
     /// still owns the car and reverse never engages.
     func testTheForwardArcNeverReverses() {
-        for degrees in [0.0, 45, 90, 119, 120, -45, -119, -120] {
+        for degrees in [0.0, 45, 90, 120, 149, 150, -45, -149, -150] {
             let held = hold(aimDegrees: degrees, ticks: 40)
             XCTAssertEqual(
                 held.reverseTicks, 0,

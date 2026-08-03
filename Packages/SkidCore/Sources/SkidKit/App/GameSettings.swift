@@ -28,10 +28,10 @@ public final class GameSettings: ObservableObject {
     /// Half-width of the FORWARD arc, in degrees: a thumb further off the nose
     /// than this reverses. Degrees, not radians, because it is the number the
     /// player is reasoning about ("the rear 60° reverses").
-    @AppStorage("skid.aim.forwardArcDegrees") public var aimForwardArcDegrees = 120.0
+    @AppStorage("skid.aim.forwardArcDegrees") public var aimForwardArcDegrees = 150.0
     /// Tail-swing lock: full steer once the tail is this many degrees off the
     /// thumb. Lower swings the tail around harder.
-    @AppStorage("skid.aim.tailSwingDegrees") public var aimTailSwingDegrees = 60.0
+    @AppStorage("skid.aim.tailSwingDegrees") public var aimTailSwingDegrees = 45.0
 
     // Drift physics dials (applied on Reset, like pace — the sim is fixed
     // for a race). Hiscores only record at the stock values.
