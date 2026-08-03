@@ -131,7 +131,7 @@ shades **along** the piece, bank shades **across** it, so a banked climbing
 curve is naturally a diagonal gradient. No new visual language, and the height
 cue stays consistent with every other piece.
 
-## 3. Embankment flanks are ONE-WAY
+## 3. Embankment flanks are ONE-WAY — DONE
 
 The anti-warp rule is sound and should not change: the mouth gate is **a height
 test, not a direction test** — *you must effectively be of the upper level to
@@ -171,6 +171,36 @@ be derived — see its doc comment).
 
 Driving off a flank then *falls*, which step 1 already built: gravity acting on
 the height lost, landing on whatever is beneath.
+
+### Two cosmetic glitches at a ramp's low end — deferred
+
+Both found on device once the railing held; **neither affects physics**, and the
+drag itself behaves (you keep sliding, the car just changes where it is drawn).
+
+**1. The blocking face switches from rail to embankment partway down.** From
+outside, low on a ramp, the car first stops against the railing's *outer* edge
+and then against the embankment. Expected, given the two-wall split: a rail is a
+line in the model but a band on screen, so `outboardThickness` adds `kerbBand`
+to it, while an embankment has no such band. Where the two overlap in height the
+car's stopping distance therefore steps by that band width. The fix, if wanted,
+is for the embankment to carry the same outboard thickness as the rail it shares
+an edge with — not to remove the rail's, which exists because the car otherwise
+halts in mid-air short of the drawn barrier.
+
+**2. The car and its window clip from under the wall to over it at height 0.5.**
+`carStorey(of:on:)` bins a car by the storeys its body touches, but every body
+corner is rejected by the on-road `guard` when the car is off road on the grass —
+so it falls through to `Track.level(of: state.height)`, which **rounds**. An
+off-road car beside the ramp's low end therefore jumps from storey 0 to 1 the
+instant its height passes 0.5, and the paint order flips with it. Reported as
+"the car (and the window) are hidden under the wall, but at some point they clip
+above the wall".
+
+The honest fix is for the off-road fallback to ask what is actually *beneath* the
+car rather than rounding its own height — the same question `deckTop(at:)` already
+answers for the on-road case. Worth doing alongside step 5 (`highestLevel = 2`),
+which adds more such boundaries: with three storeys the same rounding flips at
+0.5 and 1.5.
 
 ## 4. Rails become a placement attribute
 
