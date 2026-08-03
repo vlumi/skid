@@ -259,6 +259,30 @@ public final class CouchGame: ObservableObject {
 
     private var humanCount: Int { rig?.players.count ?? 1 }
 
+    /// The per-tick input tap: humans read their own control source, the rest
+    /// come from the AI fleet.
+    private func inputSource(humans: Int) -> (PlayerID, Race) -> CarInput {
+        let fleet = aiFleet
+        return { [weak rig] player, race in
+            guard player.rawValue < humans else { return fleet.input(for: player, in: race) }
+            guard let rig, rig.players.indices.contains(player.rawValue) else { return .coast }
+            let controls = rig.players[player.rawValue]
+            let source = controls.source(for: controls.scheme)
+            // Heading-aware schemes (aim-to-drive) need where the car faces and
+            // how fast it's going along that nose — SIGNED, so "already
+            // reversing" is distinguishable from "driving forward fast".
+            if let headingAware = source as? HeadingAwareControlSource,
+                let car = race.cars.first(where: { $0.id == player })
+            {
+                headingAware.setCar(
+                    heading: car.state.heading,
+                    forwardSpeed: car.state.velocity.dot(car.state.forward),
+                    speed: car.state.velocity.length)
+            }
+            return source.input(for: player, at: race.tick)
+        }
+    }
+
     private func makeSession(humans: Int, totalCars: Int) -> GameSession {
         let players = (0..<totalCars).map { PlayerID($0) }
         let track = selectedTrack()
@@ -277,33 +301,10 @@ public final class CouchGame: ObservableObject {
             : nil
         notedLapCount = 0
         notedFinish = false
-        let rig = self.rig
-        let fleet = aiFleet
-        let inputFor: (PlayerID, Race) -> CarInput = { [weak rig] player, race in
-            if player.rawValue < humans {
-                guard let rig, rig.players.indices.contains(player.rawValue) else {
-                    return .coast
-                }
-                let controls = rig.players[player.rawValue]
-                let source = controls.source(for: controls.scheme)
-                // Heading-aware schemes (aim-to-drive) need where the car
-                // faces and how fast it's going (flip vs. reverse).
-                if let headingAware = source as? HeadingAwareControlSource,
-                    let car = race.cars.first(where: { $0.id == player })
-                {
-                    headingAware.setCar(
-                        heading: car.state.heading,
-                        forwardSpeed: car.state.velocity.dot(car.state.forward),
-                        speed: car.state.velocity.length)
-                }
-                return source.input(for: player, at: race.tick)
-            }
-            return fleet.input(for: player, in: race)
-        }
         let session = GameSession(
             track: track, players: players, config: config, seed: seed,
             tuning: settings.carTuning, ghost: ghost,
-            inputFor: inputFor)
+            inputFor: inputSource(humans: humans))
         session.onTick = { [weak self] race in
             guard let self else { return }
             if self.settings.soundOn {

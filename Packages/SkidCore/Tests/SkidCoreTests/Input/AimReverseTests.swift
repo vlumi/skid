@@ -27,13 +27,19 @@ final class AimReverseTests: XCTestCase {
             startSlots: [Vec2(0, 0)], size: Vec2(20000, 9000))
     }
 
+    /// What a held thumb produced.
+    private struct Held {
+        var reverseTicks = 0
+        var everFlipped = false
+        var endHeadingDegrees = 0.0
+        /// Where the tail ended up relative to the thumb — zero means the tail
+        /// is pointing at it, which is the whole aim of the maneuver.
+        var tailToThumbDegrees = 0.0
+        var maxHeadingDriftDegrees = 0.0
+    }
+
     /// Hold a steady thumb at `aimDegrees` off the nose for `ticks`.
-    private func hold(
-        aimDegrees: Double, ticks: Int = 150
-    ) -> (
-        reverseTicks: Int, everFlipped: Bool, endHeadingDegrees: Double,
-        tailToThumbDegrees: Double, maxHeadingDriftDegrees: Double
-    ) {
+    private func hold(aimDegrees: Double, ticks: Int = 150) -> Held {
         var race = Race(
             track: flatTrack(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
         race.cars[0].state.heading = 0
@@ -59,9 +65,11 @@ final class AimReverseTests: XCTestCase {
         }
         let heading = race.cars[0].state.heading
         let tailToThumb = atan2(sin(aim - heading + .pi), cos(aim - heading + .pi))
-        return (
-            reverseTicks, everFlipped, heading * 180 / .pi,
-            tailToThumb * 180 / .pi, maxDrift)
+        return Held(
+            reverseTicks: reverseTicks, everFlipped: everFlipped,
+            endHeadingDegrees: heading * 180 / .pi,
+            tailToThumbDegrees: tailToThumb * 180 / .pi,
+            maxHeadingDriftDegrees: maxDrift)
     }
 
     /// The report, as a test: a thumb held in the wedge never hands over.
