@@ -203,10 +203,12 @@ public final class AimControlSource: HeadingAwareControlSource {
     /// toward. 120° leaves a rear wedge a thumb can actually hold — the old
     /// rule needed a near-perfect 180° to keep reversing.
     public var reverseThreshold = Double.pi * 2 / 3
-    /// A running reverse gives up only once the aim comes this close to the
-    /// nose — inside `reverseThreshold`, so entering and leaving can't chatter
-    /// on the boundary while the maneuver itself rotates the car.
-    public var releaseThreshold = Double.pi / 2
+    /// How far INSIDE the forward arc the aim must come before a running
+    /// reverse gives up. Hysteresis: entering and leaving can't chatter on one
+    /// boundary while the maneuver itself rotates the car. Derived from
+    /// `reverseThreshold` rather than absolute, so widening the arc doesn't
+    /// leave a dead band where a reverse latches on well past the boundary.
+    public var releaseMargin = Double.pi / 6
     /// Below this speed (units/s) a behind-target reverses toward it; at
     /// speed the body flips instead — reversing is a parking-lot move.
     public var reverseBelowSpeed = 90.0
@@ -306,7 +308,7 @@ public final class AimControlSource: HeadingAwareControlSource {
         // Forward speed is SIGNED, so a car already going backwards is never
         // "too fast to flip" — it has nothing to flip.
         let offTail = atan2(sin(desired - carHeading + .pi), cos(desired - carHeading + .pi))
-        let stayInReverse = isReversing && abs(error) > releaseThreshold
+        let stayInReverse = isReversing && abs(error) > reverseThreshold - releaseMargin
         if stayInReverse || (abs(error) > reverseThreshold && carForwardSpeed < reverseBelowSpeed) {
             isReversing = true
             // Reversing MIRRORS the wheel — the tail swings opposite the way the

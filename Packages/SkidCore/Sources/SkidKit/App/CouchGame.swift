@@ -327,6 +327,9 @@ public final class CouchGame: ObservableObject {
             controls.pro.expo = settings.dpadExpo
             controls.casual.reverseBelowSpeed = settings.aimReverseBelowSpeed
             controls.casual.throttleEase = settings.aimThrottleEase
+            // Stored in degrees, used in radians.
+            controls.casual.reverseThreshold = settings.aimForwardArcDegrees * .pi / 180
+            controls.casual.fullSteerError = settings.aimTailSwingDegrees * .pi / 180
         }
     }
 
