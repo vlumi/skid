@@ -15,7 +15,8 @@ final class AimControlTests: XCTestCase {
     private func aim(offset: Vec2, heading: Double, speed: Double) -> AimControlSource {
         let source = AimControlSource()
         source.bounds = Rect(x: 0, y: 0, width: 1000, height: 1000)
-        source.setCar(heading: heading, speed: speed)
+        // These fixtures drive FORWARD, so forward speed is the whole speed.
+        source.setCar(heading: heading, forwardSpeed: speed, speed: speed)
         source.touchBegan(id: 1, at: Vec2(500, 500))
         source.touchMoved(id: 1, at: Vec2(500, 500) + offset)
         return source
