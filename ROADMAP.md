@@ -80,7 +80,16 @@ What's left:
       throw a rail across the other's lane).
 
       JUMPS remain: the catalog has the geometry and the editor has the buttons
-      hidden, but the compiler cannot build them.
+      hidden, but the compiler cannot build them. Closer than it looks — the
+      piece is flagged `launches`, the car has `airborneTicks`, and the flight
+      physics is tuned; what is missing is the compiler emitting a launch ramp.
+
+      **Height groundwork comes first**, in
+      [docs/height-groundwork-plan.md](docs/height-groundwork-plan.md): rails,
+      embankments and the mouth gate are three concepts riding on one `if`, and
+      a ramp is walled as if it always rises from the GROUND. That is invisible
+      today and wrong the moment a 1→2 ramp exists, so it wants fixing before
+      more heights, tunnels, or new pieces build on it.
 
       FORKS AND JOINS ARE PARKED, and not for want of geometry (the catalog has
       the pieces, ids 34–36, and `PieceCompiler` throws

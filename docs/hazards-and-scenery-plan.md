@@ -15,6 +15,10 @@ problems with different costs. Splitting them is most of the design.
 
 Only tier 3 needs anything the format has never carried.
 
+**Sequencing note.** Height groundwork —
+[height-groundwork-plan.md](height-groundwork-plan.md) — comes before all of
+this. It changes what a ramp *is*, and every later piece inherits that.
+
 ## Tier 1 — more road pieces
 
 New catalog ids; placement and encoding already work. The gaps the unit system
