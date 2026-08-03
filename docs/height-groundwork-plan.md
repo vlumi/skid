@@ -83,31 +83,60 @@ panel under *Air*. **Not yet judged on device**, deliberately: every deck is
 railed today, so nothing can actually fall — the change is dormant until step 3
 and step 4 make railless pieces possible. Tune it then, when it is reachable.
 
-## 2. Embankments occupy `[base, top]`, not `[0, top]`
+## 2. Embankments occupy `[base, top]` — ALREADY CORRECT
+
+**Checked, and the fix is not needed.** The plan assumed the wall emission
+hardcoded a ground base. It does not:
+
+- each rail takes **its own sample's height**, so a 1→2 ramp's flanks sit at
+  1.0…2.0;
+- `Race.blocks` derives the floor as `wall.height.rounded(.down)`, so a rail at
+  1.4 blocks 1.0…1.4 and a ground car passes underneath;
+- the mouth gate already reads the mouth's own height, and a gate hangs exactly
+  one storey — so an upper mouth lets the ground pass beneath it.
+
+Verified by probe and pinned by `RampBaseTests`, which fail if the floor is
+hardcoded to 0. The tests are the deliverable here: the behaviour is invisible
+until ramps above the ground are buildable, so it needs guarding before then
+rather than fixing.
+
+## 2b. Banking is an ATTRIBUTE, like pitch — not new shapes
+
+A banked curve has the **same centerline, ports and closure arithmetic** — it
+only tilts, which is the definition of an attribute rather than a shape. The
+docs already made this call for pitch: *"the catalog stays a set of SHAPES, and
+'ramp' stops being a thing you pick and becomes a way you lay road."*
+
+As ids it would be a cross-product: 46 curve-ish catalog entries × pitch × bank.
+As attributes they simply coexist — **a curved ramp is already shape + pitch, so
+banking is a third independent axis**, and a banked climbing curve falls out for
+free. Pitch tilts along travel, bank tilts across it; they never interact
+geometrically.
+
+**Chaining copies pitch exactly.** `height(atFraction:)` eases within a piece, so
+consecutive ramps blend into an S without either knowing about its neighbour.
+`bank(atFraction:)` on the same shape: a piece's entry bank is its predecessor's
+exit, so three banked curves stay banked and a following flat piece flattens
+across its own length. No seam special-casing.
+
+**One place the analogy stops:** pitch is a *direction* (`.up`/`.down`) because
+the amount is fixed at half a level. Banking wants a **magnitude** as well — a
+gentle lean is not a wall of death — so its attribute is richer than pitch's.
+
+**Rendering reuses the shading already there.** Height reads as brightness
+today — `fillRoad` shades a ramp from its entry shade to its exit shade, and a
+road resting at 0.5 takes the matching mid shade, so a split climb reads as one
+continuous surface. Banking is the same scheme on the perpendicular axis: pitch
+shades **along** the piece, bank shades **across** it, so a banked climbing
+curve is naturally a diagonal gradient. No new visual language, and the height
+cue stays consistent with every other piece.
+
+## 3. Embankment flanks are ONE-WAY
 
 The anti-warp rule is sound and should not change: the mouth gate is **a height
 test, not a direction test** — *you must effectively be of the upper level to
 pass*, at `level − reachTolerance`. It does not care where you approach from,
-which is what makes it robust.
-
-What is wrong is the assumed base. A ramp is walled as if it rises from the
-**ground**, because today every ramp does. A **1→2 ramp stands on the deck**, so:
-
-- its flanks must block cars at height **1**, not 0;
-- a ground car at 0 passes **underneath it freely** — the deck it stands on is
-  already the roof;
-- its mouth gate is `2 − reachTolerance`, which the current code already gets
-  right (it reads the mouth's own height).
-
-**The validator is already general** — `RoadProximity.solidFloor` is `trunc(h)`,
-so it already treats a 1→2 ramp as occupying `[1, 2]`. Only the wall emission
-assumes 0. That is the whole fix, and it is currently invisible because no ramp
-starts above the ground.
-
-This is the same solidity-interval rule the tunnel spec states (cuttings occupy
-`[h, 0]`), so generalizing here is a prerequisite for tunnels too.
-
-## 3. Embankment flanks are ONE-WAY
+which is what makes it robust. What changes is only the **sideways** rule.
 
 You may drive **off** a ramp's side; you may not drive **into** it. Today the
 flanks are `.rail` — symmetric — so a railless ramp would still trap you on it.
@@ -123,8 +152,8 @@ test is the sign of the cross product against the wall's stored direction, and
 `Wall.outward` already exists and is already emitted deliberately (it *cannot*
 be derived — see its doc comment).
 
-Driving off a flank then *falls* — which is step 5, where a fall stops being a
-fixed 8 ticks and becomes gravity acting on the height lost.
+Driving off a flank then *falls*, which step 1 already built: gravity acting on
+the height lost, landing on whatever is beneath.
 
 ## 4. Rails become a placement attribute
 
@@ -245,24 +274,16 @@ last, and only after the camera question has an answer.
 
 ## Order, and why
 
-1. **Ballistic flight** — every later step produces a new way to leave the road,
-   and they must all fall the same way. Cheapest to make one rule before there
-   are three callers to reconcile.
-2. **Embankment `[base, top]`** — invisible today, and more levels depend on it.
+1. **Ballistic flight** — ✅ shipped (#127). Dormant until something can fall.
+2. **Embankment `[base, top]`** — ✅ already correct; pinned by tests instead.
 3. **One-way flanks** — the wall model becomes directional, which tunnels also
-   need. Now falls off a flank already work.
+   need, and it is what makes a railless ramp drivable rather than a trap.
 4. **Rails as an attribute** — purely cosmetic once structure has moved out.
-5. **`highestLevel = 2`** — safe once ramps know what they stand on and falls
-   know what they land on.
-6. **The boundary fence** — independent of the rest; can go any time. The
-   push-back half is a bug fix, the canvas half changes how tracks play.
+   Together with 3, this is what finally makes step 1 reachable.
+5. **`highestLevel = 2`** — safe now that ramps block from their own base.
+6. **The boundary fence** — independent, can go any time.
 7. **Tunnels** — after the camera question.
 
-Then jump pieces and banked curves, both of which are mostly free by that point:
-a jump is a lip that sets a launch velocity, and a bank's high-side slide is a
-fall with a sideways kick.
-
-Steps 1–3 are the ones worth doing carefully. Ballistics changes how every
-existing fall feels, and 2–3 are invisible in the current catalog — a mistake
-there shows up only once a 1→2 ramp exists, by which point tracks may depend on
-the wrong behaviour.
+Then jump pieces and banked curves (2b), both mostly free by that point: a jump
+is a lip that sets a launch velocity, and a bank's high-side slide is a fall
+with a sideways kick.
