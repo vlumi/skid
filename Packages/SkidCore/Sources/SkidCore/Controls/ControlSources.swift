@@ -203,9 +203,10 @@ public final class AimControlSource: HeadingAwareControlSource {
     /// toward. 120° leaves a rear wedge a thumb can actually hold — the old
     /// rule needed a near-perfect 180° to keep reversing.
     public var reverseThreshold = Double.pi * 2 / 3
-    /// Over these radians INSIDE the rear wedge the tail-swing fades to zero,
-    /// so a reverse settles rather than rotating the nose onto the thumb.
-    public var reverseSettle = Double.pi / 9
+    /// A running reverse gives up only once the aim comes this close to the
+    /// nose — inside `reverseThreshold`, so entering and leaving can't chatter
+    /// on the boundary while the maneuver itself rotates the car.
+    public var releaseThreshold = Double.pi / 2
     /// Below this speed (units/s) a behind-target reverses toward it; at
     /// speed the body flips instead — reversing is a parking-lot move.
     public var reverseBelowSpeed = 90.0
@@ -225,6 +226,9 @@ public final class AimControlSource: HeadingAwareControlSource {
     private var carHeading = 0.0
     private var carSpeed = 0.0
     private var carForwardSpeed = 0.0
+    /// Latched for the duration of a reverse, so the rotation it causes cannot
+    /// re-open the forward/reverse decision mid-maneuver.
+    private var isReversing = false
 
     public init() {}
 
@@ -256,10 +260,14 @@ public final class AimControlSource: HeadingAwareControlSource {
         activeTouch = nil
         origin = nil
         knob = .zero
+        isReversing = false
     }
 
     public func input(for player: PlayerID, at tick: Tick) -> CarInput {
-        guard origin != nil, knob.length > deadzone else { return .coast }
+        guard origin != nil, knob.length > deadzone else {
+            isReversing = false
+            return .coast
+        }
         // The thumb offset is a SCREEN-space vector, and the renderer draws
         // the world with no y-flip, so a screen direction IS a world
         // direction — the aimed heading is just the knob's angle. (Unlike
@@ -270,35 +278,48 @@ public final class AimControlSource: HeadingAwareControlSource {
 
         // How committed the push is scales the pace (a light touch eases).
         let commitment = min(1, (knob.length - deadzone) / (radius - deadzone))
-        // **The rear wedge reverses, and the nose never chases the thumb there.**
+        // **The rear wedge reverses; the tail swings all the way to the thumb.**
         // Past `reverseThreshold` off the nose the car backs up, steering to
-        // bring its TAIL around toward the thumb — but only until the tail
-        // points there. Steering by the full mirrored error kept rotating past
-        // that, swinging the nose all the way onto the thumb: measured, a steady
-        // thumb at 170° reversed 64 ticks and came to rest heading 170°, a
-        // completed three-point turn that then left reverse because the target
-        // was no longer behind. Shorter angles gave up sooner (37 ticks at 130°),
-        // which is the reported "flips almost immediately".
+        // bring its tail around onto the thumb — "aim its butt at the finger".
         //
-        // Clamping the tail-swing to the wedge keeps the two halves of the rule
-        // from fighting: the thumb still steers the reverse, and the car keeps
-        // reversing until the PLAYER aims somewhere else.
+        // The subtlety is that this maneuver ROTATES THE HEADING the gate is
+        // judged against, so a gate re-tested from scratch every tick cancels
+        // the very turn it just asked for. Two wrong shapes, both measured:
+        //
+        //   plain re-test    the tail swings past the thumb and keeps going
+        //                    into a full three-point turn, ending with the nose
+        //                    on the thumb: 41 ticks at aim 170°, 12 at 130°,
+        //                    and only a perfect 180° held. Reported as "it
+        //                    tries to flip almost immediately".
+        //   fade at the edge steering died at exactly the wedge boundary, so
+        //                    the car parked 25° short of the thumb and stopped
+        //                    rotating. Reported from a screenshot: backing
+        //                    north with the thumb NE, not turning.
+        //
+        // So the maneuver LATCHES. Once reversing, it stays in reverse and
+        // keeps steering until the tail is actually on the thumb — `offTail`
+        // itself is the error being driven to zero, which is a stable target
+        // because it shrinks as the car turns. It releases only when the player
+        // brings the thumb back around the nose (`releaseThreshold`, inside the
+        // wedge boundary so the two can't chatter), or on lifting the thumb.
         //
         // Forward speed is SIGNED, so a car already going backwards is never
         // "too fast to flip" — it has nothing to flip.
-        if abs(error) > reverseThreshold, carForwardSpeed < reverseBelowSpeed {
-            // Reversing mirrors the wheel, so steer toward the target's
-            // reflection: the tail swings to the thumb.
-            let offTail = atan2(sin(desired - carHeading + .pi), cos(desired - carHeading + .pi))
-            // Fade the swing out as the nose comes back to the edge of the
-            // wedge, so the turn SETTLES in reverse instead of rotating through
-            // it. Without this the car keeps turning until the nose is on the
-            // thumb — a full three-point turn — and then leaves reverse because
-            // the target is no longer behind.
-            let margin = (abs(error) - reverseThreshold) / reverseSettle
-            let steer = max(-1, min(1, offTail / fullSteerError)) * min(1, max(0, margin))
+        let offTail = atan2(sin(desired - carHeading + .pi), cos(desired - carHeading + .pi))
+        let stayInReverse = isReversing && abs(error) > releaseThreshold
+        if stayInReverse || (abs(error) > reverseThreshold && carForwardSpeed < reverseBelowSpeed) {
+            isReversing = true
+            // Reversing MIRRORS the wheel — the tail swings opposite the way the
+            // nose would — so chasing the thumb with the tail needs the negated
+            // error. With the sign the other way the tail turned AWAY from the
+            // thumb (measured: `offTail` growing 45°→112°), which both failed to
+            // aim the butt anywhere useful and, for a thumb held straight back,
+            // showed up as "it tries to turn a little instead of going straight
+            // backwards". Zero exactly when the tail already points at the thumb.
+            let steer = max(-1, min(1, -offTail / fullSteerError))
             return CarInput(steer: steer, throttle: -commitment)
         }
+        isReversing = false
         // Hand the aim to the sim — the body-flip lives in the physics.
         // The gas eases a touch as the aim swings away from the nose, but
         // stays largely on: the flip wants throttle held through the drift.
