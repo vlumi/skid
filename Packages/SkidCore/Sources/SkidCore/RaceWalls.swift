@@ -28,7 +28,7 @@ extension Race {
         held.slide = 0
         held.speedLost = 0
         car.wallContact = held
-        for wall in walls ?? track.walls where blocks(wall, car: car) {
+        for wall in walls ?? track.walls where blocks(wall, car: car, movedFrom: from) {
             // Nearest approach of the car's PATH to the wall, so a fast car is
             // caught mid-span rather than only where it happened to stop.
             let closest = nearestPoint(on: wall, toPathFrom: from, to: car.position)
@@ -245,7 +245,7 @@ extension Race {
     /// 1.15, and a climber arrives at the mouth at 0.99 (not 1.0 — the per-tick
     /// clamp approaches deck height asymptotically). The floor keeps its tolerance:
     /// that end is about which level the wall belongs to, where a car's size counts.
-    func blocks(_ wall: Wall, car: CarState) -> Bool {
+    func blocks(_ wall: Wall, car: CarState, movedFrom from: Vec2 = .zero) -> Bool {
         switch wall.kind {
         case .boundary:
             return true
@@ -263,7 +263,18 @@ extension Race {
             // Earth: solid from the ground up to the road it carries, so a car
             // below cannot drive into a ramp's flank. Above the road there is
             // nothing — a deck crossing over a ramp runs clear.
-            return car.height <= wall.height + Track.reachTolerance
+            guard car.height <= wall.height + Track.reachTolerance else { return false }
+            // **ONE-WAY: you may drive OFF a ramp, never INTO it.** Without this a
+            // railless ramp would trap you on it, since the earth that stops the
+            // car below is the same segment the car above would leave over.
+            //
+            // The side test is the car's approach against the wall's stored
+            // `outward` — which points away from the road this earth carries, so
+            // it is a question about the RAMP, not about this segment's geometry.
+            // Two cheaper-looking tests are wrong, both tried: "was the car on
+            // road" is true of the legitimate driver too, and the NEAREST wall's
+            // outward answers "which side of this segment" on a curve.
+            return isOutside(wall, from: from)
         case .rail:
             // **A railing guards the level it edges, and does not reach the
             // floor.** It is a waist-high barrier, not a wall to the ground —
@@ -273,10 +284,30 @@ extension Race {
             // in two: a rail at 0.999 fenced the ground while its neighbour at
             // 1.0 did not, so the fence had holes and a car pushed out by one
             // could be shoved through another. Rounding to the nearest level
-            // says what was meant — a rail near deck height IS a deck rail.
-            let level = Double(Track.level(of: wall.height))
-            let top = max(wall.height, level)
-            return car.height >= level - Track.reachTolerance && car.height <= top
+            // fixed that, but broke the MIDDLE of a climb: a rail at 0.52–0.75
+            // rounds to level 1 and so demanded `height >= 0.8`, while the car
+            // actually driving that stretch of ramp is at 0.52–0.75. Such a rail
+            // blocked nobody, which is how a drag along the barrier walked
+            // straight out through it — reported as "I can reliably drive through
+            // the railing just by dragging the car against the wall".
+            //
+            // **A railing guards the road it edges, and where that road STARTS
+            // depends on whether it climbs** — which is why the wall records it.
+            //
+            // On a climb the road is at the rail's own height, so protection
+            // starts there: rounding to the nearest level instead promoted a rail
+            // at 0.52–0.75 to storey 1 and demanded the car be nearly up at 1.0,
+            // so it ignored the car actually driving that stretch. A drag along
+            // the barrier then walked straight out through it — reported as "I can
+            // reliably drive through the railing just by dragging the car against
+            // the wall".
+            //
+            // On the flat the rail belongs to its level even when the deck sags
+            // below it (0.96 on an S-curve is a DECK rail), and the ground must
+            // pass underneath. Same height, opposite answer — see `Wall.onClimb`.
+            let base = wall.onClimb ? wall.height : Double(Track.level(of: wall.height))
+            let top = max(wall.height, base) + Track.reachTolerance
+            return car.height >= base - Track.reachTolerance && car.height <= top
         }
     }
 
@@ -299,6 +330,17 @@ extension Race {
     /// back on itself — 192 of 430 clover rails wrong. A wall with no `outward`
     /// (the map boundary, a level seal, a ramp's end cap) has no bulk to stand
     /// clear of and adds nothing.
+    /// Whether the car approached from the wall's OUTWARD side — the side its
+    /// bulk faces, away from the road it carries.
+    ///
+    /// A wall with no recorded `outward` has no sides to tell apart, so it stays
+    /// symmetric: that is the honest answer for the map boundary and a level
+    /// seal, and it is also what older decoded data becomes.
+    func isOutside(_ wall: Wall, from: Vec2) -> Bool {
+        guard wall.outward.length > 0.001 else { return true }
+        return (from - wall.a).dot(wall.outward) > 0
+    }
+
     private func outboardThickness(of wall: Wall, approachedFrom from: Vec2) -> Double {
         guard wall.kind == .rail, wall.outward.length > 0.001 else { return 0 }
         guard (from - wall.a).dot(wall.outward) > 0 else { return 0 }
