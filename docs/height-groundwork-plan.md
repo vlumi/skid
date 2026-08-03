@@ -131,7 +131,7 @@ shades **along** the piece, bank shades **across** it, so a banked climbing
 curve is naturally a diagonal gradient. No new visual language, and the height
 cue stays consistent with every other piece.
 
-## 3. Embankment flanks are ONE-WAY
+## 3. Embankment flanks are ONE-WAY — DONE
 
 The anti-warp rule is sound and should not change: the mouth gate is **a height
 test, not a direction test** — *you must effectively be of the upper level to
