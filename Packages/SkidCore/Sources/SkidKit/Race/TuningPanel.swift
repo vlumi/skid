@@ -64,6 +64,14 @@ struct TuningPanel: View {
                         Text("Drag floor", bundle: .module), value: $settings.wallDragFloor,
                         range: 0...1, step: 0.05, format: "%.2f")
 
+                    section(Text("Air", bundle: .module))
+                    slider(
+                        Text("Gravity", bundle: .module), value: $settings.gravity,
+                        range: 4...48, step: 1, format: "%.0f")
+                    slider(
+                        Text("Launch", bundle: .module), value: $settings.launchPerSpeed,
+                        range: 0...0.012, step: 0.001, format: "%.3f")
+
                     section(Text("Pace", bundle: .module))
                     slider(
                         Text("Pace", bundle: .module), value: $settings.pace,

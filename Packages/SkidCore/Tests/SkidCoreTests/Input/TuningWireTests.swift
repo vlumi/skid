@@ -18,6 +18,8 @@ final class TuningWireTests: XCTestCase {
         settings.wallFriction = stock.wallFriction
         settings.wallDragFloor = stock.wallDragFloor
         settings.wallYaw = stock.wallYaw
+        settings.gravity = stock.gravity
+        settings.launchPerSpeed = stock.launchPerSpeed
         return settings
     }
 
@@ -37,6 +39,32 @@ final class TuningWireTests: XCTestCase {
         XCTAssertEqual(tuning.wallFriction, 0.033, accuracy: 1e-9)
         XCTAssertEqual(tuning.wallDragFloor, 0.44, accuracy: 1e-9)
         XCTAssertEqual(tuning.wallYaw, 0.055, accuracy: 1e-9)
+    }
+
+    /// The air knobs too — flight feel is the point of them, so they have to be
+    /// tunable on device rather than only in source.
+    func testTheAirKnobsReachCarTuning() {
+        let settings = stockSettings()
+        settings.gravity = 27
+        settings.launchPerSpeed = 0.007
+        settings.pace = 1.0
+
+        let tuning = settings.carTuning
+        XCTAssertEqual(tuning.gravity, 27, accuracy: 1e-9)
+        XCTAssertEqual(tuning.launchPerSpeed, 0.007, accuracy: 1e-9)
+    }
+
+    /// A moved air knob is non-stock as well: it changes lap times, so a
+    /// hiscore set with it would not be comparable.
+    func testAMovedAirKnobIsNotStockPhysics() {
+        let settings = stockSettings()
+        XCTAssertTrue(settings.isStockPhysics)
+        settings.gravity = 30
+        XCTAssertFalse(settings.isStockPhysics, "gravity changes how long a fall costs")
+
+        let other = stockSettings()
+        other.launchPerSpeed = 0.008
+        XCTAssertFalse(other.isStockPhysics, "so does how far a jump goes")
     }
 
     /// And a moved wall knob counts as non-stock, so hiscores stay honest.
