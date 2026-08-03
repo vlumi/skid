@@ -1,4 +1,4 @@
-# Height groundwork: rails, embankments, more levels
+# Height groundwork: flight, rails, embankments, the fence
 
 > **Not started.** Structural work to do *before* new pieces — it changes what
 > a ramp means, and every later piece inherits that. What the model does *now*
@@ -21,6 +21,10 @@ step adds another caller for it.
 
 Once both are done, more levels and tunnels are mostly a constant change, and
 jump pieces and banked curves are mostly free.
+
+The **boundary fence** (step 6) is independent of all of it and can go any time —
+it is in here because it is the other thing that decides what happens when a car
+leaves the road.
 
 ## 1. Ballistic flight — one rule for everything that leaves the road
 
@@ -137,7 +141,58 @@ piece, so height 3 needs six pieces of pure climbing — 1440 units of a 1600-wi
 canvas, just to get up. Height 2 is comfortable; **3 is a curiosity until track
 size classes land**.
 
-## 6. Tunnels (`lowestLevel = −1`)
+## 6. The boundary fence: too tight, and one-way
+
+Two separate faults, both reported from play.
+
+### It only blocks crossings, so a car outside stays outside
+
+Measured: a car placed at x = −40 on the bridge ring **never comes back**, and
+one driving outward from there reaches −206 and keeps going. `crosses` is a
+segment test, so the fence stops you *passing through* — it has no opinion about
+a car that is already out. Anything that can displace a car past the line (a
+push-out from car contact, a wall bounce at a corner, a fall landing) leaves it
+permanently in the void.
+
+The fix belongs with the wall response, not the fence: **a boundary should also
+push an outside car back in**, the same overlap-based push-out that
+`collideWithWalls` already does for rails. That makes the fence a region rather
+than four lines.
+
+### It is built from the drawn footprint, not the canvas
+
+`boundaryWalls(size:)` is called with `bounds.size` — the re-framed footprint,
+padded by half a road plus the kerb band. That padding exists to contain what is
+*drawn*, and was never meant as a play margin. Measured grass between road edge
+and fence:
+
+| track | fenced size | grass on each side |
+|---|---|---|
+| small | 1320 × 1080 | 120 |
+| oval | 1800 × 1320 | 120 |
+| **eight** | **654 × 1332** | **27** |
+| **clover** | 1134 × 1134 | **27** |
+
+A car is 24 units wide, so the eight and clover give **barely one car's width**
+before the wall — which is exactly the "the walls help you round the curves"
+complaint. The older two get 120 only incidentally, because their layouts happen
+to sit further inside their own bounding box.
+
+And the eight is fenced at 654 wide inside a **1600-wide canvas**, throwing away
+946 units of space that is already paid for.
+
+**Fence the canvas, centre the track in it.** The canvas is a fixed constant of
+the format version, so every track gets the same generous run-off regardless of
+how tightly its own geometry happens to bound. Going wide then costs you time on
+grass rather than bouncing you back onto the racing line.
+
+Note this interacts with framing: `Track.size` currently *is* the footprint, and
+the renderer letterboxes to it (deliberately — reporting the whole canvas drew
+every piece-built track tiny and off-centre, see `PieceCompiler`). So the fence
+wants the canvas while the **camera** still wants the footprint; they stop being
+the same number.
+
+## 7. Tunnels (`lowestLevel = −1`)
 
 The spec in [track-pieces.md](track-pieces.md) is thorough and its structure is
 decided; what is open is mechanics, and it carries the **camera problem** as a
@@ -158,7 +213,9 @@ last, and only after the camera question has an answer.
 4. **Rails as an attribute** — purely cosmetic once structure has moved out.
 5. **`highestLevel = 2`** — safe once ramps know what they stand on and falls
    know what they land on.
-6. **Tunnels** — after the camera question.
+6. **The boundary fence** — independent of the rest; can go any time. The
+   push-back half is a bug fix, the canvas half changes how tracks play.
+7. **Tunnels** — after the camera question.
 
 Then jump pieces and banked curves, both of which are mostly free by that point:
 a jump is a lip that sets a launch velocity, and a bank's high-side slide is a
