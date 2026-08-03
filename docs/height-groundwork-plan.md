@@ -78,6 +78,11 @@ rails at 1** — including the landing piece's own. A jump's flight corridor
 probably wants rails off the pieces it crosses, which is step 3's attribute
 doing real work rather than cosmetics.
 
+**Shipped (#127).** Gravity 18, launch kick 0.004/speed, both in the Tuning
+panel under *Air*. **Not yet judged on device**, deliberately: every deck is
+railed today, so nothing can actually fall — the change is dormant until step 3
+and step 4 make railless pieces possible. Tune it then, when it is reachable.
+
 ## 2. Embankments occupy `[base, top]`, not `[0, top]`
 
 The anti-warp rule is sound and should not change: the mouth gate is **a height
