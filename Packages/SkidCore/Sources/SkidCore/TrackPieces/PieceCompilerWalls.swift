@@ -11,9 +11,14 @@ extension PieceCompiler {
     ///
     /// Follows the piece's own samples, so a curved deck gets a curved rail.
     ///
-    /// A ramp is a solid **embankment**: walled all the way round bar two
-    /// openings, its low end at height 0 and its high end at 1. So you cannot
-    /// drive onto a ramp from its flank, or under it while it climbs.
+    /// A climbing piece gets **both**: a railing on each edge, guarding the road
+    /// it carries, and an embankment beneath it — the earth a ramp stands on, so
+    /// you cannot drive into its flank or under it while it climbs.
+    ///
+    /// They were one wall until device testing showed why they cannot be. A
+    /// railing stretched to the floor made a bridge edge solid in some places
+    /// and see-through in others; lifting it to its own level removed the ramp's
+    /// side barrier. Two jobs, two walls.
     static func deckRails(of placed: PlacedPiece, capHighEnd: Bool = true) -> [Wall] {
         let samples = placed.heightedSamples(degreesPerSample: degreesPerSample)
         guard samples.count >= 2 else { return [] }
@@ -60,6 +65,15 @@ extension PieceCompiler {
                     Wall(
                         from: edge[index - 1], to: edge[index], height: height,
                         outward: outward))
+                // A climbing stretch also stands on earth. Same line, same
+                // height — what differs is what it blocks: the railing guards
+                // the road's own level, this fills everything below it.
+                if placed.climb != 0 {
+                    rails.append(
+                        Wall(
+                            from: edge[index - 1], to: edge[index], height: height,
+                            kind: .embankment, outward: outward))
+                }
             }
         }
         if capHighEnd {
