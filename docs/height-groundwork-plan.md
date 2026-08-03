@@ -57,9 +57,8 @@ test is the sign of the cross product against the wall's stored direction, and
 `Wall.outward` already exists and is already emitted deliberately (it *cannot*
 be derived — see its doc comment).
 
-**Falling off scales with height lost.** Driving off at 0.2 is a bump; off at
-0.9 is a real drop. Today the deck fall is a fixed `airborneTicks = 8`; this
-becomes a function of the drop. One rule, applied everywhere something falls.
+Driving off a flank then *falls* — which is step 5, where a fall stops being a
+fixed 8 ticks and becomes gravity acting on the height lost.
 
 ## 3. Rails become a placement attribute
 
@@ -85,7 +84,55 @@ size classes land**.
 1 if one is there, rather than dropping through it. Currently the fall path goes
 straight to 0, which is correct only while 1 is the only storey.
 
-## 5. Tunnels (`lowestLevel = −1`)
+## 5. Ballistic flight — one rule for jumps and falls
+
+**Prerequisite for jump pieces**, and it subsumes step 4's "falls need a floor".
+
+Today flight is a horizontal glide: `airborneTicks` counts down, `height` is
+untouched, and a deck "fall" *snaps* height to 0 and then flies for 8 ticks — so
+the car is already at the bottom before it visually lands. There is no arc.
+
+Replace it with a vertical velocity and gravity:
+
+```text
+vz -= g · dt
+h  += vz · dt
+land when h meets the road beneath
+```
+
+That makes a jump off a lip, a fall off a deck edge, and driving off a ramp
+flank **the same code**. `airborneTicks` stops being a timer and becomes a
+consequence — flight ends when the car meets a surface.
+
+**Landing is whatever is beneath you.** Launch from the ground onto a deck; fall
+from a height-2 deck onto one at 1. This is what makes jumps interesting rather
+than decorative, and it is exactly step 4's floor-detection seen from the other
+side, so the two want doing together.
+
+### Two numbers, measured
+
+**Apex is small, and should be.** At `vz = 1.0` and the gravity that preserves
+today's flight time, the car peaks **0.12 levels** above the lip — a twelfth of
+a bridge. That matches "not far above", and is small enough that the existing
+scale-up-when-airborne render cue is what actually sells it.
+
+**Watch the speed gate.** Today distance is *quadratic* in speed — 243 units at
+520, but only 80 at 300 — a strong "be fast or fall in" rule. With a FIXED
+launch `vz`, flight time is speed-independent and distance goes linear: 138 at
+300. The jump gets much easier to clear.
+
+Fix by **scaling launch `vz` with speed**, which restores the quadratic and is
+more honest anyway: a faster car launches harder.
+
+### Rails clip a flying car
+
+`collideWithWalls` runs while airborne, and `blocks` compares `car.height` to
+wall height. A car flying at height 1 passes over ground rails but **hits deck
+rails at 1** — including the landing piece's own. A jump's flight corridor
+probably wants rails off the pieces it crosses, which is step 3's attribute
+doing real work rather than cosmetics.
+
+## 6. Tunnels (`lowestLevel = −1`)
 
 The spec in [track-pieces.md](track-pieces.md) is thorough and its structure is
 decided; what is open is mechanics, and it carries the **camera problem** as a
@@ -99,11 +146,14 @@ last, and only after the camera question has an answer.
 
 1. **Embankment `[base, top]`** — invisible today, and everything else depends
    on it being right.
-2. **One-way flanks + scaled falls** — the wall model becomes directional, which
-   tunnels also need.
+2. **One-way flanks** — the wall model becomes directional, which tunnels also
+   need.
 3. **Rails as an attribute** — now purely cosmetic, since structure moved out.
-4. **`highestLevel = 2`** — safe once ramps know what they stand on.
-5. **Tunnels** — after the camera question.
+4. **Ballistic flight + land-on-what's-beneath** — one rule replacing the glide,
+   the snap-to-0 fall, and the flank fall. Prerequisite for jump pieces.
+5. **`highestLevel = 2`** — safe once ramps know what they stand on and falls
+   know what they land on.
+6. **Tunnels** — after the camera question.
 
 Steps 1–2 are the ones worth doing carefully: they are invisible in the current
 catalog, so a mistake shows up only once a 1→2 ramp exists, by which point
