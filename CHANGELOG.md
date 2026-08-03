@@ -24,9 +24,10 @@ ships (see [AGENTS.md](AGENTS.md)).
 - **Holding back keeps reversing.** In Casual, pushing back reversed for a moment
   and then tried to swing the car around instead — which made backing out of a
   tight spot much harder than it should be. The rear 60° either side of the tail
-  now reverses for as long as you hold it there, steering the car's tail toward
-  your thumb; the body-flip still takes over inside the forward arc, or when you
-  are driving forward at speed.
+  now reverses for as long as you hold it there, swinging the car's tail around
+  onto your thumb — and straight back if that's where you point. The body-flip
+  still takes over inside the forward arc, or when you are driving forward at
+  speed.
 
 - **Bridge railings behave consistently.** Driving on the grass beside a bridge,
   the railing above used to stop you in some places and not others, and hitting
