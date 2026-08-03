@@ -198,8 +198,14 @@ public final class AimControlSource: HeadingAwareControlSource {
     /// Steer ramp for the REVERSE maneuver: full lock once the target is
     /// this many radians off the tail.
     public var fullSteerError = Double.pi / 3
-    /// Past this much error (radians) the target counts as "behind".
+    /// The forward arc: a target within this much of the nose is chased
+    /// forwards, anything outside it (the rear 60° either side) is reversed
+    /// toward. 120° leaves a rear wedge a thumb can actually hold — the old
+    /// rule needed a near-perfect 180° to keep reversing.
     public var reverseThreshold = Double.pi * 2 / 3
+    /// Over these radians INSIDE the rear wedge the tail-swing fades to zero,
+    /// so a reverse settles rather than rotating the nose onto the thumb.
+    public var reverseSettle = Double.pi / 9
     /// Below this speed (units/s) a behind-target reverses toward it; at
     /// speed the body flips instead — reversing is a parking-lot move.
     public var reverseBelowSpeed = 90.0
@@ -264,17 +270,33 @@ public final class AimControlSource: HeadingAwareControlSource {
 
         // How committed the push is scales the pace (a light touch eases).
         let commitment = min(1, (knob.length - deadzone) / (radius - deadzone))
-        // **Forward speed, not total speed.** A car already going backwards has
-        // nothing to flip, so holding back must keep reversing however fast it
-        // gets. `velocity.length` is unsigned, so a car reversing at 91 read the
-        // same as one driving forward at 91: the gate closed and the scheme
-        // handed over to the body-flip, which is the reported "it tries to turn
-        // around after a while".
+        // **The rear wedge reverses, and the nose never chases the thumb there.**
+        // Past `reverseThreshold` off the nose the car backs up, steering to
+        // bring its TAIL around toward the thumb — but only until the tail
+        // points there. Steering by the full mirrored error kept rotating past
+        // that, swinging the nose all the way onto the thumb: measured, a steady
+        // thumb at 170° reversed 64 ticks and came to rest heading 170°, a
+        // completed three-point turn that then left reverse because the target
+        // was no longer behind. Shorter angles gave up sooner (37 ticks at 130°),
+        // which is the reported "flips almost immediately".
+        //
+        // Clamping the tail-swing to the wedge keeps the two halves of the rule
+        // from fighting: the thumb still steers the reverse, and the car keeps
+        // reversing until the PLAYER aims somewhere else.
+        //
+        // Forward speed is SIGNED, so a car already going backwards is never
+        // "too fast to flip" — it has nothing to flip.
         if abs(error) > reverseThreshold, carForwardSpeed < reverseBelowSpeed {
-            // Target behind and too slow to flip: back toward it. Reversing
-            // mirrors the wheel, so steer toward the target's reflection.
-            let back = atan2(sin(desired - carHeading + .pi), cos(desired - carHeading + .pi))
-            let steer = max(-1, min(1, back / fullSteerError))
+            // Reversing mirrors the wheel, so steer toward the target's
+            // reflection: the tail swings to the thumb.
+            let offTail = atan2(sin(desired - carHeading + .pi), cos(desired - carHeading + .pi))
+            // Fade the swing out as the nose comes back to the edge of the
+            // wedge, so the turn SETTLES in reverse instead of rotating through
+            // it. Without this the car keeps turning until the nose is on the
+            // thumb — a full three-point turn — and then leaves reverse because
+            // the target is no longer behind.
+            let margin = (abs(error) - reverseThreshold) / reverseSettle
+            let steer = max(-1, min(1, offTail / fullSteerError)) * min(1, max(0, margin))
             return CarInput(steer: steer, throttle: -commitment)
         }
         // Hand the aim to the sim — the body-flip lives in the physics.
