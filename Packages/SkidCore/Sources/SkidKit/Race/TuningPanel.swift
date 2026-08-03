@@ -26,12 +26,20 @@ struct TuningPanel: View {
                         Text("Grip", bundle: .module), value: $settings.gripScale,
                         range: 0.2...2, step: 0.05, format: "%.2f")
                     slider(
-                        Text("Reverse under", bundle: .module),
+                        Text("Reverse under speed", bundle: .module),
                         value: $settings.aimReverseBelowSpeed,
                         range: 30...150, step: 5, format: "%.0f")
                     slider(
                         Text("Gas ease", bundle: .module), value: $settings.aimThrottleEase,
                         range: 0...1, step: 0.05, format: "%.2f")
+                    slider(
+                        Text("Forward arc", bundle: .module),
+                        value: $settings.aimForwardArcDegrees,
+                        range: 90...170, step: 5, format: "%.0f°")
+                    slider(
+                        Text("Tail swing", bundle: .module),
+                        value: $settings.aimTailSwingDegrees,
+                        range: 20...120, step: 5, format: "%.0f°")
 
                     section(Text("Pro", bundle: .module))
                     slider(
