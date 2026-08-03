@@ -284,10 +284,30 @@ extension Race {
             // in two: a rail at 0.999 fenced the ground while its neighbour at
             // 1.0 did not, so the fence had holes and a car pushed out by one
             // could be shoved through another. Rounding to the nearest level
-            // says what was meant — a rail near deck height IS a deck rail.
-            let level = Double(Track.level(of: wall.height))
-            let top = max(wall.height, level)
-            return car.height >= level - Track.reachTolerance && car.height <= top
+            // fixed that, but broke the MIDDLE of a climb: a rail at 0.52–0.75
+            // rounds to level 1 and so demanded `height >= 0.8`, while the car
+            // actually driving that stretch of ramp is at 0.52–0.75. Such a rail
+            // blocked nobody, which is how a drag along the barrier walked
+            // straight out through it — reported as "I can reliably drive through
+            // the railing just by dragging the car against the wall".
+            //
+            // **A railing guards the road it edges, and where that road STARTS
+            // depends on whether it climbs** — which is why the wall records it.
+            //
+            // On a climb the road is at the rail's own height, so protection
+            // starts there: rounding to the nearest level instead promoted a rail
+            // at 0.52–0.75 to storey 1 and demanded the car be nearly up at 1.0,
+            // so it ignored the car actually driving that stretch. A drag along
+            // the barrier then walked straight out through it — reported as "I can
+            // reliably drive through the railing just by dragging the car against
+            // the wall".
+            //
+            // On the flat the rail belongs to its level even when the deck sags
+            // below it (0.96 on an S-curve is a DECK rail), and the ground must
+            // pass underneath. Same height, opposite answer — see `Wall.onClimb`.
+            let base = wall.onClimb ? wall.height : Double(Track.level(of: wall.height))
+            let top = max(wall.height, base) + Track.reachTolerance
+            return car.height >= base - Track.reachTolerance && car.height <= top
         }
     }
 

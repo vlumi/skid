@@ -51,15 +51,30 @@ public struct Wall: Equatable, Sendable, Codable {
     /// map boundary, a level seal), and the case older data decodes to.
     public var outward: Vec2 = .zero
 
+    /// **Whether this wall edges a CLIMBING stretch of road**, as opposed to a
+    /// flat run at one level.
+    ///
+    /// It decides where a railing's protection starts, and it cannot be derived
+    /// from `height`: a rail at 0.96 is a deck that sags on an S-curve (its road
+    /// is level 1, so the ground must pass beneath), while a rail at 0.75 is the
+    /// middle of a climb (its road is right there, so a car at 0.5 must be held).
+    /// Same height range, opposite answers. The compiler knows which it is built
+    /// from — the same `climb != 0` that decides whether to lay an embankment —
+    /// so, like `outward`, it simply records it.
+    ///
+    /// `false` is the flat reading, and what older data decodes to.
+    public var onClimb = false
+
     public init(
         from a: Vec2, to b: Vec2, height: Double = 0, kind: Kind = .rail,
-        outward: Vec2 = .zero
+        outward: Vec2 = .zero, onClimb: Bool = false
     ) {
         self.a = a
         self.b = b
         self.height = height
         self.kind = kind
         self.outward = outward
+        self.onClimb = onClimb
     }
 
 }
