@@ -217,9 +217,11 @@ while the **camera** still wants the footprint (reporting the whole canvas as
 `Track.size` drew every piece-built track tiny and shoved into a corner — see
 `PieceCompiler.framed`).
 
-**Separately worth knowing:** the eight's own extent is 1332 against a 1333
-canvas — a single unit from the limit. Under the build-it-sideways rule that is
-a track that should have been laid the other way.
+**The eight is a useful shape, not a broken one.** Its extent is 1332 against a
+1333 canvas — one unit from the limit — and it is the tightest-fenced track at
+27 units of grass. Both make it the fixture that catches this class of bug,
+which is exactly what an unfinished built-in is for. Keep it awkward; do not
+"fix" it into the middle of the canvas.
 
 ## 7. Tunnels (`lowestLevel = −1`)
 
