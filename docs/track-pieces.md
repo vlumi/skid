@@ -824,3 +824,20 @@ The canvas is a **fixed orientation, not an aspect ratio**: the check is
 is the same shape turned. That is deliberate — the track sits between the
 players, so portrait/landscape means nothing, and a tall track is built
 sideways.
+
+**Where 1600×1333 comes from — and what still needs deriving.** The *aspect* is
+the four-player iPhone SE viewport: 320×568 pt with `minBand = 150` reserved top
+and bottom leaves a 320×268 map strip, aspect 1.194 against the canvas's 1.200.
+That is a real constraint and should survive any revisit.
+
+The *scale* is not derived from anything. 1600×1333 is **13.33 × 11.11 U** — if
+it came from the piece grid it would land on whole units. Worth redoing with
+actual measurements, alongside:
+
+- the **fence margin** (see the groundwork plan), which is
+  `max(canvas, footprint + 2·MIN)` — so the canvas and the margin are two
+  arbitrary numbers currently feeding each other;
+- **track size classes**, which make the canvas per-class rather than one
+  constant;
+- whether a whole-unit canvas (13×11 U = 1560×1320, aspect 1.182) is worth the
+  re-fit, since U-quantized footprints would then align with the bound.

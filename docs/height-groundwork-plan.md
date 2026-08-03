@@ -200,7 +200,12 @@ what is drawn. `oval` is exactly this case. So:
 fence = max(canvas, footprint + 2·MIN),  centred on the footprint
 ```
 
-with `MIN` around 60 (2.5 car widths). Measured against today:
+with `MIN` around 60 (2.5 car widths) — **provisional**. The canvas itself is
+only half-derived (its aspect is the four-player SE viewport; its scale is a
+round-ish guess at 13.33 × 11.11 U), so the margin and the canvas want settling
+together rather than tuning one against the other. See track-pieces.md.
+
+Measured against today:
 
 | track | footprint | fence | grass x / y | today |
 |---|---|---|---|---|
