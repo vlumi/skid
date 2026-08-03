@@ -292,7 +292,9 @@ public final class CouchGame: ObservableObject {
                     let car = race.cars.first(where: { $0.id == player })
                 {
                     headingAware.setCar(
-                        heading: car.state.heading, speed: car.state.velocity.length)
+                        heading: car.state.heading,
+                        forwardSpeed: car.state.velocity.dot(car.state.forward),
+                        speed: car.state.velocity.length)
                 }
                 return source.input(for: player, at: race.tick)
             }
