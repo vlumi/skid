@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Holding back keeps reversing.** In Casual, pushing back reversed for a moment
+  and then tried to swing the car around instead — which made backing out of a
+  tight spot much harder than it should be. Hold back and the car now keeps
+  reversing however fast it gets; the body-flip is still what you get when you
+  are driving forward at speed.
+
 - **Bridge railings behave consistently.** Driving on the grass beside a bridge,
   the railing above used to stop you in some places and not others, and hitting
   it near a ramp could fling the car straight through to the other side. A

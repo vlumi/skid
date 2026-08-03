@@ -32,7 +32,10 @@ public enum ControlScheme: CaseIterable, Sendable {
 /// it's going (the flip-vs-reverse decision). The routing layer sets this
 /// each tick, before `input(for:at:)`; touch-only schemes ignore it.
 public protocol HeadingAwareControlSource: TouchDrivenControlSource {
-    func setCar(heading: Double, speed: Double)
+    /// `forwardSpeed` is SIGNED — negative while reversing — because "am I
+    /// going backwards already" is a different question from "how fast am I
+    /// moving", and the flip-vs-reverse decision needs the first.
+    func setCar(heading: Double, forwardSpeed: Double, speed: Double)
 }
 
 /// Deadzone + travel + optional response curve + step quantization shared
@@ -215,11 +218,13 @@ public final class AimControlSource: HeadingAwareControlSource {
     private var activeTouch: TouchID?
     private var carHeading = 0.0
     private var carSpeed = 0.0
+    private var carForwardSpeed = 0.0
 
     public init() {}
 
-    public func setCar(heading: Double, speed: Double) {
+    public func setCar(heading: Double, forwardSpeed: Double, speed: Double) {
         carHeading = heading
+        carForwardSpeed = forwardSpeed
         carSpeed = speed
     }
 
@@ -259,7 +264,13 @@ public final class AimControlSource: HeadingAwareControlSource {
 
         // How committed the push is scales the pace (a light touch eases).
         let commitment = min(1, (knob.length - deadzone) / (radius - deadzone))
-        if abs(error) > reverseThreshold, carSpeed < reverseBelowSpeed {
+        // **Forward speed, not total speed.** A car already going backwards has
+        // nothing to flip, so holding back must keep reversing however fast it
+        // gets. `velocity.length` is unsigned, so a car reversing at 91 read the
+        // same as one driving forward at 91: the gate closed and the scheme
+        // handed over to the body-flip, which is the reported "it tries to turn
+        // around after a while".
+        if abs(error) > reverseThreshold, carForwardSpeed < reverseBelowSpeed {
             // Target behind and too slow to flip: back toward it. Reversing
             // mirrors the wheel, so steer toward the target's reflection.
             let back = atan2(sin(desired - carHeading + .pi), cos(desired - carHeading + .pi))
