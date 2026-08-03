@@ -181,16 +181,45 @@ to sit further inside their own bounding box.
 And the eight is fenced at 654 wide inside a **1600-wide canvas**, throwing away
 946 units of space that is already paid for.
 
-**Fence the canvas, centre the track in it.** The canvas is a fixed constant of
-the format version, so every track gets the same generous run-off regardless of
-how tightly its own geometry happens to bound. Going wide then costs you time on
-grass rather than bouncing you back onto the racing line.
+**Fence the canvas, centre the track in it** — the fence becomes "the edge of
+what you can see", which explains itself to a player. Going wide then costs time
+on grass instead of bouncing you back onto the racing line.
 
-Note this interacts with framing: `Track.size` currently *is* the footprint, and
-the renderer letterboxes to it (deliberately — reporting the whole canvas drew
-every piece-built track tiny and off-centre, see `PieceCompiler`). So the fence
-wants the canvas while the **camera** still wants the footprint; they stop being
-the same number.
+The canvas is **1600 × 1333 in a FIXED orientation** — not an aspect ratio, and
+deliberately not rotatable. The track sits between the players, so
+portrait/landscape means nothing there; a tall track is simply built sideways.
+(The doc calls this "the ~1.2:1 taller-aspect convention", which reads like an
+aspect rule and isn't one.)
+
+One guard is needed. The validator measures the **centerline** extent, while
+`Track.size` is the **padded** footprint — so a legal track can have padding
+sticking out past the canvas, and a naive canvas fence would put walls *inside*
+what is drawn. `oval` is exactly this case. So:
+
+```text
+fence = max(canvas, footprint + 2·MIN),  centred on the footprint
+```
+
+with `MIN` around 60 (2.5 car widths). Measured against today:
+
+| track | footprint | fence | grass x / y | today |
+|---|---|---|---|---|
+| small | 1320×1080 | 1600×1333 | 140 / 126 | 120 |
+| oval | 1800×1320 | 1920×1440 | 60 / 60 | 120 |
+| **eight** | 654×1332 | 1600×1452 | **473** / 60 | **27** |
+| **clover** | 1134×1134 | 1600×1333 | **233** / 99 | **27** |
+
+The two tight tracks gain most, which is the complaint. `oval` loses a little on
+paper but was never the problem, and 60 is still 2.5 car widths.
+
+Note this splits two numbers that are currently one: the fence wants the canvas
+while the **camera** still wants the footprint (reporting the whole canvas as
+`Track.size` drew every piece-built track tiny and shoved into a corner — see
+`PieceCompiler.framed`).
+
+**Separately worth knowing:** the eight's own extent is 1332 against a 1333
+canvas — a single unit from the limit. Under the build-it-sideways rule that is
+a track that should have been laid the other way.
 
 ## 7. Tunnels (`lowestLevel = −1`)
 

@@ -818,3 +818,9 @@ so there is no reason to truncate the signature.
 Settled since this list was written: the **canvas constant** is 1600×1333
 (`TrackValidator.canvas`), and the **built-ins did migrate** — all four are
 share codes, so the catalog proved expressive enough.
+
+The canvas is a **fixed orientation, not an aspect ratio**: the check is
+`width ≤ 1600 && height ≤ 1333`, so a 1333×1600 track is refused even though it
+is the same shape turned. That is deliberate — the track sits between the
+players, so portrait/landscape means nothing, and a tall track is built
+sideways.
