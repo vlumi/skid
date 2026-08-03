@@ -88,6 +88,151 @@ final class RailAndEmbankmentTests: XCTestCase {
         XCTAssertFalse(race.blocks(wall(.embankment, 0.4), car: car(atHeight: 1)))
     }
 
+    // MARK: - Embankment flanks are ONE-WAY
+
+    /// **You may drive OFF a ramp's flank, never INTO it.**
+    ///
+    /// The earth that stops a car below is the same segment a car above would
+    /// leave over, so a symmetric flank traps you on a railless ramp. The side
+    /// comes from the wall's stored `outward`, which points away from the road
+    /// the earth carries — a question about the RAMP, not about one segment.
+    func testAnEmbankmentBlocksFromOutsideOnly() {
+        let race = race()
+        // Earth under a road at 1.0, running +x, its bulk facing +y.
+        let flank = Wall(
+            from: Vec2(0, 0), to: Vec2(100, 0), height: 1, kind: .embankment,
+            outward: Vec2(0, 1))
+        XCTAssertTrue(
+            race.blocks(flank, car: car(atHeight: 0), movedFrom: Vec2(50, 40)),
+            "a ground car approaching the flank from outside must be stopped")
+        XCTAssertFalse(
+            race.blocks(flank, car: car(atHeight: 0), movedFrom: Vec2(50, -40)),
+            "but leaving the ramp over its own edge must be allowed — that is the fall")
+    }
+
+    /// The side test holds along the whole segment and at any angle: `outward` is
+    /// perpendicular to the wall, so travel ALONG it contributes nothing to the
+    /// dot product and the endpoint anchor is enough.
+    func testTheSideTestHoldsAlongTheWholeFlank() {
+        let race = race()
+        let diagonal = Vec2(1, -1).normalized
+        let flank = Wall(
+            from: Vec2(0, 0), to: Vec2(300, 300), height: 1, kind: .embankment,
+            outward: diagonal)
+        for fraction in [0.0, 0.25, 0.5, 0.75, 1.0] {
+            let on = Vec2(300 * fraction, 300 * fraction)
+            XCTAssertTrue(
+                race.blocks(flank, car: car(atHeight: 0), movedFrom: on + diagonal * 40),
+                "outside at \(fraction) along the flank")
+            XCTAssertFalse(
+                race.blocks(flank, car: car(atHeight: 0), movedFrom: on - diagonal * 40),
+                "inside at \(fraction) along the flank")
+        }
+    }
+
+    /// A flank with no recorded `outward` has no sides to tell apart, so it stays
+    /// symmetric — the honest answer, and what older decoded data becomes.
+    func testAFlankWithoutASideStaysSymmetric() {
+        let race = race()
+        for from in [Vec2(50, 40), Vec2(50, -40)] {
+            XCTAssertTrue(
+                race.blocks(wall(.embankment, 1), car: car(atHeight: 0), movedFrom: from),
+                "no outward recorded means no side to favour")
+        }
+    }
+
+    /// **A railing stays symmetric.** Making rails one-way was tried and
+    /// reverted: 128 of 136 rails on the eight sit on climbing pieces, so it let
+    /// cars through railings almost everywhere. Only the earth is directional.
+    func testARailingIsNotOneWay() {
+        let race = race()
+        let rail = Wall(
+            from: Vec2(0, 0), to: Vec2(100, 0), height: 1, kind: .rail,
+            outward: Vec2(0, 1))
+        for from in [Vec2(50, 40), Vec2(50, -40)] {
+            XCTAssertTrue(
+                race.blocks(rail, car: car(atHeight: 1), movedFrom: from),
+                "a railing must hold a deck car from both sides")
+        }
+    }
+
+    /// Driving off a flank leaves the road, which is a FALL — the one-way rule
+    /// only opens the barrier, gravity does the rest.
+    func testLeavingAFlankFalls() throws {
+        let track = try PieceCompiler.compile(
+            TrackCode.decode(TestTracks.Code.bridgeRing), id: "t")
+        // A car on the climb, pushed sideways off the flank.
+        guard let flank = track.walls.first(where: { $0.kind == .embankment && $0.height > 0.3 })
+        else { return XCTFail("the bridge ring must have an embankment mid-climb") }
+        var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
+        let mid = (flank.a + flank.b) * 0.5
+        race.cars[0].state.position = mid + flank.outward * 2
+        race.cars[0].state.height = flank.height
+        race.cars[0].state.velocity = flank.outward * 200
+        for _ in 0..<90 { race.advance(inputs: [PlayerID(0): .coast]) }
+        XCTAssertLessThan(
+            race.cars[0].state.height, flank.height,
+            "leaving the flank must lose height, not slide along an invisible wall")
+    }
+
+    /// **On the real track, from every angle: no way IN, but a way OUT.**
+    ///
+    /// The unit tests above pin the rule on one hand-built wall; this drives all
+    /// 128 embankments on the eight, because the two bugs this area has produced
+    /// (the warp onto ramps, and rails going one-way) were both found on a real
+    /// track while the unit tests stayed green.
+    func testTheEightAdmitsNobodyThroughAFlank() {
+        let track = TrackLibrary.track(id: "eight")
+        let flanks = track.walls.filter { $0.kind == .embankment }
+        XCTAssertGreaterThan(flanks.count, 100, "the eight is mostly climbing pieces")
+        for flank in flanks where flank.outward.length > 0.001 {
+            let mid = (flank.a + flank.b) * 0.5
+            for speed in [200.0, 600.0] {
+                var race = Race(
+                    track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
+                race.cars[0].state.position = mid + flank.outward * 40
+                race.cars[0].state.height = 0
+                race.cars[0].state.velocity = flank.outward * -speed
+                for _ in 0..<40 { race.advance(inputs: [PlayerID(0): .coast]) }
+                XCTAssertLessThan(
+                    race.cars[0].state.height, 0.3,
+                    "a ground car at \(speed) must never end up on the ramp")
+            }
+        }
+    }
+
+    /// And the way out is the embankment's own doing, not the railings'.
+    ///
+    /// The eight rails every climb, and rails are symmetric on purpose — so with
+    /// them in place they, not the flank, are what holds a car on the ramp.
+    /// Stripping them isolates the earth, which is what a railless ramp (the next
+    /// step) will be.
+    func testARaillessRampLetsYouOffTheSide() {
+        var track = TrackLibrary.track(id: "eight")
+        track.walls = track.walls.filter { $0.kind != .rail }
+        let flanks = track.walls.filter { $0.kind == .embankment && $0.height > 0.25 }
+        var escaped = 0
+        for flank in flanks where flank.outward.length > 0.001 {
+            var race = Race(
+                track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
+            let mid = (flank.a + flank.b) * 0.5
+            race.cars[0].state.position = mid - flank.outward * 6
+            race.cars[0].state.height = flank.height
+            race.cars[0].state.velocity = flank.outward * 400
+            let start = race.cars[0].state.position
+            for _ in 0..<40 { race.advance(inputs: [PlayerID(0): .coast]) }
+            let car = race.cars[0].state
+            // Either it travelled clear of the flank, or it left and fell — a car
+            // that fell to the ground has certainly left the ramp.
+            if (car.position - start).dot(flank.outward) > 20 || car.height < flank.height - 0.1 {
+                escaped += 1
+            }
+        }
+        XCTAssertEqual(
+            escaped, flanks.count,
+            "a railless ramp must never trap a car on it — that is the whole rule")
+    }
+
     // MARK: - A ramp carries both
 
     /// The compiler gives a climbing piece an embankment AND a railing, so you
