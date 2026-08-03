@@ -96,26 +96,36 @@ final class HeightTests: XCTestCase {
 
     func testLaunchingRampGoesBallistic() {
         var race = Race(track: launchTrack(), players: [PlayerID(0)])
-        // Build speed, cross the launch line (~tick 97 at ~380 u/s).
-        drive(&race, ticks: 100)
+        // Build speed until the launch line is crossed. Driven to the launch
+        // rather than a tick count: flight is now ballistic, so its length
+        // depends on speed and gravity — a fixed count outran the landing.
+        for _ in 0..<200 where !race.cars[0].state.isAirborne {
+            drive(&race, ticks: 1)
+        }
         XCTAssertGreaterThan(race.cars[0].state.position.x, 300)
         XCTAssertTrue(race.cars[0].state.isAirborne)
         let headingAtLaunch = race.cars[0].state.heading
         let speedAtLaunch = race.cars[0].state.velocity.length
 
-        // While airborne: full steer + brake input does nothing — ballistic.
+        // While airborne: full steer + brake input does nothing to the
+        // HORIZONTAL motion — only gravity acts, on height.
+        let heightAtLaunch = race.cars[0].state.height
         drive(&race, ticks: 5, input: CarInput(steer: 1, throttle: -1))
         XCTAssertEqual(race.cars[0].state.heading, headingAtLaunch)
         XCTAssertEqual(race.cars[0].state.velocity.length, speedAtLaunch, accuracy: 1e-9)
+        XCTAssertGreaterThan(
+            race.cars[0].state.height, heightAtLaunch,
+            "a launch arcs UP before it comes down")
 
         // It lands eventually and steering works again.
-        drive(&race, ticks: 60, input: CarInput(steer: 1, throttle: 1))
+        drive(&race, ticks: 120, input: CarInput(steer: 1, throttle: 1))
         XCTAssertFalse(race.cars[0].state.isAirborne)
         XCTAssertNotEqual(race.cars[0].state.heading, headingAtLaunch)
     }
 
-    /// Straying off the deck is a fall — the one place a height change is meant
-    /// to be abrupt.
+    /// Straying off the deck is a fall. It used to SNAP to the ground and then
+    /// fly for 8 ticks — the car was at the bottom before it visually landed —
+    /// and is now a ballistic descent that ends when it meets a surface.
     func testStrayingOffTheBridgeDropsTheCar() {
         // A flat track, with the car artificially placed up in the air: there is
         // no elevated road anywhere, so it must drop.
@@ -124,8 +134,13 @@ final class HeightTests: XCTestCase {
         var race = Race(track: track, players: [PlayerID(0)])
         race.cars[0].state.height = 1
         drive(&race, ticks: 1)
-        XCTAssertEqual(race.cars[0].state.height, 0)
         XCTAssertTrue(race.cars[0].state.isAirborne)
+        XCTAssertLessThan(race.cars[0].state.height, 1, "it is falling")
+        XCTAssertGreaterThan(race.cars[0].state.height, 0.9, "but has not arrived")
+
+        drive(&race, ticks: 60)
+        XCTAssertEqual(race.cars[0].state.height, 0, accuracy: 1e-9, "and lands")
+        XCTAssertFalse(race.cars[0].state.isAirborne)
     }
 
     /// **The reported bug, and the reason layers are gone.** Driving the flat

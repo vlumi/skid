@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Cars now arc through the air.** Driving off a bridge used to drop you to the
+  ground instantly and then play a short hop; now you fall, gathering speed, and
+  land on whatever is beneath you — which may be a lower deck rather than the
+  ground. Launching off a ramp arcs up and over, and a faster car flies further.
+  **Gravity** and **Launch** are in the Tuning panel under Air.
+
 - **Your tracks are a library, not one slot.** Every track you build or paste in
   is kept, and they all show up as choices in the setup picker rather than a
   single "My track". A pasted track keeps its signature so you can pass it on
