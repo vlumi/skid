@@ -259,13 +259,24 @@ extension Race {
             // ("be of this level, or stay out").
             return car.height < wall.height
                 && car.height >= wall.height - Track.levelHeight
+        case .embankment:
+            // Earth: solid from the ground up to the road it carries, so a car
+            // below cannot drive into a ramp's flank. Above the road there is
+            // nothing — a deck crossing over a ramp runs clear.
+            return car.height <= wall.height + Track.reachTolerance
         case .rail:
-            // Embankment-only trunc: "which level's floor does this rail's
-            // guard reach down to" assumes storeys at whole heights ≥ 0. A
-            // tunnel cutting's rails are one-way and get their own kind (see
-            // docs/height-model-plan.md step 4), so this stays as is.
-            let floor = wall.height.rounded(.down)
-            return car.height >= floor - Track.reachTolerance && car.height <= wall.height
+            // **A railing guards the level it edges, and does not reach the
+            // floor.** It is a waist-high barrier, not a wall to the ground —
+            // the earth beneath a raised road is the embankment's job.
+            //
+            // The floor used to be `trunc(height)`, which split one bridge edge
+            // in two: a rail at 0.999 fenced the ground while its neighbour at
+            // 1.0 did not, so the fence had holes and a car pushed out by one
+            // could be shoved through another. Rounding to the nearest level
+            // says what was meant — a rail near deck height IS a deck rail.
+            let level = Double(Track.level(of: wall.height))
+            let top = max(wall.height, level)
+            return car.height >= level - Track.reachTolerance && car.height <= top
         }
     }
 

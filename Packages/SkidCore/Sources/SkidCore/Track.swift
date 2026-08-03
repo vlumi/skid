@@ -18,6 +18,15 @@ public struct Wall: Equatable, Sendable, Codable {
         /// unlike a rail it has no top a car could be over. (A tunnel mouth
         /// will want the mirror image as its own case.)
         case gate
+        /// **The earth under a climbing piece**, from the ground up to the road
+        /// it carries. Stops a car below from driving into the flank of a ramp.
+        ///
+        /// Separate from `rail` because they are separate things doing separate
+        /// jobs, which one wall could not do at once: a railing guards the road
+        /// it edges, an embankment fills the space beneath it. Conflating them
+        /// meant a ramp's side barrier was a railing stretched down to the
+        /// floor, and every attempt to fix one end broke the other.
+        case embankment
     }
 
     public var a: Vec2

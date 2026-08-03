@@ -141,7 +141,7 @@ which is what makes it robust. What changes is only the **sideways** rule.
 You may drive **off** a ramp's side; you may not drive **into** it. Today the
 flanks are `.rail` — symmetric — so a railless ramp would still trap you on it.
 
-**Attempted and reverted once. The lesson: a rail and an embankment are two
+**Done, after two false starts. The lesson: a rail and an embankment are two
 WALLS, not one wall with a flag.** A climbing piece currently emits a single set
 of edge walls doing both jobs, and adding `oneWay` to them made *every* rail on
 a ramp one-way — 128 of 136 on the eight, which is mostly climbing pieces — so
