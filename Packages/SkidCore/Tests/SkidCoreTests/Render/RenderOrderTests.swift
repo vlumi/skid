@@ -170,7 +170,8 @@ final class RenderOrderTests: XCTestCase {
             to: track.centerline[crossing], preferHeight: deckHeight)
         let ahead = track.centerline[(segment + 1) % n] - track.centerline[segment]
         let across = ahead.normalized.perpendicular
-        let clip = TrackRenderer.probeCoveringDeck(track: track, height: deckHeight)
+        let clip = TrackRenderer.probeCoveringDeck(
+            track: track, storey: Track.level(of: deckHeight))
         // Out past the asphalt, inside the rail band: under the wall.
         let underWall =
             track.centerline[crossing]

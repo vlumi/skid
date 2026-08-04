@@ -72,31 +72,35 @@ extension TrackRenderer {
             // A window per covering storey is correct rather than merely tolerable:
             // each is drawn in its own layer, so a car under two stacked decks shows
             // through both, and where only one covers it only one is drawn.
-            // **Scanned from the car's OWN height, not its paint storey.**
-            // `carStorey` bins a car by the road it stands under, so a ground car
-            // beneath a deck at 1.5 is binned at storey 2 — it paints in the deck's
-            // layer, which is right, but starting the scan one above THAT looks past
-            // every road that covers it. Measured: a ground car under a storey-2
-            // deck got `["2/car"]` and no window at all.
+            // **Which ROAD covers this car, not which storey.**
             //
-            // `stride`, not a range: both range forms trap when the bounds cross,
-            // and a car can be above the ceiling (a jump scales past it).
-            let ownStorey = Track.level(of: state.height)
-            for coveringStorey in stride(
-                from: ownStorey + 1, through: Track.highestLevel, by: 1)
-            {
-                let coveringHeight = Double(coveringStorey) * Track.levelHeight
-                guard
-                    track.distanceToCenterline(state.position, height: coveringHeight)
-                        < track.footprintHalfWidth(atHeight: coveringHeight) + holeRadius
-                else { continue }
-                let deck = coveringDeck(track: track, height: coveringHeight)
-                // Belt and braces: `distanceToCenterline` finds the NEAREST road at
-                // this height anywhere on the track, so a storey that exists
-                // elsewhere but not overhead can pass the range check and still have
-                // no deck to cut. Measured 0 of 257 such cases on the reported
-                // track, so this is unreachable there and correspondingly untested —
-                // kept because an empty window is a dimmed hole over nothing.
+            // Storeys are the wrong granularity here. A ramp climbing from 2.0 to
+            // 2.65 is road above a car at 2.01, but it belongs to no whole storey —
+            // so a scan that asked "is there road at storey 3?" found nothing 132
+            // units away and left the car hidden. Reported from a ramp at h=2.11:
+            // "still hidden on the ramp under this other ramp".
+            //
+            // Two earlier shapes were both wrong for the same reason. `storey + 1`
+            // asked one level up from the car's PAINT storey, which `carStorey` had
+            // already set to the deck above it. Flooring the car's own height fixed
+            // the off-by-one at 2.60 but still only ever looked at whole levels.
+            //
+            // So: ask the road. Any segment a level or more above the car, whose
+            // footprint reaches it, covers it — and each such segment's own storey
+            // is the layer its window belongs in, so a car under two stacked decks
+            // still shows through both.
+            var coveringStoreys: Set<Int> = []
+            for index in track.centerline.indices {
+                let roadHeight = track.height(ofSegment: index)
+                guard roadHeight > state.height + Track.levelSeparation else { continue }
+                let reach = track.footprintHalfWidth(atHeight: roadHeight) + holeRadius
+                let a = track.centerline[index]
+                let b = track.centerline[(index + 1) % track.centerline.count]
+                guard state.position.distance(toSegment: a, b) < reach else { continue }
+                coveringStoreys.insert(Track.level(of: roadHeight))
+            }
+            for coveringStorey in coveringStoreys.sorted() {
+                let deck = coveringDeck(track: track, storey: coveringStorey)
                 guard !deck.isEmpty else { continue }
                 order.add(storey: coveringStorey, kind: .window) { context in
                     drawWindow(
@@ -180,21 +184,32 @@ extension TrackRenderer {
     /// The covering deck's asphalt as a region: the centerline segments at
     /// the covering height, stroked to the road width — what the window is
     /// allowed to cut a hole in.
-    private static func coveringDeck(track: Track, height: Double) -> Path {
-        var line = Path()
+    /// Every stretch of road belonging to `storey`, as a stroked band — the shape a
+    /// window is clipped to, so a hole never spills past the road that casts it.
+    ///
+    /// Keyed by STOREY rather than an exact height: a ramp climbing through a level
+    /// has no segment at any whole height, so matching `isAt:` left the very road
+    /// that hides the car out of its own deck. Each segment is stroked at its own
+    /// footprint, which also stops a ramp's narrow foot borrowing the deck's width.
+    private static func coveringDeck(track: Track, storey: Int) -> Path {
+        var path = Path()
         let n = track.centerline.count
-        for i in 0..<n where track.segment(i, isAt: height) {
+        for i in 0..<n where Track.level(of: track.height(ofSegment: i)) == storey {
             let a = track.centerline[i]
             let b = track.centerline[(i + 1) % n]
+            var line = Path()
             line.move(to: CGPoint(x: a.x, y: a.y))
             line.addLine(to: CGPoint(x: b.x, y: b.y))
+            // Stroked to the road's whole FOOTPRINT — asphalt plus rails — since
+            // the rails hide the ground under them just as the asphalt does.
+            path.addPath(
+                line.strokedPath(
+                    StrokeStyle(
+                        lineWidth: track.footprintHalfWidth(
+                            atHeight: track.height(ofSegment: i)) * 2,
+                        lineCap: .round, lineJoin: .round)))
         }
-        // Stroked to the road's whole FOOTPRINT — asphalt plus rails — since
-        // the rails hide the ground under them just as the asphalt does.
-        return line.strokedPath(
-            StrokeStyle(
-                lineWidth: track.footprintHalfWidth(atHeight: height) * 2,
-                lineCap: .round, lineJoin: .round))
+        return path
     }
 
     /// Radius of the window's disc, centred on the car. Also how far past the
@@ -304,8 +319,8 @@ extension TrackRenderer {
     }
 
     /// Test-only window into the covering-deck clip region.
-    static func probeCoveringDeck(track: Track, height: Double) -> Path {
-        coveringDeck(track: track, height: height)
+    static func probeCoveringDeck(track: Track, storey: Int) -> Path {
+        coveringDeck(track: track, storey: storey)
     }
 
     /// Test-only window into the under-deck window drawing.
