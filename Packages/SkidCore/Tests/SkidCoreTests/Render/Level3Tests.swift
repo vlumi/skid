@@ -164,6 +164,33 @@ final class Level3Tests: XCTestCase {
         }
     }
 
+    /// **A gate spans its own road, at every storey.**
+    ///
+    /// The span used a flat `width / 2` while the road widens with height, so a
+    /// raised gate was NARROWER than the asphalt it crosses. Running wide up there
+    /// missed the checkpoint — a correctness bug, not just a thin-looking bar.
+    ///
+    /// Uses the REPORTED track, because the bug only shows where the neighbour-lane
+    /// cap bites: on a wide-open ring the grass margin swamps the difference and the
+    /// gate covers ~3x its road either way. On this one, a level-3 gate covered 63%
+    /// of its road against 248% on the ground.
+    func testAGateCoversItsRoadAtEveryStorey() throws {
+        let track = try PieceCompiler.compile(
+            TrackCode.decode(TestTracks.Code.threeStorey), id: "l3")
+        var checked = 0
+        for gate in track.gates {
+            let span = (gate.b - gate.a).length
+            let road = track.halfWidth(atHeight: gate.height) * 2
+            XCTAssertGreaterThan(
+                span, road - 1,
+                "a gate at height \(gate.height) must span its whole road")
+            checked += 1
+        }
+        XCTAssertGreaterThan(checked, 0, "the fixture must carry gates")
+        XCTAssertGreaterThan(
+            track.heights.max() ?? 0, 2.5, "and must actually reach the top storey")
+    }
+
     /// **Height reads as brightness at every storey.** The shade used to divide by
     /// one `levelHeight` and clamp, so it topped out at the first deck — with three
     /// storeys, heights 1, 2 and 3 were all the same gray.
