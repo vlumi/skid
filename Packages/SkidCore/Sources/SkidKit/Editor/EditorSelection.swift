@@ -110,6 +110,32 @@ extension CouchGame {
         }
     }
 
+    /// **Toggle a piece's guard railing** — like a decal, applied in place, so the
+    /// geometry, the seams and every index are untouched.
+    ///
+    /// Rails are per placed piece rather than per shape (see `TrackLayout.railed`),
+    /// which is what makes a bridge you can drive off and a railing on flat ground
+    /// both expressible.
+    @discardableResult
+    public func editorToggleRail(at index: Int) -> Bool {
+        recordingUndo {
+            guard var layout = editorLayout, layout.pieces.indices.contains(index)
+            else { return false }
+            if layout.railed.contains(index) {
+                layout.railed.remove(index)
+            } else {
+                layout.railed.insert(index)
+            }
+            editorLayout = layout
+            return true
+        }
+    }
+
+    /// Whether the selected piece carries a railing, for the button's state.
+    public func editorIsRailed(at index: Int) -> Bool {
+        editorLayout?.isRailed(at: index) ?? false
+    }
+
     /// Whether the track can be turned around: only a closed ring has a driving
     /// direction to flip, so the button greys out rather than refusing a tap.
     public var editorCanReverseDirection: Bool {

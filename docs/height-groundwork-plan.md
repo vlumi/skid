@@ -202,7 +202,7 @@ answers for the on-road case. Worth doing alongside step 5 (`highestLevel = 2`),
 which adds more such boundaries: with three storeys the same rounding flips at
 0.5 and 1.5.
 
-## 4. Rails become a placement attribute
+## 4. Rails become a placement attribute — DONE
 
 `hasRails` per piece — **defaulting to OFF**, and existing tracks simply lose
 their railings until an author toggles them back on. Decided rather than

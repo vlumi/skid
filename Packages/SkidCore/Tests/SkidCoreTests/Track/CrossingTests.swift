@@ -19,6 +19,11 @@ final class CrossingTests: XCTestCase {
         var flat = eight
         flat.pitches = []
         flat.originHeight = 0
+        // The builtin rails its bridge, and flattening turns that bridge into an
+        // at-grade crossing — where a railing would wall off the junction the
+        // whole fixture exists to test. Railings are per-piece and this fixture
+        // wants none, so drop them with the height.
+        flat.railed = []
         return flat
     }
 

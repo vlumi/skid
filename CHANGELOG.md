@@ -21,6 +21,11 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Railings are yours to place.** A guard railing is now a property of a piece
+  you have laid, toggled from the piece's own panel in the editor — so you can
+  build a bridge with an open edge to drive off, or fence a flat corner. Pieces
+  start with no railing; the built-in tracks keep theirs.
+
 - **Railings mid-ramp actually hold you.** A railing partway up a climb was
   being assigned to the storey above, so it stopped nobody — you could drive
   through it by dragging the car along the barrier. Deck railings are unchanged.
