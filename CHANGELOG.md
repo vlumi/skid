@@ -25,6 +25,10 @@ ships (see [AGENTS.md](AGENTS.md)).
   through several storeys, the earth under a high ramp reached all the way to the
   ground and blocked the lower road — the track built fine but could not be driven.
   A ramp's earth now fills only from the storey it stands on.
+- **A car under a high bridge shows through it again.** Beneath a second- or
+  third-storey deck the car simply vanished — the see-through window only ever
+  looked one level up, and only from the wrong starting level. It now finds every
+  road above the car, so a car under two stacked decks shows through both.
 
 - **Three storeys instead of one.** Tracks can now climb to height 3, so bridges
   over bridges are possible. A climb that turns as it rises costs no extra room —

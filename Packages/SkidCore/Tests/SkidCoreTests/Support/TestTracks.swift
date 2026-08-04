@@ -30,6 +30,14 @@ enum TestTracks {
             "AXABFR95BAQQAQMDDwEDAw8BegQEBAQEBAIFAAQKFBoDBQLQAtAA_iDUVapunfF_mc99V8r_"
             + "weRH0rknUHfADJley31chwDYnP9AQfgQ4hdOAJFdIXX09sTndJh4oKgxKWYkC75k871YA4"
             + "AL-966tuPFpBJQ1hrXKNYRNBrSRvttD-6JsjOz7F5xCg"
+        /// The reported "tower of babel": road at all four storeys, fully railed,
+        /// with decks stacked over one another. The hard case for the see-through
+        /// window — a car may be one, two OR three storeys below a road.
+        static let towerOfBabel =
+            "AbcBFR95BAQQAQMDDwEDAw8BegQEBAQEBAIFAAQKFBoDBQLQAtAACB8AAQIDBAUGBwgJCgsM"
+            + "DQ4PEBESExQVFhcYGRobHB0e_iDUVapunfF_mc99V8r_weRH0rknUHfADJley31chwDYnP"
+            + "9AKyj2tjZTDQTf-XN6GJZCG7iVZP0-2QMsh5woK_pYFxgVtMuW2gjO6qgh8Qq4DUuFcH1J"
+            + "a81GR5jaxV2VUjrMDw"
         static let bridgeRing = "Ad0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAAgGCgsMDQ4P"
         /// The clover: 47 pieces, closed, three gates, two crossings.
         static let clover = "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI"
