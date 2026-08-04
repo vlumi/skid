@@ -62,13 +62,42 @@ extension TrackRenderer {
             // reached the rail's outer edge (87 on the eight) while the hole was
             // cut only in the asphalt (72), so a car under the wall triggered a
             // window with nowhere to draw and stayed invisible.
-            let coveringStorey = storey + 1
-            let coveringHeight = Double(coveringStorey) * Track.levelHeight
-            if track.heights.contains(where: { Track.level(of: $0) == coveringStorey }),
-                track.distanceToCenterline(state.position, height: coveringHeight)
-                    < track.footprintHalfWidth(atHeight: coveringHeight) + holeRadius
+            // **Every storey above the car, not just the next one.** With one deck
+            // `storey + 1` was the only candidate; with three, a ground car under a
+            // level-3 bridge asked about storey 1, found no road overhead there, and
+            // got no window — hidden with nothing to see it through. Measured on a
+            // three-storey track: under a storey-2 deck with no storey-1 road above,
+            // the window was missing at every sampled point.
+            //
+            // A window per covering storey is correct rather than merely tolerable:
+            // each is drawn in its own layer, so a car under two stacked decks shows
+            // through both, and where only one covers it only one is drawn.
+            // **Scanned from the car's OWN height, not its paint storey.**
+            // `carStorey` bins a car by the road it stands under, so a ground car
+            // beneath a deck at 1.5 is binned at storey 2 — it paints in the deck's
+            // layer, which is right, but starting the scan one above THAT looks past
+            // every road that covers it. Measured: a ground car under a storey-2
+            // deck got `["2/car"]` and no window at all.
+            //
+            // `stride`, not a range: both range forms trap when the bounds cross,
+            // and a car can be above the ceiling (a jump scales past it).
+            let ownStorey = Track.level(of: state.height)
+            for coveringStorey in stride(
+                from: ownStorey + 1, through: Track.highestLevel, by: 1)
             {
+                let coveringHeight = Double(coveringStorey) * Track.levelHeight
+                guard
+                    track.distanceToCenterline(state.position, height: coveringHeight)
+                        < track.footprintHalfWidth(atHeight: coveringHeight) + holeRadius
+                else { continue }
                 let deck = coveringDeck(track: track, height: coveringHeight)
+                // Belt and braces: `distanceToCenterline` finds the NEAREST road at
+                // this height anywhere on the track, so a storey that exists
+                // elsewhere but not overhead can pass the range check and still have
+                // no deck to cut. Measured 0 of 257 such cases on the reported
+                // track, so this is unreachable there and correspondingly untested —
+                // kept because an empty window is a dimmed hole over nothing.
+                guard !deck.isEmpty else { continue }
                 order.add(storey: coveringStorey, kind: .window) { context in
                     drawWindow(
                         around: state, color: colorAt(index), deck: deck, into: &context)
@@ -171,7 +200,7 @@ extension TrackRenderer {
     /// Radius of the window's disc, centred on the car. Also how far past the
     /// bridge's footprint the window keeps being drawn, since a disc centred
     /// just outside the bridge still overlaps it.
-    private static let holeRadius: Double = 20
+    static let holeRadius: Double = 20
 
     /// Ghost mode: overlapping pass-through cars go translucent so pileups
     /// on the racing line stay readable.
