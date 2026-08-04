@@ -73,7 +73,10 @@ extension EditorRenderer {
         let pose = placed.exits[0]
         let across = Vec2(angle: pose.heading.radians).perpendicular
         let center = pose.position.vec2
-        let edge = across * (width / 2)
+        // Scaled to the height of the seam it marks, like the ribbon and the rails:
+        // a flat `width / 2` drew a level-3 gate at two thirds of its own road, so
+        // the bar and its posts sat well inside the asphalt.
+        let edge = across * (width / 2 * Elevation.scale(atHeight: placed.exitHeight))
         let lineWidth = max(2, (highlighted ? 9 : 6) * t.scale)
 
         // Across the road, solid: the part of the gate you always cross.
@@ -87,7 +90,7 @@ extension EditorRenderer {
         // Onto the grass, faded: running wide still counts, out to roughly here.
         // (The compiler caps this side near a neighboring lane, so it's shown
         // as a soft reach rather than a hard edge.)
-        let reach = across * (width / 2 + width)
+        let reach = across * (width / 2 + width) * Elevation.scale(atHeight: placed.exitHeight)
         for direction in [1.0, -1.0] {
             var apron = Path()
             apron.move(to: t.screen(center + edge * direction))
@@ -113,7 +116,7 @@ extension EditorRenderer {
     ) {
         let pose = start.exits[0]
         let fwd = Vec2(angle: pose.heading.radians)
-        let side = fwd.perpendicular * (width / 2)
+        let side = fwd.perpendicular * (width / 2 * Elevation.scale(atHeight: start.exitHeight))
         // A black-and-white checkerboard, two rows deep — both colours painted,
         // so it reads as a start line rather than as holes in the asphalt (the
         // race view used to fill only the dark squares over bare road, which

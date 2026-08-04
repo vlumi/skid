@@ -219,7 +219,7 @@ off the edge — the fall path already exists) and **railings on flat pieces**.
 Encoding: one bit per piece. Cheapest home is the existing pitch/attribute
 section rather than a new one.
 
-## 5. `highestLevel = 2`
+## 5. `highestLevel` — DONE, at 3
 
 One line — the level vocabulary was built for it (`TrackLevel.swift` says so).
 Safe only **after** step 2, or a 1→2 ramp walls off the ground beneath it.

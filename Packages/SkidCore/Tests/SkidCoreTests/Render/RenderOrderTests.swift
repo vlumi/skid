@@ -282,7 +282,7 @@ final class RenderOrderTests: XCTestCase {
             [
                 "0/ground", "0/road", "0/mark", "0/gate", "0/car",
                 "1/road", "1/mark", "1/gate", "1/car",
-                "2/airborne",
+                "\(Track.highestLevel + 1)/airborne",
             ])
     }
 

@@ -115,7 +115,7 @@ enum EditorRenderer {
     static func drawTrack(
         walk: WalkResult, width: Double, gateSeams: [Int], gating: Bool = false,
         decals: [Int: Decal] = [:], railed: Set<Int> = [], transform t: Transform,
-        heightRange: ClosedRange<Double> = -1...2,
+        heightRange: ClosedRange<Double> = Track.everyStorey,
         into context: inout GraphicsContext
     ) {
         // Every piece is a width-varying RIBBON POLYGON: half-width at each
@@ -392,10 +392,39 @@ enum EditorRenderer {
         )
     }
 
-    /// Ground asphalt at 0, deck gray at a full level, blended between.
+    /// Ground asphalt at the bottom storey, lightest at the top one, blended
+    /// between — so height reads as brightness at EVERY level.
+    ///
+    /// This used to divide by `levelHeight` and clamp at 1, which meant the shade
+    /// topped out at the first deck: with three storeys, heights 1, 2 and 3 were
+    /// all the same gray and the only cue left was the car's size. Spanning the
+    /// world's actual range keeps each storey distinguishable however many there
+    /// are, and is unchanged for a two-level track (0…1 spans the same 0…1).
     private static func roadShade(at height: Double) -> Color {
-        let f = min(1, max(0, height / Track.levelHeight))
-        return Color(white: 0.62 + 0.10 * f)
+        Color(white: roadShadeWhite(at: height))
+    }
+
+    /// The shade's white value, exposed so a test can assert the storeys are
+    /// distinguishable without reading pixels.
+    static func roadShadeWhite(at height: Double) -> Double {
+        let span = Double(Track.highestLevel - Track.lowestLevel) * Track.levelHeight
+        let above = height - Double(Track.lowestLevel) * Track.levelHeight
+        let f = span > 0 ? min(1, max(0, above / span)) : 0
+        // The spread is 0.10 per LEVEL rather than across the whole world, so
+        // adding storeys keeps each one as distinguishable as ground-vs-deck was
+        // instead of dividing one narrow band ever more finely (three storeys
+        // would have been 0.033 apart, which reads as one gray).
+        let levels = max(1.0, span / Track.levelHeight)
+        return 0.62 + 0.10 * levels * f
+    }
+
+    /// The brightest a road gets, so callers that need the range agree with the
+    /// shading rather than guessing it.
+    static var roadShadeCeiling: Double {
+        let levels = max(
+            1.0,
+            Double(Track.highestLevel - Track.lowestLevel))
+        return 0.62 + 0.10 * levels
     }
 
 }

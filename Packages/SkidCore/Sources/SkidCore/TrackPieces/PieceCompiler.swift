@@ -307,7 +307,14 @@ public enum PieceCompiler {
         // gross cut through the infield misses. Each side reaches out
         // independently, capped at HALFWAY to any other lane so a gate can
         // never be satisfied from a neighboring road.
-        let half = Double(PieceCatalog.width) / 2
+        // The half-width AT THIS HEIGHT, because the road widens as it rises. A
+        // flat `width / 2` made an elevated gate NARROWER than the asphalt it
+        // spans — measured on a three-storey track, a level-3 gate covered 63% of
+        // its own road (against 248% on the ground, which is the intended grass
+        // margin), so running wide up there missed the checkpoint entirely. Same
+        // class as the rails that sat inboard of the road; see
+        // `Track.halfWidth(atHeight:)`.
+        let half = Double(PieceCatalog.width) / 2 * Elevation.scale(atHeight: height)
         let side = fwd.perpendicular
         let opposite = Vec2(-side.x, -side.y)
         let inner = pos + opposite * reach(from: pos, along: opposite, half: half, placed: placed)
@@ -321,8 +328,10 @@ public enum PieceCompiler {
         from pos: Vec2, along direction: Vec2, half: Double, placed: [PlacedPiece]
     ) -> Double {
         // The grass margin a wide car may still be caught in — generous enough
-        // that running wide counts, short of the infield.
-        let margin = Double(PieceCatalog.width)
+        // that running wide counts, short of the infield. Proportional to the road
+        // it edges (`half` is already height-scaled), so a raised gate keeps the
+        // same generosity rather than a shrinking share of it.
+        let margin = half * 2
         var limit = half + margin
         // Any pavement out this way caps the reach at the midpoint between the
         // two roads, so the corridor can't spill into the neighbor's lane.

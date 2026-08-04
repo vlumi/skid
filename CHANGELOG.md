@@ -21,6 +21,21 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Three storeys instead of one.** Tracks can now climb to height 3, so bridges
+  over bridges are possible. A climb that turns as it rises costs no extra room —
+  it is a straight climb that eats the canvas.
+- **Railings reach the edge of the road on high bridges.** On a level-2 or -3 deck
+  the car stopped well short of the visible barrier, as if hitting something
+  invisible. Railings now sit exactly where the asphalt ends, at any height.
+- **Checkpoints span the whole road on high bridges.** A gate on a raised deck was
+  narrower than the asphalt it crossed, so running wide up there could miss the
+  checkpoint entirely. The gate bar, its lights and the start line now all match the
+  road's width at any height.
+- **Every storey has its own road brightness.** The shade stopped getting lighter
+  above the first deck, so on a tall track you could not tell level 1 from 3.
+- **Cars no longer clip through walls beside a ramp.** A car on the grass beside a
+  climb switched from being drawn under the barrier to over it partway up.
+
 - **Railings are yours to place.** A guard railing is now a property of a piece
   you have laid, toggled from the piece's own panel in the editor — so you can
   build a bridge with an open edge to drive off, or fence a flat corner. Pieces

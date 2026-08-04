@@ -15,6 +15,13 @@ enum TestTracks {
     enum Code {
         /// 17 pieces, closed, four gates, climbs to a deck and back. The
         /// general-purpose ring — selection, undo, gate mode, reversal.
+        /// A user-built three-storey track: climbs to height 3, and its two loops
+        /// run close enough that the gate corridor's neighbour-lane cap bites —
+        /// which is what makes a mis-scaled gate span visible.
+        static let threeStorey =
+            "AVUBEB95BAQEBAQEAXoDAwMDAwMCAgAHAwUC0ALQAAgOAQIDBAUGBwgJCgsMDQ7-INRVqm6d8X"
+            + "-Zz31Xyv_B5EfSuSdQd8AMmV7LfVyHANic_0BO1NraidT3y-SNM5q8Sps4ByNedwFz4KqFdj"
+            + "WbfR5h4uhdYWdYBfKovwjh8QQlikSc1_ajaH-AiWJQiirb4iUM"
         static let bridgeRing = "Ad0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAAgGCgsMDQ4P"
         /// The clover: 47 pieces, closed, three gates, two crossings.
         static let clover = "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI"
