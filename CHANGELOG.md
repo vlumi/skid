@@ -21,80 +21,11 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
-- **A ramp no longer walls off the road beneath it.** On a track that spiralled up
-  through several storeys, the earth under a high ramp reached all the way to the
-  ground and blocked the lower road — the track built fine but could not be driven.
-  A ramp's earth now fills only from the storey it stands on.
-- **A car under a high bridge shows through it again.** Beneath a second- or
-  third-storey deck the car simply vanished — the see-through window only ever
-  looked one level up, and only from the wrong starting level. It now finds every
-  road above the car, so a car under two stacked decks shows through both.
-
-- **Three storeys instead of one.** Tracks can now climb to height 3, so bridges
-  over bridges are possible. A climb that turns as it rises costs no extra room —
-  it is a straight climb that eats the canvas.
-- **Railings reach the edge of the road on high bridges.** On a level-2 or -3 deck
-  the car stopped well short of the visible barrier, as if hitting something
-  invisible. Railings now sit exactly where the asphalt ends, at any height.
-- **Checkpoints span the whole road on high bridges.** A gate on a raised deck was
-  narrower than the asphalt it crossed, so running wide up there could miss the
-  checkpoint entirely. The gate bar, its lights and the start line now all match the
-  road's width at any height.
-- **Every storey has its own road brightness.** The shade stopped getting lighter
-  above the first deck, so on a tall track you could not tell level 1 from 3.
-- **Cars no longer clip through walls beside a ramp.** A car on the grass beside a
-  climb switched from being drawn under the barrier to over it partway up.
-
-- **Railings are yours to place.** A guard railing is now a property of a piece
-  you have laid, toggled from the piece's own panel in the editor — so you can
-  build a bridge with an open edge to drive off, or fence a flat corner. Pieces
-  start with no railing; the built-in tracks keep theirs. There is also a **Rails**
-  toggle beside the Gates button: flip it on and everything you lay from then on
-  arrives railed, so fencing a whole bridge is one decision.
-- **No more falling through your own railings.** A guard rail could throw the car
-  clean off the road — most often at a tight curve part-way up a ramp — leaving it
-  stranded on the grass with no way back. Rails now only push where the car is
-  actually beside them.
-- **Editor taps land where you tap.** Selecting a piece or a gate needed a tap
-  slightly below the target, because the map was drawn into the screen's safe-area
-  insets while taps were measured without them.
-
-- **Railings mid-ramp actually hold you.** A railing partway up a climb was
-  being assigned to the storey above, so it stopped nobody — you could drive
-  through it by dragging the car along the barrier. Deck railings are unchanged.
-- **Ramp sides are one-way.** You can drive off the side of a ramp — and fall,
-  following the same arc as any other drop — but you still can't drive into one
-  from below. Railings are unchanged: they hold you from both sides, as before.
-
-- **Holding back keeps reversing.** In Casual, pushing back reversed for a moment
-  and then tried to swing the car around instead — which made backing out of a
-  tight spot much harder than it should be. Aim within 30° of straight back and
-  the car now reverses for as long as you hold it there, swinging its tail around
-  onto your thumb — and straight back if that's where you point. The body-flip
-  still takes over anywhere inside the forward arc, or when you are driving
-  forward at speed.
-- **Two new Casual tuning sliders**, Forward arc and Tail swing, for the two
-  angles the reverse actually turns on. "Reverse under" is now "Reverse under
-  speed" — it sets a speed, not an angle, which its old name hid.
-
-- **Bridge railings behave consistently.** Driving on the grass beside a bridge,
-  the railing above used to stop you in some places and not others, and hitting
-  it near a ramp could fling the car straight through to the other side. A
-  railing now guards the road it edges — the ground beneath a bridge runs clear,
-  as it looks like it should — while a ramp keeps a solid bank along its sides.
-
-- **Cars now arc through the air.** Driving off a bridge used to drop you to the
-  ground instantly and then play a short hop; now you fall, gathering speed, and
-  land on whatever is beneath you — which may be a lower deck rather than the
-  ground. Launching off a ramp arcs up and over, and a faster car flies further.
-  **Gravity** and **Launch** are in the Tuning panel under Air.
-
 - **Your tracks are a library, not one slot.** Every track you build or paste in
   is kept, and they all show up as choices in the setup picker rather than a
   single "My track". A pasted track keeps its signature so you can pass it on
   intact, and keeps whatever name you give it if it arrives again. Tracks you
   are still building are saved but not offered to race until they close.
-
 - **A shared track can say who made it.** Copying a track now signs it, so
   whoever you send it to can see it came from you — and a track you receive
   shows whether its signature still matches, which is the only sign it was
@@ -102,46 +33,51 @@ ships (see [AGENTS.md](AGENTS.md)).
   normally; this is attribution, not a lock. **Long-press Copy** for a shorter
   unsigned code when the link is disposable. Sharing keeps working when no
   signing key is available; the code is simply unsigned.
-
-- **One track, one share code.** Checkpoint order carries no meaning — a lap
-  collects them all — but it was reaching the code, so the same track could
-  produce two different codes depending on the order its checkpoints happened
-  to be marked in. Codes are an identity (dedup, per-track records), so that
-  had to hold. The **Eight built-in's code changed** as a result; it is the same
-  track, and the old code still opens it.
-
+- **Bridges over bridges: tracks can climb three storeys.** A climb that turns as
+  it rises costs no extra room, so a spiral fits where a straight ramp would eat
+  the canvas. Each storey has its own road brightness, so you can tell level 1
+  from level 3 at a glance.
+- **Cars now arc through the air.** Driving off a bridge used to drop you to the
+  ground instantly and then play a short hop; now you fall, gathering speed, and
+  land on whatever is beneath you — which may be a lower deck rather than the
+  ground. Launching off a ramp arcs up and over, and a faster car flies further.
+  **Gravity** and **Launch** are in the Tuning panel under Air.
+- **Railings are yours to place.** A guard railing is now a property of a piece
+  you have laid, toggled from the piece's own panel in the editor — so you can
+  build a bridge with an open edge to drive off, or fence a flat corner. Pieces
+  start with no railing; the built-in tracks keep theirs. There is also a **Rails**
+  toggle beside the Gates button: flip it on and everything you lay from then on
+  arrives railed, so fencing a whole bridge is one decision.
+- **Ramp sides are one-way.** You can drive off the side of a ramp — and fall,
+  following the same arc as any other drop — but you still can't drive into one
+  from below.
+- **Roads can cross at ground level.** A track can now run across itself
+  without a bridge, so a figure-eight works flat — build one road, then take
+  another straight across it. Roads that merely graze each other at a shallow
+  angle are still refused, since that is nearly always a mistake rather than a
+  junction.
 - **Tracks can be turned around in the editor.** A new button on a closed ring
   reverses the driving direction: the same road, driven the other way. Every
   curve mirrors, every climb becomes a descent, and the start line moves to the
   other end of the start piece — so the grid, the gates and the lap all follow
   the new direction. Reversing twice gives back exactly the track you had, and
   a reversed track keeps its own share code.
-
-- **Pieces near other roads are no longer refused when nothing touches.** The
-  overlap check measured distance between road CENTERLINES, which overstates
-  wildly when a piece merely ends near another road — a rising curve with a
-  third of a road width of clear grass was refused as an overlap. It now
-  measures the asphalt itself.
-- **Roads can cross at ground level.** A track can now run across itself
-  without a bridge, so a figure-eight works flat — build one road, then take
-  another straight across it. Roads that merely graze each other at a shallow
-  angle are still refused, since that is nearly always a mistake rather than a
-  junction.
-- **The car no longer sticks to walls.** Leaning on a barrier pinned the car in
-  place — it kept its speed, and simply stopped travelling. Sliding along a wall
-  now moves you along it, losing speed rather than all momentum.
-- **Walls have weight, and cost you time.** Scraping along a barrier now slows
-  the car instead of being free, so avoiding walls is the faster line; a
-  glancing hit pulls the nose along the wall rather than pinging the car off it,
-  and a hard one can nearly stop you. Hitting a wall square on still bounces.
-- **A piece that fits is no longer refused depending on which end you build
-  from.** Closing a loop could be rejected as an overlap while the very same
-  piece went in fine from the other end — the check was looking at where the
-  piece list happened to start rather than at the road.
-- **Building backwards now matches what you draw.** Extending a track from its
-  start end, a left-hand corner was laid as a right-hander and a climb came out
-  as a descent — the buttons described the piece as a car would meet it, not as
-  you were drawing it. Tap what you want to see.
+- **Undo and redo in the track editor.** Every edit can be taken back —
+  placing pieces, deleting, gating, rotating the whole track, raising and
+  lowering it — with a long history, so a wrong turn thirty pieces ago is
+  still recoverable. A one-tap compound counts as one step, and the delete
+  button now wears a bin rather than an undo arrow.
+- **Checkpoints are edited in their own mode.** A tap on the track used to mean
+  two things at once — pick the end you're building from, or add a checkpoint —
+  so it was easy to move a checkpoint you never meant to touch. Tap **Gates** to
+  switch: checkpoints stand out, every seam that can take one is marked, and
+  taps do nothing else until you're done.
+- **Build from either end of a track, and delete any piece of a loop.** Tap a
+  piece to select it — the bin now sits on the piece it will remove, instead of
+  always taking the last one you laid. On a closed loop you can delete anywhere
+  and the rest of the road stays exactly where it is; on an unfinished track,
+  arrows on the selected end piece choose which end the palette builds from, so
+  a track can grow backwards from its start line as well as forwards.
 - **Trimming a track back is one tap per piece.** Deleting the piece at an end
   now selects the one behind it, so you can keep tapping the bin instead of
   reselecting between each. Building follows the selection too: the end you have
@@ -151,34 +87,79 @@ ships (see [AGENTS.md](AGENTS.md)).
   brush to mark it with an arrow showing which way the track is driven — curved
   on corners, straight on straights, following the road itself. Tracks with no
   markings are unaffected, and their share codes are unchanged.
-- **Kerbs no longer rearrange themselves.** A corner that happened to straddle
-  the point where a loop's piece list begins was treated as two separate
-  corners, so it got two apexes and two run-off kerbs — and which corner that
-  was depended on where the loop started, meaning the same track could paint
-  differently after a copy and paste. A loop's kerbs are now the same however
-  it was built.
-- **Build from either end of a track, and delete any piece of a loop.** Tap a
-  piece to select it — the bin now sits on the piece it will remove, instead of
-  always taking the last one you laid. On a closed loop you can delete anywhere
-  and the rest of the road stays exactly where it is; on an unfinished track,
-  arrows on the selected end piece choose which end the palette builds from, so
-  a track can grow backwards from its start line as well as forwards.
+- **Holding back keeps reversing.** In Casual, pushing back reversed for a moment
+  and then tried to swing the car around instead — which made backing out of a
+  tight spot much harder than it should be. Aim within 30° of straight back and
+  the car now reverses for as long as you hold it there, swinging its tail around
+  onto your thumb — and straight back if that's where you point. The body-flip
+  still takes over anywhere inside the forward arc, or when you are driving
+  forward at speed. **Forward arc** and **Tail swing** are in the Tuning panel;
+  "Reverse under" is now "Reverse under speed", since it sets a speed rather than
+  an angle.
+- **Walls have weight, and cost you time.** Scraping along a barrier now slows
+  the car instead of being free, so avoiding walls is the faster line; a
+  glancing hit pulls the nose along the wall rather than pinging the car off it,
+  and a hard one can nearly stop you. Hitting a wall square on still bounces.
+  Leaning on a barrier no longer pins the car in place either — sliding along a
+  wall moves you along it, losing speed rather than all momentum.
+- **Railings hold you where they look like they should.** Near a ramp a railing
+  used to behave erratically: it stopped you in some places and not others, one
+  partway up a climb stopped nobody at all, and hitting one could fling the car
+  clean through to the other side or off the road entirely. A railing now guards
+  the road it edges, from end to end — the ground beneath a bridge runs clear, as
+  it looks like it should, while a ramp keeps a solid bank along its sides.
+- **A ramp no longer walls off the road beneath it.** On a track that spiralled up
+  through several storeys, the earth under a high ramp reached all the way to the
+  ground and blocked the lower road — the track built fine but could not be driven.
+  A ramp's earth now fills only from the storey it stands on.
 - **Cars can no longer end up outside the track.** Hitting a barrier hard enough
   could push a car straight through it and leave it stranded out on the grass,
   because the bounce worked out which way to push from where the car had already
   got to — by then, the wrong side. Fast enough, and the barrier was missed
   altogether. Both are fixed: a car is always put back on the side it came from,
   at any speed.
-- **Checkpoints are edited in their own mode.** A tap on the track used to mean
-  two things at once — pick the end you're building from, or add a checkpoint —
-  so it was easy to move a checkpoint you never meant to touch. Tap **Gates** to
-  switch: checkpoints stand out, every seam that can take one is marked, and
-  taps do nothing else until you're done.
-- **Undo and redo in the track editor.** Every edit can be taken back —
-  placing pieces, deleting, gating, rotating the whole track, raising and
-  lowering it — with a long history, so a wrong turn thirty pieces ago is
-  still recoverable. A one-tap compound counts as one step, and the delete
-  button now wears a bin rather than an undo arrow.
+- **A car under a high bridge shows through it again.** Beneath a second- or
+  third-storey deck the car simply vanished, and a car climbing a ramp stayed
+  hidden under another ramp crossing above it. The see-through window now finds
+  every stretch of road above the car, so a car under two stacked decks shows
+  through both.
+- **Cars no longer clip through walls beside a ramp.** A car on the grass beside a
+  climb switched from being drawn under the barrier to over it partway up.
+- **Railings reach the edge of the road on high bridges.** On a level-2 or -3 deck
+  the car stopped well short of the visible barrier, as if hitting something
+  invisible. Railings now sit exactly where the asphalt ends, at any height.
+- **Checkpoints span the whole road on high bridges.** A gate on a raised deck was
+  narrower than the asphalt it crossed, so running wide up there could miss the
+  checkpoint entirely. The gate bar, its lights and the start line now all match the
+  road's width at any height.
+- **Editor taps land where you tap.** Selecting a piece or a gate needed a tap
+  slightly below the target, because the map was drawn into the screen's safe-area
+  insets while taps were measured without them.
+- **One track, one share code.** Checkpoint order carries no meaning — a lap
+  collects them all — but it was reaching the code, so the same track could
+  produce two different codes depending on the order its checkpoints happened
+  to be marked in. Codes are an identity (dedup, per-track records), so that
+  had to hold. The **Eight built-in's code changed** as a result; it is the same
+  track, and the old code still opens it.
+- **Pieces near other roads are no longer refused when nothing touches.** The
+  overlap check measured distance between road CENTERLINES, which overstates
+  wildly when a piece merely ends near another road — a rising curve with a
+  third of a road width of clear grass was refused as an overlap. It now
+  measures the asphalt itself.
+- **A piece that fits is no longer refused depending on which end you build
+  from.** Closing a loop could be rejected as an overlap while the very same
+  piece went in fine from the other end — the check was looking at where the
+  piece list happened to start rather than at the road.
+- **Building backwards now matches what you draw.** Extending a track from its
+  start end, a left-hand corner was laid as a right-hander and a climb came out
+  as a descent — the buttons described the piece as a car would meet it, not as
+  you were drawing it. Tap what you want to see.
+- **Kerbs no longer rearrange themselves.** A corner that happened to straddle
+  the point where a loop's piece list begins was treated as two separate
+  corners, so it got two apexes and two run-off kerbs — and which corner that
+  was depended on where the loop started, meaning the same track could paint
+  differently after a copy and paste. A loop's kerbs are now the same however
+  it was built.
 
 ### build 10 — 2026-07-29
 
