@@ -27,6 +27,10 @@ ships (see [AGENTS.md](AGENTS.md)).
   start with no railing; the built-in tracks keep theirs. There is also a **Rails**
   toggle beside the Gates button: flip it on and everything you lay from then on
   arrives railed, so fencing a whole bridge is one decision.
+- **No more falling through your own railings.** A guard rail could throw the car
+  clean off the road — most often at a tight curve part-way up a ramp — leaving it
+  stranded on the grass with no way back. Rails now only push where the car is
+  actually beside them.
 - **Editor taps land where you tap.** Selecting a piece or a gate needed a tap
   slightly below the target, because the map was drawn into the screen's safe-area
   insets while taps were measured without them.

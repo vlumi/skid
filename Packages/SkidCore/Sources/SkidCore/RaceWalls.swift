@@ -343,7 +343,28 @@ extension Race {
 
     private func outboardThickness(of wall: Wall, approachedFrom from: Vec2) -> Double {
         guard wall.kind == .rail, wall.outward.length > 0.001 else { return 0 }
-        guard (from - wall.a).dot(wall.outward) > 0 else { return 0 }
+        // **Only beside the wall, not off its end.**
+        //
+        // The band is the gap between a rail's collision line and the kerb it is
+        // drawn at, so it means "stop at the painted face" — which is only a thing
+        // where there IS a face. Off the end of a segment the nearest point is the
+        // endpoint, and there the band is 27 units (at a deck rail) of pure
+        // invention: measured on a user track, a car 39.8 units from a 6-unit rail's
+        // endpoint counted as contact because `reach` had grown to 39, and because
+        // it sat behind the face the overlap came out at 42 — a shove clean off the
+        // road, through a continuous railing, into a fall. Reported as "found a spot
+        // where the car gets through, and of course can't get back on the track".
+        //
+        // Anchoring the side test at the nearest point also fixes a second error:
+        // `(from - wall.a)` measured the distance to the segment's END rather than
+        // which side of it the car was on, so a car 600 units away read as outboard.
+        let closest = from.closestPoint(onSegment: wall.a, wall.b)
+        let alongWall = (wall.b - wall.a)
+        let beside =
+            alongWall.length > 0.001
+            && (closest - wall.a).dot(alongWall) > 0
+            && (closest - wall.b).dot(alongWall) < 0
+        guard beside, (from - closest).dot(wall.outward) > 0 else { return 0 }
         return railThickness(atHeight: wall.height)
     }
 
