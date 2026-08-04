@@ -248,6 +248,40 @@ final class Level3Tests: XCTestCase {
                 + "get a window; got \(order.debugOrder)")
     }
 
+    /// **Every storey under every road, on a track that uses all of them.**
+    ///
+    /// The reported "tower of babel" has road at all four storeys with decks stacked
+    /// over one another, so a car can be one, two or three storeys below a road —
+    /// the case a `storey + 1` scan could only ever get right by luck.
+    func testEveryStoreyUnderEveryRoadGetsAWindow() throws {
+        let track = try PieceCompiler.compile(
+            TrackCode.decode(TestTracks.Code.towerOfBabel), id: "babel")
+        XCTAssertEqual(
+            Set(track.heights.map { Track.level(of: $0) }), Set(0...Track.highestLevel),
+            "the fixture must use every storey")
+        var checked = 0
+        for index in track.centerline.indices where track.heights[index] > 0.5 {
+            let point = track.centerline[index]
+            let roadStorey = Track.level(of: track.heights[index])
+            for carStorey in 0..<roadStorey {
+                var race = Race(
+                    track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
+                race.cars[0].state.position = point
+                race.cars[0].state.height = Double(carStorey)
+                var order = RenderOrder.Builder()
+                TrackRenderer.addCars(
+                    scene: scene(race), gateChrome: chrome(for: track),
+                    colorAt: { _ in .red }, to: &order)
+                XCTAssertFalse(
+                    order.debugOrder.filter { $0.hasSuffix("/window") }.isEmpty,
+                    "a car on storey \(carStorey) under storey-\(roadStorey) road at "
+                        + "\(point) must show through it")
+                checked += 1
+            }
+        }
+        XCTAssertGreaterThan(checked, 100, "the sweep must actually cover the track")
+    }
+
     /// And a car in the open gets none — the window is for a car that would
     /// otherwise be invisible, not decoration.
     func testACarInTheOpenGetsNoWindow() throws {
