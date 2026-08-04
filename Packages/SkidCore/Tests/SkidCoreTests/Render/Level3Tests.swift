@@ -121,6 +121,66 @@ final class Level3Tests: XCTestCase {
             "and stay up there")
     }
 
+    /// **The rail is where the road ends, at every storey.**
+    ///
+    /// `halfWidth(atHeight:)` scales with height and so does the drawn ribbon, but
+    /// rails used to be laid at a flat `width / 2` — so they sat inboard of the
+    /// asphalt by `12 × height` units. Invisible at the deck; 36 units at height 3,
+    /// where it reads as a transparent wall well inside the visible road ("the car
+    /// doesn't reach the walls on level 3, but hits a transparent wall before it").
+    func testRailsSitAtTheDrivableEdgeAtEveryStorey() throws {
+        var layout = TrackLayout(
+            pieces: [
+                Pieces.startGrid, Pieces.straight, Pieces.curve90MediumLeft,
+                Pieces.curve90MediumLeft, Pieces.straight, Pieces.straight,
+                Pieces.curve90MediumLeft, Pieces.curve90MediumLeft, Pieces.straight,
+            ], gateSeams: [0, 4])
+        layout.railed = Set(layout.pieces.indices)
+        for storey in 1...Track.highestLevel {
+            layout.originHeight = Double(storey)
+            let track = try PieceCompiler.compile(layout, id: "s\(storey)")
+            let rails = track.walls.filter { $0.kind == .rail }
+            XCTAssertFalse(rails.isEmpty, "storey \(storey) must be railed")
+            let n = track.centerline.count
+            var worst = 0.0
+            for i in track.centerline.indices {
+                let point = track.centerline[i]
+                let height = track.heights[i]
+                let dir = (track.centerline[(i + 1) % n] - point).normalized
+                guard dir.length > 0 else { continue }
+                for sign in [1.0, -1.0] {
+                    let edge =
+                        point + dir.perpendicular * sign * track.halfWidth(atHeight: height)
+                    guard
+                        let nearest = rails.filter({ abs($0.height - height) < 0.15 })
+                            .map({ edge.distance(toSegment: $0.a, $0.b) }).min()
+                    else { continue }
+                    worst = max(worst, nearest)
+                }
+            }
+            XCTAssertLessThan(
+                worst, 4,
+                "at storey \(storey) every rail must sit on the drivable edge, not inboard of it")
+        }
+    }
+
+    /// **Height reads as brightness at every storey.** The shade used to divide by
+    /// one `levelHeight` and clamp, so it topped out at the first deck — with three
+    /// storeys, heights 1, 2 and 3 were all the same gray.
+    func testEveryStoreyHasItsOwnShade() {
+        var seen: [Double] = []
+        for storey in Track.lowestLevel...Track.highestLevel {
+            let shade = EditorRenderer.roadShadeWhite(at: Double(storey) * Track.levelHeight)
+            for previous in seen {
+                XCTAssertGreaterThan(
+                    abs(shade - previous), 0.05,
+                    "storey \(storey) must be visibly distinct from every other")
+            }
+            seen.append(shade)
+        }
+        XCTAssertEqual(seen.count, Track.highestLevel - Track.lowestLevel + 1)
+    }
+
     /// **An off-road car is binned by what is BENEATH it, not by rounding its own
     /// height.** Rounding flipped the storey at every half level, so a car on the
     /// grass beside a ramp switched from painting under the wall to over it partway
