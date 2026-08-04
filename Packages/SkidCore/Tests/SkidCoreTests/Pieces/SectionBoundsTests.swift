@@ -44,7 +44,11 @@ final class SectionBoundsTests: XCTestCase {
         let sizes = try TrackLibrary.builtins.map { builtin -> Int in
             TrackCode.encodedSize(try TrackCode.decode(builtin.code))
         }
-        XCTAssertEqual(sizes, [32, 32, 36, 59])
+        // The two flat tracks are unchanged; the eight (36→50) and clover (59→92)
+        // carry a `railed` section now — one byte per railed piece, plus the
+        // 2-byte TLV header. A flat track still pays nothing for railings it
+        // does not have.
+        XCTAssertEqual(sizes, [32, 32, 50, 92])
     }
 
     private func decorated(pieces count: Int) -> TrackLayout {

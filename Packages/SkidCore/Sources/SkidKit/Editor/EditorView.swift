@@ -105,7 +105,8 @@ struct EditorView: View {
                         selectedEnd: game.editorMode == .gate ? nil : effectiveSelection(walk),
                         gateSeams: layout.gateSeams, gating: game.editorMode == .gate,
                         selectedPiece: game.editorMode == .gate ? nil : game.editorSelectedPiece,
-                        decals: layout.decals, transform: transform, into: &context)
+                        decals: layout.decals, railed: layout.railed, transform: transform,
+                        into: &context)
                 }
                 .ignoresSafeArea()
 

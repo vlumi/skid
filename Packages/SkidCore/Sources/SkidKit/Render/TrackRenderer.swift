@@ -132,8 +132,8 @@ enum TrackRenderer {
                     t.contextScale = scale
                     EditorRenderer.drawTrack(
                         walk: layout.walk(), width: track.width, gateSeams: [],
-                        decals: layout.decals, transform: t, heightRange: band,
-                        into: &context)
+                        decals: layout.decals, railed: layout.railed, transform: t,
+                        heightRange: band, into: &context)
                 } else {
                     // No layout (ad-hoc tracks built directly in tests): fall
                     // back to the centerline stroke, which needs no piece model.

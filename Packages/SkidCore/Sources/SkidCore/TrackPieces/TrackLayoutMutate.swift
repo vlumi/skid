@@ -18,7 +18,7 @@ import Foundation
 /// `TrackValidator`'s job, re-judged from scratch after every edit.
 extension TrackLayout {
     /// Insert a piece at `index`, shifting everything from there on — pitches,
-    /// gate seams and fitters alike — one place later.
+    /// gate seams, fitters, decals and rails alike — one place later.
     ///
     /// Geometry is not preserved: inserting mid-ring re-walks everything after
     /// the cut, which is exactly the "slides the whole tail" behaviour the editor
@@ -35,13 +35,14 @@ extension TrackLayout {
         gateSeams = remapped(gateSeams, by: shift)
         fitters = remapped(fitters, by: shift)
         decals = remapped(decals, by: shift)
+        railed = remapped(railed, by: shift)
     }
 
     /// Remove the piece at `index`, pulling everything after it back one place.
     ///
-    /// Whatever was keyed to the victim goes with it: its gate seam and its
-    /// fitter are dropped rather than silently re-pointed at the neighbour that
-    /// takes its index.
+    /// Whatever was keyed to the victim goes with it: its gate seam, fitter,
+    /// decal and railing are dropped rather than silently re-pointed at the
+    /// neighbour that takes its index.
     public mutating func remove(at index: Int) {
         precondition(pieces.indices.contains(index), "remove index \(index) out of range")
         pieces.remove(at: index)
@@ -52,6 +53,7 @@ extension TrackLayout {
         gateSeams = remapped(gateSeams.filter { $0 != index }, by: pullBack)
         fitters = remapped(fitters.filter { $0.key != index }, by: pullBack)
         decals = remapped(decals.filter { $0.key != index }, by: pullBack)
+        railed = remapped(railed.filter { $0 != index }, by: pullBack)
     }
 
     /// **Re-spell a closed ring to begin at `index`.** The same ring, written from
@@ -81,6 +83,7 @@ extension TrackLayout {
         gateSeams = remapped(gateSeams, by: rotate)
         fitters = remapped(fitters, by: rotate)
         decals = remapped(decals, by: rotate)
+        railed = remapped(railed, by: rotate)
         // The walk now starts at the new first piece, so the origin is that
         // piece's entry — its pose and its height.
         origin = walk.placed[index].entry
@@ -104,10 +107,16 @@ extension TrackLayout {
         Dictionary(uniqueKeysWithValues: table.map { (move($0.key), $0.value) })
     }
 
-    /// The same move over a bare index list. An overload so the three keyed
-    /// fields read alike at every call site — `gateSeams` was remapped by hand
-    /// beside the very closure the other two used.
+    /// The same move over a bare index list. An overload so the keyed fields read
+    /// alike at every call site — `gateSeams` was remapped by hand beside the very
+    /// closure the other two used.
     private func remapped(_ indices: [Int], by move: (Int) -> Int) -> [Int] {
         indices.map(move)
+    }
+
+    /// And over a set of indices, for the same reason: `railed` must not be the
+    /// one field a future mutation forgets because it needed its own spelling.
+    private func remapped(_ indices: Set<Int>, by move: (Int) -> Int) -> Set<Int> {
+        Set(indices.map(move))
     }
 }

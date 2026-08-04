@@ -12,7 +12,7 @@ enum EditorRenderer {
     private static let grass = Color(red: 0.28, green: 0.55, blue: 0.23)
     /// Bridge guardrail — a bold light blue so walls read unmistakably as
     /// barriers, distinct from the gray road/kerb.
-    private static let bridgeRail = Color(red: 0.55, green: 0.78, blue: 0.95)
+    static let bridgeRail = Color(red: 0.55, green: 0.78, blue: 0.95)
     /// Warning-marking yellow: the road-paint amber, warm enough to separate from
     /// the white lines at a glance without going orange-red like the kerbs.
     static let arrowYellow = Color(red: 0.98, green: 0.76, blue: 0.09)
@@ -44,14 +44,14 @@ enum EditorRenderer {
     static func draw(
         walk: WalkResult, width: Double, selectedEnd: Int?, gateSeams: [Int] = [],
         gating: Bool = false, selectedPiece: Int? = nil, decals: [Int: Decal] = [:],
-        transform t: Transform, into context: inout GraphicsContext
+        railed: Set<Int> = [], transform t: Transform, into context: inout GraphicsContext
     ) {
         // The size limit, made visible. Under everything else, since it's a
         // boundary you build inside of.
         drawCanvasBounds(walk: walk, t: t, into: &context)
         drawTrack(
             walk: walk, width: width, gateSeams: gateSeams, gating: gating, decals: decals,
-            transform: t, into: &context)
+            railed: railed, transform: t, into: &context)
         // Over the road, under the end markers: the selected piece is a thing you
         // act on, so it should read on top of the asphalt but not hide the chrome.
         if let selectedPiece, walk.placed.indices.contains(selectedPiece) {
@@ -114,7 +114,7 @@ enum EditorRenderer {
     /// once.
     static func drawTrack(
         walk: WalkResult, width: Double, gateSeams: [Int], gating: Bool = false,
-        decals: [Int: Decal] = [:], transform t: Transform,
+        decals: [Int: Decal] = [:], railed: Set<Int> = [], transform t: Transform,
         heightRange: ClosedRange<Double> = -1...2,
         into context: inout GraphicsContext
     ) {
@@ -155,7 +155,8 @@ enum EditorRenderer {
         // the deck's asphalt had already been laid. (The race view bands by storey
         // so it never saw this; the editor draws every height in one pass.)
         for (index, placed) in ordered {
-            drawPieceRibbon(placed, width: width, t: t, into: &context)
+            drawPieceRibbon(
+                placed, width: width, railed: railed.contains(index), t: t, into: &context)
             drawDecal(decals[index], on: placed, width: width, t: t, into: &context)
             // The start line and grid hashes are paint on the START piece's own
             // road, so they belong to that piece too. Drawn after every ribbon
@@ -202,7 +203,7 @@ enum EditorRenderer {
     /// gets a drop shadow + light-blue guardrail; the ground gets the red/white
     /// kerb. Filled polygons (not stroked centerlines), so joints never gap.
     private static func drawPieceRibbon(
-        _ placed: PlacedPiece, width: Double, t: Transform,
+        _ placed: PlacedPiece, width: Double, railed: Bool, t: Transform,
         into context: inout GraphicsContext
     ) {
         guard let e = edges(placed, width: width, t: t) else { return }
@@ -216,11 +217,12 @@ enum EditorRenderer {
         outline.addLines(fillLeft + fillRight.reversed())
         outline.closeSubpath()
 
-        let elevated = Track.isOffGround(placed.entryHeight) || Track.isOffGround(placed.exitHeight)
+        // **The railing is drawn where the author put one**, not wherever the road
+        // is high: a bridge may have an open edge and a flat piece may be railed.
         // Rails go down FIRST, straddling the edges, and the asphalt then covers
         // their inner half — the same sandwich the ground's kerbs use, which is
         // what puts the two decorations in the same place.
-        if elevated {
+        if railed {
             strokeDeckRails(left: e.left, right: e.right, t: t, into: &context)
         }
         fillRoad(outline, placed: placed, samples: e.samples, t: t, into: &context)
