@@ -208,7 +208,7 @@ final class Level3Tests: XCTestCase {
         XCTAssertEqual(seen.count, Track.highestLevel - Track.lowestLevel + 1)
     }
 
-    /// **An off-road car is binned by what is BENEATH it, not by rounding its own
+    /// **An off-road car is binned by what is BENEATH it    /// **An off-road car is binned by what is BENEATH it, not by rounding its own
     /// height.** Rounding flipped the storey at every half level, so a car on the
     /// grass beside a ramp switched from painting under the wall to over it partway
     /// up — and a third storey adds the same flip at 1.5 and 2.5.
