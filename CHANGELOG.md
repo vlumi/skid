@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 11 — 2026-08-04
+
 - **Your tracks are a library, not one slot.** Every track you build or paste in
   is kept, and they all show up as choices in the setup picker rather than a
   single "My track". A pasted track keeps its signature so you can pass it on
