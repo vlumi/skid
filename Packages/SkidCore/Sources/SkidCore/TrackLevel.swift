@@ -61,10 +61,25 @@ extension Track {
         level(of: height) != 0
     }
 
-    /// The storeys that exist: ground and one deck. Tunnels lower the floor to
-    /// −1 — HERE, not in whatever code clamps or searches heights.
+    /// The storeys that exist: ground and three above it. Tunnels lower the floor
+    /// to −1 — HERE, not in whatever code clamps or searches heights.
+    ///
+    /// **The real bound is the canvas, not the model.** Pitch climbs half a level
+    /// per piece, so reaching height 3 costs six pieces of pure climbing — 720
+    /// units up, and the same back down: 1440 of the 1600-wide canvas (90%),
+    /// leaving ~160 units for the rest of the track. Height 2 costs 60% and is
+    /// comfortable; 3 is a curiosity worth having available for a while, to see
+    /// where the model creaks, rather than something a track can really use before
+    /// size classes land.
     public static let lowestLevel = 0
-    public static let highestLevel = 1
+    public static let highestLevel = 3
+
+    /// Every storey there is, as a range — for callers that want "draw all of it"
+    /// rather than one layer. Derived, so raising `highestLevel` cannot leave a
+    /// hardcoded `-1...2` quietly clipping the top storey.
+    public static var everyStorey: ClosedRange<Double> {
+        (Double(lowestLevel) - levelHeight)...(Double(highestLevel) + levelHeight)
+    }
 
     /// Whether a height is inside the world's storeys, with a hair of slack
     /// for heights accumulated as sums of piece deltas.

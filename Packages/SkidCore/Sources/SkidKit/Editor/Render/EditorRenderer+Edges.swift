@@ -15,7 +15,7 @@ extension EditorRenderer {
     /// are accumulated in WORLD units so stripe length never depends on zoom.
     static func drawAllEdges(
         walk: WalkResult, kerbs: KerbPlan, width: Double, t: Transform,
-        heightRange: ClosedRange<Double> = -1...2,
+        heightRange: ClosedRange<Double> = Track.everyStorey,
         into context: inout GraphicsContext
     ) {
         let stripeLength = width * 0.22

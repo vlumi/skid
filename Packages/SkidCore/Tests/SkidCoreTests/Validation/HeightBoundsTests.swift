@@ -10,15 +10,26 @@ import XCTest
 final class HeightBoundsTests: XCTestCase {
     private typealias Pieces = PieceCatalog.ID
 
+    /// Derived from `Track.highestLevel` rather than pinning "one deck": the point
+    /// is that the world HAS a ceiling and climbing through it is refused, which
+    /// must hold at whatever height that ceiling sits.
     func testClimbingPastTheTopLevelIsRefused() {
-        let onDeck = TrackLayout(pieces: [Pieces.startGrid, Pieces.rampUp], gateSeams: [0])
+        // `rampUp` climbs a whole level, so stack exactly enough to reach the top.
+        var atCeiling = TrackLayout(
+            pieces: [Pieces.startGrid]
+                + Array(repeating: Pieces.rampUp, count: Track.highestLevel),
+            gateSeams: [0])
         XCTAssertFalse(
-            TrackValidator.canAppend(Pieces.rampUp, to: onDeck),
-            "a second climb would reach a storey that doesn't exist")
-        var stacked = onDeck
-        stacked.pieces.append(Pieces.rampUp)
+            TrackValidator.validate(atCeiling).problems.contains { problem in
+                if case .heightOutOfBounds = problem { return true }
+                return false
+            }, "climbing exactly to the top storey is legal")
+        XCTAssertFalse(
+            TrackValidator.canAppend(Pieces.rampUp, to: atCeiling),
+            "one more climb would reach a storey that doesn't exist")
+        atCeiling.pieces.append(Pieces.rampUp)
         XCTAssertTrue(
-            TrackValidator.validate(stacked).problems.contains { problem in
+            TrackValidator.validate(atCeiling).problems.contains { problem in
                 if case .heightOutOfBounds = problem { return true }
                 return false
             })

@@ -192,7 +192,14 @@ enum TrackRenderer {
     static func storeyBand(_ storey: Int) -> ClosedRange<Double> {
         let top = Double(storey) * Track.levelHeight
         let below = top - Track.levelHeight
-        return (below + Track.levelHeight / 4)...(top + Track.levelHeight / 4)
+        // **Exclusive at the top, by a hair.** Adjacent bands meet at a quarter
+        // boundary (0.25, 1.25, 2.25 …), and a closed range at both ends put a
+        // piece whose top lands exactly there in TWO storeys — drawn twice, so any
+        // non-opaque paint reads darker along that seam. One storey ends where the
+        // next begins; the epsilon is float noise, far below anything geometric.
+        let floor = below + Track.levelHeight / 4
+        let ceiling = top + Track.levelHeight / 4 - Track.heightEpsilon
+        return floor...ceiling
     }
 
     /// The inverse of `storeyBand`: the storey whose band a piece top falls in.
