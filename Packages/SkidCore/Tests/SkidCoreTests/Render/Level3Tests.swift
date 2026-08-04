@@ -208,7 +208,108 @@ final class Level3Tests: XCTestCase {
         XCTAssertEqual(seen.count, Track.highestLevel - Track.lowestLevel + 1)
     }
 
-    /// **An off-road car is binned by what is BENEATH it, not by rounding its own
+    /// **A car hidden under a high deck still shows through it.**
+    ///
+    /// The never-invisible rule cut its window at `storey + 1` — the only candidate
+    /// when there was one deck. With three, a ground car under a level-3 bridge
+    /// asked about storey 1, found no road overhead there, and got no window at all:
+    /// hidden, with nothing to see it through.
+    ///
+    /// Asserted through `addCars` and `debugOrder`, i.e. the real code path. A first
+    /// version re-derived the scan with `stride` inside the test and passed against
+    /// every sabotage — including a revert to `storey + 1`.
+    func testAGroundCarUnderAHighDeckGetsAWindow() throws {
+        let track = try PieceCompiler.compile(
+            TrackCode.decode(TestTracks.Code.threeStorey), id: "l3")
+        // A ground point under a deck two storeys up, with no road at storey 1.
+        let spot = try XCTUnwrap(
+            track.centerline.indices.first { index in
+                guard Track.level(of: track.heights[index]) >= 2 else { return false }
+                let point = track.centerline[index]
+                return !track.centerline.indices.contains { other in
+                    Track.level(of: track.heights[other]) == 1
+                        && (track.centerline[other] - point).length
+                            < track.footprintHalfWidth(atHeight: 1)
+                }
+            }, "the fixture must have road high above bare ground")
+        let point = track.centerline[spot]
+
+        var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
+        race.cars[0].state.position = point
+        race.cars[0].state.height = 0
+        var order = RenderOrder.Builder()
+        TrackRenderer.addCars(
+            scene: scene(race), gateChrome: chrome(for: track),
+            colorAt: { _ in .red }, to: &order)
+        let windows = order.debugOrder.filter { $0.hasSuffix("/window") }
+        XCTAssertFalse(
+            windows.isEmpty,
+            "a ground car under a storey-\(Track.level(of: track.heights[spot])) deck must "
+                + "get a window; got \(order.debugOrder)")
+    }
+
+    /// And a car in the open gets none — the window is for a car that would
+    /// otherwise be invisible, not decoration.
+    func testACarInTheOpenGetsNoWindow() throws {
+        let track = try PieceCompiler.compile(
+            TrackCode.decode(TestTracks.Code.threeStorey), id: "l3")
+        var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
+        // Far off the track, where nothing covers it.
+        race.cars[0].state.position = Vec2(-2000, -2000)
+        race.cars[0].state.height = 0
+        var order = RenderOrder.Builder()
+        TrackRenderer.addCars(
+            scene: scene(race), gateChrome: chrome(for: track),
+            colorAt: { _ in .red }, to: &order)
+        XCTAssertTrue(
+            order.debugOrder.filter { $0.hasSuffix("/window") }.isEmpty,
+            "nothing covers this car, so it needs no window")
+    }
+
+    /// **A car never gets a window in its OWN storey**, and never one per storey
+    /// where only one road covers it. The scan must start strictly above the car:
+    /// including its own level cuts a hole in the road it is driving on.
+    func testAWindowIsNeverCutInTheCarsOwnRoad() throws {
+        let track = try PieceCompiler.compile(
+            TrackCode.decode(TestTracks.Code.threeStorey), id: "l3")
+        for storey in 0...Track.highestLevel {
+            guard
+                let index = track.centerline.indices.first(where: {
+                    Track.level(of: track.heights[$0]) == storey
+                })
+            else { continue }
+            var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
+            race.cars[0].state.position = track.centerline[index]
+            race.cars[0].state.height = track.heights[index]
+            var order = RenderOrder.Builder()
+            TrackRenderer.addCars(
+                scene: scene(race), gateChrome: chrome(for: track),
+                colorAt: { _ in .red }, to: &order)
+            let windows = order.debugOrder.filter { $0.hasSuffix("/window") }
+            XCTAssertFalse(
+                windows.contains("\(storey)/window"),
+                "a car ON storey \(storey) must not have a hole cut in its own road")
+            // And each covering storey contributes at most one window.
+            XCTAssertEqual(
+                windows.count, Set(windows).count,
+                "one window per covering storey at most, got \(windows)")
+        }
+    }
+
+    private func scene(_ race: Race) -> WorldScene {
+        WorldScene(
+            race: race, marks: MarkStore(), gateSpans: [], colors: [.red],
+            mapRect: CGRect(x: 0, y: 0, width: 400, height: 400))
+    }
+
+    private func chrome(for track: Track) -> TrackRenderer.GateChrome {
+        TrackRenderer.GateChrome(
+            spans: track.gates.map { (a: $0.a, b: $0.b) }, nextByGate: [:],
+            worldCenter: Vec2(track.size.x / 2, track.size.y / 2),
+            heights: track.gates.map(\.height))
+    }
+
+    /// **An off-road car is binned by what is BENEATH it    /// **An off-road car is binned by what is BENEATH it, not by rounding its own
     /// height.** Rounding flipped the storey at every half level, so a car on the
     /// grass beside a ramp switched from painting under the wall to over it partway
     /// up — and a third storey adds the same flip at 1.5 and 2.5.
