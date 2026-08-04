@@ -79,15 +79,33 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     /// Being index-keyed makes these the fourth thing every mutation remaps, with
     /// `gateSeams`, `fitters` and `pitches` — see `TrackLayoutMutate`.
     public var decals: [Int: Decal]
+    /// **Which laid pieces carry guard railings**, by piece index.
+    ///
+    /// A railing is not a property of a shape — the same bridge piece wants rails
+    /// on one track and an open edge on another — so it is toggled on a placed
+    /// piece, exactly like a decal, rather than doubling the catalog.
+    ///
+    /// **Empty by default, so a piece has no rails unless asked.** Rails used to
+    /// be implied by climbing, which made "a bridge without railings" and "a
+    /// railing on the flat" both unexpressible. Defaulting ON instead would force
+    /// the encoding to distinguish "no toggle recorded" from "toggled off", and
+    /// there are few enough tracks that adding rails back by hand is cheaper than
+    /// carrying that ambiguity.
+    ///
+    /// Index-keyed, so this is the fifth thing every mutation remaps — see
+    /// `TrackLayoutMutate`.
+    public var railed: Set<Int>
     public var theme: Theme
 
     public init(
         pieces: [PieceID], pitches: [Pitch] = [], origin: PiecePose = .origin,
         originHeight: Double = 0, gateSeams: [Int] = [0], theme: Theme = .normal,
-        fitters: [Int: Fitter] = [:], decals: [Int: Decal] = [:]
+        fitters: [Int: Fitter] = [:], decals: [Int: Decal] = [:],
+        railed: Set<Int> = []
     ) {
         self.fitters = fitters
         self.decals = decals
+        self.railed = railed
         self.pieces = pieces
         self.originHeight = originHeight
         // Normalized to the piece count so equality is structural: trailing
@@ -108,6 +126,8 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     }
 
     public func decal(at index: Int) -> Decal? { decals[index] }
+
+    public func isRailed(at index: Int) -> Bool { railed.contains(index) }
 
     /// Append resolved (piece, pitch) pairs — what expansions produce. A run of
     /// end-inserts, so pitches (and any keyed data, of which there is none past

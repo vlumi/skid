@@ -162,7 +162,16 @@ final class TrackSigningTests: XCTestCase {
     /// The measured cost, so the QR budget stays honest as sections are added.
     func testASignedCodeStaysInsideTheQRBudget() throws {
         let code = try TrackCode.encode(layout, signedBy: signer)
-        XCTAssertEqual(code.count - TrackCode.encode(layout).count, 133)
+        // The stable invariant is BYTES: PUBKEY (2 + 32) plus SIG (2 + 64) = 100.
+        // Character overhead is not stable — base64url packs 3 bytes into 4 chars,
+        // so the same 100 bytes cost 133 or 134 characters depending on the
+        // payload's length mod 3. Pinning 133 held only for the payload of the day
+        // and broke the moment the fixture gained a section.
+        let signedBytes = try XCTUnwrap(TrackCode.base64urlDecode(code)).count
+        let plainBytes = try XCTUnwrap(
+            TrackCode.base64urlDecode(TrackCode.encode(layout))
+        ).count
+        XCTAssertEqual(signedBytes - plainBytes, 100)
         XCTAssertLessThan("https://skid.misaki.fi/t/".count + code.count, 250)
     }
 

@@ -105,9 +105,14 @@ struct EditorView: View {
                         selectedEnd: game.editorMode == .gate ? nil : effectiveSelection(walk),
                         gateSeams: layout.gateSeams, gating: game.editorMode == .gate,
                         selectedPiece: game.editorMode == .gate ? nil : game.editorSelectedPiece,
-                        decals: layout.decals, transform: transform, into: &context)
+                        decals: layout.decals, railed: layout.railed, transform: transform,
+                        into: &context)
                 }
-                .ignoresSafeArea()
+                // **No `.ignoresSafeArea()` here.** `transform` comes from
+                // `geo.size`, which EXCLUDES the safe area, and taps arrive in that
+                // same space — as does the map chrome. Letting the canvas expand
+                // into the insets drew the road a fixed distance below where taps
+                // landed. The grass behind it still fills the screen.
 
                 // Close-it sits ON the map at the loose end; delete and the build
                 // arrows sit on the SELECTED piece. Both are build actions, so
@@ -315,9 +320,10 @@ struct EditorView: View {
                 // rather than floated over the map, so they can't collide with
                 // the palette on a small screen (a corner-anchored pad landed
                 // right on top of it on an SE).
-                HStack {
+                HStack(spacing: 8) {
                     if game.editorMode == .build { transformPad }
                     Spacer()
+                    if game.editorMode == .build { railBuildToggle }
                     modeToggle
                 }
                 .padding(.horizontal, 12)

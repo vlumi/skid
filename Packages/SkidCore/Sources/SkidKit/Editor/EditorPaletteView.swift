@@ -219,42 +219,22 @@ extension EditorView {
         case .piece(let index):
             configurationBody(Text("Piece markings", bundle: .module)) {
                 let current = game.editorLayout?.decal(at: index)
-                HStack(spacing: 10) {
-                    decalOption(nil, at: index, chosen: current == nil)
-                    ForEach(Decal.allCases, id: \.self) { decal in
-                        decalOption(decal, at: index, chosen: current == decal)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        decalOption(nil, at: index, chosen: current == nil)
+                        ForEach(Decal.allCases, id: \.self) { decal in
+                            decalOption(decal, at: index, chosen: current == decal)
+                        }
                     }
+                    // Railings live here rather than in a mode of their own: this
+                    // sheet is already the selected piece's properties, and a
+                    // railing is one more property of a laid piece.
+                    railOption(at: index)
                 }
             }
         case nil:
             EmptyView()
         }
-    }
-
-    /// One markings option: no decal, or one of them. Applied in place — same
-    /// geometry, different paint.
-    private func decalOption(_ decal: Decal?, at index: Int, chosen: Bool) -> some View {
-        Button {
-            game.editorSetDecal(decal, at: index)
-            configuring = nil
-        } label: {
-            VStack(spacing: 6) {
-                Image(systemName: decal == nil ? "slash.circle" : "arrow.up")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(EditorView.decalTint(decal))
-                Text(EditorView.decalLabel(decal), bundle: .module)
-                    .font(.caption2)
-                    .foregroundStyle(.white)
-            }
-            .frame(width: 84, height: 68)
-            .background(.black.opacity(chosen ? 0.5 : 0.22), in: RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(.white.opacity(chosen ? 0.8 : 0.25), lineWidth: chosen ? 2 : 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 10))
-        }
-        .buttonStyle(.plain)
     }
 
     /// One option in the slot picker.
