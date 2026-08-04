@@ -27,6 +27,10 @@ ships (see [AGENTS.md](AGENTS.md)).
 - **Railings reach the edge of the road on high bridges.** On a level-2 or -3 deck
   the car stopped well short of the visible barrier, as if hitting something
   invisible. Railings now sit exactly where the asphalt ends, at any height.
+- **Checkpoints span the whole road on high bridges.** A gate on a raised deck was
+  narrower than the asphalt it crossed, so running wide up there could miss the
+  checkpoint entirely. The gate bar, its lights and the start line now all match the
+  road's width at any height.
 - **Every storey has its own road brightness.** The shade stopped getting lighter
   above the first deck, so on a tall track you could not tell level 1 from 3.
 - **Cars no longer clip through walls beside a ramp.** A car on the grass beside a
