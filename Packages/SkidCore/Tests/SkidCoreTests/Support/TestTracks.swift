@@ -22,6 +22,14 @@ enum TestTracks {
             "AVUBEB95BAQEBAQEAXoDAwMDAwMCAgAHAwUC0ALQAAgOAQIDBAUGBwgJCgsMDQ7-INRVqm6d8X"
             + "-Zz31Xyv_B5EfSuSdQd8AMmV7LfVyHANic_0BO1NraidT3y-SNM5q8Sps4ByNedwFz4KqFdj"
             + "WbfR5h4uhdYWdYBfKovwjh8QQlikSc1_ajaH-AiWJQiirb4iUM"
+        /// A user-built spiral: climbs 0→3 in half-level stages and descends the
+        /// same way, so a ramp at every storey passes over road below it. That is
+        /// what exposed embankments filling from the ground rather than from the
+        /// storey their ramp stands on.
+        static let spiralToThree =
+            "AXABFR95BAQQAQMDDwEDAw8BegQEBAQEBAIFAAQKFBoDBQLQAtAA_iDUVapunfF_mc99V8r_"
+            + "weRH0rknUHfADJley31chwDYnP9AQfgQ4hdOAJFdIXX09sTndJh4oKgxKWYkC75k871YA4"
+            + "AL-966tuPFpBJQ1hrXKNYRNBrSRvttD-6JsjOz7F5xCg"
         static let bridgeRing = "Ad0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAAgGCgsMDQ4P"
         /// The clover: 47 pieces, closed, three gates, two crossings.
         static let clover = "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI"
