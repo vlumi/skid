@@ -7,6 +7,31 @@ import SwiftUI
 /// these are the controls for a piece you have already laid, as opposed to the
 /// palette you lay pieces from.
 extension EditorView {
+    /// **Whether the next piece you lay gets a railing.** Sticky, beside the mode
+    /// toggle, because railing a bridge is a run of pieces — asking once beats
+    /// toggling each one afterwards. The selected piece's own railing is toggled
+    /// from its properties sheet instead.
+    var railBuildToggle: some View {
+        let on = game.editorRailNewPieces
+        return Button {
+            game.editorRailNewPieces.toggle()
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: on ? "road.lanes" : "road.lanes.curved.right")
+                Text("Rails", bundle: .module)
+            }
+            .font(.footnote.bold())
+            .foregroundStyle(on ? .black : .white)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 7)
+            .background(on ? EditorRenderer.bridgeRail : .black.opacity(0.55), in: Capsule())
+            .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .accessibilityLabel(
+            Text(on ? "Stop railing new pieces" : "Rail new pieces", bundle: .module))
+    }
+
     /// **The railing toggle.** A railing is per placed piece, not per shape, so a
     /// bridge can have an open edge you drive off and a flat piece can be fenced.
     /// The sheet stays open: railing is the kind of thing you flip and look at.
