@@ -5,14 +5,15 @@ extension Track {
     /// **How far the asphalt reaches from its centerline at `height`.**
     ///
     /// The ribbon is drawn wider as it rises (the fake-perspective `Elevation`
-    /// scaling: 1.2× at deck height), and this is the model agreeing with what
-    /// it draws. It used to disagree: `width` was flat, so on a bridge a
-    /// 12-unit band of painted asphalt — from the nominal edge at 60 out to
-    /// the painted one at 72 — was GRASS to the sim. A car there lost grip on
-    /// road it could plainly see, and past 60 it "fell off the deck" while
-    /// still drawn on it. Teaching each caller to re-apply the scale was the
-    /// wrong fix (and one such patch is reverted in favour of this): the road
-    /// is wider up there, so the road model says so, once, here.
+    /// scaling), and the model agrees with what it draws: a band of painted asphalt
+    /// the sim called grass cost a car its grip on road it could plainly see.
+    ///
+    /// The rails follow this too — see `PieceCompilerWalls.deckRails`. They used to
+    /// sit at a flat `width / 2` while grip scaled, which put the two in direct
+    /// contradiction: a gap of `12 × height` units, unnoticed at the deck but 36
+    /// units at height 3, where it reads as a transparent wall well inside the
+    /// visible road ("the car doesn't reach the walls on level 3, but hits a
+    /// transparent wall before it").
     public func halfWidth(atHeight height: Double) -> Double {
         width / 2 * Elevation.scale(atHeight: height)
     }
