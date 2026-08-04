@@ -147,7 +147,12 @@ final class WallTests: XCTestCase {
             let b = track.centerline[next]
             let mid = a + (b - a) * 0.5
             let side = (b - a).normalized.perpendicular
-            let edge = mid + side * (track.width / 2)
+            // The road edge AT THIS HEIGHT: the ribbon widens as it rises, so a
+            // flat `width / 2` is the wrong edge to compare a rail against —
+            // that assumption is what left rails inboard of the visible asphalt
+            // (36 units of transparent wall at height 3).
+            let height = (track.heights[index] + track.heights[next]) / 2
+            let edge = mid + side * track.halfWidth(atHeight: height)
             let nearest =
                 track.walls.filter { $0.kind == .rail }
                 .map { edge.distance(toSegment: $0.a, $0.b) }.min() ?? .greatestFiniteMagnitude

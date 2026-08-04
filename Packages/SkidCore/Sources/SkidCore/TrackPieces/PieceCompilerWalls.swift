@@ -43,14 +43,23 @@ extension PieceCompiler {
             } else {
                 direction = (samples[index + 1].point - samples[index - 1].point).normalized
             }
-            // The TRUE road edge, not the height-scaled visual one. The road a
-            // car can drive on is `width` wide at every height (grip width never
-            // scales — only the drawing does), so scaling the rail by
-            // `Elevation.scale` pushed it steadily outboard as the ramp climbed:
-            // measured 0.2 units from the edge at the ramp's foot but 8+ by
-            // mid-ramp, which is the reported "walls don't reach the bottom of
-            // the ramp" and part of the gap cars slipped through.
-            let side = direction.perpendicular * (Double(PieceCatalog.width) / 2)
+            // **The DRAWN road edge**, which is where the drivable asphalt ends:
+            // `halfWidth(atHeight:)` scales with height and so does the ribbon, so
+            // a rail laid at a flat `width / 2` sat inboard of both. The gap is
+            // `12 × height` units — invisible at the deck, but 36 units at height 3,
+            // where it reads as a transparent wall well inside the visible road
+            // ("the car doesn't reach the walls on level 3, but hits a transparent
+            // wall before it").
+            //
+            // This is the same expression the renderer uses for its ribbon edge
+            // (`EditorRenderer.edges`), per sample, so the two cannot disagree. An
+            // earlier attempt at this was reverted for making rails "drift
+            // outboard" mid-ramp — but that drift IS the widening ribbon, which the
+            // rail is supposed to follow; what was actually wrong then was that grip
+            // and the rails scaled by different rules.
+            let half =
+                Double(PieceCatalog.width) / 2 * Elevation.scale(atHeight: samples[index].height)
+            let side = direction.perpendicular * half
             left.append(samples[index].point + side)
             right.append(samples[index].point - side)
         }

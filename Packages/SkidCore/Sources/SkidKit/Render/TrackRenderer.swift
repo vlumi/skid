@@ -141,7 +141,7 @@ enum TrackRenderer {
                 }
             }
             order.add(storey: storey, kind: .gate) { context in
-                drawGates(gateChrome, elevated: storey > 0, into: &context)
+                drawGates(gateChrome, storey: storey, into: &context)
             }
             order.add(storey: storey, kind: .mark) { context in
                 drawMarks(marks, elevated: storey > 0, into: &context)
@@ -192,7 +192,14 @@ enum TrackRenderer {
     static func storeyBand(_ storey: Int) -> ClosedRange<Double> {
         let top = Double(storey) * Track.levelHeight
         let below = top - Track.levelHeight
-        return (below + Track.levelHeight / 4)...(top + Track.levelHeight / 4)
+        // **Exclusive at the top, by a hair.** Adjacent bands meet at a quarter
+        // boundary (0.25, 1.25, 2.25 …), and a closed range at both ends put a
+        // piece whose top lands exactly there in TWO storeys — drawn twice, so any
+        // non-opaque paint reads darker along that seam. One storey ends where the
+        // next begins; the epsilon is float noise, far below anything geometric.
+        let floor = below + Track.levelHeight / 4
+        let ceiling = top + Track.levelHeight / 4 - Track.heightEpsilon
+        return floor...ceiling
     }
 
     /// The inverse of `storeyBand`: the storey whose band a piece top falls in.
@@ -299,12 +306,21 @@ enum TrackRenderer {
         var heights: [Double]
     }
 
+    /// Takes the STOREY rather than an is-elevated flag: with more than two levels
+    /// a boolean lumps 1, 2 and 3 together, so every raised gate was drawn once per
+    /// raised layer — three times over, and in layers it does not belong to.
+    ///
+    /// **Not covered by a test.** Verifying it means counting draw calls through a
+    /// `GraphicsContext`, which this suite has no harness for; a test asserting the
+    /// predicate in its own arithmetic passed against the very boolean it was meant
+    /// to catch, so it was removed rather than left looking like coverage.
     static func drawGates(
-        _ chrome: GateChrome, elevated: Bool, into context: inout GraphicsContext
+        _ chrome: GateChrome, storey: Int, into context: inout GraphicsContext
     ) {
         for (index, span) in chrome.spans.enumerated() {
             guard let span else { continue }
-            guard index < chrome.heights.count, (chrome.heights[index] > 0.5) == elevated
+            guard index < chrome.heights.count,
+                Track.level(of: chrome.heights[index]) == storey
             else {
                 continue
             }
