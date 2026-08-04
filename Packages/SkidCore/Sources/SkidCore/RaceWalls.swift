@@ -260,10 +260,19 @@ extension Race {
             return car.height < wall.height
                 && car.height >= wall.height - Track.levelHeight
         case .embankment:
-            // Earth: solid from the ground up to the road it carries, so a car
-            // below cannot drive into a ramp's flank. Above the road there is
-            // nothing — a deck crossing over a ramp runs clear.
-            guard car.height <= wall.height + Track.reachTolerance else { return false }
+            // Earth: solid from the storey the ramp STANDS ON up to the road it
+            // carries, so a car below cannot drive into a ramp's flank. Above the
+            // road there is nothing — a deck crossing over a ramp runs clear.
+            //
+            // **From its base, not from the ground.** A 2→3 ramp stands on the
+            // level-2 deck, so its earth spans 2…3 and the level-1 road passing
+            // underneath runs clear. Filling from 0 was indistinguishable with one
+            // deck (nothing could be under a ramp) but with three it walled off the
+            // road below: reported as a track that built fine and could not be
+            // driven, the car stopped dead at h=1.00 on its own asphalt.
+            guard car.height <= wall.height + Track.reachTolerance,
+                car.height >= wall.base - Track.reachTolerance
+            else { return false }
             // **ONE-WAY: you may drive OFF a ramp, never INTO it.** Without this a
             // railless ramp would trap you on it, since the earth that stops the
             // car below is the same segment the car above would leave over.

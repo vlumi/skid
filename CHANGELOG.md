@@ -21,6 +21,11 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **A ramp no longer walls off the road beneath it.** On a track that spiralled up
+  through several storeys, the earth under a high ramp reached all the way to the
+  ground and blocked the lower road — the track built fine but could not be driven.
+  A ramp's earth now fills only from the storey it stands on.
+
 - **Three storeys instead of one.** Tracks can now climb to height 3, so bridges
   over bridges are possible. A climb that turns as it rises costs no extra room —
   it is a straight climb that eats the canvas.
