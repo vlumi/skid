@@ -92,10 +92,15 @@ extension PieceCompiler {
                 // height — what differs is what it blocks: the railing guards
                 // the road's own level, this fills everything below it.
                 if placed.climb != 0 {
+                    // The storey this climb stands on: its lower end, rounded down
+                    // to a whole level. A half-climb from 2.0 to 2.5 still stands on
+                    // the level-2 deck.
+                    let base = (min(placed.entryHeight, placed.exitHeight) + 1e-9)
+                        .rounded(.down)
                     rails.append(
                         Wall(
                             from: edge[index - 1], to: edge[index], height: height,
-                            kind: .embankment, outward: outward))
+                            kind: .embankment, outward: outward, base: base))
                 }
             }
         }
