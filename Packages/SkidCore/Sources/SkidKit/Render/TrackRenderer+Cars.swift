@@ -106,7 +106,16 @@ extension TrackRenderer {
             let touched = storey(ofTop: track.deckTop(at: point, preferHeight: state.height))
             highest = max(highest ?? touched, touched)
         }
-        return highest ?? Track.level(of: state.height)
+        // On road, the storeys the body touches decide — see above.
+        if let highest { return highest }
+        // **Off the road, ask what is BENEATH the car** rather than rounding its own
+        // height. Rounding flips the storey at every half level — 0.5, and now 1.5
+        // and 2.5 as well — so a car on the grass beside a ramp's low end jumped
+        // from painting under the wall to over it partway up. Reported from device:
+        // "the car (and the window) are hidden under the wall, but at some point
+        // they clip above the wall". `deckTop` answers for any point, on road or
+        // not, which is the same question the on-road branch asks.
+        return storey(ofTop: track.deckTop(at: state.position, preferHeight: state.height))
     }
 
     /// A car hidden under the bridge shows THROUGH it: a dark circular hole

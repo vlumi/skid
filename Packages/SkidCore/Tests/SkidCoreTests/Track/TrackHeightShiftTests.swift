@@ -50,20 +50,27 @@ final class TrackHeightShiftTests: XCTestCase {
     /// **A track that climbs a full level cannot move**, and one that's flat can
     /// move within the storeys — which is exactly what grays the buttons out.
     func testShiftIsRefusedWhenItWouldLeaveTheWorld() throws {
-        // A full-height bridge already spans 0…1: no room either way.
+        // A bridge that climbs to the TOP storey has no room either way. Built from
+        // `Track.highestLevel` rather than assuming one deck, so the test states the
+        // rule ("a shift may not leave the world") instead of a height.
         let bridge = TrackLayout(
-            pieces: [
-                Catalog.startGrid, Catalog.rampUp, Catalog.straight, Catalog.rampDown,
-            ], gateSeams: [0])
+            pieces: [Catalog.startGrid]
+                + Array(repeating: Catalog.rampUp, count: Track.highestLevel)
+                + [Catalog.straight, Catalog.rampDown],
+            gateSeams: [0])
         let spans = bridge.walk().placed
-        XCTAssertEqual(spans.map(\.exitHeight).max(), 1)
+        XCTAssertEqual(
+            spans.map(\.exitHeight).max(), Double(Track.highestLevel),
+            "the fixture must actually reach the ceiling")
         XCTAssertFalse(canShift(bridge, steps: 1), "no headroom above a full climb")
         XCTAssertFalse(canShift(bridge, steps: -1), "no room below the ground")
         // A flat ring can go up, and back down again, but not below the ground.
         XCTAssertTrue(canShift(flatRing(), steps: 1))
         XCTAssertFalse(canShift(flatRing(), steps: -1))
         XCTAssertTrue(canShift(flatRing(originHeight: 1), steps: -1))
-        XCTAssertFalse(canShift(flatRing(originHeight: 1), steps: 1))
+        // A flat ring sitting AT the ceiling cannot go up.
+        XCTAssertFalse(
+            canShift(flatRing(originHeight: Double(Track.highestLevel)), steps: 1))
     }
 
     /// The baseline survives the share code, and a ground-level track's bytes

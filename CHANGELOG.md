@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Three storeys instead of one.** Tracks can now climb to height 3, so bridges
+  over bridges are possible. A climb that turns as it rises costs no extra room —
+  it is a straight climb that eats the canvas.
+- **Cars no longer clip through walls beside a ramp.** A car on the grass beside a
+  climb switched from being drawn under the barrier to over it partway up.
+
 - **Railings are yours to place.** A guard railing is now a property of a piece
   you have laid, toggled from the piece's own panel in the editor — so you can
   build a bridge with an open edge to drive off, or fence a flat corner. Pieces

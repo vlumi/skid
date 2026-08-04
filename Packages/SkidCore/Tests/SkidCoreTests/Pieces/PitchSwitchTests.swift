@@ -88,9 +88,14 @@ final class PitchSwitchTests: XCTestCase {
         half.append(contentsOf: PieceExpansion.expand(Pieces.shortStraight, mode: .up))
         XCTAssertTrue(TrackValidator.canAppend(Pieces.shortStraight, pitch: .up, to: half))
         XCTAssertTrue(TrackValidator.canAppend(Pieces.shortStraight, pitch: .down, to: half))
-        // And from the deck, up is out of the world.
-        var deck = half
-        deck.append(contentsOf: PieceExpansion.expand(Pieces.shortStraight, mode: .up))
-        XCTAssertFalse(TrackValidator.canAppend(Pieces.shortStraight, pitch: .up, to: deck))
+        // And from the TOP storey, up is out of the world. Pitch climbs half a
+        // level, so it takes two pitched pieces per storey to get there.
+        var ceiling = ground
+        for _ in 0..<(Track.highestLevel * 2) {
+            ceiling.append(contentsOf: PieceExpansion.expand(Pieces.shortStraight, mode: .up))
+        }
+        XCTAssertFalse(
+            TrackValidator.canAppend(Pieces.shortStraight, pitch: .up, to: ceiling),
+            "climbing past the top storey must be refused, wherever the top is")
     }
 }

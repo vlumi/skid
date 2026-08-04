@@ -115,7 +115,7 @@ enum EditorRenderer {
     static func drawTrack(
         walk: WalkResult, width: Double, gateSeams: [Int], gating: Bool = false,
         decals: [Int: Decal] = [:], railed: Set<Int> = [], transform t: Transform,
-        heightRange: ClosedRange<Double> = -1...2,
+        heightRange: ClosedRange<Double> = Track.everyStorey,
         into context: inout GraphicsContext
     ) {
         // Every piece is a width-varying RIBBON POLYGON: half-width at each
