@@ -75,6 +75,11 @@ public enum TrackCode {
         /// raw value. Sparse and omitted entirely when a track has no decals, so
         /// codes for undecorated tracks stay byte-identical.
         case decals = 7
+        /// Which laid pieces carry guard railings, one byte per railed piece: the
+        /// piece index. One bit of information per piece, so unlike decals there
+        /// is no value byte to pair with it. Sparse and omitted entirely when a
+        /// track has no railings at all.
+        case railed = 8
         /// A 32-byte raw Ed25519 public key — who signed this. High on purpose:
         /// tags cost the same wherever they sit, so the low contiguous range
         /// stays for CONTENT and the top holds the envelope.
@@ -127,6 +132,9 @@ public enum TrackCode {
         }
         if !layout.decals.isEmpty {
             appendSection(&body, .decals, encodeDecals(layout.decals, count: layout.pieces.count))
+        }
+        if !layout.railed.isEmpty {
+            appendSection(&body, .railed, encodeRailed(layout.railed, count: layout.pieces.count))
         }
         if layout.originHeight != 0 {
             let halves = Int((layout.originHeight / (Track.levelHeight / 2)).rounded())
@@ -197,13 +205,15 @@ public enum TrackCode {
             try sections[.decals].map {
                 try decodeDecals($0, count: pieces.count)
             } ?? [:]
+        let railed = sections[.railed].map { decodeRailed($0, count: pieces.count) } ?? []
         // Hostile input: a baseline outside the world's storeys is refused here,
         // before anything walks or allocates.
         guard Track.withinLevels(originHeight) else { throw DecodeError.tooLarge }
 
         return TrackLayout(
             pieces: pieces, pitches: pitches, origin: origin, originHeight: originHeight,
-            gateSeams: gates, theme: theme, fitters: fitters, decals: decals)
+            gateSeams: gates, theme: theme, fitters: fitters, decals: decals,
+            railed: railed)
     }
 
     /// Parse the TLV body into known sections, bounds-checking every step.
@@ -272,6 +282,18 @@ public enum TrackCode {
     /// index so the bytes are canonical, and entries outside the piece list are
     /// dropped rather than encoded — a decal on a piece that isn't there is not a
     /// track feature, it's a stale key.
+    /// Railed piece indices, ascending so one layout has one spelling.
+    private static func encodeRailed(_ railed: Set<Int>, count: Int) -> [UInt8] {
+        railed.sorted().filter { (0..<count).contains($0) }
+            .map { UInt8(truncatingIfNeeded: $0) }
+    }
+
+    /// Railings from their section, hostile input assumed: an index past the
+    /// pieces is dropped rather than trusted. Duplicates collapse — it is a set.
+    private static func decodeRailed(_ bytes: [UInt8], count: Int) -> Set<Int> {
+        Set(bytes.map(Int.init).filter { (0..<count).contains($0) })
+    }
+
     private static func encodeDecals(_ decals: [Int: Decal], count: Int) -> [UInt8] {
         var out: [UInt8] = []
         for (index, decal) in decals.sorted(by: { $0.key < $1.key })

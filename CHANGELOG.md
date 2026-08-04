@@ -21,6 +21,20 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Railings are yours to place.** A guard railing is now a property of a piece
+  you have laid, toggled from the piece's own panel in the editor — so you can
+  build a bridge with an open edge to drive off, or fence a flat corner. Pieces
+  start with no railing; the built-in tracks keep theirs. There is also a **Rails**
+  toggle beside the Gates button: flip it on and everything you lay from then on
+  arrives railed, so fencing a whole bridge is one decision.
+- **No more falling through your own railings.** A guard rail could throw the car
+  clean off the road — most often at a tight curve part-way up a ramp — leaving it
+  stranded on the grass with no way back. Rails now only push where the car is
+  actually beside them.
+- **Editor taps land where you tap.** Selecting a piece or a gate needed a tap
+  slightly below the target, because the map was drawn into the screen's safe-area
+  insets while taps were measured without them.
+
 - **Railings mid-ramp actually hold you.** A railing partway up a climb was
   being assigned to the storey above, so it stopped nobody — you could drive
   through it by dragging the car along the barrier. Deck railings are unchanged.

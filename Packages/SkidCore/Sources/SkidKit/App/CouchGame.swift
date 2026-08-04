@@ -55,6 +55,12 @@ public final class CouchGame: ObservableObject {
     /// case stays one tap.
     @Published public var editorBuildEnd: CouchGame.BuildEnd = .tail
 
+    /// **Whether pieces laid from here on get a guard railing.** Sticky, like the
+    /// build end: railing a bridge is a run of pieces, so asking once beats
+    /// toggling each piece afterwards. Off by default, matching
+    /// `TrackLayout.railed`.
+    @Published public var editorRailNewPieces = false
+
     public enum Mode: CaseIterable {
         case race
         case timeTrial

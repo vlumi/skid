@@ -15,7 +15,7 @@ enum TestTracks {
     enum Code {
         /// 17 pieces, closed, four gates, climbs to a deck and back. The
         /// general-purpose ring — selection, undo, gate mode, reversal.
-        static let bridgeRing = "AS0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAA"
+        static let bridgeRing = "Ad0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAAgGCgsMDQ4P"
         /// The clover: 47 pieces, closed, three gates, two crossings.
         static let clover = "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI"
         /// The clover mid-build: 46 pieces, still open at both ends.

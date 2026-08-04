@@ -28,9 +28,15 @@ final class PieceCompilerTests: XCTestCase {
         Pieces.straight, Pieces.straight, Pieces.straight,
     ]
 
+    /// A bridge ring **with railings**: rails are a per-piece choice now, so a
+    /// fixture that asserts about railings has to ask for them. Every piece is
+    /// railed, which is what these tests assumed when climbing implied a rail.
     private func compiledBridge() throws -> Track {
         try PieceCompiler.compile(
-            TrackLayout(pieces: bridgeRing, gateSeams: [0, 5]), id: "test-bridge")
+            TrackLayout(
+                pieces: bridgeRing, gateSeams: [0, 5],
+                railed: Set(bridgeRing.indices)),
+            id: "test-bridge")
     }
 
     func testUnsaveableLayoutThrows() {

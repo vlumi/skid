@@ -11,15 +11,23 @@ extension PieceCompiler {
     ///
     /// Follows the piece's own samples, so a curved deck gets a curved rail.
     ///
-    /// A climbing piece gets **both**: a railing on each edge, guarding the road
-    /// it carries, and an embankment beneath it — the earth a ramp stands on, so
-    /// you cannot drive into its flank or under it while it climbs.
+    /// A climbing piece gets an embankment beneath it — the earth a ramp stands
+    /// on, so you cannot drive into its flank or under it while it climbs — and, if
+    /// the author asked for one, a railing on each edge guarding the road it
+    /// carries.
+    ///
+    /// `railed` is the author's per-piece toggle (see `TrackLayout.railed`). The
+    /// embankment and the mouth seal ignore it: they are structure, not decoration,
+    /// and a railless ramp still may not be entered from below or driven into from
+    /// the side.
     ///
     /// They were one wall until device testing showed why they cannot be. A
     /// railing stretched to the floor made a bridge edge solid in some places
     /// and see-through in others; lifting it to its own level removed the ramp's
     /// side barrier. Two jobs, two walls.
-    static func deckRails(of placed: PlacedPiece, capHighEnd: Bool = true) -> [Wall] {
+    static func deckRails(
+        of placed: PlacedPiece, capHighEnd: Bool = true, railed: Bool = true
+    ) -> [Wall] {
         let samples = placed.heightedSamples(degreesPerSample: degreesPerSample)
         guard samples.count >= 2 else { return [] }
         let entryDir = Vec2(angle: placed.entry.heading.radians)
@@ -61,10 +69,16 @@ extension PieceCompiler {
                 let outward =
                     along.length > 0
                     ? along.perpendicular.normalized * sign : Vec2.zero
-                rails.append(
-                    Wall(
-                        from: edge[index - 1], to: edge[index], height: height,
-                        outward: outward, onClimb: placed.climb != 0))
+                // **The railing is the author's choice; the earth is not.** A
+                // railless bridge is a legitimate track — you may drive off the
+                // edge and fall — but the ground beneath a climb is structural
+                // either way, or a car could drive into the flank of thin air.
+                if railed {
+                    rails.append(
+                        Wall(
+                            from: edge[index - 1], to: edge[index], height: height,
+                            outward: outward, onClimb: placed.climb != 0))
+                }
                 // A climbing stretch also stands on earth. Same line, same
                 // height — what differs is what it blocks: the railing guards
                 // the road's own level, this fills everything below it.
@@ -76,6 +90,9 @@ extension PieceCompiler {
                 }
             }
         }
+        // The mouth seal is structural too: it is what stops a car entering a
+        // raised road from the level below, which has nothing to do with whether
+        // the author wanted a railing.
         if capHighEnd {
             rails.append(contentsOf: rampEndCaps(left: left, right: right, samples: samples))
         }

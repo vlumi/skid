@@ -106,6 +106,7 @@ extension TrackLayout {
             uniqueKeysWithValues: fitters.map { (count - 1 - $0.key, $0.value) })
         decals = Dictionary(
             uniqueKeysWithValues: decals.map { (count - 1 - $0.key, $0.value) })
+        railed = Set(railed.map { count - 1 - $0 })
         return true
     }
 

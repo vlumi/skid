@@ -24,7 +24,7 @@ public enum PieceCompiler {
             throw Failure.forkNotSupportedInPhaseA
         }
 
-        let road = lowerPieces(walk.placed)
+        let road = lowerPieces(walk.placed, railed: layout.railed)
         var centerline = road.centerline
         var heights = road.heights
         var deckTops = road.deckTops
@@ -231,14 +231,14 @@ public enum PieceCompiler {
     /// Height comes straight from `heightedSamples`, the same smoothstepped
     /// profile the editor draws, so the road a car drives is the road it looked
     /// like while being built.
-    private static func lowerPieces(_ placed: [PlacedPiece]) -> Road {
+    private static func lowerPieces(_ placed: [PlacedPiece], railed: Set<Int> = []) -> Road {
         var road = Road()
         guard let first = placed.first else { return road }
         road.centerline.append(first.entry.position.vec2)
         road.heights.append(first.entryHeight)
         road.deckTops.append(max(first.entryHeight, first.exitHeight))
 
-        for piece in placed {
+        for (index, piece) in placed.enumerated() {
             let top = max(piece.entryHeight, piece.exitHeight)
             for sample in piece.heightedSamples(degreesPerSample: degreesPerSample)
                 .dropFirst()
@@ -248,12 +248,20 @@ public enum PieceCompiler {
                 road.deckTops.append(top)
             }
 
-            // Guard rails along both edges of anything off the ground — the
-            // barrier the editor draws as the blue deck rail. Without these a
-            // bridge has nothing to stop you driving off the side.
-            if Track.isOffGround(piece.entryHeight) || Track.isOffGround(piece.exitHeight) {
+            // **Two separate reasons to emit edge walls, and they no longer
+            // coincide.** The earth under a climb is structure — without it a car
+            // drives into a ramp's flank — so it follows the geometry. A railing is
+            // the author's choice, so it follows `railed`, and that is what makes
+            // a bridge without railings and a railing on flat ground both
+            // expressible.
+            let wantsRail = railed.contains(index)
+            let climbs = piece.climb != 0
+            let elevated =
+                Track.isOffGround(piece.entryHeight) || Track.isOffGround(piece.exitHeight)
+            if wantsRail || climbs || elevated {
                 road.walls.append(
-                    contentsOf: deckRails(of: piece, capHighEnd: capsHighEnd(piece)))
+                    contentsOf: deckRails(
+                        of: piece, capHighEnd: capsHighEnd(piece), railed: wantsRail))
             }
 
             // Only a LAUNCH needs a line: it throws the car ballistically, which

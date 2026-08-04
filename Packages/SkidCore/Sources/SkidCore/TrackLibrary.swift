@@ -27,14 +27,16 @@ public enum TrackLibrary {
     public static let builtins: [Builtin] = [
         Builtin(id: "small", name: "Small track", code: "AUwBCB8SDAkBCgwaAgMABAwDBQNIAlgA"),
         Builtin(id: "oval", name: "Big oval", code: "Af8BBx8NDQINDQECBAACBgoDBQSwBhgA"),
-        Builtin(id: "eight", name: "Eight", code: "AcABCx8ReQUFAnoGBhIBAgMABAwDBQJYA8AH"),
+        Builtin(
+            id: "eight", name: "Eight", code: "AYUBCx8ReQUFAnoGBhIBAgMABAwDBQJYA8AHCAgFBgcICQoLDA"),
         // Built in the editor with the pitch tools, and the first built-in to
         // START off the ground: its baseline is the deck, so the lap dips to
         // ground level and climbs back. Exercises raised baselines, half-level
         // climbs and self-crossing at two heights all at once.
         Builtin(
             id: "clover", name: "Clover",
-            code: "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI"),
+            code: "AQwBGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAIFwABAgkKCwwNDhUW"
+                + "FxgZGiEiIyQlJi0uBQEC"),
     ]
 
     /// Every built-in, compiled once. A code that doesn't compile is a broken

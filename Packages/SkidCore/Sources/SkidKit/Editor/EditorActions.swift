@@ -20,7 +20,9 @@ extension CouchGame {
         recordingUndo {
             guard let layout = editorLayout else { return false }
             guard TrackValidator.canAppend(id, pitch: pitch, to: layout) else { return false }
+            let firstNew = layout.pieces.count
             editorLayout?.append(contentsOf: PieceExpansion.expand(id, mode: pitch))
+            railNewPieces(from: firstNew)
             followBuildEnd()
             finishIfClosed()
             return true
@@ -40,8 +42,10 @@ extension CouchGame {
         recordingUndo {
             guard let layout = editorLayout, !run.isEmpty else { return false }
             guard TrackValidator.canAppend(run: run, to: layout) else { return false }
+            let firstNew = layout.pieces.count
             editorLayout?.append(
                 contentsOf: run.flatMap { PieceExpansion.expand($0.id, mode: $0.pitch) })
+            railNewPieces(from: firstNew)
             finishIfClosed()
             return true
         }
@@ -58,7 +62,13 @@ extension CouchGame {
         recordingUndo {
             guard var layout = editorLayout else { return false }
             guard TrackValidator.canPrepend(id, pitch: pitch, to: layout) else { return false }
+            let before = layout.pieces.count
             guard layout.prependAll(PieceExpansion.expand(id, mode: pitch)) else { return false }
+            // Prepend grows the list at index 0, so the NEW pieces are the leading
+            // ones — the existing rails were already shifted up by the insert.
+            if editorRailNewPieces {
+                layout.railed.formUnion(0..<(layout.pieces.count - before))
+            }
             editorLayout = layout
             followBuildEnd()
             finishIfClosed()
@@ -136,6 +146,7 @@ extension CouchGame {
             guard var layout = editorLayout else { return false }
             layout.insert(PieceCatalog.fitterPieceID, at: layout.pieces.count)
             layout.fitters[layout.pieces.count - 1] = fitter
+            if editorRailNewPieces { layout.railed.insert(layout.pieces.count - 1) }
             // The fitter must actually close the ring — it has nothing to offer a
             // track it leaves open, and the walk needs an inlet to pin its exit to.
             guard layout.walk().openEnds.isEmpty else { return false }
@@ -143,6 +154,15 @@ extension CouchGame {
             finishIfClosed()
             return true
         }
+    }
+
+    /// Rail everything from `firstNew` to the end, if the palette's railing toggle
+    /// is on. Placement paths that grow the list at index 0 (prepend) cannot use
+    /// this — their new pieces are the leading ones, not the trailing ones.
+    private func railNewPieces(from firstNew: Int) {
+        guard editorRailNewPieces, let count = editorLayout?.pieces.count, firstNew < count
+        else { return }
+        editorLayout?.railed.formUnion(firstNew..<count)
     }
 
     /// After a placement the NEW piece is the end, so the selection follows it —
