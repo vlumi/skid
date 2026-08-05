@@ -71,9 +71,7 @@ extension EditorView {
         return Button {
             game.editorRailNewPieces.toggle()
         } label: {
-            Image(systemName: on ? "road.lanes" : "road.lanes.curved.right")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(on ? .black : .white)
+            RailGlyph(railed: on, road: on ? .black : .white)
                 .frame(width: 34, height: 26)
                 .background(
                     on ? Color.white : .black.opacity(0.4),

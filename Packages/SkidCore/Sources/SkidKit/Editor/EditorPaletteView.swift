@@ -378,15 +378,27 @@ extension EditorView {
         }
     }
 
-    /// The whole-track transforms, in a sheet: turn either way, raise, lower, reverse.
-    ///
-    /// Behind a button because they are used once, when a track is first laid out —
-    /// see `transformPad`. A sheet rather than a popover so the labels fit, which is
-    /// the whole reason they left the row.
-    ///
-    /// Raise/lower gray out when the shift would push any part of the track out of the
-    /// world's storeys — most of the time, once a track climbs a full level.
-    @ViewBuilder
+    /// A round map/chrome button: icon, tint, and an accessibility label carrying the
+    /// meaning the icon cannot.
+    /// The same button around an arbitrary glyph, for the one control no SF Symbol
+    /// describes: railings. Every road symbol says what SHAPE the road is, which is why
+    /// the pair read as "straight or curved" — see `RailGlyph`.
+    func mapAction<Glyph: View>(
+        label: LocalizedStringKey, enabled: Bool = true,
+        action: @escaping () -> Void, glyph: () -> Glyph
+    ) -> some View {
+        let content = glyph()
+        return Button(action: action) {
+            content
+                .frame(width: 34, height: 34)
+                .background(.black.opacity(0.55), in: Circle())
+                .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
+                .opacity(enabled ? 1 : 0.35)
+                .contentShape(Circle())
+        }
+        .disabled(!enabled)
+        .accessibilityLabel(Text(label, bundle: .module))
+    }
 
     func mapAction(
         _ symbol: String, tint: Color, label: LocalizedStringKey, enabled: Bool = true,

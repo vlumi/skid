@@ -44,12 +44,11 @@ extension EditorView {
             ) {
                 if let index { configuring = .piece(index) }
             }
-            mapAction(
-                index.map { game.editorIsRailed(at: $0) } == true
-                    ? "road.lanes" : "road.lanes.curved.right",
-                tint: .white, label: "Railings on this piece", enabled: hasPiece
-            ) {
+            let railed = index.map { game.editorIsRailed(at: $0) } == true
+            mapAction(label: "Railings on this piece", enabled: hasPiece) {
                 if let index { game.editorToggleRail(at: index) }
+            } glyph: {
+                RailGlyph(railed: railed)
             }
         }
     }
