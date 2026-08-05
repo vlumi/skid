@@ -68,26 +68,27 @@ public struct Piece: Equatable, Sendable {
     /// to be ON it to be thrown), and the landing is what a car that cleared the
     /// gap touches down on.
     ///
-    /// **Sized to the flight the tuning actually provides.** Measured, both parts:
+    /// **The middle half of the piece**, which on a 4U jump is exactly one road
+    /// width of clear air. Measured, in three parts:
     ///
     /// 1. Road is "within a half-width of the centerline", so asphalt reaches a
     ///    half-width (60) PAST the last solid point as an end cap. The air a car
-    ///    must clear is therefore the flagged span minus 120, not the flagged span
-    ///    — flagging the middle half of a 2U piece left *zero* air, the gap fully
-    ///    paved by the two caps.
-    /// 2. A launch at `launchPerSpeed` against `gravity` carries **35 units at
-    ///    speed 300, 82 at 450, 113 at top speed 520**. So the air has to sit
-    ///    inside ~113 or the jump is uncrossable at any speed: a first attempt at
-    ///    204 units of air launched correctly and still always fell in.
-    ///
-    /// `0.10…0.90` of a 2U piece = 192 flagged, **72 units of air** — cleared from
-    /// roughly 420 up, missed at 300. Earned, not decorative, and not a wall.
+    ///    must clear is the flagged span minus 120, not the flagged span — which is
+    ///    why the same middle-half fraction left *zero* air on a 2U piece, the gap
+    ///    fully paved by the two caps.
+    /// 2. The gap must hold a **crossing road**, aligned on the lattice like
+    ///    everything else. That forces 4U (see `PieceCatalog.jumpSpan`) and puts the
+    ///    crossing at 2U, dead centre.
+    /// 3. A launch at `launchPerSpeed` against `gravity` must clear those 120 units
+    ///    from racing speed but not from a crawl. At 0.008 a car flies 140 at speed
+    ///    400 and 233 at top speed — so the gap goes from missed to cleared at
+    ///    around 430, and the apex is 0.48 levels: a visible hop.
     ///
     /// A fraction span rather than a length so it holds for any jump piece added
     /// later — a longer jump is then a new catalog id and nothing more, though it
-    /// would need a faster car or a stronger kick to be clearable at all.
+    /// would need a stronger kick to stay clearable.
     public var gapSpan: ClosedRange<Double>? {
-        kind == .jump ? 0.10...0.90 : nil
+        kind == .jump ? 0.25...0.75 : nil
     }
 }
 

@@ -61,9 +61,21 @@ extension TrackLayout {
             } else {
                 exits = piece.paths.map { $0.exit(from: entry) }  // chain fold
             }
+            // **A jump is always flat.** Its lip and its landing are two ends of
+            // one span, and a pitched jump puts the landing half a level above the
+            // lip — so the piece stops being a gap you cross and becomes a ramp
+            // with a hole in it. Refused HERE, at the one place pitch enters a
+            // placement, rather than asked of the editor: a jump laid while the
+            // build pitch happened to be "up" climbed to 1.5 and every piece after
+            // it inherited that height (reported from device, and it read as "the
+            // jump is just a ramp").
+            //
+            // Same rule as `heightDelta`: a piece's own vertical shape and the
+            // pitch attribute never coexist on one placement.
+            let laidPitch = piece.gapSpan == nil ? pitch(at: index) : .flat
             var placement = PlacedPiece(
                 id: id, piece: piece, entry: entry, exits: exits,
-                entryHeight: entryHeight, entrySeam: seam, pitch: pitch(at: index))
+                entryHeight: entryHeight, entrySeam: seam, pitch: laidPitch)
             placement.fitter = id == PieceCatalog.fitterPieceID ? fitters[index] : nil
             // A climb runs straight through into a neighbour climbing the same
             // way; it eases only against everything else. (Sequence order is

@@ -258,7 +258,7 @@ the **150 length suffices**; at 45°/135° it stretches to ~width/sin 45° ≈
 edge walls at the shared mouths; the ring stays a single closed loop.
 
 **Jumps with air — shipped.** The jump piece is a launch lip, a road **gap**,
-and a landing, in one 2U span. Flight is speed-scaled (the existing launch
+and a landing, in one **4U** span. Flight is speed-scaled (the existing launch
 model, minus the layer flip), so clearing the gap is *earned*: undershoot
 drops you onto whatever is beneath — grass by default, or **a crossing road
 laid under the gap**, which the overlap rules explicitly allow. No new fail
@@ -269,17 +269,24 @@ loop stays closed, so progress, lap scoring and the AI need to know nothing
 about jumps, and only `distanceToCenterline` (the one function every "am I on
 road" question goes through) skips the gap's segments.
 
-Two numbers fix the piece's proportions, both measured rather than chosen:
+Three constraints fix the piece's proportions, all measured rather than chosen:
 
 - Road is "within a half-width of the centerline", so asphalt reaches a
-  **half-width past the last solid point** as an end cap. Flagging the middle
-  half of a 2U piece therefore leaves *zero* air — fully paved by the two caps.
-- A launch carries **35 units at speed 300, 82 at 450, 113 at top speed 520**.
-  Air wider than ~113 is uncrossable at any speed.
+  **half-width past the last solid point** as an end cap. The air a car crosses
+  is the flagged span minus a full road width, not the flagged span.
+- **A road must fit through the gap, on the lattice.** Road width is exactly 1U,
+  and that is what forces **4U**: a 2U piece offers at most 96 units of air
+  (under one road width, however it is flagged), and a 3U piece has nowhere to
+  put the crossing — its only interior lattice positions are 1U and 2U, each 120
+  from an end, where the crossing's half-width meets the lip's end cap with zero
+  clearance. At 4U the crossing sits at 2U, dead centre.
+- The launch must clear that air from racing speed but not from a crawl.
 
-`Piece.gapSpan` = `0.10…0.90` splits the difference: 72 units of air, cleared
-from roughly 420 up and missed at 300. A **longer** jump piece is then just a new
-catalog id — but it would need a faster car or a stronger kick to be clearable.
+`Piece.gapSpan` = `0.25…0.75` of the 4U span gives **exactly one road width** of
+clear air, and `launchPerSpeed` = 0.008 carries a car 140 units at speed 400 and
+233 at top speed — so the gap goes from missed to cleared around 430, with an
+apex of 0.48 levels. A **longer** jump is then just a new catalog id, though it
+would need a stronger kick to stay clearable.
 
 One piece rather than separate lip/gap/landing parts, because a bare gap would
 be placeable alone: that makes an unfinishable track buildable and forces both

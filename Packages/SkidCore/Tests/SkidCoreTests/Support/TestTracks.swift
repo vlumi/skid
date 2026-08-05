@@ -57,14 +57,17 @@ enum TestTracks {
         return try! PieceCompiler.compile(layout, id: "steep-bridge")
     }
 
-    /// A closed rectangle with a **jump on the long back straight**, at ground
-    /// level: a run-up long enough to arrive at the lip with real speed.
+    /// A closed rectangle with a **jump on the back straight**, at ground level:
+    /// a run-up long enough to arrive at the lip with real speed.
+    ///
+    /// The jump is 4U, so the opposite side carries 4U of straight to match — a ring
+    /// only closes if both sides span the same distance.
     static func jumpRing() -> Track {
         typealias Catalog = PieceCatalog.ID
         let pieces: [PieceID] = [
             Catalog.startGrid, Catalog.longStraight, Catalog.longStraight,
             Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
-            Catalog.longStraight, Catalog.jump, Catalog.longStraight,
+            Catalog.longStraight, Catalog.jump, Catalog.straight,
             Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
         ]
         let layout = TrackLayout(pieces: pieces, gateSeams: [0, 6])
@@ -72,15 +75,37 @@ enum TestTracks {
         return try! PieceCompiler.compile(layout, id: "jump-ring")
     }
 
+    /// `jumpRing()` with **every piece railed**, jump included — for checking that
+    /// the gap refuses a railing the author asked for. One geometry, one place: an
+    /// inline copy of the ring silently went off-canvas when the jump grew to 4U.
+    static func railedJumpRing() -> Track {
+        typealias Catalog = PieceCatalog.ID
+        let pieces: [PieceID] = [
+            Catalog.startGrid, Catalog.longStraight, Catalog.longStraight,
+            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
+            Catalog.longStraight, Catalog.jump, Catalog.straight,
+            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
+        ]
+        var layout = TrackLayout(pieces: pieces, gateSeams: [0, 6])
+        layout.railed = Set(pieces.indices)
+        // swiftlint:disable:next force_try
+        return try! PieceCompiler.compile(layout, id: "railed-jump-ring")
+    }
+
     /// The same ring with the jump **raised to a deck**: climb, jump across the
     /// gap at height 1, descend. Undershooting falls a full storey to the grass.
     static func elevatedJumpRing() -> Track {
         typealias Catalog = PieceCatalog.ID
+        // **`jumpRing()`'s geometry exactly**, with two of its 2U straights swapped
+        // for the 2U ramps that lift the jump onto a deck. A ramp is the same length
+        // as the straight it replaces, so closure is inherited rather than re-earned
+        // — which matters, since the jump is 4U and a ring only closes when opposite
+        // sides span equally.
         let pieces: [PieceID] = [
-            Catalog.startGrid, Catalog.rampUp, Catalog.straight,
+            Catalog.startGrid, Catalog.longStraight, Catalog.longStraight,
+            Catalog.curve90TightLeft, Catalog.rampUp, Catalog.curve90TightLeft,
+            Catalog.longStraight, Catalog.jump, Catalog.rampDown,
             Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
-            Catalog.straight, Catalog.jump, Catalog.straight,
-            Catalog.curve90TightLeft, Catalog.rampDown, Catalog.curve90TightLeft,
         ]
         let layout = TrackLayout(pieces: pieces, gateSeams: [0, 6])
         // swiftlint:disable:next force_try

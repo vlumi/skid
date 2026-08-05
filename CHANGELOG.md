@@ -21,11 +21,16 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
-- **Jumps.** A new jump piece on the palette's hotbar: a launch lip, a hole in the
-  road, and a landing. Clearing it is earned — the launch scales with speed, so
+- **Jumps.** A new jump piece on the palette's hotbar: a launch lip, a real hole in
+  the road, and a landing. The gap is a full road width across, so you can run
+  another road through it. Clearing it is earned — the launch scales with speed, so
   arrive fast and you fly it, crawl in and you drop into the gap. Place one on a
-  bridge and a missed jump falls a whole storey to whatever is underneath, which can
-  be another road. A railed jump gets no railing along the hole.
+  bridge and a missed jump falls a whole storey to whatever is underneath. A railed
+  jump gets no railing along the hole.
+
+- **A car flies further off a launch.** The upward kick per unit of speed went from
+  0.004 to 0.008, so a jump's gap can be wide enough to matter and still be
+  clearable at racing speed. Tunable as "Launch" in the tuning panel.
 
 - **Track markings line up on raised roads.** The chequered start line, the
   construction stripes on an unfinished end, and the dashed checkpoint markers all

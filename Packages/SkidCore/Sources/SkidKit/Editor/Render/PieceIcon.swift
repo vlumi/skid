@@ -118,27 +118,11 @@ struct PieceIcon: View {
 
     private func jumpEnds(of placed: PlacedPiece, gap: ClosedRange<Double>) -> JumpEnds? {
         let samples = placed.centerlineSamples()
-        guard let start = samples.first, let end = samples.last, samples.count > 1 else {
-            return nil
-        }
-        var lengths: [Double] = [0]
-        for index in 1..<samples.count {
-            lengths.append(lengths[index - 1] + samples[index].distance(to: samples[index - 1]))
-        }
-        guard let total = lengths.last, total > 0 else { return nil }
-
-        func point(atFraction fraction: Double) -> Vec2 {
-            let target = fraction * total
-            for index in 1..<samples.count where lengths[index] >= target {
-                let span = lengths[index] - lengths[index - 1]
-                let local = span > 0 ? (target - lengths[index - 1]) / span : 0
-                return samples[index - 1] + (samples[index] - samples[index - 1]) * local
-            }
-            return end
-        }
-        return JumpEnds(
-            start: start, lip: point(atFraction: gap.lowerBound),
-            landing: point(atFraction: gap.upperBound), end: end)
+        guard let start = samples.first, let end = samples.last, samples.count > 1,
+            let lip = placed.point(atFraction: gap.lowerBound),
+            let landing = placed.point(atFraction: gap.upperBound)
+        else { return nil }
+        return JumpEnds(start: start, lip: lip, landing: landing, end: end)
     }
 
     /// A small arrowhead at the piece's ENTRY, pointing the way traffic drives
