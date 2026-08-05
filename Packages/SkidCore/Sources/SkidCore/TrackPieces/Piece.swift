@@ -59,6 +59,36 @@ public struct Piece: Equatable, Sendable {
         self.heightDelta = heightDelta
         self.launches = launches
     }
+
+    /// The stretch of this piece with **no asphalt**, as fractions along it —
+    /// nil for everything that is solid road, which is everything but a jump.
+    ///
+    /// A jump reads as `[ lip ][ ==== air ==== ][ landing ]`, and the lip and
+    /// landing must stay solid: the lip is where the launch line sits (a car has
+    /// to be ON it to be thrown), and the landing is what a car that cleared the
+    /// gap touches down on.
+    ///
+    /// **Sized to the flight the tuning actually provides.** Measured, both parts:
+    ///
+    /// 1. Road is "within a half-width of the centerline", so asphalt reaches a
+    ///    half-width (60) PAST the last solid point as an end cap. The air a car
+    ///    must clear is therefore the flagged span minus 120, not the flagged span
+    ///    — flagging the middle half of a 2U piece left *zero* air, the gap fully
+    ///    paved by the two caps.
+    /// 2. A launch at `launchPerSpeed` against `gravity` carries **35 units at
+    ///    speed 300, 82 at 450, 113 at top speed 520**. So the air has to sit
+    ///    inside ~113 or the jump is uncrossable at any speed: a first attempt at
+    ///    204 units of air launched correctly and still always fell in.
+    ///
+    /// `0.10…0.90` of a 2U piece = 192 flagged, **72 units of air** — cleared from
+    /// roughly 420 up, missed at 300. Earned, not decorative, and not a wall.
+    ///
+    /// A fraction span rather than a length so it holds for any jump piece added
+    /// later — a longer jump is then a new catalog id and nothing more, though it
+    /// would need a faster car or a stronger kick to be clearable at all.
+    public var gapSpan: ClosedRange<Double>? {
+        kind == .jump ? 0.10...0.90 : nil
+    }
 }
 
 extension Array where Element == Piece.Segment {

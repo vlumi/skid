@@ -67,6 +67,21 @@ struct PieceIcon: View {
             path.move(to: first)
             for pt in seg.dropFirst() { path.addLine(to: pt) }
         }
+        // A jump draws as lip · AIR · landing, so the button shows the hole rather
+        // than a straight indistinguishable from the plain one beside it. Taken
+        // from the piece's own `gapSpan`, so the icon cannot drift from the road
+        // the compiler builds.
+        //
+        // The span is INTERPOLATED along the path rather than filtered out of the
+        // samples: a straight has only its two endpoints, so neither of them falls
+        // inside the gap and a sample filter would draw a solid road.
+        if let gap = placed.piece.gapSpan, let ends = jumpEnds(of: placed, gap: gap) {
+            path = Path()
+            path.move(to: screen(ends.start))
+            path.addLine(to: screen(ends.lip))
+            path.move(to: screen(ends.landing))
+            path.addLine(to: screen(ends.end))
+        }
         // Plain road with thin light edges — no kerbs in the palette (kerbs are
         // decoration, and decoration is a later, author-controlled thing).
         //
@@ -89,6 +104,41 @@ struct PieceIcon: View {
             path, with: .color(Color(white: raised ? 0.72 : 0.62)),
             style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
         drawEntryMarker(placed, screen: screen, into: &context)
+    }
+
+    /// The four points a gapped piece draws between: the run onto the lip, and the
+    /// landing onward. Interpolated along the sampled path by distance, so it holds
+    /// for a curved jump if one is ever added.
+    private struct JumpEnds {
+        var start: Vec2
+        var lip: Vec2
+        var landing: Vec2
+        var end: Vec2
+    }
+
+    private func jumpEnds(of placed: PlacedPiece, gap: ClosedRange<Double>) -> JumpEnds? {
+        let samples = placed.centerlineSamples()
+        guard let start = samples.first, let end = samples.last, samples.count > 1 else {
+            return nil
+        }
+        var lengths: [Double] = [0]
+        for index in 1..<samples.count {
+            lengths.append(lengths[index - 1] + samples[index].distance(to: samples[index - 1]))
+        }
+        guard let total = lengths.last, total > 0 else { return nil }
+
+        func point(atFraction fraction: Double) -> Vec2 {
+            let target = fraction * total
+            for index in 1..<samples.count where lengths[index] >= target {
+                let span = lengths[index] - lengths[index - 1]
+                let local = span > 0 ? (target - lengths[index - 1]) / span : 0
+                return samples[index - 1] + (samples[index] - samples[index - 1]) * local
+            }
+            return end
+        }
+        return JumpEnds(
+            start: start, lip: point(atFraction: gap.lowerBound),
+            landing: point(atFraction: gap.upperBound), end: end)
     }
 
     /// A small arrowhead at the piece's ENTRY, pointing the way traffic drives

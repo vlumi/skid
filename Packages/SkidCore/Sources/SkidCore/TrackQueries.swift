@@ -7,11 +7,17 @@ import Foundation
 extension Track {
     /// Distance from `p` to the centerline loop — optionally only the road at
     /// roughly `height`, so a bridge and the road beneath it stay distinct.
+    ///
+    /// **A jump's gap is not road.** Its segments are skipped, so a car over the
+    /// gap is as far from asphalt as one over grass. That is what makes falling in
+    /// possible at all, and it lands here rather than in each caller because this
+    /// is the one function every "am I on the road" question goes through.
     public func distanceToCenterline(
         _ p: Vec2, height: Double? = nil, heightTolerance: Double = Self.surfaceTolerance
     ) -> Double {
         var best = Double.greatestFiniteMagnitude
         for i in centerline.indices {
+            if segmentIsGap(i) { continue }
             if let height, !segment(i, isAt: height, tolerance: heightTolerance) { continue }
             let a = centerline[i]
             let b = centerline[(i + 1) % centerline.count]

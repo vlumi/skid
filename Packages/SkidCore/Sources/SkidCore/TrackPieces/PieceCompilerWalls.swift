@@ -25,6 +25,56 @@ extension PieceCompiler {
     /// railing stretched to the floor made a bridge edge solid in some places
     /// and see-through in others; lifting it to its own level removed the ramp's
     /// side barrier. Two jobs, two walls.
+    /// The walls along ONE drawn road edge: the railing (if the author wanted one)
+    /// and the earth beneath a climb (always, since it is structure).
+    ///
+    /// The offset that built the edge IS its outward direction, so it is recorded
+    /// rather than left for the physics to guess (it cannot — see `Wall.outward`).
+    private static func edgeWalls(
+        along edge: [Vec2], sign: Double, of placed: PlacedPiece,
+        samples: [(point: Vec2, height: Double)], railed: Bool
+    ) -> [Wall] {
+        // A railing needs road to edge: a fence beside thin air (a jump's gap)
+        // guards nothing, and draws a barrier along a hole.
+        let gapSpan = placed.piece.gapSpan
+        let lastSample = Double(max(samples.count - 1, 1))
+        var walls: [Wall] = []
+        for index in 1..<edge.count {
+            // The span's midpoint decides, so the lip's own segment survives.
+            if let gapSpan, gapSpan.contains((Double(index) - 0.5) / lastSample) { continue }
+            let height = (samples[index - 1].height + samples[index].height) / 2
+            let along = edge[index] - edge[index - 1]
+            let outward =
+                along.length > 0
+                ? along.perpendicular.normalized * sign : Vec2.zero
+            // **The railing is the author's choice; the earth is not.** A
+            // railless bridge is a legitimate track — you may drive off the
+            // edge and fall — but the ground beneath a climb is structural
+            // either way, or a car could drive into the flank of thin air.
+            if railed {
+                walls.append(
+                    Wall(
+                        from: edge[index - 1], to: edge[index], height: height,
+                        outward: outward, onClimb: placed.climb != 0))
+            }
+            // A climbing stretch also stands on earth. Same line, same
+            // height — what differs is what it blocks: the railing guards
+            // the road's own level, this fills everything below it.
+            if placed.climb != 0 {
+                // The storey this climb stands on: its lower end, rounded down
+                // to a whole level. A half-climb from 2.0 to 2.5 still stands on
+                // the level-2 deck.
+                let base = (min(placed.entryHeight, placed.exitHeight) + 1e-9)
+                    .rounded(.down)
+                walls.append(
+                    Wall(
+                        from: edge[index - 1], to: edge[index], height: height,
+                        kind: .embankment, outward: outward, base: base))
+            }
+        }
+        return walls
+    }
+
     static func deckRails(
         of placed: PlacedPiece, capHighEnd: Bool = true, railed: Bool = true
     ) -> [Wall] {
@@ -69,40 +119,9 @@ extension PieceCompiler {
         // sample's own height, so the barrier climbs with the slope and a car
         // passing underneath at height 0 never touches it.
         var rails: [Wall] = []
-        // The offset that built each edge IS its outward direction, so record it
-        // rather than leave the physics to guess (it cannot — see `Wall.outward`).
         for (edge, sign) in [(left, 1.0), (right, -1.0)] {
-            for index in 1..<edge.count {
-                let height = (samples[index - 1].height + samples[index].height) / 2
-                let along = edge[index] - edge[index - 1]
-                let outward =
-                    along.length > 0
-                    ? along.perpendicular.normalized * sign : Vec2.zero
-                // **The railing is the author's choice; the earth is not.** A
-                // railless bridge is a legitimate track — you may drive off the
-                // edge and fall — but the ground beneath a climb is structural
-                // either way, or a car could drive into the flank of thin air.
-                if railed {
-                    rails.append(
-                        Wall(
-                            from: edge[index - 1], to: edge[index], height: height,
-                            outward: outward, onClimb: placed.climb != 0))
-                }
-                // A climbing stretch also stands on earth. Same line, same
-                // height — what differs is what it blocks: the railing guards
-                // the road's own level, this fills everything below it.
-                if placed.climb != 0 {
-                    // The storey this climb stands on: its lower end, rounded down
-                    // to a whole level. A half-climb from 2.0 to 2.5 still stands on
-                    // the level-2 deck.
-                    let base = (min(placed.entryHeight, placed.exitHeight) + 1e-9)
-                        .rounded(.down)
-                    rails.append(
-                        Wall(
-                            from: edge[index - 1], to: edge[index], height: height,
-                            kind: .embankment, outward: outward, base: base))
-                }
-            }
+            rails += edgeWalls(
+                along: edge, sign: sign, of: placed, samples: samples, railed: railed)
         }
         // The mouth seal is structural too: it is what stops a car entering a
         // raised road from the level below, which has nothing to do with whether

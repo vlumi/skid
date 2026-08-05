@@ -56,4 +56,34 @@ enum TestTracks {
         // swiftlint:disable:next force_try
         return try! PieceCompiler.compile(layout, id: "steep-bridge")
     }
+
+    /// A closed rectangle with a **jump on the long back straight**, at ground
+    /// level: a run-up long enough to arrive at the lip with real speed.
+    static func jumpRing() -> Track {
+        typealias Catalog = PieceCatalog.ID
+        let pieces: [PieceID] = [
+            Catalog.startGrid, Catalog.longStraight, Catalog.longStraight,
+            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
+            Catalog.longStraight, Catalog.jump, Catalog.longStraight,
+            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
+        ]
+        let layout = TrackLayout(pieces: pieces, gateSeams: [0, 6])
+        // swiftlint:disable:next force_try
+        return try! PieceCompiler.compile(layout, id: "jump-ring")
+    }
+
+    /// The same ring with the jump **raised to a deck**: climb, jump across the
+    /// gap at height 1, descend. Undershooting falls a full storey to the grass.
+    static func elevatedJumpRing() -> Track {
+        typealias Catalog = PieceCatalog.ID
+        let pieces: [PieceID] = [
+            Catalog.startGrid, Catalog.rampUp, Catalog.straight,
+            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
+            Catalog.straight, Catalog.jump, Catalog.straight,
+            Catalog.curve90TightLeft, Catalog.rampDown, Catalog.curve90TightLeft,
+        ]
+        let layout = TrackLayout(pieces: pieces, gateSeams: [0, 6])
+        // swiftlint:disable:next force_try
+        return try! PieceCompiler.compile(layout, id: "elevated-jump-ring")
+    }
 }

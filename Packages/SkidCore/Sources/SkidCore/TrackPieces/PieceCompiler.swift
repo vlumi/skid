@@ -28,6 +28,7 @@ public enum PieceCompiler {
         var centerline = road.centerline
         var heights = road.heights
         var deckTops = road.deckTops
+        var gaps = road.gaps
         let ramps = road.ramps
         let walls = road.walls
         var gates: [Gate] = []
@@ -47,6 +48,7 @@ public enum PieceCompiler {
             centerline.removeLast()
             if heights.count > centerline.count { heights.removeLast() }
             if deckTops.count > centerline.count { deckTops.removeLast() }
+            if gaps.count > centerline.count { gaps.removeLast() }
         }
 
         // Gates: the road cross-section at each marked seam, seams ascending.
@@ -87,6 +89,7 @@ public enum PieceCompiler {
             width: Double(PieceCatalog.width),
             heights: heights,
             deckTops: deckTops,
+            gaps: gaps,
             ramps: ramps,
             walls: walls,
             gates: gates,
@@ -219,6 +222,8 @@ public enum PieceCompiler {
         /// ribbons by, so anything that must stack with the ribbon — a car
         /// mid-climb — can stack by the same rule instead of its raw height.
         var deckTops: [Double] = []
+        /// Which points carry no asphalt (a jump's gap), parallel to `centerline`.
+        var gaps: [Bool] = []
         /// Jump take-off lines only — an ordinary climb is just `heights`.
         var ramps: [Ramp] = []
         var walls: [Wall] = []
@@ -237,15 +242,20 @@ public enum PieceCompiler {
         road.centerline.append(first.entry.position.vec2)
         road.heights.append(first.entryHeight)
         road.deckTops.append(max(first.entryHeight, first.exitHeight))
+        road.gaps.append(false)
 
         for (index, piece) in placed.enumerated() {
             let top = max(piece.entryHeight, piece.exitHeight)
-            for sample in piece.heightedSamples(degreesPerSample: degreesPerSample)
-                .dropFirst()
-            {
+            let samples = piece.heightedSamples(degreesPerSample: degreesPerSample)
+            let gapSpan = piece.piece.gapSpan
+            let last = Double(max(samples.count - 1, 1))
+            for (offset, sample) in samples.enumerated().dropFirst() {
                 road.centerline.append(sample.point)
                 road.heights.append(sample.height)
                 road.deckTops.append(top)
+                // Samples along a jump are evenly spaced (it is a straight), so
+                // the index IS the fraction along the piece.
+                road.gaps.append(gapSpan?.contains(Double(offset) / last) ?? false)
             }
 
             // **Two separate reasons to emit edge walls, and they no longer
@@ -274,13 +284,32 @@ public enum PieceCompiler {
         return road
     }
 
-    /// The take-off line of a jump, across the road at the piece's exit — the lip
-    /// the car leaves from.
+    /// The take-off line of a jump: across the road **at the lip**, where the
+    /// asphalt ends and the gap begins.
+    ///
+    /// **At the ENTRY side, not the exit.** A jump's gap opens just after the
+    /// piece begins, so a line at the exit sits past the landing — the car fell
+    /// into the gap and was thrown only once it had already crossed. (The old
+    /// spelling read `exits[0]`, which was harmless while a "jump" was solid road
+    /// and the line was merely early or late rather than on the wrong side of the
+    /// hole.)
+    ///
+    /// The span is the **scaled** half-width, so an elevated jump's line still
+    /// reaches the edges of its wider drawn road; a flat `width / 2` left a car
+    /// near the edge crossing outboard of the line and never launching.
     private static func launchLine(at placed: PlacedPiece) -> Ramp {
-        let pose = placed.exits[0]
-        let position = pose.position.vec2
-        let forward = Vec2(angle: pose.heading.radians)
-        let side = forward.perpendicular * (Double(PieceCatalog.width) / 2)
+        let entry = placed.entry
+        let forward = Vec2(angle: entry.heading.radians)
+        // Sit at the lip: the fraction where the gap starts, along the piece.
+        let start = placed.piece.gapSpan?.lowerBound ?? 0
+        let samples = placed.centerlineSamples(degreesPerSample: degreesPerSample)
+        let index = min(
+            samples.count - 1, max(0, Int((Double(samples.count - 1) * start).rounded())))
+        let position = samples.isEmpty ? entry.position.vec2 : samples[index]
+        let height = placed.height(atFraction: start)
+        let side =
+            forward.perpendicular * (Double(PieceCatalog.width) / 2)
+            * Elevation.scale(atHeight: height)
         return Ramp(from: position - side, to: position + side, forward: forward)
     }
 
