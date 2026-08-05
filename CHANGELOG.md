@@ -21,6 +21,10 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Track markings line up on raised roads.** The chequered start line, the
+  construction stripes on an unfinished end, and the dashed checkpoint markers all
+  stopped short of the edges of a road that sits high up, where the road is drawn wider.
+
 - **The palette shows whether the next piece will be walled.** Every shape button's
   casing turns the railing's blue when the rails toggle is on, so you can see what you
   are about to lay instead of remembering.

@@ -61,14 +61,25 @@ enum EditorRenderer {
         // The head is piece 0's entry, not the START piece's: the start line is
         // an ordinary piece that may sit anywhere on the ring, so keying off it
         // drew the stub mid-chain on any track that doesn't begin with it.
-        var looseEnds = walk.openEnds
+        // Each end carries the HEIGHT of the piece it belongs to, so its hazard bar is
+        // drawn at the road's own width there. `openEnds` is bare poses, so the height
+        // comes from whichever piece the pose sits on.
+        var looseEnds = walk.openEnds.map { end -> (pose: PiecePose, height: Double) in
+            (end, heightOfEnd(end, in: walk))
+        }
         if !walk.openEnds.isEmpty, let first = walk.placed.first {
             // Facing OUT of the piece (back down the road).
             looseEnds.append(
-                PiecePose(position: first.entry.position, heading: first.entry.heading.reversed))
+                (
+                    PiecePose(
+                        position: first.entry.position, heading: first.entry.heading.reversed),
+                    first.entryHeight
+                ))
         }
         for (i, end) in looseEnds.enumerated() {
-            drawLooseEnd(end, width: width, selected: i == selectedEnd, t: t, into: &context)
+            drawLooseEnd(
+                end.pose, width: width, height: end.height, selected: i == selectedEnd, t: t,
+                into: &context)
         }
     }
 
