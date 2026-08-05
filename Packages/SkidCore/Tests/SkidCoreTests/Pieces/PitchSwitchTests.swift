@@ -16,7 +16,7 @@ final class PitchSwitchTests: XCTestCase {
             pieces: [Pieces.startGrid, Pieces.shortStraight, Pieces.shortStraight],
             pitches: [.flat, .up, .flat], gateSeams: [0, 1])
         let back = try TrackCode.decode(TrackCode.encode(layout))
-        XCTAssertEqual(back, layout)
+        XCTAssertEqual(back, layout.normalized())
     }
 
     /// Three same-pitch shorts: the compound eats two, the switch carries the
@@ -26,7 +26,7 @@ final class PitchSwitchTests: XCTestCase {
             pieces: [Pieces.startGrid] + Array(repeating: Pieces.shortStraight, count: 3),
             pitches: [.flat, .up, .up, .up], gateSeams: [0, 2])
         let back = try TrackCode.decode(TrackCode.encode(layout))
-        XCTAssertEqual(back, layout)
+        XCTAssertEqual(back, layout.normalized())
     }
 
     /// Pitched 45° corners — climbing road that bends — round-trip too.
@@ -38,7 +38,7 @@ final class PitchSwitchTests: XCTestCase {
             ],
             pitches: [.flat, .up, .down, .flat], gateSeams: [0, 2])
         let back = try TrackCode.decode(TrackCode.encode(layout))
-        XCTAssertEqual(back, layout)
+        XCTAssertEqual(back, layout.normalized())
     }
 
     /// Canonical: decode → re-encode is byte identity, switches included.
@@ -58,7 +58,7 @@ final class PitchSwitchTests: XCTestCase {
             pitches: [.flat, .up, .up], gateSeams: [0])
         let code = TrackCode.encode(layout)
         let back = try TrackCode.decode(code)
-        XCTAssertEqual(back, layout)
+        XCTAssertEqual(back, layout.normalized())
         // Same track spelled through the ramp compound: identical bytes.
         let viaCompound = TrackLayout(
             pieces: [Pieces.startGrid] + PieceExpansion.expand(Pieces.rampUp).map(\.id),

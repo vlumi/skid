@@ -25,12 +25,6 @@ extension EditorView {
                 iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
                     resetView()
                 }
-                // Re-center the layout on the canvas. Closing a loop does this
-                // automatically; the button is for tracks built before that, or
-                // reshaped since.
-                iconButton("scope", "Center on canvas") {
-                    game.editorCenterOnCanvas()
-                }
                 // Copy the share code out — how a design becomes a built-in, or
                 // gets kept somewhere until there's a real track library. The icon
                 // flips to a tick to confirm, since there's no text to change.

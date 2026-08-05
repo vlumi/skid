@@ -54,7 +54,7 @@ final class PieceModelAcceptanceTests: XCTestCase {
         // track matches.
         let code = TrackCode.encode(layout)
         let back = try TrackCode.decode(code)
-        XCTAssertEqual(back, layout)
+        XCTAssertEqual(back, layout.normalized())
     }
 
     /// A ramp exercises elevation end to end: start, climb to the bridge deck,
