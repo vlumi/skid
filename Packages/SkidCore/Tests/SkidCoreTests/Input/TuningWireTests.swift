@@ -19,7 +19,6 @@ final class TuningWireTests: XCTestCase {
         settings.wallDragFloor = stock.wallDragFloor
         settings.wallYaw = stock.wallYaw
         settings.gravity = stock.gravity
-        settings.launchPerSpeed = stock.launchPerSpeed
         return settings
     }
 
@@ -46,12 +45,10 @@ final class TuningWireTests: XCTestCase {
     func testTheAirKnobsReachCarTuning() {
         let settings = stockSettings()
         settings.gravity = 27
-        settings.launchPerSpeed = 0.007
         settings.pace = 1.0
 
         let tuning = settings.carTuning
         XCTAssertEqual(tuning.gravity, 27, accuracy: 1e-9)
-        XCTAssertEqual(tuning.launchPerSpeed, 0.007, accuracy: 1e-9)
     }
 
     /// A moved air knob is non-stock as well: it changes lap times, so a
@@ -61,13 +58,6 @@ final class TuningWireTests: XCTestCase {
         XCTAssertTrue(settings.isStockPhysics)
         settings.gravity = 30
         XCTAssertFalse(settings.isStockPhysics, "gravity changes how long a fall costs")
-
-        let other = stockSettings()
-        // DERIVED from stock, not a literal: this was `0.008`, which silently became
-        // the stock default when the jump's gap grew to a road width — so the test
-        // was asserting that the default is not the default.
-        other.launchPerSpeed = CarTuning().launchPerSpeed * 2
-        XCTAssertFalse(other.isStockPhysics, "so does how far a jump goes")
     }
 
     /// And a moved wall knob counts as non-stock, so hiscores stay honest.

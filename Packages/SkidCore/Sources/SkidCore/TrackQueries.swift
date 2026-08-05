@@ -23,14 +23,39 @@ extension Track {
         _ p: Vec2, height: Double? = nil, heightTolerance: Double = Self.surfaceTolerance
     ) -> Double {
         var best = Double.greatestFiniteMagnitude
+        let count = centerline.count
         for i in centerline.indices {
             if segmentIsGap(i) { continue }
             if let height, !segment(i, isAt: height, tolerance: heightTolerance) { continue }
             let a = centerline[i]
-            let b = centerline[(i + 1) % centerline.count]
-            best = min(best, p.distance(toSegment: a, b))
+            let b = centerline[(i + 1) % count]
+            // **Asphalt does not overhang a gap.** Distance-to-segment clamps at the
+            // endpoints, so a segment's end cap bulges a half-width PAST the last
+            // solid point — which paves the first 60 units of any gap from each
+            // side, and paves a short gap over entirely. Where a segment ends at a
+            // gap it is cut off square instead, which is what a road edge looks like
+            // and what lets a car actually drop off one.
+            let cutStart = segmentIsGap((i - 1 + count) % count)
+            let cutEnd = segmentIsGap((i + 1) % count)
+            best = min(best, distance(from: p, toSegment: a, b, squareAt: (cutStart, cutEnd)))
         }
         return best
+    }
+
+    /// Distance from `p` to segment `a`–`b`, with either end optionally cut SQUARE
+    /// rather than capped: past a square end the segment simply does not exist, so
+    /// nothing beyond it counts as road.
+    private func distance(
+        from p: Vec2, toSegment a: Vec2, _ b: Vec2, squareAt cut: (start: Bool, end: Bool)
+    ) -> Double {
+        guard cut.start || cut.end else { return p.distance(toSegment: a, b) }
+        let along = b - a
+        let lengthSquared = along.dot(along)
+        guard lengthSquared > 1e-9 else { return p.distance(to: a) }
+        let t = (p - a).dot(along) / lengthSquared
+        if cut.start, t < 0 { return .greatestFiniteMagnitude }
+        if cut.end, t > 1 { return .greatestFiniteMagnitude }
+        return p.distance(toSegment: a, b)
     }
 
     /// Whether `distanceToCenterline` found any road at all. False means "nothing

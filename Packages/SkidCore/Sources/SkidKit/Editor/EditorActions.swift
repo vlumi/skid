@@ -29,6 +29,27 @@ extension CouchGame {
         }
     }
 
+    /// **Step the trailing warp**, as one undoable edit that keeps the build end
+    /// selected.
+    ///
+    /// Routed through the same machinery as an append rather than writing the layout
+    /// directly, which is what an earlier version did — and that lost the selection
+    /// every time. A warp becomes the LAST piece, so the previously selected piece
+    /// stopped being the tail, `editorFreeEnds` returned nothing, and the whole
+    /// palette greyed out: you could drop the road and then not build from it.
+    @discardableResult
+    func editorApplyWarpStep(deeper: Bool) -> Bool {
+        recordingUndo {
+            guard let layout = editorLayout else { return false }
+            guard let stepped = deeper ? layout.warpedDeeper() : layout.warpedShallower()
+            else { return false }
+            editorLayout = stepped
+            followBuildEnd()
+            finishIfClosed()
+            return true
+        }
+    }
+
     /// Append a suggested closing run **atomically**. The run was validated as a
     /// unit by the search, so it lands as a unit — applying it piece by piece
     /// would re-judge every prefix and silently drop the tail if any single

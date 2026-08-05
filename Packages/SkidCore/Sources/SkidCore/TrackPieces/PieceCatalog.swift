@@ -46,21 +46,6 @@ public enum PieceCatalog {
     public static let straight = 2 * unit  // 240
     public static let longStraight = 4 * unit  // 480
 
-    /// The jump's span — **4U**, set by geometry rather than taste.
-    ///
-    /// A jump has to hold a lip, air at least one road width across, and a landing;
-    /// and a road laid THROUGH that air has to land on the lattice like everything
-    /// else. Road width is exactly 1U, so:
-    ///
-    /// - **2U** offers at most 96 units of air (asphalt reaches a half-width past
-    ///   each lip), under one road width however it is flagged.
-    /// - **3U** is wide enough for the air but has nowhere to put the crossing: its
-    ///   only interior lattice positions are 1U and 2U, each 120 from an end, where
-    ///   the crossing's own half-width meets the lip's end cap with zero clearance.
-    /// - **4U** puts the crossing at 2U — dead centre, symmetric, with exactly one
-    ///   road width of clear air at `gapSpan` 0.25…0.75.
-    public static let jumpSpan = 4 * unit  // 480
-
     /// The whole v1 catalog, keyed by id.
     public static let all: [PieceID: Piece] = {
         var c: [PieceID: Piece] = [:]
@@ -177,13 +162,17 @@ public enum PieceCatalog {
                     ]))
         }
 
-        // Jump (launch lip · gap · landing) — one 4U span, launches. The width is
-        // forced by wanting a road to fit through the gap ON THE LATTICE; see
-        // `jumpSpan`.
-        add(
-            Piece(
-                id: ID.jump, kind: .jump, paths: [[.straight(length: jumpSpan)]],
-                launches: true))
+        // **Gap: 1U of no road.** Chain them for a longer gap; pitch each one down
+        // to descend across it. There is no `launches` flag and no launch line — a
+        // car flies because it drove off a WEDGE (see `TrackLayout.walk`), which is
+        // real slope becoming real vertical speed rather than an invisible trigger
+        // on flat asphalt.
+        add(Piece(id: ID.gap, kind: .gap, paths: [[.straight(length: shortStraight)]]))
+
+        // The vertical warp: ZERO length, so the walk's pose is unchanged and only
+        // the height moves. Registered with a zero-length straight exactly like the
+        // fitter, which keeps anything that walks the catalog blind to it.
+        add(Piece(id: ID.warp, kind: .warp, paths: [[.straight(length: 0)]]))
 
         // 128–130 decal variants: straights with a driving-direction arrow —
         // identical geometry to the plain straights, different look (two-byte
@@ -286,10 +275,19 @@ public enum PieceCatalog {
         public static let joinStraightLeft: PieceID = 37
         public static let joinStraightRight: PieceID = 38
         public static let joinSymmetric: PieceID = 39
-        public static let jump: PieceID = 40
+        /// **A gap: 1U of no road at all.** Chain them for a longer gap; pitch each
+        /// one down to descend across it.
+        public static let gap: PieceID = 40
         /// The fitting piece — a curve-straight-curve jog whose shape is SOLVED
         /// and stored per placement, not fixed by the catalog. See `Fitter`.
         public static let fitter: PieceID = 41
+        /// **A vertical warp: the road continues LOWER, at the same place.**
+        ///
+        /// Zero length, so it moves nothing horizontally — it only says where the
+        /// next piece sits. The amount is a per-placement attribute (`warpDrop`),
+        /// not a piece per depth, and it is DOWN only: nothing lifts a car, so an
+        /// upward warp would be a road that teleports.
+        public static let warp: PieceID = 42
     }
 
     /// The start-grid piece id — exactly one per track.

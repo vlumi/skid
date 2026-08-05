@@ -80,6 +80,15 @@ public enum TrackCode {
         /// is no value byte to pair with it. Sparse and omitted entirely when a
         /// track has no railings at all.
         case railed = 8
+        /// **How far each warp piece drops the road**, two bytes per warp: the piece
+        /// index, then the drop in signed HALF-LEVELS (the same quantum `baseHeight`
+        /// uses). Two bytes rather than a packed field because a warp is rare — a
+        /// track has a handful at most — and a plain pair is far easier to read back
+        /// than bit-fiddling for the sake of a byte nobody notices.
+        ///
+        /// A warp with no entry drops one level, so the common deck-to-ground jump
+        /// costs nothing to encode.
+        case warpDrops = 9
         /// A 32-byte raw Ed25519 public key — who signed this. High on purpose:
         /// tags cost the same wherever they sit, so the low contiguous range
         /// stays for CONTENT and the top holds the envelope.
@@ -135,6 +144,10 @@ public enum TrackCode {
         }
         if !layout.railed.isEmpty {
             appendSection(&body, .railed, encodeRailed(layout.railed, count: layout.pieces.count))
+        }
+        let warps = encodeWarpDrops(layout.warpDrops, count: layout.pieces.count)
+        if !warps.isEmpty {
+            appendSection(&body, .warpDrops, warps)
         }
         if layout.originHeight != 0 {
             let halves = Int((layout.originHeight / (Track.levelHeight / 2)).rounded())
@@ -206,6 +219,8 @@ public enum TrackCode {
                 try decodeDecals($0, count: pieces.count)
             } ?? [:]
         let railed = sections[.railed].map { decodeRailed($0, count: pieces.count) } ?? []
+        let warpDrops =
+            sections[.warpDrops].map { decodeWarpDrops($0, count: pieces.count) } ?? [:]
         // Hostile input: a baseline outside the world's storeys is refused here,
         // before anything walks or allocates.
         guard Track.withinLevels(originHeight) else { throw DecodeError.tooLarge }
@@ -213,7 +228,7 @@ public enum TrackCode {
         return TrackLayout(
             pieces: pieces, pitches: pitches, origin: origin, originHeight: originHeight,
             gateSeams: gates, theme: theme, fitters: fitters, decals: decals,
-            railed: railed)
+            railed: railed, warpDrops: warpDrops)
     }
 
     /// Parse the TLV body into known sections, bounds-checking every step.
@@ -255,105 +270,6 @@ public enum TrackCode {
         body.append(tag.rawValue)
         body.append(UInt8(payload.count))
         body.append(contentsOf: payload)
-    }
-
-    /// Piece ids as varints: 0…127 one byte; ≥128 a two-byte big-endian value
-    /// with the high bit of the first byte set (15-bit, ~32k ids).
-    /// Fitters as 8 bytes each, sorted by index so the encoding is canonical:
-    /// index, then radius-and-side packed into one byte, then the angle and the
-    /// middle length as 24-bit big-endian fixed point.
-    ///
-    /// The quantization is NOT applied here — a solved fitter is already snapped
-    /// to this grid (see `Fitter.quantized`), so encoding is lossless and the
-    /// shape a decoder walks is exactly the shape the author's device walked.
-    private static func encodeFitters(_ fitters: [Int: Fitter]) -> [UInt8] {
-        var out: [UInt8] = []
-        for (index, fitter) in fitters.sorted(by: { $0.key < $1.key }) {
-            out.append(UInt8(truncatingIfNeeded: index))
-            let radius = fitter.radiusIndex ?? 0
-            out.append(UInt8(radius) | (fitter.stepsLeft ? 0x80 : 0))
-            out.append(contentsOf: bytes24(Fitter.quantizedAngle(fitter.angle)))
-            out.append(contentsOf: bytes24(Fitter.quantizedLength(fitter.length)))
-        }
-        return out
-    }
-
-    /// Two bytes per decal: piece index, then the decal's raw value. Sorted by
-    /// index so the bytes are canonical, and entries outside the piece list are
-    /// dropped rather than encoded — a decal on a piece that isn't there is not a
-    /// track feature, it's a stale key.
-    /// Railed piece indices, ascending so one layout has one spelling.
-    private static func encodeRailed(_ railed: Set<Int>, count: Int) -> [UInt8] {
-        railed.sorted().filter { (0..<count).contains($0) }
-            .map { UInt8(truncatingIfNeeded: $0) }
-    }
-
-    /// Railings from their section, hostile input assumed: an index past the
-    /// pieces is dropped rather than trusted. Duplicates collapse — it is a set.
-    private static func decodeRailed(_ bytes: [UInt8], count: Int) -> Set<Int> {
-        Set(bytes.map(Int.init).filter { (0..<count).contains($0) })
-    }
-
-    private static func encodeDecals(_ decals: [Int: Decal], count: Int) -> [UInt8] {
-        var out: [UInt8] = []
-        for (index, decal) in decals.sorted(by: { $0.key < $1.key })
-        where (0..<count).contains(index) {
-            out.append(UInt8(truncatingIfNeeded: index))
-            out.append(UInt8(truncatingIfNeeded: decal.rawValue))
-        }
-        return out
-    }
-
-    /// Decals from their section, hostile input assumed: a wrong length, an index
-    /// past the pieces, or an unknown decal id is dropped rather than trusted.
-    private static func decodeDecals(_ bytes: [UInt8], count: Int) throws -> [Int: Decal] {
-        guard bytes.count % 2 == 0 else { throw DecodeError.badDecal }
-        var out: [Int: Decal] = [:]
-        for pair in stride(from: 0, to: bytes.count, by: 2) {
-            let index = Int(bytes[pair])
-            guard (0..<count).contains(index), let decal = Decal(rawValue: Int(bytes[pair + 1]))
-            else { continue }
-            out[index] = decal
-        }
-        return out
-    }
-
-    private static func decodeFitters(
-        _ payload: [UInt8], pieceCount: Int
-    ) throws -> [Int: Fitter] {
-        guard payload.count % 8 == 0 else { throw DecodeError.badFitter }
-        var out: [Int: Fitter] = [:]
-        for start in stride(from: 0, to: payload.count, by: 8) {
-            let index = Int(payload[start])
-            // The index must address a real piece: a shape with nothing to attach
-            // to is malformed, not merely unused.
-            guard index < pieceCount else { throw DecodeError.badFitter }
-            let radiusByte = payload[start + 1]
-            let radiusIndex = Int(radiusByte & 0x7F)
-            guard Fitter.radii.indices.contains(radiusIndex) else {
-                throw DecodeError.badFitter
-            }
-            let angle = Fitter.dequantizedAngle(
-                value24(payload[(start + 2)..<(start + 5)]))
-            let length = Fitter.dequantizedLength(
-                value24(payload[(start + 5)..<(start + 8)]))
-            out[index] = Fitter(
-                radius: Fitter.radii[radiusIndex], angle: angle, length: length,
-                stepsLeft: radiusByte & 0x80 != 0)
-        }
-        return out
-    }
-
-    private static func bytes24(_ value: Int) -> [UInt8] {
-        [
-            UInt8(truncatingIfNeeded: value >> 16),
-            UInt8(truncatingIfNeeded: value >> 8),
-            UInt8(truncatingIfNeeded: value),
-        ]
-    }
-
-    private static func value24(_ slice: ArraySlice<UInt8>) -> Int {
-        slice.reduce(0) { ($0 << 8) | Int($1) }
     }
 
     private static func encodeVarintIDs(_ ids: [PieceID]) -> [UInt8] {

@@ -22,8 +22,12 @@ public struct Piece: Equatable, Sendable {
         /// One entry, two exits — a route fork (join is the mirrored piece,
         /// still authored as two entries → one exit, encoded reversed).
         case fork
-        /// Launch lip · road gap · landing; the gap may be crossed beneath.
-        case jump
+        /// **No road at all** — a gap. Chain them for a longer gap; a road may run
+        /// beneath. A gap has no height effect of its own: what moves the road
+        /// between levels is a `warp`.
+        case gap
+        /// **A vertical warp** — zero length, drops the road to a lower level.
+        case warp
     }
 
     /// How the centerline is shaped between entry and an exit.
@@ -46,49 +50,29 @@ public struct Piece: Equatable, Sendable {
     /// layer — collision and rendering both derive from height. Height rises
     /// with smoothstep easing across the piece (see `PlacedPiece.height`).
     public var heightDelta: Double
-    /// A launching ramp / jump throws the car into flight.
-    public var launches: Bool
 
     public init(
-        id: PieceID, kind: Kind = .road, paths: [[Segment]],
-        heightDelta: Double = 0, launches: Bool = false
+        id: PieceID, kind: Kind = .road, paths: [[Segment]], heightDelta: Double = 0
     ) {
         self.id = id
         self.kind = kind
         self.paths = paths
         self.heightDelta = heightDelta
-        self.launches = launches
     }
 
-    /// The stretch of this piece with **no asphalt**, as fractions along it —
-    /// nil for everything that is solid road, which is everything but a jump.
+    /// The stretch of this piece with **no asphalt** — the whole of a gap, and
+    /// nothing on anything else.
     ///
-    /// A jump reads as `[ lip ][ ==== air ==== ][ landing ]`, and the lip and
-    /// landing must stay solid: the lip is where the launch line sits (a car has
-    /// to be ON it to be thrown), and the landing is what a car that cleared the
-    /// gap touches down on.
+    /// A gap is absence only: it has no height effect and no launch of its own. A
+    /// car flies over one because it drove off a **wedge** (a climb with nothing
+    /// above it keeps its full slope — see `TrackLayout.walk`), and lands wherever
+    /// the road resumes, which a `warp` decides. Real slope becoming real vertical
+    /// speed, rather than an invisible trigger on flat asphalt.
     ///
-    /// **The middle half of the piece**, which on a 4U jump is exactly one road
-    /// width of clear air. Measured, in three parts:
-    ///
-    /// 1. Road is "within a half-width of the centerline", so asphalt reaches a
-    ///    half-width (60) PAST the last solid point as an end cap. The air a car
-    ///    must clear is the flagged span minus 120, not the flagged span — which is
-    ///    why the same middle-half fraction left *zero* air on a 2U piece, the gap
-    ///    fully paved by the two caps.
-    /// 2. The gap must hold a **crossing road**, aligned on the lattice like
-    ///    everything else. That forces 4U (see `PieceCatalog.jumpSpan`) and puts the
-    ///    crossing at 2U, dead centre.
-    /// 3. A launch at `launchPerSpeed` against `gravity` must clear those 120 units
-    ///    from racing speed but not from a crawl. At 0.008 a car flies 140 at speed
-    ///    400 and 233 at top speed — so the gap goes from missed to cleared at
-    ///    around 430, and the apex is 0.48 levels: a visible hop.
-    ///
-    /// A fraction span rather than a length so it holds for any jump piece added
-    /// later — a longer jump is then a new catalog id and nothing more, though it
-    /// would need a stronger kick to stay clearable.
+    /// A fraction span rather than a length, so a longer gap is a new catalog id
+    /// and nothing more.
     public var gapSpan: ClosedRange<Double>? {
-        kind == .jump ? 0.25...0.75 : nil
+        kind == .gap ? 0...1 : nil
     }
 }
 

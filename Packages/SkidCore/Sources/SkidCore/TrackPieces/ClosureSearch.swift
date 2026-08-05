@@ -63,10 +63,12 @@ struct ClosureSearch {
         // below it (drop half a level mid-loop and you must climb back). The
         // per-node height bounds keep everything inside the world's storeys, so
         // offering both directions can't wander out of range.
+        // `kind == .road` is what keeps gaps and warps out: the search closes a
+        // loop with drivable road, and a hole or a vertical step is an authoring
+        // choice rather than something to fill a gap with.
         let level =
             PieceCatalog.all
             .filter { $0.key != PieceCatalog.startPieceID && $0.value.kind == .road }
-            .filter { !$0.value.launches }
         candidates =
             (level.filter { $0.value.heightDelta == 0 }
             .flatMap { entry -> [Candidate] in

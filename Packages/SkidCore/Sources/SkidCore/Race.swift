@@ -195,16 +195,6 @@ public struct Race: Equatable, Sendable {
     /// A launch line still throws the car, since that IS an event at a place.
     private func applyRamps(car: inout Car, movedFrom from: Vec2) {
         guard !car.state.isAirborne else { return }
-        for ramp in track.ramps where ramp.crossing(movingFrom: from, to: car.state.position) == 1 {
-            // Kick scaled by speed, so distance stays QUADRATIC in speed — a
-            // fixed kick would give the same flight time at any speed, making
-            // a gap far easier to clear slowly.
-            car.state.verticalSpeed = car.state.velocity.length * tuning.launchPerSpeed
-            car.state.airborneTicks = 1
-            // Same tick-ordering reason as a fall: rise now, not next tick.
-            car.state.height += car.state.verticalSpeed * Race.dt
-        }
-        guard !car.state.isAirborne else { return }
 
         // **Only the road the car is physically standing on may carry it** — the
         // nearest road AT the car's own height, within the real asphalt
