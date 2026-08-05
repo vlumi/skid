@@ -71,18 +71,21 @@ extension EditorView {
         return Button {
             game.editorRailNewPieces.toggle()
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: on ? "road.lanes" : "road.lanes.curved.right")
-                Text("Rails", bundle: .module)
-            }
-            .font(.footnote.bold())
-            .foregroundStyle(on ? .black : .white)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 7)
-            .background(on ? EditorRenderer.bridgeRail : .black.opacity(0.55), in: Capsule())
-            .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 1))
-            .contentShape(Capsule())
+            Image(systemName: on ? "road.lanes" : "road.lanes.curved.right")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(on ? .black : .white)
+                .frame(width: 34, height: 26)
+                .background(
+                    on ? Color.white : .black.opacity(0.4),
+                    in: RoundedRectangle(cornerRadius: 7)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(.white.opacity(on ? 0.9 : 0.3), lineWidth: 1)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 7))
         }
+        .buttonStyle(.plain)
         .accessibilityLabel(
             Text(on ? "Stop railing new pieces" : "Rail new pieces", bundle: .module))
     }

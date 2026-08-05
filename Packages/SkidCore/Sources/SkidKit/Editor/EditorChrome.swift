@@ -58,17 +58,31 @@ extension EditorView {
                 // rather than floated over the map, so they can't collide with
                 // the palette on a small screen (a corner-anchored pad landed
                 // right on top of it on an SE).
-                HStack(spacing: 8) {
-                    let building = game.editorMode == .build
-                    if building { transformPad }
-                    Spacer()
-                    if building {
-                        railBuildToggle
+                // Two rows, grouped by what they act on. Nothing here floats over
+                // the map: chrome on the road is what caused accidental deletes.
+                let building = game.editorMode == .build
+                if building {
+                    // The SELECTED PIECE, in a fixed place so the bin never moves.
+                    HStack(spacing: 8) {
+                        selectionRow
+                        Spacer()
                         levelsToggle
+                        modeToggle
                     }
-                    modeToggle
+                    .padding(.horizontal, 12)
+                    // The whole track, and the edit history.
+                    HStack(spacing: 8) {
+                        transformPad
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                } else {
+                    HStack(spacing: 8) {
+                        Spacer()
+                        modeToggle
+                    }
+                    .padding(.horizontal, 12)
                 }
-                .padding(.horizontal, 12)
                 if game.editorMode == .gate {
                     gateModeHint(walk)
                 } else {

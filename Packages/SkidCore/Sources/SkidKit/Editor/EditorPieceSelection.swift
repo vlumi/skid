@@ -15,37 +15,42 @@ extension EditorView {
         walk.piece(nearWorld: transform.world(point), onlyLevel: onlyLevel)
     }
 
-    /// Delete, anchored ON the selected piece rather than at a fixed spot.
+    /// **What you can do to the selected piece** — delete it, mark it, rail it.
     ///
-    /// No build-end arrows: a piece has at most one free end (head at index 0, tail
-    /// at the last), and selecting it already chooses that end — so the arrow was
-    /// always the already-active one and tapping it did nothing. The construction
-    /// marker shows which end is live.
+    /// A FIXED row, not chrome floating on the map. It used to sit 34 pt above the
+    /// selected piece, which is over the road you tap next: reported as deleting a
+    /// piece by accident while reaching for another. A fixed row also makes trimming
+    /// fast, since the bin does not move between taps.
+    ///
+    /// Buttons are DISABLED rather than absent when nothing is selected, so the row
+    /// never reflows and the bin is always in the same place.
     @ViewBuilder
-    func selectionChrome(walk: WalkResult, transform: EditorRenderer.Transform) -> some View {
-        if let index = game.editorSelectedPiece, walk.placed.indices.contains(index) {
-            let placed = walk.placed[index]
-            let anchor = transform.screen(placed.centerlineSamples().midpointSample)
-            HStack(spacing: 8) {
-                // Markings live behind a long press, not a second button: they are
-                // a rarely-used variant, and the map has little room to spare.
-                // (The plan's long-press-a-laid-piece, reached via the selection
-                // rather than a raw map gesture — SpatialTapGesture is what carries
-                // a location, and LongPressGesture does not.)
-                if game.editorCanDeleteSelected {
-                    mapAction("trash", tint: .white, label: "Delete piece") {
-                        game.editorDeleteSelected()
-                    }
-                }
-                mapAction(
-                    game.editorLayout?.decal(at: index) == nil
-                        ? "paintbrush" : "paintbrush.fill",
-                    tint: .white, label: "Piece markings"
-                ) {
-                    configuring = .piece(index)
-                }
+    var selectionRow: some View {
+        let index = game.editorSelectedPiece
+        let hasPiece =
+            index.map { game.editorLayout?.pieces.indices.contains($0) ?? false }
+            ?? false
+        HStack(spacing: 6) {
+            mapAction(
+                "trash", tint: .white, label: "Delete piece",
+                enabled: game.editorCanDeleteSelected
+            ) {
+                game.editorDeleteSelected()
             }
-            .position(x: anchor.x, y: anchor.y - 34)
+            mapAction(
+                index.flatMap { game.editorLayout?.decal(at: $0) } == nil
+                    ? "paintbrush" : "paintbrush.fill",
+                tint: .white, label: "Piece markings", enabled: hasPiece
+            ) {
+                if let index { configuring = .piece(index) }
+            }
+            mapAction(
+                index.map { game.editorIsRailed(at: $0) } == true
+                    ? "road.lanes" : "road.lanes.curved.right",
+                tint: .white, label: "Railings on this piece", enabled: hasPiece
+            ) {
+                if let index { game.editorToggleRail(at: index) }
+            }
         }
     }
 }

@@ -17,10 +17,17 @@ extension EditorView {
             // RADIUS picker sits against the corner pair, the one thing it
             // modifies. Both pickers are direct: three fixed options, a tap
             // beats a swipe.
-            triStack(values: [Pitch.up, .flat, .down], current: buildPitch) {
-                buildPitch = $0
-            } content: { value in
-                pitchGlyph(value)
+            VStack(spacing: 6) {
+                triStack(values: [Pitch.up, .flat, .down], current: buildPitch) {
+                    buildPitch = $0
+                } content: { value in
+                    pitchGlyph(value)
+                }
+                // RAILS beside pitch, for the same reason pitch is here: both
+                // configure the NEXT PIECE LAID rather than changing what a tap
+                // means. It used to sit in the mode row, which made it look like a
+                // mode; adjacency implies scope, as the comment above says.
+                railBuildToggle
             }
             .padding(.trailing, 8)
             // Radius UNDER the corner pair, exactly their width: the setting
@@ -226,11 +233,14 @@ extension EditorView {
                             decalOption(decal, at: index, chosen: current == decal)
                         }
                     }
-                    // Railings live here rather than in a mode of their own: this
-                    // sheet is already the selected piece's properties, and a
-                    // railing is one more property of a laid piece.
-                    railOption(at: index)
                 }
+            }
+        // Railings are NOT here any more: they moved to the fixed selection row, so
+        // toggling one is a single tap rather than select-open-check-close. This sheet
+        // is only for the things that genuinely need a picker.
+        case .transform:
+            configurationBody(Text("Transform track", bundle: .module)) {
+                transformSheet
             }
         case nil:
             EmptyView()
@@ -334,51 +344,19 @@ extension EditorView {
         }
     }
 
-    /// **Whole-track transforms: turn either way, raise, lower.**
+    /// **Undo, redo, and everything else behind one button.**
     ///
-    /// These act on the track as a whole, so they don't belong among the top
-    /// bar's file actions (Done / New / Copy / Paste) — and that row is already
-    /// tight on a small phone. One row of four, laid out above the hint line
-    /// rather than floated over the map: a 2×2 pad anchored to a map corner sat
-    /// right on top of the palette on an SE, and a second row of buttons costs
-    /// the vertical space that screen is short of.
+    /// This was seven buttons in a row, and they are not alike: rotate, raise, lower
+    /// and reverse are laid-out-ONCE operations, while undo and redo are used on every
+    /// edit. Lumping them by object rather than by frequency is what made the row too
+    /// wide — measured, this row wanted 478 pt on the 320 pt screen the project designs
+    /// for, which is the reported "buttons and their labels don't fit at all anymore".
     ///
-    /// Raise/lower gray out when the shift would push any part of the track out
-    /// of the world's storeys — most of the time, once a track climbs a full
-    /// level.
+    /// So the five rare transforms collapse behind one button, and the two constant
+    /// ones stay out where they can be hit without looking.
     @ViewBuilder
     var transformPad: some View {
         HStack(spacing: 6) {
-            // +eighths is counterclockwise in the ring but CLOCKWISE on screen:
-            // the canvas is y-down and `screen()` doesn't flip. Hence the signs.
-            mapAction("rotate.left", tint: .white, label: "Rotate 45° left") {
-                game.editorRotate(eighths: -1)
-            }
-            mapAction("rotate.right", tint: .white, label: "Rotate 45° right") {
-                game.editorRotate(eighths: 1)
-            }
-            mapAction(
-                "arrow.up.to.line", tint: .white, label: "Raise track",
-                enabled: game.canShiftHeight(steps: 1)
-            ) {
-                game.editorShiftHeight(steps: 1)
-            }
-            mapAction(
-                "arrow.down.to.line", tint: .white, label: "Lower track",
-                enabled: game.canShiftHeight(steps: -1)
-            ) {
-                game.editorShiftHeight(steps: -1)
-            }
-            // Reversing is a whole-track transform like rotating: same road, driven
-            // the other way. Only a closed ring has a settled direction to flip.
-            mapAction(
-                "arrow.triangle.2.circlepath", tint: .white, label: "Reverse direction",
-                enabled: game.editorCanReverseDirection
-            ) {
-                game.editorReverseDirection()
-            }
-            // Undo/redo sit with the other whole-track actions because that is
-            // what they are — every edit is undoable, not just piece placement.
             mapAction(
                 "arrow.uturn.backward", tint: .white, label: "Undo",
                 enabled: game.editorCanUndo
@@ -391,8 +369,24 @@ extension EditorView {
             ) {
                 game.editorRedo()
             }
+            mapAction(
+                "slider.horizontal.below.rectangle", tint: .white,
+                label: "Transform the whole track"
+            ) {
+                configuring = .transform
+            }
         }
     }
+
+    /// The whole-track transforms, in a sheet: turn either way, raise, lower, reverse.
+    ///
+    /// Behind a button because they are used once, when a track is first laid out —
+    /// see `transformPad`. A sheet rather than a popover so the labels fit, which is
+    /// the whole reason they left the row.
+    ///
+    /// Raise/lower gray out when the shift would push any part of the track out of the
+    /// world's storeys — most of the time, once a track climbs a full level.
+    @ViewBuilder
 
     func mapAction(
         _ symbol: String, tint: Color, label: LocalizedStringKey, enabled: Bool = true,

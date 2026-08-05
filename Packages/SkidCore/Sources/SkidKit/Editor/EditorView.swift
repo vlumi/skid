@@ -44,11 +44,15 @@ struct EditorView: View {
         /// A LAID piece's variants — decals, and the start line's facing. Applied
         /// in place: same geometry, different markings.
         case piece(Int)
+        /// The whole-track transforms — rotate, raise, lower, reverse. Behind a sheet
+        /// because they are laid-out-once operations; see `transformPad`.
+        case transform
 
         var id: String {
             switch self {
             case .hotbar(let slot): return "hotbar\(slot)"
             case .piece(let index): return "piece\(index)"
+            case .transform: return "transform"
             }
         }
     }
@@ -139,12 +143,12 @@ struct EditorView: View {
                 // into the insets drew the road a fixed distance below where taps
                 // landed. The grass behind it still fills the screen.
 
-                // Close-it sits ON the map at the loose end; delete and the build
-                // arrows sit on the SELECTED piece. Both are build actions, so
-                // they're gone while gating.
+                // Close-it still sits ON the map, at the loose end it acts on —
+                // there is nowhere else that means "join these two ends". The piece
+                // actions moved OFF the map into a fixed row (see `selectionRow`),
+                // because chrome over the road is what caused accidental deletes.
                 if game.editorMode == .build {
                     mapActions(walk: walk, transform: transform)
-                    selectionChrome(walk: walk, transform: transform)
                 }
                 topBar
                 paletteBar(walk: walk)
