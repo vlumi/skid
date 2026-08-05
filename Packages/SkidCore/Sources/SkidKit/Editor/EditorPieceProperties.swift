@@ -62,6 +62,61 @@ extension EditorView {
         }
     }
 
+    /// **Step the road down a level, where it stands.**
+    ///
+    /// There is no warp piece to place: a warp occupies no ground, so it is an
+    /// ACTION on the loose end rather than a shape you position. Down deepens (the
+    /// first tap creates it), up shallows and removes it at zero, so the two arrows
+    /// are each other's inverse and a single warp is all that is ever stored.
+    ///
+    /// Down only, because nothing lifts a car: a road that warped upward could not
+    /// be driven. Up here undoes a drop rather than climbing — that is what `pitch`
+    /// is for.
+    ///
+    /// Takes the **current build height** so it can be shown between the arrows:
+    /// "which level am I on?" is otherwise unanswerable while building, and it is
+    /// the number both arrows move. Always visible, not only while a warp exists —
+    /// knowing you are on the deck matters just as much when laying plain road.
+    func warpStepper(height: Double) -> some View {
+        HStack(spacing: 2) {
+            warpArrow(deeper: false, symbol: "chevron.up")
+            buildHeightReadout(height)
+            warpArrow(deeper: true, symbol: "chevron.down")
+        }
+    }
+
+    /// The build height in **levels**, as the author counts them: whole numbers where
+    /// the road is on a storey, one decimal on a half-level (pitch's own quantum), so
+    /// "1.5" reads as mid-climb rather than as a rounding artifact.
+    private func buildHeightReadout(_ height: Double) -> some View {
+        let whole = abs(height.rounded() - height) < 0.01
+        return Text(whole ? "\(Int(height.rounded()))" : String(format: "%.1f", height))
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .frame(minWidth: 20, minHeight: 26)
+            .background(.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 7))
+            .accessibilityLabel(Text("Building at level \(height)", bundle: .module))
+    }
+
+    private func warpArrow(deeper: Bool, symbol: String) -> some View {
+        let enabled = game.editorCanStepWarp(deeper: deeper)
+        return Button {
+            game.editorStepWarp(deeper: deeper)
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(enabled ? .white : .white.opacity(0.3))
+                .frame(width: 16, height: 26)
+                .background(.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 7))
+                .contentShape(RoundedRectangle(cornerRadius: 7))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .accessibilityLabel(
+            Text(deeper ? "Drop the road a level" : "Raise the dropped road", bundle: .module))
+    }
+
     /// **Whether the next piece you lay gets a railing.** Sticky, beside the mode
     /// toggle, because railing a bridge is a run of pieces — asking once beats
     /// toggling each one afterwards. The selected piece's own railing is toggled

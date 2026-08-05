@@ -61,29 +61,13 @@ extension TrackLayout {
             } else {
                 exits = piece.paths.map { $0.exit(from: entry) }  // chain fold
             }
-            // **A jump is always flat.** Its lip and its landing are two ends of
-            // one span, and a pitched jump puts the landing half a level above the
-            // lip — so the piece stops being a gap you cross and becomes a ramp
-            // with a hole in it. Refused HERE, at the one place pitch enters a
-            // placement, rather than asked of the editor: a jump laid while the
-            // build pitch happened to be "up" climbed to 1.5 and every piece after
-            // it inherited that height (reported from device, and it read as "the
-            // jump is just a ramp").
-            //
-            // Same rule as `heightDelta`: a piece's own vertical shape and the
-            // pitch attribute never coexist on one placement.
-            let laidPitch = piece.gapSpan == nil ? pitch(at: index) : .flat
+            let vertical = verticalOf(piece, at: index, entryHeight: entryHeight)
             var placement = PlacedPiece(
                 id: id, piece: piece, entry: entry, exits: exits,
-                entryHeight: entryHeight, entrySeam: seam, pitch: laidPitch)
+                entryHeight: entryHeight, entrySeam: seam, pitch: vertical.pitch,
+                warpDrop: vertical.drop)
             placement.fitter = id == PieceCatalog.fitterPieceID ? fitters[index] : nil
-            // A climb runs straight through into a neighbour climbing the same
-            // way; it eases only against everything else. (Sequence order is
-            // placement order — forks are Phase B, so neighbours are i±1.)
-            if let previous = placed.last, continues(previous.climb, placement.climb) {
-                placement.easeIn = false
-                placed[placed.count - 1].easeOut = false
-            }
+            applyEasing(to: &placement, next: piece, placed: &placed)
             placed.append(placement)
             seam += 1
 
@@ -105,6 +89,58 @@ extension TrackLayout {
         }
 
         return WalkResult(placed: placed, openEnds: ends.map(\.pose), failure: nil)
+    }
+
+    /// **Where a climb eases, and where it stays a wedge.**
+    ///
+    /// A climb runs straight THROUGH into a neighbour climbing the same way, so a
+    /// full climb split into halves is one S-curve rather than a terrace with a shelf
+    /// at the apex. (Sequence order is placement order — forks are Phase B, so
+    /// neighbours are i±1.)
+    ///
+    /// And **a climb with nothing above it is a launch lip**, which keeps its full
+    /// slope. The eased top exists because a bridge ramp must arrive LEVEL: it used
+    /// to throw the car at the top of every bridge. But that easing flattens the last
+    /// stretch to almost horizontal — measured at 0.007 of a level over the final 5%,
+    /// where the raw slope is 0.05 — so a ramp ending at a lip launched nothing and
+    /// the car merely drove off an edge.
+    ///
+    /// What makes it a lip is that the road does not continue at the climb's height:
+    /// either a gap follows, or a warp drops the road below it. Both mean there is no
+    /// deck to meet, so carrying the slope to the edge is the honest shape.
+    private func applyEasing(
+        to placement: inout PlacedPiece, next piece: Piece, placed: inout [PlacedPiece]
+    ) {
+        guard let previous = placed.last else { return }
+        if continues(previous.climb, placement.climb) {
+            placement.easeIn = false
+            placed[placed.count - 1].easeOut = false
+        }
+        if previous.climb > 0, piece.gapSpan != nil || placement.climb < 0 {
+            placed[placed.count - 1].easeOut = false
+        }
+    }
+
+    /// **How one placement runs vertically**: the pitch it is actually laid at, and
+    /// a warp's drop.
+    ///
+    /// **A gap is always flat.** Its two ends are the lip and the landing, so a
+    /// pitched gap puts one half a level above the other and the piece stops being a
+    /// hole you cross. Refused here, at the one place pitch enters a placement,
+    /// rather than asked of the editor: a gap laid while the build pitch happened to
+    /// be "up" climbed and every piece after it inherited that height — reported from
+    /// device, where it read as "the jump is just a ramp".
+    ///
+    /// **A warp only ever drops**, and never below the world's floor: clamped so a
+    /// layout with a too-deep warp still walks (it lands on the floor) instead of
+    /// producing road under the world.
+    private func verticalOf(
+        _ piece: Piece, at index: Int, entryHeight: Double
+    ) -> (pitch: Pitch, drop: Double) {
+        let laidPitch = piece.gapSpan == nil ? pitch(at: index) : .flat
+        guard piece.kind == .warp else { return (laidPitch, 0) }
+        let floor = Track.levelHeight * Double(Track.lowestLevel)
+        return (laidPitch, max(floor - entryHeight, warpDrop(at: index)))
     }
 
     /// Two consecutive climbs continue each other when both run the same way.

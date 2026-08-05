@@ -91,19 +91,6 @@ public struct CarTuning: Equatable, Sendable, Codable {
     /// drop takes 20 ticks — between the old fixed 8 (a teleport) and the ~40
     /// that reads as floaty.
     public var gravity: Double
-    /// Upward kick off a launch lip, in levels/s per unit of forward speed.
-    ///
-    /// Scaled by speed on purpose: with a FIXED kick, flight time would be the
-    /// same at any speed and jump distance would grow only linearly, so a jump
-    /// would be far easier to clear slowly. Scaling keeps distance quadratic —
-    /// the "be fast or fall in" gate — and matches the old flat-glide numbers.
-    ///
-    /// **0.008 is set by the jump piece's gap**, not chosen for feel: the gap is one
-    /// road width (120 units) of clear air, and this carries a car 140 units at
-    /// speed 400 and 233 at top speed, so the jump goes from missed to cleared at
-    /// around 430. Apex 0.48 levels. Raised from 0.004, which only reached 112 at
-    /// top speed and so could not clear a road-width gap at any speed.
-    public var launchPerSpeed: Double
 
     public init(
         engineAccel: Double = 320,
@@ -124,8 +111,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         wallDragFloor: Double = 0.1,
         wallYaw: Double = 0.012,
         carRestitution: Double = 0.4,
-        gravity: Double = 18,
-        launchPerSpeed: Double = 0.008
+        gravity: Double = 18
     ) {
         self.engineAccel = engineAccel
         self.brakeAccel = brakeAccel
@@ -146,7 +132,6 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.wallYaw = wallYaw
         self.carRestitution = carRestitution
         self.gravity = gravity
-        self.launchPerSpeed = launchPerSpeed
     }
 
     /// A slowed-down copy for learning: acceleration and speed caps scale

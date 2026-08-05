@@ -249,6 +249,16 @@ public enum PieceCompiler {
             let samples = piece.heightedSamples(degreesPerSample: degreesPerSample)
             let gapSpan = piece.piece.gapSpan
             let last = Double(max(samples.count - 1, 1))
+            // **A zero-length piece contributes no road.** A warp moves the road's
+            // height without occupying ground, so its samples are all the same point
+            // — and emitting them stamped a pile of duplicate centerline points,
+            // each casting its own half-width end cap. That paved right over the
+            // neighbouring gap: the car stayed "on road" across the hole and never
+            // took off, which is a launch that silently does nothing.
+            //
+            // The height still lands, because the walk carries it in `exitHeight`
+            // and the next piece starts from there.
+            if piece.piece.kind == .warp { continue }
             for (offset, sample) in samples.enumerated().dropFirst() {
                 road.centerline.append(sample.point)
                 road.heights.append(sample.height)
@@ -274,45 +284,8 @@ public enum PieceCompiler {
                         of: piece, capHighEnd: capsHighEnd(piece), railed: wantsRail))
             }
 
-            // Only a LAUNCH needs a line: it throws the car ballistically, which
-            // is a real event at a place. An ordinary ramp needs nothing — its
-            // climb is in `heights`, and the car follows the road.
-            if piece.piece.launches {
-                road.ramps.append(launchLine(at: piece))
-            }
         }
         return road
-    }
-
-    /// The take-off line of a jump: across the road **at the lip**, where the
-    /// asphalt ends and the gap begins.
-    ///
-    /// **At the ENTRY side, not the exit.** A jump's gap opens just after the
-    /// piece begins, so a line at the exit sits past the landing — the car fell
-    /// into the gap and was thrown only once it had already crossed. (The old
-    /// spelling read `exits[0]`, which was harmless while a "jump" was solid road
-    /// and the line was merely early or late rather than on the wrong side of the
-    /// hole.)
-    ///
-    /// The span is the **scaled** half-width, so an elevated jump's line still
-    /// reaches the edges of its wider drawn road; a flat `width / 2` left a car
-    /// near the edge crossing outboard of the line and never launching.
-    private static func launchLine(at placed: PlacedPiece) -> Ramp {
-        let entry = placed.entry
-        let forward = Vec2(angle: entry.heading.radians)
-        // Sit at the lip: the fraction where the gap starts, along the piece.
-        //
-        // INTERPOLATED by distance, not snapped to a sample index. A straight has
-        // only its two endpoints, so rounding an index put the line at the piece's
-        // entry — a whole unit before the gap on a 4U jump, where the car was thrown
-        // while still on solid road.
-        let start = placed.piece.gapSpan?.lowerBound ?? 0
-        let position = placed.point(atFraction: start) ?? entry.position.vec2
-        let height = placed.height(atFraction: start)
-        let side =
-            forward.perpendicular * (Double(PieceCatalog.width) / 2)
-            * Elevation.scale(atHeight: height)
-        return Ramp(from: position - side, to: position + side, forward: forward)
     }
 
     /// The road cross-section (a span of `width`) at a seam, as a Gate.

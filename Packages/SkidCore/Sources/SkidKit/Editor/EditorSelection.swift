@@ -83,6 +83,31 @@ extension CouchGame {
         }
     }
 
+    /// **Step the drop at the tail's warp by one level** — the down/up arrows.
+    ///
+    /// There is no warp to *place*: a warp occupies no length, so a piece the author
+    /// has to position would be a thing with nowhere to be. The arrows maintain it
+    /// instead — the first tap down appends one, later taps deepen the one already
+    /// there, and shallowing it to zero removes it again. Two adjacent warps are
+    /// indistinguishable from one deeper warp, so keeping a single trailing warp is
+    /// what makes the layout canonical rather than merely equivalent.
+    ///
+    /// **Tail only.** At the head the author builds against the driving direction,
+    /// where a drop away from them is a climb *into* them — and nothing lifts a car,
+    /// so that road could not be driven. Returns false there rather than quietly
+    /// storing the mirror.
+    @discardableResult
+    public func editorStepWarp(deeper: Bool) -> Bool {
+        editorApplyWarpStep(deeper: deeper)
+    }
+
+    /// Whether the down/up arrow has anything to do: down always may (the world's
+    /// floor clamps the walk), up only when there is a warp to shallow.
+    public func editorCanStepWarp(deeper: Bool) -> Bool {
+        guard editorActiveEnd == .tail, let layout = editorLayout else { return false }
+        return deeper || layout.endsInWarp
+    }
+
     /// What the author's tap means when they are building BACKWARDS: the mirrored
     /// shape, climbing the other way. A straight and a flat pitch are their own
     /// mirrors, so this is the identity for them.

@@ -67,7 +67,7 @@ extension EditorView {
         /// The jump is a **default** rather than merely available, because an empty
         /// hotbar is indistinguishable from a missing feature: nothing on screen
         /// says "assign something here".
-        static let defaults: [PieceID] = [PieceCatalog.ID.jump]
+        static let defaults: [PieceID] = [PieceCatalog.ID.gap]
 
         /// An empty slot — draws as a placeholder and places nothing.
         static let empty: PieceID = -2
@@ -88,7 +88,7 @@ extension EditorView {
     /// it, so offering it would only produce tracks that fail to compile (see
     /// docs/track-pieces.md "Beyond the ring").
     static var hotbarPieces: [PieceID] {
-        [PieceCatalog.ID.jump]
+        [PieceCatalog.ID.gap]
     }
 
     /// A short label for any piece the palette can show.
@@ -107,6 +107,6 @@ extension EditorView {
         PieceCatalog.ID.curve45SweepRight: "Right (sweep)",
         PieceCatalog.ID.rampUp: "Ramp up",
         PieceCatalog.ID.rampDown: "Ramp down",
-        PieceCatalog.ID.jump: "Jump",
+        PieceCatalog.ID.gap: "Gap",
     ]
 }

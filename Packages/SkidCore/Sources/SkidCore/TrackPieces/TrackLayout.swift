@@ -95,17 +95,28 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     /// Index-keyed, so this is the fifth thing every mutation remaps — see
     /// `TrackLayoutMutate`.
     public var railed: Set<Int>
+    /// **How far each warp piece drops the road**, in levels, by piece index —
+    /// negative, and only meaningful on a `.warp` piece.
+    ///
+    /// Index-keyed like `decals` and `railed`, so this is the sixth thing every
+    /// mutation remaps (see `TrackLayoutMutate`). Keyed rather than parallel because
+    /// a warp is rare: a track with none costs nothing.
+    ///
+    /// A warp with no entry drops one level, which is the overwhelmingly common
+    /// case — the deck-to-ground jump.
+    public var warpDrops: [Int: Double]
     public var theme: Theme
 
     public init(
         pieces: [PieceID], pitches: [Pitch] = [], origin: PiecePose = .origin,
         originHeight: Double = 0, gateSeams: [Int] = [0], theme: Theme = .normal,
         fitters: [Int: Fitter] = [:], decals: [Int: Decal] = [:],
-        railed: Set<Int> = []
+        railed: Set<Int> = [], warpDrops: [Int: Double] = [:]
     ) {
         self.fitters = fitters
         self.decals = decals
         self.railed = railed
+        self.warpDrops = warpDrops
         self.pieces = pieces
         self.originHeight = originHeight
         // Normalized to the piece count so equality is structural: trailing
@@ -128,6 +139,12 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     public func decal(at index: Int) -> Decal? { decals[index] }
 
     public func isRailed(at index: Int) -> Bool { railed.contains(index) }
+
+    /// How far the warp at `index` drops the road. Defaults to a **full level** —
+    /// the common case — and is clamped to never rise.
+    public func warpDrop(at index: Int) -> Double {
+        min(0, warpDrops[index] ?? -Track.levelHeight)
+    }
 
     /// Append resolved (piece, pitch) pairs — what expansions produce. A run of
     /// end-inserts, so pitches (and any keyed data, of which there is none past
@@ -186,11 +203,16 @@ public struct PlacedPiece: Equatable, Sendable {
     /// not a terrace with a shelf at the apex.
     public var easeIn: Bool
     public var easeOut: Bool
+    /// **How far a warp drops the road**, in levels — always ≤ 0, and zero for
+    /// every piece that is not a warp. Separate from `pitch` because it is not a
+    /// slope: no road is travelled, so nothing is climbed or descended. It only
+    /// says where the road resumes.
+    public var warpDrop: Double
 
     public init(
         id: PieceID, piece: Piece, entry: PiecePose, exits: [PiecePose],
         entryHeight: Double, entrySeam: Int, pitch: Pitch = .flat,
-        easeIn: Bool = true, easeOut: Bool = true
+        easeIn: Bool = true, easeOut: Bool = true, warpDrop: Double = 0
     ) {
         self.id = id
         self.piece = piece
@@ -201,10 +223,13 @@ public struct PlacedPiece: Equatable, Sendable {
         self.pitch = pitch
         self.easeIn = easeIn
         self.easeOut = easeOut
+        // A warp only ever goes DOWN, and only a warp warps.
+        self.warpDrop = piece.kind == .warp ? min(0, warpDrop) : 0
     }
 
-    /// The height this placement gains: the piece's own delta plus its pitch.
-    public var climb: Double { piece.heightDelta + pitch.delta }
+    /// The height this placement gains: the piece's own delta, its pitch, and a
+    /// warp's drop. A warp has no length, so this is the whole of its effect.
+    public var climb: Double { piece.heightDelta + pitch.delta + warpDrop }
 
     /// Height at this piece's exit.
     public var exitHeight: Double { entryHeight + climb }

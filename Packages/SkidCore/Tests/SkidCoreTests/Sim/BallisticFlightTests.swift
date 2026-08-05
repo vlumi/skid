@@ -104,41 +104,46 @@ final class BallisticFlightTests: XCTestCase {
             "it must come to rest on the road at 1, not fall through to 0")
     }
 
-    /// **The launch kick scales with speed**, so jump distance stays quadratic —
-    /// the "be fast or fall in" gate. With a fixed kick, flight time would be
-    /// the same at any speed and distance would grow only linearly.
-    func testAFasterLaunchFliesFurther() {
-        func flight(atSpeed speed: Double) -> (ticks: Int, distance: Double) {
-            let track = Track(
-                centerline: [Vec2(-10000, 0), Vec2(10000, 0)], width: 600,
-                ramps: [Ramp(from: Vec2(300, -400), to: Vec2(300, 400), forward: Vec2(1, 0))],
-                startSlots: [Vec2(0, 0)], size: Vec2(20000, 4000))
-            var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
-            race.cars[0].state.position = Vec2(280, 0)
-            race.cars[0].state.velocity = Vec2(speed, 0)
-            var launchX = 0.0, ticks = 0
-            for _ in 0..<300 {
-                race.advance(inputs: [PlayerID(0): .coast])
+    /// **Speed buys air time.** There is no launch kick any more: a car leaves a
+    /// road that ends and gravity does the rest, so what speed buys is DISTANCE
+    /// covered before it lands — the "be fast or fall in" gate on a jump's gap.
+    ///
+    /// Measured on the real compiled `jumpRing` (wedge ramp · gap · warp down),
+    /// because that is the shipping mechanism; a hand-built corridor would test
+    /// arithmetic rather than the road. Note the car does NOT arc upward off the lip:
+    /// cars are heavy, and dropping ballistically off the end is the intended feel.
+    func testAFasterCarCrossesMoreOfTheGap() {
+        let track = TestTracks.jumpRing()
+
+        func flight(pace: Double) -> (ticks: Int, distance: Double) {
+            var race = Race(
+                track: track, players: [PlayerID(0)],
+                tuning: CarTuning().scaled(pace: pace), config: RaceConfig(laps: 1))
+            var driver = AIDriver()
+            var ticks = 0
+            var launch = Vec2.zero
+            var distance = 0.0
+            for _ in 0..<(60 * Race.tickRate) {
+                race.advance(
+                    inputs: [PlayerID(0): driver.input(car: race.cars[0].state, track: track)])
                 let car = race.cars[0].state
                 if car.isAirborne {
-                    if ticks == 0 { launchX = car.position.x }
+                    if ticks == 0 { launch = car.position }
                     ticks += 1
-                } else if ticks > 0 {
-                    return (ticks, car.position.x - launchX)
+                    distance = max(distance, car.position.distance(to: launch))
                 }
+                if race.cars[0].progress.finishedAt != nil { break }
             }
-            return (ticks, 0)
+            return (ticks, distance)
         }
 
-        let slow = flight(atSpeed: 260)
-        let fast = flight(atSpeed: 520)
-        XCTAssertGreaterThan(slow.ticks, 0, "the slow car must still launch")
+        let slow = flight(pace: 0.6)
+        let fast = flight(pace: 1.0)
+        XCTAssertGreaterThan(slow.ticks, 0, "the slow car must still leave the road")
+        XCTAssertGreaterThan(fast.ticks, 0, "the fast car must leave the road")
         XCTAssertGreaterThan(
-            fast.ticks, slow.ticks + 2,
-            "twice the speed must buy meaningfully more AIR TIME, not just more ground covered")
-        XCTAssertGreaterThan(
-            fast.distance, slow.distance * 3,
-            "quadratic: doubling speed should roughly quadruple the gap cleared")
+            fast.distance, slow.distance,
+            "a faster car must cover more ground before landing — that is the gate")
     }
 
     /// A car on the road is not airborne, and its height is unaffected.
