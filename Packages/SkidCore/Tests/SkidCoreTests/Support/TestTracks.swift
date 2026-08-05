@@ -27,22 +27,18 @@ enum TestTracks {
         /// what exposed embankments filling from the ground rather than from the
         /// storey their ramp stands on.
         static let spiralToThree =
-            "AXABFR95BAQQAQMDDwEDAw8BegQEBAQEBAIFAAQKFBoDBQLQAtAA_iDUVapunfF_mc99V8r_"
-            + "weRH0rknUHfADJley31chwDYnP9AQfgQ4hdOAJFdIXX09sTndJh4oKgxKWYkC75k871YA4"
-            + "AL-966tuPFpBJQ1hrXKNYRNBrSRvttD-6JsjOz7F5xCg"
+            "AfoBFR95BAQQAQMDDwEDAw8BegQEBAQEBAIFAAQKFBoDBQLQAtAA"
         /// The reported "tower of babel": road at all four storeys, fully railed,
         /// with decks stacked over one another. The hard case for the see-through
         /// window — a car may be one, two OR three storeys below a road.
         static let towerOfBabel =
-            "AbcBFR95BAQQAQMDDwEDAw8BegQEBAQEBAIFAAQKFBoDBQLQAtAACB8AAQIDBAUGBwgJCgsM"
-            + "DQ4PEBESExQVFhcYGRobHB0e_iDUVapunfF_mc99V8r_weRH0rknUHfADJley31chwDYnP"
-            + "9AKyj2tjZTDQTf-XN6GJZCG7iVZP0-2QMsh5woK_pYFxgVtMuW2gjO6qgh8Qq4DUuFcH1J"
-            + "a81GR5jaxV2VUjrMDw"
+            "AfIBFR95BAQQAQMDDwEDAw8BegQEBAQEBAIFAAQKFBoDBQLQAtAACB8AAQIDBAUG"
+            + "BwgJCgsMDQ4PEBESExQVFhcYGRobHB0e"
         static let bridgeRing = "Ad0BDh8KDBEFeQUFFXoGBHgEAgQABAgMAwUC0ADwAAgGCgsMDQ4P"
         /// The clover: 47 pieces, closed, three gates, two crossings.
-        static let clover = "AQ4BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAFAQI"
+        static let clover = "AasBGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFAeAB4AAFAQI"
         /// The clover mid-build: 46 pieces, still open at both ends.
-        static let cloverOpen = "ASEBGh8PeQMDAR4BDwMDAR4BDwMDAR4BDwMDAXoAAgEAAwUAAAAAAA"
+        static let cloverOpen = "AQUBGh8PeQMDAR4BDwMDAR4BDwMDAR4BDwMDAXoAAgEAAwUDwAHgAA"
     }
 
     /// A closed rectangle carrying a full-height straight climb: start → up →

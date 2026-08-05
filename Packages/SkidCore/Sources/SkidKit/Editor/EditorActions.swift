@@ -229,25 +229,47 @@ extension CouchGame {
     /// Undoable when the author asks for it from the button; the automatic calls
     /// (closing a loop, loading a pasted track) run inside another action and are
     /// not separately recorded.
-    public func editorCenterOnCanvas() {
-        recordingUndo { centerOnCanvas() }
-    }
-
+    /// **Re-center the layout on the canvas** — an internal step, not a button.
+    ///
+    /// There was a button for this and it has been removed: where a track sits on the
+    /// canvas makes no difference to anything. `PieceCompiler.framed()` re-frames
+    /// every compiled track to its own bounds, so the race sees the same road wherever
+    /// it was built (measured: a rigid translation, identical canvas size), and
+    /// `fitsCanvas` compares EXTENTS rather than position, so validation is
+    /// position-invariant too. The only thing the position changed was the share code.
+    ///
+    /// Kept internal because closure still re-centres, where it does real work: it
+    /// keeps a growing track from drifting into a corner and failing the size check
+    /// for room it is not using.
+    ///
+    /// Reported as "the aim button doesn't seem to do anything", and it was worse than
+    /// that — `max(margin, shift)` floored the shift at 60 units and `round(60/120)` is
+    /// 1, so every press moved the track 120 units down-right whether it needed to or
+    /// not: 40 units off-centre before the first press, 520 after the fourth.
     /// The centering itself, so the public entry point is only the undo wrapper.
     @discardableResult
     private func centerOnCanvas() -> Bool {
         guard var layout = editorLayout else { return false }
-        guard let used = layout.walk().footprint() else { return false }
-        // Leave room for the road's half-width on every side.
+        // Measured WITH the road's half-width, because that is what has to fit: a
+        // bare centerline footprint understates the track by half a road on each side.
         let margin = Double(PieceCatalog.width) / 2
+        guard let used = layout.walk().footprint(padding: margin) else { return false }
         let target = TrackValidator.canvas
         let shiftX = (target.x - used.width) / 2 - used.minX
         let shiftY = (target.y - used.height) / 2 - used.minY
         // The origin is exact, so shift by whole units to keep it that way.
+        //
+        // **Signed, and never floored.** This was `max(margin, shift)`, which pinned
+        // a track already near the middle to a 60-unit shift — and `round(60/120)` is
+        // 1, so every press moved the track 120 units down-right whether it needed to
+        // or not. Measured on a three-storey track: 40 units off-centre before the
+        // first press, 520 after the fourth, monotonically worse. Reported as "the
+        // aim button doesn't seem to do anything", because it moves the track on the
+        // canvas rather than the camera, and zoomed in the canvas edges are off-screen.
         let unit = Double(PieceCatalog.unit)
         let steps = CoordPoint(
-            Int((max(margin, shiftX) / unit).rounded()) * PieceCatalog.unit,
-            Int((max(margin, shiftY) / unit).rounded()) * PieceCatalog.unit)
+            Int((shiftX / unit).rounded()) * PieceCatalog.unit,
+            Int((shiftY / unit).rounded()) * PieceCatalog.unit)
         layout.origin = PiecePose(
             position: layout.origin.position + steps, heading: layout.origin.heading)
         editorLayout = layout

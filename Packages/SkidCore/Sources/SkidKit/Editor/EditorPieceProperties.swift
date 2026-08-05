@@ -7,28 +7,59 @@ import SwiftUI
 /// these are the controls for a piece you have already laid, as opposed to the
 /// palette you lay pieces from.
 extension EditorView {
-    /// **Show each off-ground piece's storey.** A mode rather than always-on: on a
-    /// flat track every badge would read "0", which is noise. Blocked pieces are
-    /// flagged regardless of this toggle — a warning you have to switch on is not a
-    /// warning.
+    /// **Which storey the editor is working on.** Cycles off → all → each storey the
+    /// track actually uses → off.
+    ///
+    /// A picker rather than a badge toggle, because on a stack a tap is ambiguous and
+    /// something has to disambiguate it. Cycling the BUTTON is safe where cycling the
+    /// tap is not: the state is visible, and panning or zooming cannot change what
+    /// your next tap will select.
     var levelsToggle: some View {
-        Button {
-            showLevels.toggle()
+        let label: String
+        switch levelFilter {
+        case .off: label = ""
+        case .all: label = "All"
+        case .storey(let level): label = "\(level)"
+        }
+        return Button {
+            levelFilter = nextLevelFilter()
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "square.3.layers.3d")
-                Text("Levels", bundle: .module)
+                if label.isEmpty {
+                    Text("Levels", bundle: .module)
+                } else {
+                    Text(verbatim: label)
+                }
             }
             .font(.footnote.bold())
-            .foregroundStyle(showLevels ? .black : .white)
+            .foregroundStyle(levelFilter == .off ? .white : .black)
             .padding(.horizontal, 11)
             .padding(.vertical, 7)
-            .background(showLevels ? Color.white : .black.opacity(0.55), in: Capsule())
+            .background(levelFilter == .off ? .black.opacity(0.55) : Color.white, in: Capsule())
             .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 1))
             .contentShape(Capsule())
         }
-        .accessibilityLabel(
-            Text(showLevels ? "Hide piece levels" : "Show piece levels", bundle: .module))
+        .accessibilityLabel(Text("Level filter", bundle: .module))
+    }
+
+    /// The next filter in the cycle, listing only storeys the track uses — offering
+    /// "level 2" on a flat track is a state that selects nothing.
+    private func nextLevelFilter() -> LevelFilter {
+        let used = Set(
+            (game.editorLayout?.walk().placed ?? [])
+                .map { Track.level(of: max($0.entryHeight, $0.exitHeight)) }
+        ).sorted()
+        switch levelFilter {
+        case .off:
+            // A flat track has one storey, so filtering by it is the same as `all`.
+            return used.count > 1 ? .all : .off
+        case .all:
+            return used.first.map { .storey($0) } ?? .off
+        case .storey(let level):
+            guard let at = used.firstIndex(of: level), at + 1 < used.count else { return .off }
+            return .storey(used[at + 1])
+        }
     }
 
     /// **Whether the next piece you lay gets a railing.** Sticky, beside the mode
@@ -40,18 +71,19 @@ extension EditorView {
         return Button {
             game.editorRailNewPieces.toggle()
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: on ? "road.lanes" : "road.lanes.curved.right")
-                Text("Rails", bundle: .module)
-            }
-            .font(.footnote.bold())
-            .foregroundStyle(on ? .black : .white)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 7)
-            .background(on ? EditorRenderer.bridgeRail : .black.opacity(0.55), in: Capsule())
-            .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 1))
-            .contentShape(Capsule())
+            RailGlyph(railed: on, road: on ? .black : .white)
+                .frame(width: 34, height: 26)
+                .background(
+                    on ? Color.white : .black.opacity(0.4),
+                    in: RoundedRectangle(cornerRadius: 7)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(.white.opacity(on ? 0.9 : 0.3), lineWidth: 1)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 7))
         }
+        .buttonStyle(.plain)
         .accessibilityLabel(
             Text(on ? "Stop railing new pieces" : "Rail new pieces", bundle: .module))
     }

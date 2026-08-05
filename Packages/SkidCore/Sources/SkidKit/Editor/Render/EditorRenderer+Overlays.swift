@@ -127,7 +127,11 @@ extension EditorRenderer {
         // road just driven). `across` walks one cell toward the far edge;
         // `back` walks one cell upstream.
         let columns = 8
-        let cell = width / Double(columns)
+        // Scaled like `side` above, or the eight cells span the NOMINAL width while
+        // the line spans the drawn one — the board then falls short of a raised
+        // road's edge, which is what "the checkered start line doesn't scale with
+        // height" looks like.
+        let cell = width * Elevation.scale(atHeight: start.exitHeight) / Double(columns)
         let across = fwd.perpendicular * cell
         let back = fwd * cell
         let farEdge = pose.position.vec2 - side

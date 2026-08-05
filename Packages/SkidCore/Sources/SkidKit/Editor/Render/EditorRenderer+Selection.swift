@@ -18,10 +18,16 @@ extension EditorRenderer {
         for point in samples.dropFirst() { path.addLine(to: t.screen(point)) }
         // A wash over the piece's own asphalt — light enough that the road, its
         // kerbs and any gate on it still read through.
+        //
+        // Scaled by the piece's height, like the ribbon it covers: a flat `width`
+        // left a raised piece's wash narrower than its own road, so the selection
+        // looked like it was on a different, thinner piece.
+        let top = max(placed.entryHeight, placed.exitHeight)
         context.stroke(
             path, with: .color(.yellow.opacity(0.22)),
             style: StrokeStyle(
-                lineWidth: width * t.scale, lineCap: .butt, lineJoin: .round)
+                lineWidth: width * Elevation.scale(atHeight: top) * t.scale,
+                lineCap: .butt, lineJoin: .round)
         )
         // Plus a bright spine, which is what actually catches the eye at a glance.
         context.stroke(
@@ -38,7 +44,10 @@ extension EditorRenderer {
         let pose = placed.exits[0]
         let across = Vec2(angle: pose.heading.radians).perpendicular
         let center = pose.position.vec2
-        let edge = across * (width / 2)
+        // Scaled to the road's drawn width at this seam, like the gate bar it
+        // previews: a flat width drew the candidate short of a raised road's edges,
+        // which misrepresents where a tap will land.
+        let edge = across * (width / 2 * Elevation.scale(atHeight: placed.exitHeight))
         let lineWidth = max(1, 3 * t.scale)
         var bar = Path()
         bar.move(to: t.screen(center - edge))
@@ -51,10 +60,28 @@ extension EditorRenderer {
     /// A loose (unbuilt) end: fade the last stretch of road toward grass and
     /// stamp a hazard-striped bar across the opening, so it clearly needs
     /// finishing — never a clean rounded cap that looks intentional.
+    /// The height a loose end sits at — the exit height of whichever piece it is the
+    /// exit of. Falls back to the ground when no piece claims it, which is the honest
+    /// answer for a pose the walk could not place.
+    static func heightOfEnd(_ end: PiecePose, in walk: WalkResult) -> Double {
+        for placed in walk.placed {
+            for exit in placed.exits where exit.position == end.position {
+                return placed.exitHeight
+            }
+            if placed.entry.position == end.position { return placed.entryHeight }
+        }
+        return 0
+    }
+
     static func drawLooseEnd(
-        _ end: PiecePose, width: Double, selected: Bool, t: Transform,
+        _ end: PiecePose, width: Double, height: Double = 0, selected: Bool, t: Transform,
         into context: inout GraphicsContext
     ) {
+        // Scaled to the road's DRAWN width at this end's height, like the ribbon and
+        // the start line. A flat width left the hazard bar and its arrow spanning the
+        // nominal road on a raised stub, so they stopped short of its edges — "the
+        // construction strips don't scale with height".
+        let width = width * Elevation.scale(atHeight: height)
         let w = width * t.scale
         let fwd = Vec2(angle: end.heading.radians)
         let side = fwd.perpendicular
