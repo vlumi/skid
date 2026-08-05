@@ -18,10 +18,16 @@ extension EditorRenderer {
         for point in samples.dropFirst() { path.addLine(to: t.screen(point)) }
         // A wash over the piece's own asphalt — light enough that the road, its
         // kerbs and any gate on it still read through.
+        //
+        // Scaled by the piece's height, like the ribbon it covers: a flat `width`
+        // left a raised piece's wash narrower than its own road, so the selection
+        // looked like it was on a different, thinner piece.
+        let top = max(placed.entryHeight, placed.exitHeight)
         context.stroke(
             path, with: .color(.yellow.opacity(0.22)),
             style: StrokeStyle(
-                lineWidth: width * t.scale, lineCap: .butt, lineJoin: .round)
+                lineWidth: width * Elevation.scale(atHeight: top) * t.scale,
+                lineCap: .butt, lineJoin: .round)
         )
         // Plus a bright spine, which is what actually catches the eye at a glance.
         context.stroke(

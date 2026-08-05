@@ -21,9 +21,14 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
-- **See which level each piece is on while building.** Tap **Levels** in the editor
-  to badge every raised piece with its storey — on a track that climbs three levels
-  it is otherwise hard to tell where you are.
+- **See and edit one level at a time.** The **Levels** button cycles through the
+  storeys your track uses: it badges every raised piece with its level, and picking a
+  level dims the others and aims your taps at that one — which is the only way to get
+  at a piece with two more stacked on top of it.
+- **Tapping a raised piece works across its whole width.** A high bridge is drawn
+  wider than the ground, but taps were still measured against the ground's width, so
+  the edges of a raised road did not respond. Where pieces stack, a tap now takes the
+  topmost rather than an arbitrary one.
 - **A warning when a track can't be driven.** If a wall ends up standing across the
   road — a high ramp's bank cutting off the road beneath it, say — the offending piece
   is marked in the editor. The track still races: it points at the problem rather

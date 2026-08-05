@@ -20,32 +20,12 @@ enum EditorRenderer {
     /// Screen radius of a loose-end tap dot.
     static let endHitRadius: CGFloat = 26
 
-    struct Transform {
-        /// World space unchanged — for callers whose context is already scaled
-        /// and translated (the race view).
-        static let identity = Transform(scale: 1, offset: .zero)
-
-        var scale: CGFloat
-        var offset: CGSize
-        /// Any FURTHER scaling the caller's GraphicsContext applies after
-        /// `screen(_:)` — 1 in the editor (whose transform maps all the way to
-        /// the screen), the map scale in the race (whose context is scaled to
-        /// world units). Quantities that must hold in true screen points
-        /// (the seam overlap) divide by this; without it the race shrank the
-        /// overlap back under the antialiasing width, and the hairlines the
-        /// overlap exists to cover came back — on the rails first, whose
-        /// butt-capped ends read crisper than the shaded road fill.
-        var contextScale: CGFloat = 1
-        func screen(_ p: Vec2) -> CGPoint {
-            CGPoint(x: p.x * scale + offset.width, y: p.y * scale + offset.height)
-        }
-    }
-
     static func draw(
         walk: WalkResult, width: Double, selectedEnd: Int?, gateSeams: [Int] = [],
         gating: Bool = false, selectedPiece: Int? = nil, decals: [Int: Decal] = [:],
         railed: Set<Int> = [], blockedPieces: Set<Int> = [], showLevels: Bool = false,
-        transform t: Transform, into context: inout GraphicsContext
+        dimmedExcept: Int? = nil, transform t: Transform,
+        into context: inout GraphicsContext
     ) {
         // The size limit, made visible. Under everything else, since it's a
         // boundary you build inside of.
@@ -56,6 +36,11 @@ enum EditorRenderer {
         // Above ALL road, so a higher deck cannot paint out a lower piece's badge.
         // Blocked pieces are always flagged; the level numbers are a mode, since on a
         // flat track they are noise.
+        // Working on one storey: veil the others so the road you are NOT editing is
+        // still visible — hiding it would make the map lie about where the track is.
+        if let dimmedExcept {
+            drawOtherStoreyVeil(walk: walk, keeping: dimmedExcept, t: t, into: &context)
+        }
         if showLevels || !blockedPieces.isEmpty {
             drawLevelBadges(
                 walk: walk, blockedPieces: blockedPieces, transform: t, into: &context)
