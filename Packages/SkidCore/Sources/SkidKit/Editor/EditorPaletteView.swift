@@ -174,7 +174,8 @@ extension EditorView {
                 // that instead would put a right-hand curve under a left-hand button.
                 PieceIcon(
                     id: icon ?? piece, entryHeading: appendHeading(walk),
-                    entryHeight: appendHeight(walk), pitch: buildPitch
+                    entryHeight: appendHeight(walk), pitch: buildPitch,
+                    railed: game.editorRailNewPieces
                 )
                 .frame(width: side - 8, height: side - 8)
                 .opacity(placeable ? 1 : 0.3)
