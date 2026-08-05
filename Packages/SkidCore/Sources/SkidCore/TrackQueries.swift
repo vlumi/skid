@@ -12,6 +12,13 @@ extension Track {
     /// gap is as far from asphalt as one over grass. That is what makes falling in
     /// possible at all, and it lands here rather than in each caller because this
     /// is the one function every "am I on the road" question goes through.
+    ///
+    /// **The result can be effectively unbounded** — `greatestFiniteMagnitude` when
+    /// NO segment qualifies, which a jump made reachable in normal play (a car in
+    /// mid-air over the gap, where the gap skip and the height filter between them
+    /// reject everything). Comparing it is fine, which is what every caller here
+    /// does; converting it is not. `Int(_:)` traps on it, and did — it crashed the
+    /// debug overlay's "off road N" readout.
     public func distanceToCenterline(
         _ p: Vec2, height: Double? = nil, heightTolerance: Double = Self.surfaceTolerance
     ) -> Double {
@@ -24,6 +31,16 @@ extension Track {
             best = min(best, p.distance(toSegment: a, b))
         }
         return best
+    }
+
+    /// Whether `distanceToCenterline` found any road at all. False means "nothing
+    /// at that height anywhere" — mid-air over a jump's gap, most commonly — and is
+    /// the guard to use before doing arithmetic on the result.
+    ///
+    /// `isFinite` does NOT work for this: the no-match value is
+    /// `greatestFiniteMagnitude`, which is finite. That mistake shipped a crash.
+    public static func foundRoad(_ distance: Double) -> Bool {
+        distance < .greatestFiniteMagnitude
     }
 
     /// The closest point on the centerline loop to `p`, as (segment index,

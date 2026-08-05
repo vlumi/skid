@@ -63,7 +63,10 @@ final class TuningWireTests: XCTestCase {
         XCTAssertFalse(settings.isStockPhysics, "gravity changes how long a fall costs")
 
         let other = stockSettings()
-        other.launchPerSpeed = 0.008
+        // DERIVED from stock, not a literal: this was `0.008`, which silently became
+        // the stock default when the jump's gap grew to a road width — so the test
+        // was asserting that the default is not the default.
+        other.launchPerSpeed = CarTuning().launchPerSpeed * 2
         XCTAssertFalse(other.isStockPhysics, "so does how far a jump goes")
     }
 

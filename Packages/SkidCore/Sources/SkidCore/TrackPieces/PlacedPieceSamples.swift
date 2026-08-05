@@ -7,6 +7,72 @@ import Foundation
 /// coherent concern (geometry → samples) and the compiler, both renderers and the
 /// icons all read it, so it earns its own file.
 extension PlacedPiece {
+    /// The world point a given fraction along this piece, measured by **distance**
+    /// rather than by sample index.
+    ///
+    /// The distinction matters for anything that has to land at a precise place on a
+    /// piece the sampler represents coarsely: a straight is just two endpoints, so
+    /// rounding a fraction to the nearest index snaps to one end. That put a jump's
+    /// launch line a whole unit before its lip.
+    public func point(atFraction fraction: Double) -> Vec2? {
+        let samples = centerlineSamples()
+        guard let first = samples.first, let last = samples.last, samples.count > 1 else {
+            return samples.first
+        }
+        guard fraction > 0 else { return first }
+        guard fraction < 1 else { return last }
+
+        var lengths: [Double] = [0]
+        for index in 1..<samples.count {
+            lengths.append(lengths[index - 1] + samples[index].distance(to: samples[index - 1]))
+        }
+        guard let total = lengths.last, total > 0 else { return first }
+        let target = fraction * total
+        for index in 1..<samples.count where lengths[index] >= target {
+            let span = lengths[index] - lengths[index - 1]
+            let local = span > 0 ? (target - lengths[index - 1]) / span : 0
+            return samples[index - 1] + (samples[index] - samples[index - 1]) * local
+        }
+        return last
+    }
+
+    /// The piece's samples split into **solid runs** — the stretches that carry
+    /// asphalt, with a jump's gap cut out. One run for every ordinary piece.
+    ///
+    /// Every drawing pass reads this rather than `heightedSamples` directly, so the
+    /// surface, the drop shadow, the guard rails and the kerbs all lose the gap
+    /// together, from one definition. Getting that wrong is this project's most
+    /// expensive recurring bug — the drawing and the physics disagreeing — and a
+    /// jump shipped once as solid-looking road for exactly that reason: the gap was
+    /// real to `surface(at:)` and invisible to every renderer.
+    ///
+    /// Sample-accurate rather than interpolated: the gap's ends land on whichever
+    /// samples bound them, which is why a gapped piece is densified
+    /// (`PlacedPiece.gapSpans`) instead of relying on a straight's two endpoints.
+    public func solidRuns(degreesPerSample: Double = 6, maxHeightStep: Double = 0.05)
+        -> [[(point: Vec2, height: Double)]]
+    {
+        let samples = heightedSamples(
+            degreesPerSample: degreesPerSample, maxHeightStep: maxHeightStep)
+        guard let gap = piece.gapSpan, samples.count > 1 else {
+            return samples.isEmpty ? [] : [samples]
+        }
+        let last = Double(samples.count - 1)
+        var runs: [[(point: Vec2, height: Double)]] = []
+        var current: [(point: Vec2, height: Double)] = []
+        for (index, sample) in samples.enumerated() {
+            if gap.contains(Double(index) / last) {
+                // A run needs two points to be a ribbon at all.
+                if current.count > 1 { runs.append(current) }
+                current = []
+            } else {
+                current.append(sample)
+            }
+        }
+        if current.count > 1 { runs.append(current) }
+        return runs
+    }
+
     /// World-space centerline samples paired with the **height** at each one
     /// (eased along the piece). Renderers use this to vary road width / car
     /// scale continuously with elevation — a ramp widens as it climbs, no

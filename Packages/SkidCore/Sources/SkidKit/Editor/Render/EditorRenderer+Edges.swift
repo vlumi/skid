@@ -121,13 +121,19 @@ extension EditorRenderer {
     /// One side's edge points in WORLD space, each with its outward normal.
     /// World space matters: distances along the run are measured here, so the
     /// stripe rhythm is a property of the track rather than of the viewport.
+    /// `isGap` marks a sample over a jump's air. The samples are all still
+    /// returned, indices intact, because the kerb plan is indexed by sample —
+    /// dropping them here would shift every style lookup after a jump. The caller
+    /// breaks its run instead.
     private static func edgeGeometry(
         _ placed: PlacedPiece, width: Double, side: Bool
-    ) -> [(world: Vec2, normal: CGPoint)] {
+    ) -> [EdgePoint] {
         let samples = placed.heightedSamples(degreesPerSample: KerbPlan.degreesPerSample)
         guard samples.count >= 2 else { return [] }
         let entryDir = Vec2(angle: placed.entry.heading.radians)
         let exitDir = Vec2(angle: placed.exits[0].heading.radians)
+        let gap = placed.piece.gapSpan
+        let last = Double(samples.count - 1)
         return samples.indices.map { index in
             let direction: Vec2
             if index == 0 {
@@ -144,7 +150,18 @@ extension EditorRenderer {
                 ? direction.perpendicular
                 : Vec2(-direction.perpendicular.x, -direction.perpendicular.y)
             let half = width / 2 * Elevation.scale(atHeight: samples[index].height)
-            return (samples[index].point + outward * half, CGPoint(x: outward.x, y: outward.y))
+            return EdgePoint(
+                world: samples[index].point + outward * half,
+                normal: CGPoint(x: outward.x, y: outward.y),
+                isGap: gap?.contains(Double(index) / last) ?? false)
         }
+    }
+
+    /// One edge sample: where it is, which way is outboard, and whether it sits
+    /// over a jump's air (where there is no road edge to decorate).
+    private struct EdgePoint {
+        var world: Vec2
+        var normal: CGPoint
+        var isGap: Bool
     }
 }

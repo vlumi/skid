@@ -134,7 +134,13 @@ enum DebugOverlay {
             let lines = [
                 "h \(format(state.height))",
                 "\(surface)",
-                onRoad ? "on road" : "off road \(Int(toRoad))",
+                // `toRoad` is `greatestFiniteMagnitude` when NO road matches the
+                // car's height (mid-air over a jump's gap). `Int(_:)` TRAPS on that
+                // — it crashed the app here — and note `isFinite` is NOT the guard:
+                // the sentinel is finite. Compare against a real distance instead.
+                onRoad
+                    ? "on road"
+                    : "off road \(Track.foundRoad(toRoad) ? "\(Int(toRoad))" : "—")",
                 state.isAirborne ? "AIR \(state.airborneTicks)" : "",
             ].filter { !$0.isEmpty }
             // World-space text: the context is scaled, so shrink to compensate.

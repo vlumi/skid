@@ -301,11 +301,13 @@ public enum PieceCompiler {
         let entry = placed.entry
         let forward = Vec2(angle: entry.heading.radians)
         // Sit at the lip: the fraction where the gap starts, along the piece.
+        //
+        // INTERPOLATED by distance, not snapped to a sample index. A straight has
+        // only its two endpoints, so rounding an index put the line at the piece's
+        // entry — a whole unit before the gap on a 4U jump, where the car was thrown
+        // while still on solid road.
         let start = placed.piece.gapSpan?.lowerBound ?? 0
-        let samples = placed.centerlineSamples(degreesPerSample: degreesPerSample)
-        let index = min(
-            samples.count - 1, max(0, Int((Double(samples.count - 1) * start).rounded())))
-        let position = samples.isEmpty ? entry.position.vec2 : samples[index]
+        let position = placed.point(atFraction: start) ?? entry.position.vec2
         let height = placed.height(atFraction: start)
         let side =
             forward.perpendicular * (Double(PieceCatalog.width) / 2)

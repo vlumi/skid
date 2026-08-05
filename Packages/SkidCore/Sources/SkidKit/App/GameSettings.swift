@@ -69,7 +69,9 @@ public final class GameSettings: ObservableObject {
     /// a jump goes (the launch kick sets that).
     @AppStorage("skid.sim.gravity") public var gravity = 18.0
     /// Upward kick off a launch lip, per unit of speed — sets jump distance.
-    @AppStorage("skid.sim.launchPerSpeed") public var launchPerSpeed = 0.004
+    /// Must match `CarTuning`'s default or `isStockPhysics` reads false on a fresh
+    /// install; the value is derived from the jump's gap width, not taste.
+    @AppStorage("skid.sim.launchPerSpeed") public var launchPerSpeed = 0.008
 
     /// Game pace for learning: scales acceleration + speed caps (agility
     /// stays). Applies on the next race (Reset). Hiscores only record at

@@ -96,25 +96,20 @@ struct JumpGapTests {
         #expect(
             center.distance(to: lip) < center.distance(to: landing),
             "the launch line is nearer the LANDING than the lip — a car falls in first")
-        // And it is genuinely at the lip, not merely on the near half.
-        #expect(center.distance(to: lip) < Double(PieceCatalog.width) / 2)
+        // And it is genuinely AT the lip, not merely on the near half. `lip` is the
+        // first gap sample, so allow a couple of sample steps rather than a fixed
+        // distance — the step scales with the piece's length and sample count.
+        let step = Double(PieceCatalog.jumpSpan) / Double(PlacedPiece.gapSpans)
+        #expect(
+            center.distance(to: lip) <= step * 2,
+            "launch line is \(center.distance(to: lip)) from the lip (step \(step))")
     }
 
     /// **A railed jump gets no railing along its gap.** A fence beside thin air
     /// guards nothing and draws a barrier along a hole; the lip and landing keep
     /// theirs.
-    @Test func railingAJumpLeavesTheGapUnfenced() throws {
-        typealias Catalog = PieceCatalog.ID
-        let pieces: [PieceID] = [
-            Catalog.startGrid, Catalog.longStraight, Catalog.longStraight,
-            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
-            Catalog.longStraight, Catalog.jump, Catalog.longStraight,
-            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
-        ]
-        var layout = TrackLayout(pieces: pieces, gateSeams: [0, 6])
-        layout.railed = Set(pieces.indices)  // rail EVERYTHING, jump included
-        let track = try PieceCompiler.compile(layout, id: "railed-jump")
-
+    @Test func railingAJumpLeavesTheGapUnfenced() {
+        let track = TestTracks.railedJumpRing()
         let gapIndices = track.centerline.indices.filter { track.segmentIsGap($0) }
         guard let firstGap = gapIndices.first, let lastGap = gapIndices.last else {
             Issue.record("no gap")
@@ -126,12 +121,15 @@ struct JumpGapTests {
 
         // A rail whose midpoint lies beside the gap (projected onto it, and within
         // a road-width across) is a fence along thin air.
+        // Laterally within a HALF width of the gap's centerline: that is where this
+        // piece's own edge rails would sit. A full width also catches a neighbouring
+        // ring's legitimate rails once the gap is long enough to run beside one.
         let offenders = track.walls.filter { wall in
             guard wall.kind == .rail else { return false }
             let mid = (wall.a + wall.b) * 0.5
             let t = (mid - a).dot(alongGap) / alongGap.dot(alongGap)
             guard t > 0.05, t < 0.95 else { return false }
-            return mid.distance(toSegment: a, b) < Double(PieceCatalog.width)
+            return mid.distance(toSegment: a, b) <= Double(PieceCatalog.width) / 2 + 1
         }
         #expect(offenders.isEmpty, "\(offenders.count) rail segment(s) run alongside the gap")
 

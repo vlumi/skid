@@ -17,6 +17,24 @@
 >   airborne too, so the tests assert on the car's *rise above the lip*. Deleting
 >   the launch kick outright left an earlier version of them green.
 >
+> Then a **second device round** rejected the result as unusable, and it was right:
+>
+> - **Nothing DREW the gap.** It was real to `surface(at:)` and to the physics, and
+>   invisible to every renderer — a jump looked exactly like a straight with a small
+>   unexplained hop. All the tests asserted on the model. `PlacedPiece.solidRuns` is
+>   now the one definition every drawing pass reads.
+> - **A jump inherited the build pitch**, so one laid while the pitch selector sat on
+>   "up" climbed half a level and every piece after it followed. Refused in the walk.
+> - **`Int(distanceToCenterline(...))` crashed the app.** With no road at the car's
+>   height (mid-air over the gap) the result is `greatestFiniteMagnitude`, which
+>   `Int(_:)` traps on. Note `isFinite` does **not** guard it — the sentinel is
+>   finite; `Track.foundRoad(_:)` does.
+> - **The piece had to be 4U, not 2U.** The gap should fit a road through it, and
+>   road width is exactly 1U — so the size is forced by the lattice, not by taste.
+>   3U looks sufficient but has nowhere to put the crossing. This also forced
+>   `launchPerSpeed` up from 0.004 to 0.008, since the old kick could not clear a
+>   road-width gap at any speed.
+>
 > The remaining item is the drivability warning (§5), deliberately deferred.
 
 ## What already exists

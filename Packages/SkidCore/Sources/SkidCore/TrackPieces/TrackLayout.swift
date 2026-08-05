@@ -154,10 +154,13 @@ public struct TrackLayout: Equatable, Sendable, Codable {
 /// exit pose(s) (two for a fork). The seam *before* this piece is `entrySeam`.
 public struct PlacedPiece: Equatable, Sendable {
     /// How many spans to cut a gapped piece into, so the hole in the asphalt has
-    /// somewhere to live. 20 puts a sample every ~12 units across a 2U jump —
-    /// finer than a car is long, so the gap's edges land where they were authored
-    /// rather than snapping to a coarse sample.
-    static let gapSpans = 20
+    /// somewhere to live.
+    ///
+    /// 40 puts a sample every 12 units along a 4U jump. The gap's edges snap to
+    /// whichever sample bounds them, so this is the accuracy of the hole: at 20
+    /// (24-unit spacing) a boundary landing exactly ON a sample cost a full step at
+    /// each end and the drawn gap came out 288 units instead of 240.
+    static let gapSpans = 40
 
     public var id: PieceID
     public var piece: Piece
