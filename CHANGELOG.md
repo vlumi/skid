@@ -21,9 +21,30 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
-- **See which level each piece is on while building.** Tap **Levels** in the editor
-  to badge every raised piece with its storey — on a track that climbs three levels
-  it is otherwise hard to tell where you are.
+- **Track markings line up on raised roads.** The chequered start line, the
+  construction stripes on an unfinished end, and the dashed checkpoint markers all
+  stopped short of the edges of a road that sits high up, where the road is drawn wider.
+
+- **The palette shows whether the next piece will be walled.** Every shape button's
+  casing turns the railing's blue when the rails toggle is on, so you can see what you
+  are about to lay instead of remembering.
+- **The editor's buttons are grouped by what they do, and stay put.** Delete and
+  markings no longer float over the track — they sit in a fixed row with a railings
+  toggle, so you can trim several pieces without the bin moving and without deleting
+  one by accident while reaching for another. Rotate, raise, lower and reverse move
+  behind one **Transform** button that expands them beside the map, since they are
+  laid-out-once operations — and you can watch the track turn as you tap. Undo and redo
+  sit out front the rest of the time. The railings-while-building switch moves
+  into the palette beside the climb selector, where the pieces it affects are.
+
+- **See and edit one level at a time.** The **Levels** button cycles through the
+  storeys your track uses: it badges every raised piece with its level, and picking a
+  level dims the others and aims your taps at that one — which is the only way to get
+  at a piece with two more stacked on top of it.
+- **Tapping a raised piece works across its whole width.** A high bridge is drawn
+  wider than the ground, but taps were still measured against the ground's width, so
+  the edges of a raised road did not respond. Where pieces stack, a tap now takes the
+  topmost rather than an arbitrary one.
 - **A warning when a track can't be driven.** If a wall ends up standing across the
   road — a high ramp's bank cutting off the road beneath it, say — the offending piece
   is marked in the editor. The track still races: it points at the problem rather

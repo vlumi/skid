@@ -26,16 +26,16 @@ public enum TrackLibrary {
     /// re-copied out of the editor.
     public static let builtins: [Builtin] = [
         Builtin(id: "small", name: "Small track", code: "AUwBCB8SDAkBCgwaAgMABAwDBQNIAlgA"),
-        Builtin(id: "oval", name: "Big oval", code: "Af8BBx8NDQINDQECBAACBgoDBQSwBhgA"),
+        Builtin(id: "oval", name: "Big oval", code: "AQMBBx8NDQINDQECBAACBgoDBQNIBLAA"),
         Builtin(
-            id: "eight", name: "Eight", code: "AYUBCx8ReQUFAnoGBhIBAgMABAwDBQJYA8AHCAgFBgcICQoLDA"),
+            id: "eight", name: "Eight", code: "ARUBCx8ReQUFAnoGBhIBAgMABAwDBQNIAtAHCAgFBgcICQoLDA"),
         // Built in the editor with the pitch tools, and the first built-in to
         // START off the ground: its baseline is the deck, so the lap dips to
         // ground level and climbs back. Exercises raised baselines, half-level
         // climbs and self-crossing at two heights all at once.
         Builtin(
             id: "clover", name: "Clover",
-            code: "AQwBGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFBLAFoAAIFwABAgkKCwwNDhUW"
+            code: "AU0BGR8eAQ95AwMBHgEPAwMBHgEPAwMBHgEPAwMCAwAXIwMFAeAB4AAIFwABAgkKCwwNDhUW"
                 + "FxgZGiEiIyQlJi0uBQEC"),
     ]
 

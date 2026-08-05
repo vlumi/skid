@@ -77,9 +77,11 @@ final class TrackHeightShiftTests: XCTestCase {
     /// are unchanged — the section is omitted entirely at height 0.
     func testTheBaselineRoundTripsAndCostsNothingAtGround() throws {
         let raised = flatRing(originHeight: 0.5)
-        XCTAssertEqual(try TrackCode.decode(TrackCode.encode(raised)), raised)
+        XCTAssertEqual(
+            try TrackCode.decode(TrackCode.encode(raised)), raised.normalized())
         let deck = flatRing(originHeight: 1)
-        XCTAssertEqual(try TrackCode.decode(TrackCode.encode(deck)), deck)
+        XCTAssertEqual(
+            try TrackCode.decode(TrackCode.encode(deck)), deck.normalized())
         // Ground level: the encoding is byte-identical to a layout with no
         // baseline at all, so existing codes keep their exact bytes.
         var explicitGround = flatRing()

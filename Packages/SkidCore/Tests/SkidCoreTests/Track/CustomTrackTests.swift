@@ -43,10 +43,10 @@ final class CustomTrackTests: XCTestCase {
     func testShareCodeRoundTripsTheExactLayout() throws {
         let layout = TrackLayout(pieces: square, gateSeams: [0, 4, 8, 12])
         let code = TrackCode.encode(layout)
-        XCTAssertEqual(try TrackCode.decode(code), layout)
+        XCTAssertEqual(try TrackCode.decode(code), layout.normalized())
         // And the track compiled from the decoded copy matches the original's
         // geometry, which is what actually gets raced.
-        let original = try PieceCompiler.compile(layout, id: "x")
+        let original = try PieceCompiler.compile(layout.normalized(), id: "x")
         let restored = try PieceCompiler.compile(try TrackCode.decode(code), id: "x")
         XCTAssertEqual(original.centerline, restored.centerline)
         XCTAssertEqual(original.startSlots, restored.startSlots)

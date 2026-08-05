@@ -25,12 +25,6 @@ extension EditorView {
                 iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
                     resetView()
                 }
-                // Re-center the layout on the canvas. Closing a loop does this
-                // automatically; the button is for tracks built before that, or
-                // reshaped since.
-                iconButton("scope", "Center on canvas") {
-                    game.editorCenterOnCanvas()
-                }
                 // Copy the share code out — how a design becomes a built-in, or
                 // gets kept somewhere until there's a real track library. The icon
                 // flips to a tick to confirm, since there's no text to change.
@@ -64,17 +58,31 @@ extension EditorView {
                 // rather than floated over the map, so they can't collide with
                 // the palette on a small screen (a corner-anchored pad landed
                 // right on top of it on an SE).
-                HStack(spacing: 8) {
-                    let building = game.editorMode == .build
-                    if building { transformPad }
-                    Spacer()
-                    if building {
-                        railBuildToggle
+                // Two rows, grouped by what they act on. Nothing here floats over
+                // the map: chrome on the road is what caused accidental deletes.
+                let building = game.editorMode == .build
+                if building {
+                    // The SELECTED PIECE, in a fixed place so the bin never moves.
+                    HStack(spacing: 8) {
+                        selectionRow
+                        Spacer()
                         levelsToggle
+                        modeToggle
                     }
-                    modeToggle
+                    .padding(.horizontal, 12)
+                    // The whole track, and the edit history.
+                    HStack(spacing: 8) {
+                        transformPad
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                } else {
+                    HStack(spacing: 8) {
+                        Spacer()
+                        modeToggle
+                    }
+                    .padding(.horizontal, 12)
                 }
-                .padding(.horizontal, 12)
                 if game.editorMode == .gate {
                     gateModeHint(walk)
                 } else {

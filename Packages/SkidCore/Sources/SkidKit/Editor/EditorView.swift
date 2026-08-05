@@ -76,8 +76,30 @@ struct EditorView: View {
     @State var copiedCode = false
     /// Pieces a car could not drive through, recomputed off the render path.
     @State var blockedPieces: Set<Int> = []
-    /// Whether to badge every off-ground piece with its storey.
-    @State var showLevels = false
+    /// Which storey the editor is working on, or nil for all of them.
+    ///
+    /// The map is a 2D projection of a stack, so a tap on three stacked pieces is
+    /// ambiguous. Restricting it to one storey is the only way to reach a piece with
+    /// others over it — and unlike cycling the tap, the state is visible on the
+    /// button, so one tap still means one thing however you pan and zoom.
+    /// Whether the whole-track transforms are expanded beside the undo pair. In place
+    /// rather than a sheet: they change the map, so the map has to stay visible.
+    @State var showTransforms = false
+    @State var levelFilter: LevelFilter = .off
+
+    /// `off` shows no badges and selects anything; `all` badges everything; a storey
+    /// badges everything and selects only that one.
+    enum LevelFilter: Equatable {
+        case off
+        case all
+        case storey(Int)
+
+        var showsBadges: Bool { self != .off }
+        var storeyOnly: Int? {
+            if case .storey(let level) = self { return level }
+            return nil
+        }
+    }
     /// Brief warning that the clipboard didn't hold a readable share code.
     @State var pasteFailed = false
 
@@ -110,7 +132,8 @@ struct EditorView: View {
                         gateSeams: layout.gateSeams, gating: game.editorMode == .gate,
                         selectedPiece: game.editorMode == .gate ? nil : game.editorSelectedPiece,
                         decals: layout.decals, railed: layout.railed,
-                        blockedPieces: blockedPieces, showLevels: showLevels,
+                        blockedPieces: blockedPieces, showLevels: levelFilter.showsBadges,
+                        dimmedExcept: levelFilter.storeyOnly,
                         transform: transform, into: &context)
                 }
                 // **No `.ignoresSafeArea()` here.** `transform` comes from
@@ -119,12 +142,12 @@ struct EditorView: View {
                 // into the insets drew the road a fixed distance below where taps
                 // landed. The grass behind it still fills the screen.
 
-                // Close-it sits ON the map at the loose end; delete and the build
-                // arrows sit on the SELECTED piece. Both are build actions, so
-                // they're gone while gating.
+                // Close-it still sits ON the map, at the loose end it acts on —
+                // there is nowhere else that means "join these two ends". The piece
+                // actions moved OFF the map into a fixed row (see `selectionRow`),
+                // because chrome over the road is what caused accidental deletes.
                 if game.editorMode == .build {
                     mapActions(walk: walk, transform: transform)
-                    selectionChrome(walk: walk, transform: transform)
                 }
                 topBar
                 paletteBar(walk: walk)
@@ -312,7 +335,10 @@ struct EditorView: View {
             }
             // Tap a piece to select it: that selection is what delete acts on and
             // what the build-end arrows hang off.
-            if let index = piece(near: value.location, walk: walk, transform: transform) {
+            if let index = piece(
+                near: value.location, walk: walk, transform: transform,
+                onlyLevel: levelFilter.storeyOnly)
+            {
                 game.editorSelect(index)
                 return
             }
