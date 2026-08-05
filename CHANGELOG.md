@@ -28,8 +28,9 @@ ships (see [AGENTS.md](AGENTS.md)).
   markings no longer float over the track — they sit in a fixed row with a railings
   toggle, so you can trim several pieces without the bin moving and without deleting
   one by accident while reaching for another. Rotate, raise, lower and reverse move
-  behind one **Transform** button, since they are laid-out-once operations, leaving
-  undo and redo out where you can reach them. The railings-while-building switch moves
+  behind one **Transform** button that expands them beside the map, since they are
+  laid-out-once operations — and you can watch the track turn as you tap. Undo and redo
+  sit out front the rest of the time. The railings-while-building switch moves
   into the palette beside the climb selector, where the pieces it affects are.
 
 - **See and edit one level at a time.** The **Levels** button cycles through the
