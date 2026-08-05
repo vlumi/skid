@@ -74,6 +74,10 @@ struct EditorView: View {
 
     /// Brief confirmation that the share code went to the clipboard.
     @State var copiedCode = false
+    /// Pieces a car could not drive through, recomputed off the render path.
+    @State var blockedPieces: Set<Int> = []
+    /// Whether to badge every off-ground piece with its storey.
+    @State var showLevels = false
     /// Brief warning that the clipboard didn't hold a readable share code.
     @State var pasteFailed = false
 
@@ -105,8 +109,9 @@ struct EditorView: View {
                         selectedEnd: game.editorMode == .gate ? nil : effectiveSelection(walk),
                         gateSeams: layout.gateSeams, gating: game.editorMode == .gate,
                         selectedPiece: game.editorMode == .gate ? nil : game.editorSelectedPiece,
-                        decals: layout.decals, railed: layout.railed, transform: transform,
-                        into: &context)
+                        decals: layout.decals, railed: layout.railed,
+                        blockedPieces: blockedPieces, showLevels: showLevels,
+                        transform: transform, into: &context)
                 }
                 // **No `.ignoresSafeArea()` here.** `transform` comes from
                 // `geo.size`, which EXCLUDES the safe area, and taps arrive in that
@@ -133,6 +138,8 @@ struct EditorView: View {
                 refreshClosingRun(walk)
             }
             .onChangeCompat(of: game.editorBuildEnd) { _ in refreshClosingRun(walk) }
+            // Same reasoning: the blockage check compiles the track.
+            .task(id: layout.pieces) { blockedPieces = layout.blockedPieces() }
             // Long-pressing a hotbar slot opens its picker. A `sheet` rather than
             // `fullScreenCover` (that one is iOS-only, and this package also builds
             // for macOS), driven by `isPresented` rather than `item:` (iOS 17+,
@@ -220,54 +227,6 @@ struct EditorView: View {
 
     // MARK: - Bars
 
-    private var topBar: some View {
-        VStack {
-            HStack {
-                // EVERY top-bar button is an icon. Text pills wrapped to
-                // "Ce/nte/r" and "Co/pie/d" on a small phone, and adding more only
-                // made it worse — seven words never fit one row. Icons do, and the
-                // accessibility label carries the meaning.
-                iconButton("checkmark", "Done") {
-                    game.backToSetup()
-                }
-                Spacer()
-                iconButton("doc.badge.plus", "New track") {
-                    game.editorReset()
-                }
-                iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
-                    resetView()
-                }
-                // Re-center the layout on the canvas. Closing a loop does this
-                // automatically; the button is for tracks built before that, or
-                // reshaped since.
-                iconButton("scope", "Center on canvas") {
-                    game.editorCenterOnCanvas()
-                }
-                // Copy the share code out — how a design becomes a built-in, or
-                // gets kept somewhere until there's a real track library. The icon
-                // flips to a tick to confirm, since there's no text to change.
-                iconButton(copiedCode ? "checkmark.circle.fill" : "doc.on.doc", "Copy code") {
-                    copyCode()
-                }
-                // Long-press copies the SHORT code, without a signature.
-                .simultaneousGesture(
-                    LongPressGesture().onEnded { _ in copyCode(signed: false) })
-                // …and paste one back in to load it. Separate buttons on purpose:
-                // one that did both could silently replace the track you're on.
-                // A failed paste shows a warning icon rather than "Bad code".
-                iconButton(
-                    pasteFailed ? "exclamationmark.triangle.fill" : "doc.on.clipboard",
-                    "Paste code"
-                ) {
-                    pasteCode()
-                }
-                attributionChip
-            }
-            .padding()
-            Spacer()
-        }
-    }
-
     /// A compact icon pill, for the view/layout tools. The label is the
     /// Who signed the track that was pasted in. Absent for an unsigned one,
     /// which is the norm — every built-in is unsigned, and saying so on each
@@ -276,7 +235,7 @@ struct EditorView: View {
     ///
     /// No name and no fingerprint yet; that arrives with profiles in v0.9.
     @ViewBuilder
-    private var attributionChip: some View {
+    var attributionChip: some View {
         let attribution = game.pastedAttribution
         if attribution.isWorthShowing {
             let broken = attribution == .broken
@@ -298,7 +257,7 @@ struct EditorView: View {
 
     /// accessibility name — the icon carries the meaning visually, but a
     /// glyph alone tells a screen reader nothing.
-    private func iconButton(
+    func iconButton(
         _ symbol: String, _ label: LocalizedStringKey, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -312,39 +271,8 @@ struct EditorView: View {
         .accessibilityLabel(Text(label, bundle: .module))
     }
 
-    private func paletteBar(walk: WalkResult) -> some View {
-        VStack {
-            Spacer()
-            VStack(spacing: 10) {
-                // Whole-track transforms, on the row above the hint: LAID OUT
-                // rather than floated over the map, so they can't collide with
-                // the palette on a small screen (a corner-anchored pad landed
-                // right on top of it on an SE).
-                HStack(spacing: 8) {
-                    if game.editorMode == .build { transformPad }
-                    Spacer()
-                    if game.editorMode == .build { railBuildToggle }
-                    modeToggle
-                }
-                .padding(.horizontal, 12)
-                if game.editorMode == .gate {
-                    gateModeHint(walk)
-                } else {
-                    buildStatus(walk: walk)
-                    mainRow(walk: walk)
-                    // The hotbar returns when it has something to hold (jumps,
-                    // gaps, decorations); five empty slots are dead space.
-                    if !EditorView.hotbarPieces.isEmpty {
-                        hotbarRow(walk: walk)
-                    }
-                }
-            }
-            .padding(.bottom, 24)
-        }
-    }
-
     @ViewBuilder
-    private func buildStatus(walk: WalkResult) -> some View {
+    func buildStatus(walk: WalkResult) -> some View {
         // Save state, or how far the selected end is from closing.
         Group {
             if game.editorIsSaveable() {
