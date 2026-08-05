@@ -7,6 +7,30 @@ import SwiftUI
 /// these are the controls for a piece you have already laid, as opposed to the
 /// palette you lay pieces from.
 extension EditorView {
+    /// **Show each off-ground piece's storey.** A mode rather than always-on: on a
+    /// flat track every badge would read "0", which is noise. Blocked pieces are
+    /// flagged regardless of this toggle — a warning you have to switch on is not a
+    /// warning.
+    var levelsToggle: some View {
+        Button {
+            showLevels.toggle()
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "square.3.layers.3d")
+                Text("Levels", bundle: .module)
+            }
+            .font(.footnote.bold())
+            .foregroundStyle(showLevels ? .black : .white)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 7)
+            .background(showLevels ? Color.white : .black.opacity(0.55), in: Capsule())
+            .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .accessibilityLabel(
+            Text(showLevels ? "Hide piece levels" : "Show piece levels", bundle: .module))
+    }
+
     /// **Whether the next piece you lay gets a railing.** Sticky, beside the mode
     /// toggle, because railing a bridge is a run of pieces — asking once beats
     /// toggling each one afterwards. The selected piece's own railing is toggled
