@@ -134,9 +134,8 @@ extension EditorView {
         }
         pasteFailed = false
         copiedCode = false
-        // A pasted track may have been built before auto-centering, so put it
-        // where it can be seen.
-        game.editorCenterOnCanvas()
+        // No centering needed: a share code carries the NORMALIZED layout, so a
+        // pasted track arrives centred (see `TrackLayout.centerOnCanvas`).
         resetView()
         #endif
     }
