@@ -21,6 +21,14 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **See which level each piece is on while building.** Tap **Levels** in the editor
+  to badge every raised piece with its storey — on a track that climbs three levels
+  it is otherwise hard to tell where you are.
+- **A warning when a track can't be driven.** If a wall ends up standing across the
+  road — a high ramp's bank cutting off the road beneath it, say — the offending piece
+  is marked in the editor. The track still races: it points at the problem rather
+  than hiding your track from the picker.
+
 ### build 11 — 2026-08-04
 
 - **Your tracks are a library, not one slot.** Every track you build or paste in

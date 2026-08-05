@@ -44,7 +44,8 @@ enum EditorRenderer {
     static func draw(
         walk: WalkResult, width: Double, selectedEnd: Int?, gateSeams: [Int] = [],
         gating: Bool = false, selectedPiece: Int? = nil, decals: [Int: Decal] = [:],
-        railed: Set<Int> = [], transform t: Transform, into context: inout GraphicsContext
+        railed: Set<Int> = [], blockedPieces: Set<Int> = [], showLevels: Bool = false,
+        transform t: Transform, into context: inout GraphicsContext
     ) {
         // The size limit, made visible. Under everything else, since it's a
         // boundary you build inside of.
@@ -52,6 +53,13 @@ enum EditorRenderer {
         drawTrack(
             walk: walk, width: width, gateSeams: gateSeams, gating: gating, decals: decals,
             railed: railed, transform: t, into: &context)
+        // Above ALL road, so a higher deck cannot paint out a lower piece's badge.
+        // Blocked pieces are always flagged; the level numbers are a mode, since on a
+        // flat track they are noise.
+        if showLevels || !blockedPieces.isEmpty {
+            drawLevelBadges(
+                walk: walk, blockedPieces: blockedPieces, transform: t, into: &context)
+        }
         // Over the road, under the end markers: the selected piece is a thing you
         // act on, so it should read on top of the asphalt but not hide the chrome.
         if let selectedPiece, walk.placed.indices.contains(selectedPiece) {
