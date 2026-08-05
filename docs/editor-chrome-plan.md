@@ -26,7 +26,8 @@ unrelated concerns.
 | track | the whole layout | rotate L/R, raise, lower, reverse | transform pad |
 | — | — | (all five are **rare**: usually once, at the start) | — |
 | selection | one piece | bin, markings, (rails) | **floating on the map** |
-| mode | what a tap means | Rails, Levels, Gates | bottom row |
+| build attributes | the next piece laid | pitch (up/flat/down), **rails** | pitch: palette; rails: bottom row |
+| mode | what a tap means | Levels, Gates | bottom row |
 | palette | what to lay next | shapes, curve variants, hotbar | bottom |
 
 `Undo`/`Redo` sit in the transform pad but belong to none of it: they act on the edit
@@ -58,8 +59,10 @@ icon, brings the row to 240 pt — 75% of the width, with room to spare:
 | | width |
 |---|---:|
 | `[transform]` + undo + redo | 120 pt |
-| Rails / Levels / Gates as icons | 120 pt |
-| **total** | **240 pt** |
+| Levels / Gates as icons | 80 pt |
+| **total** | **200 pt** |
+
+(Rails leaves this row entirely — it belongs in the palette, beside pitch.)
 
 Undo and redo stay visible: they are the most-used controls in the editor and the
 ones you reach for without looking.
@@ -92,7 +95,7 @@ move.**
 ├─────────────────────────────────────┤
 │ [⤢ transform] [↶][↷]      complete  │  rare transforms · edit history
 ├─────────────────────────────────────┤
-│ palette / hotbar                    │
+│ [↑][=][↓] [rails]   shapes / hotbar  │  build attributes · palette
 └─────────────────────────────────────┘
 ```
 
@@ -100,6 +103,11 @@ Contextual, not always-on:
 
 - **The selection row** is present always but **disabled** when nothing is selected —
   greyed rather than absent, so the row does not reflow and the bin never moves.
+- **The rails toggle moves into the palette**, beside the pitch selector. It is a
+  property of the next piece you lay, not a mode — and the palette already carries
+  exactly this kind of control: `triStack(values: [Pitch.up, .flat, .down])` picks the
+  climb for the next piece, in the same place, for the same reason. That leaves the
+  mode row holding only things that change what a *tap* means.
 - **`New` / `Copy` / `Paste`** move behind a single document button (`…`), since they
   are rare and dangerous next to `Done`. That also removes the three-`doc.*` cluster
   and the duplicate tick.
