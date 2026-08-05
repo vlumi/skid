@@ -21,6 +21,9 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The palette shows whether the next piece will be walled.** Every shape button's
+  casing turns the railing's blue when the rails toggle is on, so you can see what you
+  are about to lay instead of remembering.
 - **The editor's buttons are grouped by what they do, and stay put.** Delete and
   markings no longer float over the track — they sit in a fixed row with a railings
   toggle, so you can trim several pieces without the bin moving and without deleting

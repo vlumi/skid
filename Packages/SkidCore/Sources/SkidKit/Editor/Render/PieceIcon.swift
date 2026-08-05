@@ -12,9 +12,14 @@ struct PieceIcon: View {
     /// The height the piece will enter at — so an icon previews the elevated
     /// (deck) look when building on the bridge, matching what you'll get.
     var entryHeight: Double = 0
-    /// The pitch it will be laid at — a climbing piece previews walled even
-    /// from the ground, because that is what will land.
+    /// The pitch it will be laid at — so a climbing piece previews its slope.
     var pitch: Pitch = .flat
+    /// Whether it will be laid WITH railings, from the palette's rails toggle.
+    ///
+    /// Was inferred from elevation (`climb != 0 || exitHeight > 0.5`), which stopped
+    /// being true when railings became a per-piece attribute: the palette drew a
+    /// blue-railed deck and laid a bare one. It has to be told.
+    var railed = false
 
     var body: some View {
         Canvas { context, size in
@@ -62,19 +67,26 @@ struct PieceIcon: View {
             path.move(to: first)
             for pt in seg.dropFirst() { path.addLine(to: pt) }
         }
-        // Plain road with thin light edges — no kerbs in the palette (kerbs
-        // are decoration, and decoration is a later, author-controlled thing).
-        // What varies honestly: a piece that will climb or sit off the ground
-        // shows the walled (blue-railed) look it will actually land with.
+        // Plain road with thin light edges — no kerbs in the palette (kerbs are
+        // decoration, and decoration is a later, author-controlled thing).
+        //
+        // **The casing shows RAILINGS, not elevation.** It used to key off
+        // `climb != 0 || exitHeight > 0.5`, which was a fair proxy while every raised
+        // piece was railed — and became a lie when railings turned into a per-piece
+        // attribute: the button drew a blue-railed deck and laid a bare one. The rails
+        // toggle drives it now, so every shape button in the palette answers "walled or
+        // plain?" at a glance, which is also what makes the toggle's own state legible.
         let roadW: CGFloat = 13
-        let elevated = placed.climb != 0 || placed.exitHeight > 0.5
+        // A raised road is still drawn a shade lighter, so height stays visible on its
+        // own — it just no longer masquerades as a railing.
+        let raised = placed.climb != 0 || placed.exitHeight > 0.5
         context.stroke(
             path,
             with: .color(
-                elevated ? Color(red: 0.55, green: 0.78, blue: 0.95) : Color(white: 0.95)),
+                railed ? EditorRenderer.bridgeRail : Color(white: 0.95)),
             style: StrokeStyle(lineWidth: roadW + 4, lineCap: .butt, lineJoin: .round))
         context.stroke(
-            path, with: .color(Color(white: elevated ? 0.72 : 0.62)),
+            path, with: .color(Color(white: raised ? 0.72 : 0.62)),
             style: StrokeStyle(lineWidth: roadW, lineCap: .butt, lineJoin: .round))
         drawEntryMarker(placed, screen: screen, into: &context)
     }
