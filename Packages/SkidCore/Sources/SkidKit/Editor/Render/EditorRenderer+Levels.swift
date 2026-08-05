@@ -86,3 +86,35 @@ extension EditorRenderer {
     /// editor uses for nothing else yet.
     static let blockedTint = Color(red: 0.85, green: 0.42, blue: 0.05)
 }
+
+extension EditorRenderer {
+    /// A veil over every storey but one, for when the editor is working on a single
+    /// level.
+    ///
+    /// Veiled rather than hidden: the other storeys are still where the track is, and
+    /// a map that omits them would misrepresent the road. Dimming says "not this one"
+    /// while keeping the shape readable.
+    static func drawOtherStoreyVeil(
+        walk: WalkResult, keeping storey: Int, t: Transform,
+        into context: inout GraphicsContext
+    ) {
+        var veil = Path()
+        for placed in walk.placed {
+            let top = max(placed.entryHeight, placed.exitHeight)
+            guard Track.level(of: top) != storey else { continue }
+            let samples = placed.centerlineSamples(degreesPerSample: 12)
+            guard samples.count > 1 else { continue }
+            var line = Path()
+            line.move(to: t.screen(samples[0]))
+            samples.dropFirst().forEach { line.addLine(to: t.screen($0)) }
+            // The road's own drawn width, so the veil covers the asphalt and its kerb
+            // rather than a nominal stripe down the middle.
+            let width =
+                Double(PieceCatalog.width) * Elevation.scale(atHeight: top) * t.scale
+            veil.addPath(
+                line.strokedPath(
+                    StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round)))
+        }
+        context.fill(veil, with: .color(.black.opacity(0.42)))
+    }
+}
