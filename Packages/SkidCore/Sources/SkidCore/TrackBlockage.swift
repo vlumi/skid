@@ -97,23 +97,26 @@ extension TrackLayout {
     /// validator already reports, and adding "and it is blocked" to those is noise.
     public func blockedPieces() -> Set<Int> {
         guard let track = try? PieceCompiler.compile(self) else { return [] }
-        let blockages = track.blockages()
-        guard !blockages.isEmpty else { return [] }
+        return pieces(covering: track.blockages().map(\.point))
+    }
 
-        // Map centerline indices back to pieces by COUNTING, the way the compiler
-        // builds them: it seeds the loop with the first piece's entry point, then each
-        // piece contributes its samples from after its entry through its exit. So the
-        // run of points belonging to a piece is known without storing a map.
-        //
-        // (Not by matching coordinates: the compiler recentres the track, so a walk
-        // point is not a track point — comparing the two is a mistake this codebase
-        // has made more than once.)
-        // NOT COVERED BY A TEST, and worth knowing: `blockedPieces()` compiles from
-        // the layout, so a test cannot hand it walls that are wrong — the only way to
-        // produce a blocked layout is a bug in the compiler, which is what this
-        // warning exists to catch. Dropping the seed point below shifts every piece by
-        // one and no test notices. `Track.blockages()` itself IS covered, including
-        // against the real reported track.
+    /// Which pieces a set of centerline indices fall in.
+    ///
+    /// Separate from `blockedPieces()` so it is testable: that one compiles from this
+    /// layout, so no test can hand it a blocked track — the only way to produce one
+    /// is a compiler bug, which is what the warning exists to catch. This takes the
+    /// indices directly, so a test can name a point and check the piece.
+    ///
+    /// Counts the way the compiler builds: it seeds the loop with the first piece's
+    /// entry point, then each piece contributes its samples from after its entry
+    /// through its exit. The run of points belonging to a piece is therefore known
+    /// without storing a map — and the seed is why the running total starts at 1.
+    ///
+    /// Not by matching coordinates: the compiler recentres the track, so a walk point
+    /// is not a track point. Comparing the two is a mistake this codebase has made
+    /// more than once.
+    public func pieces(covering centerlineIndices: [Int]) -> Set<Int> {
+        guard !centerlineIndices.isEmpty else { return [] }
         let walk = self.walk()
         var upperBounds: [(piece: Int, endsBefore: Int)] = []
         var running = 1
@@ -123,12 +126,12 @@ extension TrackLayout {
             running += max(1, samples.count - 1)
             upperBounds.append((piece, running))
         }
-        var blocked: Set<Int> = []
-        for blockage in blockages {
-            if let hit = upperBounds.first(where: { blockage.point < $0.endsBefore }) {
-                blocked.insert(hit.piece)
+        var pieces: Set<Int> = []
+        for index in centerlineIndices {
+            if let hit = upperBounds.first(where: { index < $0.endsBefore }) {
+                pieces.insert(hit.piece)
             }
         }
-        return blocked
+        return pieces
     }
 }
