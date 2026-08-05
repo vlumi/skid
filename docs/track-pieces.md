@@ -257,12 +257,33 @@ the **150 length suffices**; at 45°/135° it stretches to ~width/sin 45° ≈
 170, so diagonal crossings need the **300 length**. The compiler clips the
 edge walls at the shared mouths; the ring stays a single closed loop.
 
-**Jumps with air.** The jump piece is a launch lip, a road **gap**, and a
-landing. Flight is speed-scaled (the existing launch model, minus the layer
-flip), so clearing the gap is *earned*: undershoot drops you onto whatever
-is beneath — grass by default, or **a crossing road laid under the gap**,
-which the overlap rules explicitly allow. No new fail state; landing short
-is slow, not game over.
+**Jumps with air — shipped.** The jump piece is a launch lip, a road **gap**,
+and a landing, in one 2U span. Flight is speed-scaled (the existing launch
+model, minus the layer flip), so clearing the gap is *earned*: undershoot
+drops you onto whatever is beneath — grass by default, or **a crossing road
+laid under the gap**, which the overlap rules explicitly allow. No new fail
+state; landing short is slow, not game over.
+
+The gap is a **parallel `Track.gaps` flag**, not missing centerline points: the
+loop stays closed, so progress, lap scoring and the AI need to know nothing
+about jumps, and only `distanceToCenterline` (the one function every "am I on
+road" question goes through) skips the gap's segments.
+
+Two numbers fix the piece's proportions, both measured rather than chosen:
+
+- Road is "within a half-width of the centerline", so asphalt reaches a
+  **half-width past the last solid point** as an end cap. Flagging the middle
+  half of a 2U piece therefore leaves *zero* air — fully paved by the two caps.
+- A launch carries **35 units at speed 300, 82 at 450, 113 at top speed 520**.
+  Air wider than ~113 is uncrossable at any speed.
+
+`Piece.gapSpan` = `0.10…0.90` splits the difference: 72 units of air, cleared
+from roughly 420 up and missed at 300. A **longer** jump piece is then just a new
+catalog id — but it would need a faster car or a stronger kick to be clearable.
+
+One piece rather than separate lip/gap/landing parts, because a bare gap would
+be placeable alone: that makes an unfinishable track buildable and forces both
+the closure search and the drivability warning to reason about holes.
 
 **Gates with routes.** Every possible lap route must cross the marked gates
 in the **same cyclic order** — so gates naturally live on trunk sections all
@@ -275,7 +296,8 @@ grows into it:
 - *Phase A — ring + crossings + jumps.* The runtime `Track` keeps its single
   closed centerline (a crossing is the ring overlapping itself; a jump is a
   road-less span). Compiler work: wall clipping at crossing mouths, the
-  no-flip launch.
+  no-flip launch. **Jumps are done** — the road-less span is `Track.gaps`, and
+  the launch line sits at the lip (the gap's near edge, not the piece's exit).
 - *Phase B — forks.* The runtime `Track` learns multiple routes (a ribbon
   graph), wall handling at fork mouths, and the AI learns to pick a branch.
   The headless model handles the full graph from day one; the Phase-A

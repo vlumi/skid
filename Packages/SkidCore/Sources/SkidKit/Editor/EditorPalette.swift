@@ -60,10 +60,14 @@ extension EditorView {
     /// decorations — none of which is a compound. Keeping it assignable is what
     /// stops the palette growing a button per catalog family again.
     enum HotbarSlot {
-        /// What the hotbar holds on a fresh install: nothing. The ramp button
+        /// What the hotbar holds on a fresh install: the jump. The ramp button
         /// retired with the pitch selector (a ramp is a road with pitch, not a
-        /// shape); the slots fill in when jumps, gaps and decorations land.
-        static let defaults: [PieceID] = []
+        /// shape); more slots fill in as decorations land.
+        ///
+        /// The jump is a **default** rather than merely available, because an empty
+        /// hotbar is indistinguishable from a missing feature: nothing on screen
+        /// says "assign something here".
+        static let defaults: [PieceID] = [PieceCatalog.ID.jump]
 
         /// An empty slot — draws as a placeholder and places nothing.
         static let empty: PieceID = -2
@@ -74,12 +78,17 @@ extension EditorView {
     /// Everything the hotbar can hold: the pieces that aren't part of the
     /// corner/straight vocabulary.
     ///
-    /// Jumps, gaps, landings and decorations join this list as they land — the
-    /// catalog already carries some of that geometry, but the Phase-A compiler
-    /// can't build it, so offering it would only produce tracks that fail to
-    /// compile (see docs/track-pieces.md "Beyond the ring").
+    /// **The jump is one piece — lip, gap and landing together.** Not three
+    /// assignable parts: a bare gap would be placeable on its own, which makes an
+    /// unfinishable track buildable and forces the closure search and the
+    /// drivability warning to reason about holes. One tap that cannot be wrong.
+    ///
+    /// Crossings, forks and decorations join this list as they land — the catalog
+    /// already carries some of that geometry, but the Phase-A compiler can't build
+    /// it, so offering it would only produce tracks that fail to compile (see
+    /// docs/track-pieces.md "Beyond the ring").
     static var hotbarPieces: [PieceID] {
-        []
+        [PieceCatalog.ID.jump]
     }
 
     /// A short label for any piece the palette can show.
@@ -98,5 +107,6 @@ extension EditorView {
         PieceCatalog.ID.curve45SweepRight: "Right (sweep)",
         PieceCatalog.ID.rampUp: "Ramp up",
         PieceCatalog.ID.rampDown: "Ramp down",
+        PieceCatalog.ID.jump: "Jump",
     ]
 }

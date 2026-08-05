@@ -84,8 +84,6 @@ public struct CarTuning: Equatable, Sendable, Codable {
     public var wallYaw: Double
     /// Bounciness of car–car contact, 0…1.
     public var carRestitution: Double
-    /// Flight ticks per unit of speed off a launching ramp (capped at 1 s).
-    public var jumpTicksPerSpeed: Double
     /// Downward pull on an airborne car, in levels per second squared.
     ///
     /// Tuned by how a FALL should read, not by jump distance: distance is set
@@ -120,7 +118,6 @@ public struct CarTuning: Equatable, Sendable, Codable {
         wallDragFloor: Double = 0.1,
         wallYaw: Double = 0.012,
         carRestitution: Double = 0.4,
-        jumpTicksPerSpeed: Double = 0.055,
         gravity: Double = 18,
         launchPerSpeed: Double = 0.004
     ) {
@@ -142,7 +139,6 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.wallDragFloor = wallDragFloor
         self.wallYaw = wallYaw
         self.carRestitution = carRestitution
-        self.jumpTicksPerSpeed = jumpTicksPerSpeed
         self.gravity = gravity
         self.launchPerSpeed = launchPerSpeed
     }
