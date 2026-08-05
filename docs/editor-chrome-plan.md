@@ -24,12 +24,45 @@ unrelated concerns.
 | view | the camera | Fit, Center | top row |
 | edit | the undo stack | Undo, Redo | transform pad |
 | track | the whole layout | rotate L/R, raise, lower, reverse | transform pad |
+| — | — | (all five are **rare**: usually once, at the start) | — |
 | selection | one piece | bin, markings, (rails) | **floating on the map** |
 | mode | what a tap means | Rails, Levels, Gates | bottom row |
 | palette | what to lay next | shapes, curve variants, hotbar | bottom |
 
 `Undo`/`Redo` sit in the transform pad but belong to none of it: they act on the edit
 history, not the layout.
+
+## Frequency matters as much as grouping
+
+The transform pad holds seven buttons, and they are not alike:
+
+| | frequency |
+|---|---|
+| rotate ×2, raise, lower, reverse | **rare** — usually once, when a track is first laid out |
+| undo, redo | **constant** — every edit |
+
+Lumping them is why the row is seven wide. Measured against the iPhone SE width the
+codebase designs for:
+
+| | width |
+|---|---:|
+| transform pad (7 buttons) | 280 pt |
+| Rails + Levels + Gates (labelled pills) | ~198 pt |
+| **total** | **478 pt on a 320 pt screen — overflows by 158** |
+
+That overflow is the reported "buttons and their labels don't fit at all anymore".
+
+Putting the five rare transforms behind **one** button, and every mode control on an
+icon, brings the row to 240 pt — 75% of the width, with room to spare:
+
+| | width |
+|---|---:|
+| `[transform]` + undo + redo | 120 pt |
+| Rails / Levels / Gates as icons | 120 pt |
+| **total** | **240 pt** |
+
+Undo and redo stay visible: they are the most-used controls in the editor and the
+ones you reach for without looking.
 
 ## The budget rules out one row per group
 
@@ -49,7 +82,7 @@ move.**
 
 ```
 ┌─────────────────────────────────────┐
-│ [Done]        [Fit][Center][↶][↷]   │  document · view+edit
+│ [Done]                    [⋯][Fit]  │  document · view
 ├─────────────────────────────────────┤
 │                                     │
 │              the map                │  ~50% of the screen
@@ -57,7 +90,7 @@ move.**
 ├─────────────────────────────────────┤
 │ [bin][brush][rail]      [Lv][Gates] │  SELECTION (fixed) · modes
 ├─────────────────────────────────────┤
-│ [◰][◱][▲][▼][⟲]           complete  │  the whole track
+│ [⤢ transform] [↶][↷]      complete  │  rare transforms · edit history
 ├─────────────────────────────────────┤
 │ palette / hotbar                    │
 └─────────────────────────────────────┘
@@ -70,6 +103,9 @@ Contextual, not always-on:
 - **`New` / `Copy` / `Paste`** move behind a single document button (`…`), since they
   are rare and dangerous next to `Done`. That also removes the three-`doc.*` cluster
   and the duplicate tick.
+- **The five rare transforms** (rotate ×2, raise, lower, reverse) collapse behind one
+  `transform` button, since they are laid-out-once operations. Undo and redo stay
+  visible beside it — they are the most-used controls in the editor.
 - **The transform row** appears only in build mode, as now.
 
 ### What this fixes
