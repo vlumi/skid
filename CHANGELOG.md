@@ -21,6 +21,14 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The editor's buttons are grouped by what they do, and stay put.** Delete and
+  markings no longer float over the track — they sit in a fixed row with a railings
+  toggle, so you can trim several pieces without the bin moving and without deleting
+  one by accident while reaching for another. Rotate, raise, lower and reverse move
+  behind one **Transform** button, since they are laid-out-once operations, leaving
+  undo and redo out where you can reach them. The railings-while-building switch moves
+  into the palette beside the climb selector, where the pieces it affects are.
+
 - **See and edit one level at a time.** The **Levels** button cycles through the
   storeys your track uses: it badges every raised piece with its level, and picking a
   level dims the others and aims your taps at that one — which is the only way to get
