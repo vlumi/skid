@@ -239,10 +239,6 @@ extension EditorView {
         // Railings are NOT here any more: they moved to the fixed selection row, so
         // toggling one is a single tap rather than select-open-check-close. This sheet
         // is only for the things that genuinely need a picker.
-        case .transform:
-            configurationBody(Text("Transform track", bundle: .module)) {
-                transformSheet
-            }
         case nil:
             EmptyView()
         }
@@ -342,40 +338,6 @@ extension EditorView {
             // Nothing when there's no run to take: the reason already shows in the
             // hint line, and a dead button on the map would just be clutter.
             EmptyView()
-        }
-    }
-
-    /// **Undo, redo, and everything else behind one button.**
-    ///
-    /// This was seven buttons in a row, and they are not alike: rotate, raise, lower
-    /// and reverse are laid-out-ONCE operations, while undo and redo are used on every
-    /// edit. Lumping them by object rather than by frequency is what made the row too
-    /// wide — measured, this row wanted 478 pt on the 320 pt screen the project designs
-    /// for, which is the reported "buttons and their labels don't fit at all anymore".
-    ///
-    /// So the five rare transforms collapse behind one button, and the two constant
-    /// ones stay out where they can be hit without looking.
-    @ViewBuilder
-    var transformPad: some View {
-        HStack(spacing: 6) {
-            mapAction(
-                "arrow.uturn.backward", tint: .white, label: "Undo",
-                enabled: game.editorCanUndo
-            ) {
-                game.editorUndo()
-            }
-            mapAction(
-                "arrow.uturn.forward", tint: .white, label: "Redo",
-                enabled: game.editorCanRedo
-            ) {
-                game.editorRedo()
-            }
-            mapAction(
-                "slider.horizontal.below.rectangle", tint: .white,
-                label: "Transform the whole track"
-            ) {
-                configuring = .transform
-            }
         }
     }
 

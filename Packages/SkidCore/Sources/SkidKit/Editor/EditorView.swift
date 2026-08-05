@@ -44,15 +44,11 @@ struct EditorView: View {
         /// A LAID piece's variants — decals, and the start line's facing. Applied
         /// in place: same geometry, different markings.
         case piece(Int)
-        /// The whole-track transforms — rotate, raise, lower, reverse. Behind a sheet
-        /// because they are laid-out-once operations; see `transformPad`.
-        case transform
 
         var id: String {
             switch self {
             case .hotbar(let slot): return "hotbar\(slot)"
             case .piece(let index): return "piece\(index)"
-            case .transform: return "transform"
             }
         }
     }
@@ -86,6 +82,9 @@ struct EditorView: View {
     /// ambiguous. Restricting it to one storey is the only way to reach a piece with
     /// others over it — and unlike cycling the tap, the state is visible on the
     /// button, so one tap still means one thing however you pan and zoom.
+    /// Whether the whole-track transforms are expanded beside the undo pair. In place
+    /// rather than a sheet: they change the map, so the map has to stay visible.
+    @State var showTransforms = false
     @State var levelFilter: LevelFilter = .off
 
     /// `off` shows no badges and selects anything; `all` badges everything; a storey
