@@ -158,7 +158,43 @@ final class TrackBlockageTests: XCTestCase {
 
     }
 
-    /// **The centerline-to-piece mapping, against a known answer.**
+    /// **The centerline-to-piece mapping, against known answers.**
+    ///
+    /// The compiler seeds its loop with the first piece's entry point before adding
+    /// any samples, so the run of points belonging to a piece starts at 1. A mapping
+    /// that forgets the seed shifts every piece by one — and still lands inside the
+    /// track, which is why "every point maps somewhere" cannot catch it.
+    func testPointsMapToTheRightPieces() throws {
+        let layout = try TrackCode.decode(TestTracks.Code.bridgeRing)
+        let walk = layout.walk()
+
+        // Point 0 is the seed — the first piece's own entry — so it belongs to piece 0.
+        XCTAssertEqual(layout.pieces(covering: [0]), [0])
+
+        // Walk the boundaries the compiler would produce and check each side of them.
+        var running = 1
+        for (piece, placed) in walk.placed.enumerated() {
+            let samples = placed.heightedSamples(
+                degreesPerSample: PieceCompiler.degreesPerSample)
+            let last = running + max(1, samples.count - 1) - 1
+            XCTAssertEqual(
+                layout.pieces(covering: [last]), [piece],
+                "the last point of piece \(piece) must map to it")
+            XCTAssertEqual(
+                layout.pieces(covering: [running]), [piece],
+                "and so must its first")
+            running = last + 1
+        }
+
+        // Several at once, and out-of-range indices dropped rather than trusted.
+        XCTAssertEqual(layout.pieces(covering: [0, 0]), [0], "duplicates collapse")
+        XCTAssertTrue(
+            layout.pieces(covering: [999_999]).isEmpty,
+            "an index past the last piece names nothing")
+        XCTAssertTrue(layout.pieces(covering: []).isEmpty)
+    }
+
+    /// **A wall across the road is found, and named.**
     ///
     /// `blockedPieces()` compiles from the layout, so it cannot be pointed at
     /// rebased walls — the test above rebases a compiled `Track` instead, which
