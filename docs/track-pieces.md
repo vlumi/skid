@@ -257,12 +257,52 @@ the **150 length suffices**; at 45°/135° it stretches to ~width/sin 45° ≈
 170, so diagonal crossings need the **300 length**. The compiler clips the
 edge walls at the shared mouths; the ring stays a single closed loop.
 
-**Jumps with air.** The jump piece is a launch lip, a road **gap**, and a
-landing. Flight is speed-scaled (the existing launch model, minus the layer
-flip), so clearing the gap is *earned*: undershoot drops you onto whatever
-is beneath — grass by default, or **a crossing road laid under the gap**,
-which the overlap rules explicitly allow. No new fail state; landing short
-is slow, not game over.
+**Jumps with air — shipped, as three separate things.** A jump is not a piece.
+It is a **wedge ramp**, a **gap**, and a **warp** down to where the road
+continues — each useful on its own, and each expressible without the others.
+
+- **The gap** (1U, `kind: .gap`) is absence of road and nothing else: no height
+  effect, no launch. Chain them for a wider hole. A road may run beneath one,
+  which the overlap rules explicitly allow.
+- **The warp** (`kind: .warp`) is vertical relocation with **no length**: it says
+  the road continues lower, down only, clamped to the world's floor. It is what
+  gets the far side of a jump back to the ground.
+- **The wedge** is not a piece at all but a property of the ramp before them: a
+  climb with nothing above it — a gap or a warp after it — keeps its full slope
+  instead of easing level.
+
+The gap is a **parallel `Track.gaps` flag**, not missing centerline points: the
+loop stays closed, so progress, lap scoring and the AI need to know nothing
+about any of this, and only `distanceToCenterline` (the one function every "am I
+on road" question goes through) skips the gap's segments.
+
+**Flight is gravity, not a trigger.** There is no launch line and no kick — a
+car leaves a road that ends and falls. Speed buys *distance covered before
+landing*, which is the "be fast or fall in" gate; it does not buy height. That
+is deliberate: cars are heavy, and an arc off a lip read as fake. Undershoot
+drops you onto whatever is beneath — grass, or a road laid under the gap. No new
+fail state; landing short is slow, not game over.
+
+Three things this cost, all found by driving it:
+
+- **The eased ramp top deletes the launch.** Smoothstep flattens the final
+  stretch to 0.007 of a level over the last 5% where the raw slope is 0.05, so a
+  ramp ending at a lip threw nothing. Bridges still ease — that is what stopped
+  cars being thrown at the top of every bridge — so the wedge applies only where
+  the road does not continue at the climb's height.
+- **A zero-length piece must contribute no road.** A warp's samples are all one
+  point, and each cast its own half-width end cap, paving the neighbouring gap
+  completely: the car stayed "on road" across the hole and never took off.
+- **Asphalt must not overhang a gap.** Distance-to-segment clamps at the
+  endpoints, so road reached a half-width past its last solid point. A segment
+  ending at a gap is cut square instead.
+
+**The warp is invisible to the author.** It occupies no ground, so there is
+nothing to place: the editor's down arrow creates one and deepens it, the up
+arrow shallows it and removes it at zero, and deleting the road it attaches to
+takes it along. Two adjacent warps and one deeper warp describe the same road, so
+only the single form is stored. Encoded as tag 9, `(index, signed half-levels)`
+pairs; a one-level drop is the default and costs no bytes.
 
 **Gates with routes.** Every possible lap route must cross the marked gates
 in the **same cyclic order** — so gates naturally live on trunk sections all
@@ -275,7 +315,9 @@ grows into it:
 - *Phase A — ring + crossings + jumps.* The runtime `Track` keeps its single
   closed centerline (a crossing is the ring overlapping itself; a jump is a
   road-less span). Compiler work: wall clipping at crossing mouths, the
-  no-flip launch.
+  no-flip launch. **Jumps are done**, and needed no launch machinery at all: the
+  road-less span is `Track.gaps`, and flight is gravity acting on a car that drove
+  off a wedge.
 - *Phase B — forks.* The runtime `Track` learns multiple routes (a ribbon
   graph), wall handling at fork mouths, and the AI learns to pick a branch.
   The headless model handles the full graph from day one; the Phase-A
@@ -306,7 +348,8 @@ release.
 | 32–33 | **crossable straight** 120 / 240 | at-grade crossings: 120 = 90° only, 240 = any angle |
 | 34–36 | **fork** · straight+L / straight+R / symmetric L·R | one entry, two exits; radius 240 |
 | 37–39 | **join** · mirrors of the forks | two entries, one exit |
-| 40 | **jump 240** (launch lip · gap · landing) | gap may be crossed beneath |
+| 40 | **gap 120** (no road at all) | may be crossed beneath; chain for a wider hole |
+| 42 | **warp** (zero length, drops the road) | down only, clamped to the floor |
 | 128–130 | straight 120/240/480 **+ direction arrow** | decal variants, two-byte range |
 
 A piece's path is an ordered **chain** of segments (one chain per exit, two

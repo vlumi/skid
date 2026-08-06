@@ -28,6 +28,9 @@ extension EditorView {
                 // means. It used to sit in the mode row, which made it look like a
                 // mode; adjacency implies scope, as the comment above says.
                 railBuildToggle
+                // WARP beside pitch: both are the vertical, and this is the one
+                // that steps rather than slopes.
+                warpStepper(height: appendHeight(walk))
             }
             .padding(.trailing, 8)
             // Radius UNDER the corner pair, exactly their width: the setting

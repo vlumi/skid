@@ -18,7 +18,7 @@ import Foundation
 /// `TrackValidator`'s job, re-judged from scratch after every edit.
 extension TrackLayout {
     /// Insert a piece at `index`, shifting everything from there on — pitches,
-    /// gate seams, fitters, decals and rails alike — one place later.
+    /// gate seams, fitters, decals, rails and warp drops alike — one place later.
     ///
     /// Geometry is not preserved: inserting mid-ring re-walks everything after
     /// the cut, which is exactly the "slides the whole tail" behaviour the editor
@@ -36,6 +36,7 @@ extension TrackLayout {
         fitters = remapped(fitters, by: shift)
         decals = remapped(decals, by: shift)
         railed = remapped(railed, by: shift)
+        warpDrops = remapped(warpDrops, by: shift)
     }
 
     /// Remove the piece at `index`, pulling everything after it back one place.
@@ -54,6 +55,7 @@ extension TrackLayout {
         fitters = remapped(fitters.filter { $0.key != index }, by: pullBack)
         decals = remapped(decals.filter { $0.key != index }, by: pullBack)
         railed = remapped(railed.filter { $0 != index }, by: pullBack)
+        warpDrops = remapped(warpDrops.filter { $0.key != index }, by: pullBack)
     }
 
     /// **Re-spell a closed ring to begin at `index`.** The same ring, written from
@@ -84,6 +86,7 @@ extension TrackLayout {
         fitters = remapped(fitters, by: rotate)
         decals = remapped(decals, by: rotate)
         railed = remapped(railed, by: rotate)
+        warpDrops = remapped(warpDrops, by: rotate)
         // The walk now starts at the new first piece, so the origin is that
         // piece's entry — its pose and its height.
         origin = walk.placed[index].entry

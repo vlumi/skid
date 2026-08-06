@@ -222,7 +222,9 @@ enum TrackRenderer {
             let a = track.centerline[i]
             let b = track.centerline[(i + 1) % track.centerline.count]
             let high = track.height(ofSegment: i) > 0.5
-            if high == elevated {
+            // A jump's gap carries no asphalt, so it lifts the pen exactly like a
+            // segment in the other height band.
+            if high == elevated, !track.segmentIsGap(i) {
                 if !penDown {
                     path.move(to: CGPoint(x: a.x, y: a.y))
                     penDown = true

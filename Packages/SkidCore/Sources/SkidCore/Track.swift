@@ -120,6 +120,19 @@ public struct Track: Equatable, Sendable, Codable {
     /// painted a level up, and stacking the car by raw height slid it beneath
     /// the upper half of its own road.
     public var deckTops: [Double]
+
+    /// **Where there is no asphalt** — the air over a jump's gap, per centerline
+    /// point, parallel to `centerline`.
+    ///
+    /// The centerline still runs THROUGH a gap, and that is deliberate: it stays a
+    /// single closed loop, so progress, lap scoring and the AI's racing line need
+    /// to know nothing about jumps. What changes is only whether there is a
+    /// surface to stand on, which is one comparison in `surface(at:)` — the same
+    /// trick `heights` played on the old layer system.
+    ///
+    /// Deleting the points instead would break loop closure and make progress
+    /// leap the gap's length, for no gain.
+    public var gaps: [Bool]
     /// Jump take-off lines. A plain ramp needs no line at all now — the climb is
     /// in `heights` — but a launch still needs a moment where the car leaves the
     /// road ballistically.
@@ -165,6 +178,7 @@ public struct Track: Equatable, Sendable, Codable {
         width: Double,
         heights: [Double]? = nil,
         deckTops: [Double]? = nil,
+        gaps: [Bool]? = nil,
         ramps: [Ramp] = [],
         walls: [Wall] = [],
         gates: [Gate] = [],
@@ -185,6 +199,8 @@ public struct Track: Equatable, Sendable, Codable {
         // Ad-hoc tracks (built without the piece compiler) have no pieces, so
         // each point's "deck top" is honestly its own height.
         self.deckTops = deckTops ?? self.heights
+        // No jumps means solid road everywhere — the overwhelmingly common case.
+        self.gaps = gaps ?? Array(repeating: false, count: centerline.count)
         self.ramps = ramps
         self.walls = walls
         self.gates = gates
@@ -224,6 +240,18 @@ public struct Track: Equatable, Sendable, Codable {
         _ index: Int, isAt height: Double, tolerance: Double = Self.surfaceTolerance
     ) -> Bool {
         abs(self.height(ofSegment: index) - height) <= tolerance
+    }
+
+    /// Whether a segment is a jump's gap — centerline, but no asphalt.
+    ///
+    /// A segment counts as gap when BOTH its endpoints do, so the lip and the
+    /// landing edge (each shared with solid road) stay drivable. Erring the other
+    /// way would eat a sample of road at each end of every jump.
+    public func segmentIsGap(_ index: Int) -> Bool {
+        guard !centerline.isEmpty, gaps.count == centerline.count else { return false }
+        let next = (index + 1) % centerline.count
+        guard gaps.indices.contains(index), gaps.indices.contains(next) else { return false }
+        return gaps[index] && gaps[next]
     }
 
     /// Total length of the centerline loop.

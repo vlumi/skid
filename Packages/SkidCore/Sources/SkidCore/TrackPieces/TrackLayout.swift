@@ -95,17 +95,28 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     /// Index-keyed, so this is the fifth thing every mutation remaps — see
     /// `TrackLayoutMutate`.
     public var railed: Set<Int>
+    /// **How far each warp piece drops the road**, in levels, by piece index —
+    /// negative, and only meaningful on a `.warp` piece.
+    ///
+    /// Index-keyed like `decals` and `railed`, so this is the sixth thing every
+    /// mutation remaps (see `TrackLayoutMutate`). Keyed rather than parallel because
+    /// a warp is rare: a track with none costs nothing.
+    ///
+    /// A warp with no entry drops one level, which is the overwhelmingly common
+    /// case — the deck-to-ground jump.
+    public var warpDrops: [Int: Double]
     public var theme: Theme
 
     public init(
         pieces: [PieceID], pitches: [Pitch] = [], origin: PiecePose = .origin,
         originHeight: Double = 0, gateSeams: [Int] = [0], theme: Theme = .normal,
         fitters: [Int: Fitter] = [:], decals: [Int: Decal] = [:],
-        railed: Set<Int> = []
+        railed: Set<Int> = [], warpDrops: [Int: Double] = [:]
     ) {
         self.fitters = fitters
         self.decals = decals
         self.railed = railed
+        self.warpDrops = warpDrops
         self.pieces = pieces
         self.originHeight = originHeight
         // Normalized to the piece count so equality is structural: trailing
@@ -128,6 +139,12 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     public func decal(at index: Int) -> Decal? { decals[index] }
 
     public func isRailed(at index: Int) -> Bool { railed.contains(index) }
+
+    /// How far the warp at `index` drops the road. Defaults to a **full level** —
+    /// the common case — and is clamped to never rise.
+    public func warpDrop(at index: Int) -> Double {
+        min(0, warpDrops[index] ?? -Track.levelHeight)
+    }
 
     /// Append resolved (piece, pitch) pairs — what expansions produce. A run of
     /// end-inserts, so pitches (and any keyed data, of which there is none past
@@ -153,6 +170,15 @@ public struct TrackLayout: Equatable, Sendable, Codable {
 /// A piece placed by the walk: which catalog piece, the entry pose, and the
 /// exit pose(s) (two for a fork). The seam *before* this piece is `entrySeam`.
 public struct PlacedPiece: Equatable, Sendable {
+    /// How many spans to cut a gapped piece into, so the hole in the asphalt has
+    /// somewhere to live.
+    ///
+    /// 40 puts a sample every 12 units along a 4U jump. The gap's edges snap to
+    /// whichever sample bounds them, so this is the accuracy of the hole: at 20
+    /// (24-unit spacing) a boundary landing exactly ON a sample cost a full step at
+    /// each end and the drawn gap came out 288 units instead of 240.
+    static let gapSpans = 40
+
     public var id: PieceID
     public var piece: Piece
     public var entry: PiecePose
@@ -177,11 +203,16 @@ public struct PlacedPiece: Equatable, Sendable {
     /// not a terrace with a shelf at the apex.
     public var easeIn: Bool
     public var easeOut: Bool
+    /// **How far a warp drops the road**, in levels — always ≤ 0, and zero for
+    /// every piece that is not a warp. Separate from `pitch` because it is not a
+    /// slope: no road is travelled, so nothing is climbed or descended. It only
+    /// says where the road resumes.
+    public var warpDrop: Double
 
     public init(
         id: PieceID, piece: Piece, entry: PiecePose, exits: [PiecePose],
         entryHeight: Double, entrySeam: Int, pitch: Pitch = .flat,
-        easeIn: Bool = true, easeOut: Bool = true
+        easeIn: Bool = true, easeOut: Bool = true, warpDrop: Double = 0
     ) {
         self.id = id
         self.piece = piece
@@ -192,10 +223,13 @@ public struct PlacedPiece: Equatable, Sendable {
         self.pitch = pitch
         self.easeIn = easeIn
         self.easeOut = easeOut
+        // A warp only ever goes DOWN, and only a warp warps.
+        self.warpDrop = piece.kind == .warp ? min(0, warpDrop) : 0
     }
 
-    /// The height this placement gains: the piece's own delta plus its pitch.
-    public var climb: Double { piece.heightDelta + pitch.delta }
+    /// The height this placement gains: the piece's own delta, its pitch, and a
+    /// warp's drop. A warp has no length, so this is the whole of its effect.
+    public var climb: Double { piece.heightDelta + pitch.delta + warpDrop }
 
     /// Height at this piece's exit.
     public var exitHeight: Double { entryHeight + climb }
@@ -220,137 +254,6 @@ public struct PlacedPiece: Equatable, Sendable {
         return entryHeight + climb * eased
     }
 
-    /// World-space centerline samples paired with the **height** at each one
-    /// (eased along the piece). Renderers use this to vary road width / car
-    /// scale continuously with elevation — a ramp widens as it climbs, no
-    /// special-casing. First path only (the driven trunk).
-    ///
-    /// A **sloped** piece is densified by its climb as well as by its curvature.
-    /// Curvature alone leaves a straight ramp with just its two endpoints, so the
-    /// height would step 0 → 1 in one go: the smoothstep never appears, and the
-    /// road is a cliff rather than a slope. `maxHeightStep` caps how much any one
-    /// step may climb.
-    public func heightedSamples(degreesPerSample: Double = 6, maxHeightStep: Double = 0.05)
-        -> [(point: Vec2, height: Double)]
-    {
-        let pts = centerlineSamples(degreesPerSample: degreesPerSample)
-        guard pts.count > 1 else { return pts.map { ($0, entryHeight) } }
-        let delta = abs(climb)
-        guard delta > 0.001 else {
-            let last = Double(pts.count - 1)
-            return pts.enumerated().map { i, p in (p, height(atFraction: Double(i) / last)) }
-        }
-        // Subdivide each geometric span so no step climbs more than the cap.
-        let needed = max(pts.count - 1, Int((delta / maxHeightStep).rounded(.up)))
-        let perSpan = Int((Double(needed) / Double(pts.count - 1)).rounded(.up))
-        var dense: [(point: Vec2, height: Double)] = []
-        let spans = pts.count - 1
-        for span in 0..<spans {
-            let a = pts[span]
-            let b = pts[span + 1]
-            for step in 0..<perSpan {
-                let local = Double(step) / Double(perSpan)
-                let fraction = (Double(span) + local) / Double(spans)
-                dense.append((a + (b - a) * local, height(atFraction: fraction)))
-            }
-        }
-        dense.append((pts[pts.count - 1], height(atFraction: 1)))
-        return dense
-    }
-
-    /// World-space centerline samples for one of this piece's paths, arcs
-    /// densified to ~`degreesPerSample`. Shared by the compiler (building the
-    /// runtime centerline) and the editor (drawing a partial, not-yet-closed
-    /// layout) so both draw identical geometry. Includes both endpoints.
-    public func centerlineSamples(path pathIndex: Int = 0, degreesPerSample: Double = 6)
-        -> [Vec2]
-    {
-        // A fitter's road is its solved curve-straight-curve, not a catalog path.
-        if let fitter {
-            return Self.fitterSamples(
-                fitter, from: entry, degreesPerSample: degreesPerSample)
-        }
-        guard pathIndex < piece.paths.count else { return [entry.position.vec2] }
-        // Walk the chain segment by segment, concatenating samples. Each
-        // segment starts where the previous ended, so drop the duplicated
-        // joint point when appending.
-        let chain = piece.paths[pathIndex]
-        var points: [Vec2] = [entry.position.vec2]
-        for (segment, pose) in zip(chain, chain.segmentEntries(from: entry)) {
-            let sampled = Self.samples(
-                of: segment, from: pose, degreesPerSample: degreesPerSample)
-            points.append(contentsOf: sampled.dropFirst())
-        }
-        return points
-    }
-
-    /// A fitter's centerline: arc, straight, mirrored arc, sampled in world space.
-    ///
-    /// Walked in floating point from the entry pose — the one piece for which that
-    /// is right, since its shape is a solved float and its exit is pinned
-    /// separately (the inlet it closes onto). Any drift over the piece's own
-    /// length is ~1e-12 units, twelve orders below a device pixel.
-    static func fitterSamples(
-        _ fitter: Fitter, from entry: PiecePose, degreesPerSample: Double
-    ) -> [Vec2] {
-        // NEGATIVE for a left step. `Fitter.displacement` measures "left" as
-        // `heading − 90°`, which in this y-down world is a NEGATIVE rotation; the
-        // sweep below turns by a positive angle for a positive turn. Getting this
-        // backwards mirrored the piece about its entry heading — the road left its
-        // own exit by 198 units on a real track, while the validator (which uses
-        // `displacement`) saw nothing wrong, because both sides of that comparison
-        // shared the same convention.
-        let side = fitter.stepsLeft ? -1.0 : 1.0
-        var heading = entry.heading.radians
-        var at = entry.position.vec2
-        var points: [Vec2] = [at]
-
-        func sweep(_ turn: Double) {
-            guard abs(turn) > 1e-12 else { return }
-            let steps = max(
-                1, Int((abs(turn) * 180 / .pi / degreesPerSample).rounded(.up)))
-            let center =
-                at + Vec2(angle: heading + (turn > 0 ? .pi / 2 : -.pi / 2))
-                * fitter.radius
-            let startAngle = atan2(at.y - center.y, at.x - center.x)
-            for step in 1...steps {
-                let a = startAngle + turn * Double(step) / Double(steps)
-                points.append(center + Vec2(angle: a) * fitter.radius)
-            }
-            at = points[points.count - 1]
-            heading += turn
-        }
-
-        sweep(side * fitter.angle)
-        if fitter.length > 0 {
-            at += Vec2(angle: heading) * fitter.length
-            points.append(at)
-        }
-        sweep(-side * fitter.angle)
-        return points
-    }
-
-    /// Sample ONE segment from a starting pose, both endpoints included.
-    private static func samples(
-        of segment: Piece.Segment, from entry: PiecePose, degreesPerSample: Double
-    ) -> [Vec2] {
-        let start = entry.position.vec2
-        switch segment {
-        case .straight:
-            return [start, segment.exit(from: entry).position.vec2]
-        case .arc(let radius, let eighths, let left):
-            let sweepDeg = Double(eighths) * 45
-            let steps = max(1, Int((sweepDeg / degreesPerSample).rounded(.up)))
-            let toCenter = entry.heading.radians + (left ? .pi / 2 : -.pi / 2)
-            let center = start + Vec2(angle: toCenter) * Double(radius)
-            let startAngle = atan2(start.y - center.y, start.x - center.x)
-            let sweep = (left ? 1.0 : -1.0) * Double(eighths) * .pi / 4
-            return (0...steps).map { k in
-                let a = startAngle + sweep * Double(k) / Double(steps)
-                return center + Vec2(angle: a) * Double(radius)
-            }
-        }
-    }
 }
 
 /// How far a loose end is from closing, split into the two currencies the unit

@@ -44,14 +44,24 @@ final class HeightTests: XCTestCase {
         )
     }
 
+    /// A raised road that simply **ENDS** at x = 300: drive off it and you are in
+    /// the air. This is how flight starts now — there is no launch line and no kick,
+    /// so leaving the road IS the event.
     private func launchTrack() -> Track {
-        Track(
-            centerline: [Vec2(-10000, 0), Vec2(10000, 0)],
+        // Sampled every 20 units so a gap can be marked partway along: a two-point
+        // centerline has one 20000-unit segment, and marking that as gap removes the
+        // whole road rather than a stretch of it.
+        let points = stride(from: -2000.0, through: 4000.0, by: 20).map { Vec2($0, 0) }
+        var track = Track(
+            centerline: points,
             width: 600,
-            ramps: [Ramp(from: Vec2(300, -400), to: Vec2(300, 400), forward: Vec2(1, 0))],
+            heights: Array(repeating: 1, count: points.count),
             startSlots: [Vec2.zero],
             size: Vec2(20000, 4000)
         )
+        // The road runs out at x = 300: past there is air, so driving off it falls.
+        track.gaps = points.map { $0.x >= 300 }
+        return track
     }
 
     private func drive(_ race: inout Race, ticks: Int, input: CarInput = CarInput(throttle: 1)) {
@@ -94,33 +104,37 @@ final class HeightTests: XCTestCase {
         }
     }
 
-    func testLaunchingRampGoesBallistic() {
-        var race = Race(track: launchTrack(), players: [PlayerID(0)])
-        // Build speed until the launch line is crossed. Driven to the launch
-        // rather than a tick count: flight is now ballistic, so its length
-        // depends on speed and gravity — a fixed count outran the landing.
-        for _ in 0..<200 where !race.cars[0].state.isAirborne {
-            drive(&race, ticks: 1)
+    /// **Driving off the end of a raised road goes ballistic**, and the car has no
+    /// control while it is in the air.
+    ///
+    /// Driven on the real compiled `jumpRing` — wedge ramp, gap, warp down — rather
+    /// than a hand-built corridor, because flight now begins by simply LEAVING the
+    /// road and that depends on the compiled surface being honest.
+    ///
+    /// Note there is no upward arc to assert: the launch kick is gone, so a car drops
+    /// off the lip rather than being thrown over it. Cars are heavy; that is the
+    /// intended feel, and the gate is how far you cover before landing.
+    func testDrivingOffTheEndGoesBallistic() {
+        let track = TestTracks.jumpRing()
+        var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
+        var driver = AIDriver()
+        for _ in 0..<(30 * Race.tickRate) where !race.cars[0].state.isAirborne {
+            race.advance(inputs: [PlayerID(0): driver.input(car: race.cars[0].state, track: track)])
         }
-        XCTAssertGreaterThan(race.cars[0].state.position.x, 300)
-        XCTAssertTrue(race.cars[0].state.isAirborne)
+        XCTAssertTrue(race.cars[0].state.isAirborne, "driving off the lip must start a fall")
+
         let headingAtLaunch = race.cars[0].state.heading
         let speedAtLaunch = race.cars[0].state.velocity.length
-
-        // While airborne: full steer + brake input does nothing to the
-        // HORIZONTAL motion — only gravity acts, on height.
         let heightAtLaunch = race.cars[0].state.height
-        drive(&race, ticks: 5, input: CarInput(steer: 1, throttle: -1))
+
+        // While airborne: full steer + brake does nothing to the HORIZONTAL motion —
+        // only gravity acts, on height.
+        drive(&race, ticks: 3, input: CarInput(steer: 1, throttle: -1))
         XCTAssertEqual(race.cars[0].state.heading, headingAtLaunch)
         XCTAssertEqual(race.cars[0].state.velocity.length, speedAtLaunch, accuracy: 1e-9)
-        XCTAssertGreaterThan(
+        XCTAssertLessThan(
             race.cars[0].state.height, heightAtLaunch,
-            "a launch arcs UP before it comes down")
-
-        // It lands eventually and steering works again.
-        drive(&race, ticks: 120, input: CarInput(steer: 1, throttle: 1))
-        XCTAssertFalse(race.cars[0].state.isAirborne)
-        XCTAssertNotEqual(race.cars[0].state.heading, headingAtLaunch)
+            "with no kick, leaving the road is a fall from the first tick")
     }
 
     /// Straying off the deck is a fall. It used to SNAP to the ground and then

@@ -84,8 +84,6 @@ public struct CarTuning: Equatable, Sendable, Codable {
     public var wallYaw: Double
     /// Bounciness of car–car contact, 0…1.
     public var carRestitution: Double
-    /// Flight ticks per unit of speed off a launching ramp (capped at 1 s).
-    public var jumpTicksPerSpeed: Double
     /// Downward pull on an airborne car, in levels per second squared.
     ///
     /// Tuned by how a FALL should read, not by jump distance: distance is set
@@ -93,13 +91,6 @@ public struct CarTuning: Equatable, Sendable, Codable {
     /// drop takes 20 ticks — between the old fixed 8 (a teleport) and the ~40
     /// that reads as floaty.
     public var gravity: Double
-    /// Upward kick off a launch lip, in levels/s per unit of forward speed.
-    ///
-    /// Scaled by speed on purpose: with a FIXED kick, flight time would be the
-    /// same at any speed and jump distance would grow only linearly, so a jump
-    /// would be far easier to clear slowly. Scaling keeps distance quadratic —
-    /// the "be fast or fall in" gate — and matches the old flat-glide numbers.
-    public var launchPerSpeed: Double
 
     public init(
         engineAccel: Double = 320,
@@ -120,9 +111,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         wallDragFloor: Double = 0.1,
         wallYaw: Double = 0.012,
         carRestitution: Double = 0.4,
-        jumpTicksPerSpeed: Double = 0.055,
-        gravity: Double = 18,
-        launchPerSpeed: Double = 0.004
+        gravity: Double = 18
     ) {
         self.engineAccel = engineAccel
         self.brakeAccel = brakeAccel
@@ -142,9 +131,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.wallDragFloor = wallDragFloor
         self.wallYaw = wallYaw
         self.carRestitution = carRestitution
-        self.jumpTicksPerSpeed = jumpTicksPerSpeed
         self.gravity = gravity
-        self.launchPerSpeed = launchPerSpeed
     }
 
     /// A slowed-down copy for learning: acceleration and speed caps scale
