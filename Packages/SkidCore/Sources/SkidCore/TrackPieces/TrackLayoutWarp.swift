@@ -18,10 +18,35 @@ extension TrackLayout {
     /// Whether this layout ends in a warp — the one the arrows act on.
     public var endsInWarp: Bool { pieces.last == PieceCatalog.ID.warp }
 
+    /// The last index the author would call "the end": the final piece, or the one
+    /// before a trailing warp. A warp occupies no ground, so it is not somewhere the
+    /// author put anything — it is the preparation that lets a lower piece connect.
+    public var lastRoadIndex: Int {
+        endsInWarp ? max(0, pieces.count - 2) : pieces.count - 1
+    }
+
+    /// The height the road ends at — what the next piece would enter at, and what
+    /// the editor shows between the arrows.
+    ///
+    /// Read off the LAST placement rather than by matching poses: a warp is zero
+    /// length, so it shares its predecessor's exit pose and a pose match finds the
+    /// ramp instead — reporting the height before the drop.
+    public var tailHeight: Double {
+        walk().placed.last?.exitHeight ?? originHeight
+    }
+
+    /// Whether the road can drop any further: false once it is on the world's floor,
+    /// so the arrow disables instead of deepening a warp that the walk then clamps
+    /// away — which looked like the button doing nothing.
+    public var canWarpDeeper: Bool {
+        tailHeight > Track.levelHeight * Double(Track.lowestLevel) + Track.heightEpsilon
+    }
+
     /// A copy with the trailing warp one step **deeper**, appending a warp if there
-    /// isn't one. Never refuses: the walk clamps a too-deep warp to the world's
-    /// floor, so an over-deep layout is still drivable rather than invalid.
-    public func warpedDeeper() -> TrackLayout {
+    /// isn't one. Nil when the road is already on the floor — there is nowhere left
+    /// to drop, and storing a deeper drop the walk clamps away is a layout that lies.
+    public func warpedDeeper() -> TrackLayout? {
+        guard canWarpDeeper else { return nil }
         var copy = self
         if endsInWarp {
             let last = copy.pieces.count - 1

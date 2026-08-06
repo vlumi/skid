@@ -58,10 +58,25 @@ struct EditorView: View {
     /// The hotbar's contents, padded to the slot count so a corrupt or outgrown
     /// stored value can never crash or shrink the bar. Slots past the defaults read
     /// as empty rather than being filled with something arbitrary.
+    /// **Stored ids the hotbar can no longer offer are dropped**, and the defaults
+    /// fill in behind them.
+    ///
+    /// A stored value otherwise outlives the catalog it came from: bars assigned when
+    /// the palette offered compounds still held a hairpin, which the picker cannot
+    /// re-select and which sat in front of a newly-defaulted piece — so a feature
+    /// added to the hotbar was invisible on every install that had ever touched it.
+    /// Filtering on read needs no migration step and no version flag.
     var hotbar: [PieceID] {
         let stored = hotbarRaw.split(separator: ",").compactMap { PieceID($0) }
+            .filter { EditorView.hotbarPieces.contains($0) }
+        // Nothing assignable left in the stored bar? Then it describes a palette that
+        // no longer exists, so the defaults are a better answer than a row of blanks.
+        // A bar the author deliberately emptied is indistinguishable from a stale one,
+        // and re-offering the default costs a tap where hiding a feature costs the
+        // feature.
+        let base = stored.isEmpty ? HotbarSlot.defaults : stored
         return (0..<HotbarSlot.count).map { index in
-            index < stored.count ? stored[index] : HotbarSlot.empty
+            index < base.count ? base[index] : HotbarSlot.empty
         }
     }
 
@@ -241,11 +256,13 @@ struct EditorView: View {
         }
         // The walk doesn't carry heights on `openEnds`, so match the end pose back
         // to the placed piece whose exit it is.
+        //
+        // **The LAST match wins.** A warp has zero length, so its exit pose is
+        // identical to its predecessor's — and taking the first match found the
+        // ramp instead, reporting the height the road had BEFORE the drop. On device
+        // the readout sat at 1 while the road descended to 0.
         let end = walk.openEnds[i]
-        for placed in walk.placed where placed.exits.contains(end) {
-            return placed.exitHeight
-        }
-        return 0
+        return walk.placed.last { $0.exits.contains(end) }?.exitHeight ?? 0
     }
 
     // MARK: - Bars

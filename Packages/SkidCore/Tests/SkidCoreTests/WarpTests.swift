@@ -60,16 +60,16 @@ struct WarpTests {
 
     /// Down seeds one warp then DEEPENS it — never a chain. Two adjacent warps
     /// describe the same road as one deeper warp, so only one form is stored.
-    @Test func steppingDownDeepensASingleWarp() {
+    @Test func steppingDownDeepensASingleWarp() throws {
         var layout = rampThen([])
         #expect(!layout.endsInWarp)
 
-        layout = layout.warpedDeeper()
+        layout = try #require(layout.warpedDeeper())
         let afterFirst = layout.pieces.count
         #expect(layout.endsInWarp)
         #expect(layout.warpDrops[layout.pieces.count - 1] == -TrackLayout.warpStep)
 
-        layout = layout.warpedDeeper()
+        layout = try #require(layout.warpedDeeper())
         #expect(layout.pieces.count == afterFirst, "a second tap added a piece")
         #expect(layout.warpDrops[layout.pieces.count - 1] == -TrackLayout.warpStep * 2)
     }
@@ -78,7 +78,8 @@ struct WarpTests {
     /// so the arrows are each other's inverse.
     @Test func steppingUpRemovesTheWarpAtZero() throws {
         let original = rampThen([])
-        var layout = original.warpedDeeper().warpedDeeper()
+        let once = try #require(original.warpedDeeper())
+        var layout = try #require(once.warpedDeeper())
         layout = try #require(layout.warpedShallower())
         #expect(layout.endsInWarp, "one step up from -1 should still be a warp")
 
@@ -185,5 +186,74 @@ struct WarpBuildEndTests {
         #expect(game.editorLayout?.pieces != before)
         game.editorUndo()
         #expect(game.editorLayout?.pieces == before, "a warp step must be undoable in one go")
+    }
+}
+
+/// **A warp is not a piece the author manages.** It occupies no ground and appears
+/// nowhere on the map, so it must not behave like something placed: the readout has
+/// to see past it, the arrow has to stop at the floor, and deleting the road it
+/// attaches to has to take it along. All three were reported from device.
+@MainActor
+struct WarpIsInvisibleTests {
+    private func rampedGame() -> CouchGame {
+        let game = CouchGame()
+        game.editorLayout = TrackLayout(
+            pieces: [
+                PieceCatalog.ID.startGrid, PieceCatalog.ID.shortStraight,
+                PieceCatalog.ID.shortStraight,
+            ],
+            pitches: [.flat, .up, .up])
+        game.editorSelection = 2
+        return game
+    }
+
+    /// **The height readout follows the road down.** A warp shares its predecessor's
+    /// exit pose (it has no length), so matching the open end to the FIRST piece
+    /// holding that pose found the ramp and reported the height before the drop — the
+    /// readout sat at 1 while the road descended to 0.
+    @Test func theTailHeightSeesPastTheWarp() throws {
+        let game = rampedGame()
+        #expect(try #require(game.editorLayout).tailHeight == 1)
+
+        #expect(game.editorStepWarp(deeper: true))
+        #expect(try #require(game.editorLayout).tailHeight == 1 - TrackLayout.warpStep)
+
+        #expect(game.editorStepWarp(deeper: true))
+        #expect(try #require(game.editorLayout).tailHeight == 0)
+    }
+
+    /// **The floor stops the arrow.** Deepening past it stored a drop the walk then
+    /// clamped away, so the button appeared to do nothing.
+    @Test func theDownArrowStopsAtTheFloor() throws {
+        let game = rampedGame()
+        #expect(game.editorCanStepWarp(deeper: true))
+        #expect(game.editorStepWarp(deeper: true))
+        #expect(game.editorStepWarp(deeper: true))
+
+        #expect(try #require(game.editorLayout).tailHeight == 0, "should be on the floor")
+        #expect(!game.editorCanStepWarp(deeper: true), "no further drop is possible")
+        #expect(!game.editorStepWarp(deeper: true), "and the action refuses too")
+        #expect(
+            try #require(game.editorLayout).warpDrop(at: 3) == -1,
+            "the stored drop must not deepen past what the road can use")
+    }
+
+    /// **Deleting the road takes its warp.** The warp is preparation for the piece
+    /// that follows, not something the author placed, so it must not outlive it.
+    @Test func deletingTheRoadRemovesItsWarp() throws {
+        let game = rampedGame()
+        #expect(game.editorStepWarp(deeper: true))
+        let layout = try #require(game.editorLayout)
+        #expect(layout.endsInWarp)
+
+        // Select from ABOVE — the piece feeding the warp, which is what the author
+        // sees at the end. This was unreachable: the literal last index was the warp.
+        game.editorSelection = layout.lastRoadIndex
+        #expect(game.editorActiveEnd == .tail, "the pre-warp piece must count as the tail")
+        #expect(game.editorDeleteSelected())
+
+        let after = try #require(game.editorLayout)
+        #expect(!after.endsInWarp, "the warp outlived the road it attached to")
+        #expect(after.warpDrops.isEmpty, "and its drop outlived it too")
     }
 }
