@@ -37,7 +37,10 @@ extension CouchGame {
         else { return [] }
         var ends: [BuildEnd] = []
         if index == 0 { ends.append(.head) }
-        if index == layout.pieces.count - 1 { ends.append(.tail) }
+        // A trailing warp occupies no ground, so the piece before it is the tail as
+        // far as the author is concerned — and selecting either must keep the palette
+        // live. `>=` rather than `==` so both the warp and its road count.
+        if index >= layout.lastRoadIndex { ends.append(.tail) }
         return ends
     }
 
@@ -105,7 +108,7 @@ extension CouchGame {
     /// floor clamps the walk), up only when there is a warp to shallow.
     public func editorCanStepWarp(deeper: Bool) -> Bool {
         guard editorActiveEnd == .tail, let layout = editorLayout else { return false }
-        return deeper || layout.endsInWarp
+        return deeper ? layout.canWarpDeeper : layout.endsInWarp
     }
 
     /// What the author's tap means when they are building BACKWARDS: the mirrored
@@ -208,7 +211,12 @@ extension CouchGame {
         if open {
             // Ends only. The origin end is prepend's inverse; the tail is the
             // long-standing delete-last.
-            guard index == 0 || index == layout.pieces.count - 1 else { return false }
+            //
+            // **A trailing warp does not count as the end.** It occupies no ground,
+            // so the piece before it is what the author sees at the tail — and
+            // requiring the literal last index made that piece undeletable from
+            // above, which is how it behaved on device.
+            guard index == 0 || index >= layout.lastRoadIndex else { return false }
         }
         // **The end keeps the selection.** Showing the build arrow and being able
         // to carry on building are properties of a SELECTED end, so deleting the
@@ -219,6 +227,17 @@ extension CouchGame {
         // A ring has no ends, so the cut opens one and the survivor next to it
         // becomes the tail; anything else (or nothing left to select) clears.
         let wasHead = open && index == 0
+        // **A warp goes with the piece it attaches to.** It is not a thing the author
+        // placed — it is the preparation that lets a different height connect — so it
+        // must not survive as an orphan the road no longer needs. Deleting the piece
+        // before a trailing warp removes both, in one undo.
+        //
+        // Reported from device: the warp could only be reached from the lower end,
+        // and from above neither it nor the ramp feeding it was deletable.
+        let warpToo =
+            index + 1 == layout.pieces.count - 1
+            && layout.pieces.last == PieceCatalog.ID.warp
+        if warpToo, !editorRemove(at: layout.pieces.count - 1) { return false }
         guard editorRemove(at: index) else { return false }
         editorSelect(neighbourAfterDelete(wasHead: wasHead))
         return true

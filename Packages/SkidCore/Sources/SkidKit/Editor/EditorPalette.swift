@@ -72,7 +72,13 @@ extension EditorView {
         /// An empty slot — draws as a placeholder and places nothing.
         static let empty: PieceID = -2
 
-        static let count = 5
+        /// **As many slots as there are things to put in them**, and no more.
+        ///
+        /// Fixed at 5 while the row was speculative, which spent a whole strip of
+        /// screen on four placeholders — reported from device as cramming the editor
+        /// for the sake of one button. The row grows itself as the catalog does, so
+        /// there is nothing to remember to bump.
+        static var count: Int { max(1, EditorView.hotbarPieces.count) }
     }
 
     /// Everything the hotbar can hold: the pieces that aren't part of the
