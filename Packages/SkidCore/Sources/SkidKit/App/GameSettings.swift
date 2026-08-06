@@ -68,8 +68,6 @@ public final class GameSettings: ObservableObject {
     /// Downward pull on an airborne car — tunes how a FALL reads, not how far
     /// a jump goes (the launch kick sets that).
     @AppStorage("skid.sim.gravity") public var gravity = 18.0
-    /// Upward kick off a launch lip, per unit of speed — sets jump distance.
-    @AppStorage("skid.sim.launchPerSpeed") public var launchPerSpeed = 0.004
 
     /// Game pace for learning: scales acceleration + speed caps (agility
     /// stays). Applies on the next race (Reset). Hiscores only record at
@@ -116,7 +114,6 @@ public final class GameSettings: ObservableObject {
             && abs(wallFriction - stock.wallFriction) < 1e-9
             && abs(wallDragFloor - stock.wallDragFloor) < 1e-9
             && abs(gravity - stock.gravity) < 1e-9
-            && abs(launchPerSpeed - stock.launchPerSpeed) < 1e-9
             && abs(wallYaw - stock.wallYaw) < 1e-9
     }
 
@@ -134,8 +131,7 @@ public final class GameSettings: ObservableObject {
             wallFriction: wallFriction,
             wallDragFloor: wallDragFloor,
             wallYaw: wallYaw,
-            gravity: gravity,
-            launchPerSpeed: launchPerSpeed
+            gravity: gravity
         ).scaled(pace: pace)
     }
 

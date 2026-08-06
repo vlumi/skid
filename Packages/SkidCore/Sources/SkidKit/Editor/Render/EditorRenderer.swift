@@ -210,26 +210,29 @@ enum EditorRenderer {
         _ placed: PlacedPiece, width: Double, railed: Bool, t: Transform,
         into context: inout GraphicsContext
     ) {
-        guard let e = edges(placed, width: width, t: t) else { return }
-        // Extend the FILL past both end cuts, along each edge's own direction,
-        // so abutting pieces overlap and the antialiased seam shows no hairline
-        // gap. See `seamOverlap` for the size.
-        let overlap = seamOverlap / t.contextScale
-        let fillLeft = extendEnds(e.left, by: overlap)
-        let fillRight = extendEnds(e.right, by: overlap)
-        var outline = Path()
-        outline.addLines(fillLeft + fillRight.reversed())
-        outline.closeSubpath()
+        // One ribbon per solid run: a jump draws its lip and its landing and leaves
+        // the air between them empty.
+        for e in ribbons(placed, width: width, t: t) {
+            // Extend the FILL past both end cuts, along each edge's own direction,
+            // so abutting pieces overlap and the antialiased seam shows no hairline
+            // gap. See `seamOverlap` for the size.
+            let overlap = seamOverlap / t.contextScale
+            let fillLeft = extendEnds(e.left, by: overlap)
+            let fillRight = extendEnds(e.right, by: overlap)
+            var outline = Path()
+            outline.addLines(fillLeft + fillRight.reversed())
+            outline.closeSubpath()
 
-        // **The railing is drawn where the author put one**, not wherever the road
-        // is high: a bridge may have an open edge and a flat piece may be railed.
-        // Rails go down FIRST, straddling the edges, and the asphalt then covers
-        // their inner half — the same sandwich the ground's kerbs use, which is
-        // what puts the two decorations in the same place.
-        if railed {
-            strokeDeckRails(left: e.left, right: e.right, t: t, into: &context)
+            // **The railing is drawn where the author put one**, not wherever the road
+            // is high: a bridge may have an open edge and a flat piece may be railed.
+            // Rails go down FIRST, straddling the edges, and the asphalt then covers
+            // their inner half — the same sandwich the ground's kerbs use, which is
+            // what puts the two decorations in the same place.
+            if railed {
+                strokeDeckRails(left: e.left, right: e.right, t: t, into: &context)
+            }
+            fillRoad(outline, placed: placed, samples: e.samples, t: t, into: &context)
         }
-        fillRoad(outline, placed: placed, samples: e.samples, t: t, into: &context)
     }
 
     /// The elevated piece's drop shadow — offset scales with the height at each
@@ -240,61 +243,23 @@ enum EditorRenderer {
         _ placed: PlacedPiece, width: Double, t: Transform,
         into context: inout GraphicsContext
     ) {
-        guard Track.isOffGround(placed.entryHeight) || Track.isOffGround(placed.exitHeight),
-            let e = edges(placed, width: width, t: t)
+        guard Track.isOffGround(placed.entryHeight) || Track.isOffGround(placed.exitHeight)
         else { return }
-        var shLeft: [CGPoint] = []
-        var shRight: [CGPoint] = []
-        for i in e.left.indices {
-            let off = CGSize(width: 6 * e.heights[i], height: 11 * e.heights[i])
-            shLeft.append(offset(e.left[i], by: off))
-            shRight.append(offset(e.right[i], by: off))
-        }
-        var shadow = Path()
-        shadow.addLines(shLeft + shRight.reversed())
-        shadow.closeSubpath()
-        context.fill(shadow, with: .color(.black.opacity(0.3)))
-    }
-
-    /// The ribbon geometry both the shadow and the surface pass read.
-    struct Ribbon {
-        var left: [CGPoint]
-        var right: [CGPoint]
-        var heights: [Double]
-        var samples: [(point: Vec2, height: Double)]
-    }
-
-    /// The ribbon's two screen-space side edges plus the per-sample heights.
-    /// Half-width scales with the height (a ramp widens as it climbs). The END
-    /// normals use the exact PORT heading (entry / exit pose), not the
-    /// interpolated sample direction — so adjacent pieces, sharing a port pose,
-    /// produce collinear end edges that abut with no grass sliver.
-    static func edges(_ placed: PlacedPiece, width: Double, t: Transform) -> Ribbon? {
-        // Finer than the default 6°: the kerb's stripes are dashed along this
-        // polyline, and coarse vertices give the dash pattern corners to catch
-        // on (a visible tilt where a boundary lands on one).
-        let samples = placed.heightedSamples(degreesPerSample: 2)
-        guard samples.count >= 2 else { return nil }
-        let entryDir = Vec2(angle: placed.entry.heading.radians)
-        let exitDir = Vec2(angle: placed.exits[0].heading.radians)
-        var left: [CGPoint] = []
-        var right: [CGPoint] = []
-        var heights: [Double] = []
-        for (i, s) in samples.enumerated() {
-            let dir: Vec2
-            if i == 0 {
-                dir = entryDir
-            } else if i == samples.count - 1 {
-                dir = exitDir
-            } else {
-                dir = (samples[i + 1].point - samples[i - 1].point).normalized
+        // Per solid run, so a raised jump casts no shadow across its own gap —
+        // there is no deck there to cast one.
+        for e in ribbons(placed, width: width, t: t) {
+            var shLeft: [CGPoint] = []
+            var shRight: [CGPoint] = []
+            for i in e.left.indices {
+                let off = CGSize(width: 6 * e.heights[i], height: 11 * e.heights[i])
+                shLeft.append(offset(e.left[i], by: off))
+                shRight.append(offset(e.right[i], by: off))
             }
-            let normal = dir.perpendicular * (width / 2 * Elevation.scale(atHeight: s.height))
-            left.append(t.screen(s.point + normal))
-            right.append(t.screen(s.point - normal))
-            heights.append(s.height)
+            var shadow = Path()
+            shadow.addLines(shLeft + shRight.reversed())
+            shadow.closeSubpath()
+            context.fill(shadow, with: .color(.black.opacity(0.3)))
         }
-        return Ribbon(left: left, right: right, heights: heights, samples: samples)
     }
 
     /// The deck's guard rails — real barriers, not paint, so unlike ground edge

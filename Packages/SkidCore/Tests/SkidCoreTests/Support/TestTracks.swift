@@ -56,4 +56,64 @@ enum TestTracks {
         // swiftlint:disable:next force_try
         return try! PieceCompiler.compile(layout, id: "steep-bridge")
     }
+
+    /// A closed rectangle with a **jump on the back straight**: a wedge ramp up,
+    /// a gap, then a warp back down to the ground.
+    ///
+    /// This is what a jump is now — three ordinary pieces, no special "jump" piece
+    /// and no launch line. The car flies because it drove off a real slope.
+    static func jumpRing() -> Track {
+        typealias Catalog = PieceCatalog.ID
+        let pieces: [PieceID] = [
+            Catalog.startGrid, Catalog.longStraight, Catalog.longStraight,
+            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
+            Catalog.longStraight, Catalog.straight, Catalog.shortStraight,
+            Catalog.rampUp, Catalog.gap, Catalog.warp,
+            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
+        ]
+        let layout = TrackLayout(pieces: pieces, gateSeams: [0, 6])
+        // swiftlint:disable:next force_try
+        return try! PieceCompiler.compile(layout, id: "jump-ring")
+    }
+
+    /// `jumpRing()` with **every piece railed** — for checking that a gap refuses a
+    /// railing the author asked for.
+    static func railedJumpRing() -> Track {
+        typealias Catalog = PieceCatalog.ID
+        let pieces: [PieceID] = [
+            Catalog.startGrid, Catalog.longStraight, Catalog.longStraight,
+            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
+            Catalog.longStraight, Catalog.straight, Catalog.shortStraight,
+            Catalog.rampUp, Catalog.gap, Catalog.warp,
+            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
+        ]
+        var layout = TrackLayout(pieces: pieces, gateSeams: [0, 6])
+        layout.railed = Set(pieces.indices)
+        // swiftlint:disable:next force_try
+        return try! PieceCompiler.compile(layout, id: "railed-jump-ring")
+    }
+
+    /// The jump **raised to a deck**: climb to 1, climb again onto the lip at 2,
+    /// gap, then warp two levels down to the ground.
+    ///
+    /// Undershooting falls two storeys, so height is a clear witness of a missed
+    /// jump — which is what the flight tests measure.
+    static func elevatedJumpRing() -> Track {
+        typealias Catalog = PieceCatalog.ID
+        // **`jumpRing()`'s geometry, with one 2U straight swapped for a 2U ramp** so
+        // the whole back stretch runs a level higher. Same lengths, so closure is
+        // inherited rather than re-earned.
+        let pieces: [PieceID] = [
+            Catalog.startGrid, Catalog.longStraight, Catalog.longStraight,
+            Catalog.curve90TightLeft, Catalog.rampUp, Catalog.curve90TightLeft,
+            Catalog.longStraight, Catalog.straight, Catalog.shortStraight,
+            Catalog.rampUp, Catalog.gap, Catalog.warp,
+            Catalog.curve90TightLeft, Catalog.straight, Catalog.curve90TightLeft,
+        ]
+        var layout = TrackLayout(pieces: pieces, gateSeams: [0, 6])
+        // Two levels down: the lip is at 2 (one ramp to the deck, one to the lip).
+        layout.warpDrops = [11: -2]
+        // swiftlint:disable:next force_try
+        return try! PieceCompiler.compile(layout, id: "elevated-jump-ring")
+    }
 }

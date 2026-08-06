@@ -265,7 +265,7 @@ public enum TrackValidator {
     private static func legallyCrossing(_ a: PlacedPiece, _ b: PlacedPiece) -> Bool {
         let kinds = Set([a.piece.kind, b.piece.kind])
         if kinds == [.crossing] { return true }  // two crossables may cross
-        if kinds.contains(.jump) { return true }  // a road may pass under a gap
+        if kinds.contains(.gap) { return true }  // a road may pass under a gap
         return false
     }
 

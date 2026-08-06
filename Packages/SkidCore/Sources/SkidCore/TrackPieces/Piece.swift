@@ -22,8 +22,12 @@ public struct Piece: Equatable, Sendable {
         /// One entry, two exits — a route fork (join is the mirrored piece,
         /// still authored as two entries → one exit, encoded reversed).
         case fork
-        /// Launch lip · road gap · landing; the gap may be crossed beneath.
-        case jump
+        /// **No road at all** — a gap. Chain them for a longer gap; a road may run
+        /// beneath. A gap has no height effect of its own: what moves the road
+        /// between levels is a `warp`.
+        case gap
+        /// **A vertical warp** — zero length, drops the road to a lower level.
+        case warp
     }
 
     /// How the centerline is shaped between entry and an exit.
@@ -46,18 +50,29 @@ public struct Piece: Equatable, Sendable {
     /// layer — collision and rendering both derive from height. Height rises
     /// with smoothstep easing across the piece (see `PlacedPiece.height`).
     public var heightDelta: Double
-    /// A launching ramp / jump throws the car into flight.
-    public var launches: Bool
 
     public init(
-        id: PieceID, kind: Kind = .road, paths: [[Segment]],
-        heightDelta: Double = 0, launches: Bool = false
+        id: PieceID, kind: Kind = .road, paths: [[Segment]], heightDelta: Double = 0
     ) {
         self.id = id
         self.kind = kind
         self.paths = paths
         self.heightDelta = heightDelta
-        self.launches = launches
+    }
+
+    /// The stretch of this piece with **no asphalt** — the whole of a gap, and
+    /// nothing on anything else.
+    ///
+    /// A gap is absence only: it has no height effect and no launch of its own. A
+    /// car flies over one because it drove off a **wedge** (a climb with nothing
+    /// above it keeps its full slope — see `TrackLayout.walk`), and lands wherever
+    /// the road resumes, which a `warp` decides. Real slope becoming real vertical
+    /// speed, rather than an invisible trigger on flat asphalt.
+    ///
+    /// A fraction span rather than a length, so a longer gap is a new catalog id
+    /// and nothing more.
+    public var gapSpan: ClosedRange<Double>? {
+        kind == .gap ? 0...1 : nil
     }
 }
 
