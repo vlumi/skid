@@ -1,41 +1,32 @@
 # Jump pieces
 
-> **Shipped.** Option A (one piece: lip · gap · landing) and elevated jumps, as
-> recommended below. What the build actually taught, beyond the plan:
+> **Shipped — but not as this plan describes.** Two device rounds rejected the
+> single-jump-piece design below, and the final shape is three separate things:
+> a **wedge ramp**, a **gap** (1U, absence of road), and a **warp** (zero length,
+> drops the road to where it continues). See `docs/track-pieces.md` for the
+> as-built description; this file is kept for the reasoning that got there.
 >
-> - **A straight samples only its two endpoints**, so the gap had nowhere to live
->   and silently never appeared. Gapped pieces are now densified the way a climb
->   already was (`PlacedPiece.gapSpans`).
-> - **The launch line was on the wrong side of the hole.** It was built from
->   `exits[0]` — past the landing — so a car fell in and was thrown only after
->   crossing. Harmless while a "jump" was solid road; fatal once the gap was real.
->   It now sits at the lip.
-> - **The gap had to be sized against measured flight**, not chosen: asphalt casts
->   a half-width end cap into the gap from each side, and a launch carries only
->   113 units at top speed. See `Piece.gapSpan` for both numbers.
-> - **`isAirborne` does not mean "launched"** — a car falling into the gap is
->   airborne too, so the tests assert on the car's *rise above the lip*. Deleting
->   the launch kick outright left an earlier version of them green.
+> What the plan got wrong, in order of how much it cost:
 >
-> Then a **second device round** rejected the result as unusable, and it was right:
+> - **A jump should not be a piece.** Composing it from parts that each stand
+>   alone removed every special case: a gap works anywhere road is missing, a warp
+>   anywhere a step down is wanted, and the flight is a consequence of geometry.
+> - **The launch kick was the wrong mechanism.** It had to be tuned to a gap
+>   width and fired even on flat road. Deleting it (with `launches`,
+>   `launchPerSpeed` and the "Launch" slider) and letting a car drive off a real
+>   slope is both simpler and honest — and the eased ramp top, which flattens the
+>   last 5% to nearly horizontal, is what had made a ramp lip launch nothing.
+> - **There is no upward arc, on purpose.** "Cars are heavy and don't jump up
+>   high anyway" — a car drops off the lip, and speed buys distance before
+>   landing.
+> - **Sizing the piece was moot.** The 2U → 4U analysis below is real (asphalt
+>   reaches a half-width past its last solid point; a crossing road must land on
+>   the lattice) but a chained 1U gap made the question disappear.
 >
-> - **Nothing DREW the gap.** It was real to `surface(at:)` and to the physics, and
->   invisible to every renderer — a jump looked exactly like a straight with a small
->   unexplained hop. All the tests asserted on the model. `PlacedPiece.solidRuns` is
->   now the one definition every drawing pass reads.
-> - **A jump inherited the build pitch**, so one laid while the pitch selector sat on
->   "up" climbed half a level and every piece after it followed. Refused in the walk.
-> - **`Int(distanceToCenterline(...))` crashed the app.** With no road at the car's
->   height (mid-air over the gap) the result is `greatestFiniteMagnitude`, which
->   `Int(_:)` traps on. Note `isFinite` does **not** guard it — the sentinel is
->   finite; `Track.foundRoad(_:)` does.
-> - **The piece had to be 4U, not 2U.** The gap should fit a road through it, and
->   road width is exactly 1U — so the size is forced by the lattice, not by taste.
->   3U looks sufficient but has nowhere to put the crossing. This also forced
->   `launchPerSpeed` up from 0.004 to 0.008, since the old kick could not clear a
->   road-width gap at any speed.
->
-> The remaining item is the drivability warning (§5), deliberately deferred.
+> Three implementation traps worth remembering: a straight samples only its two
+> endpoints; a zero-length piece stamps duplicate centerline points that pave the
+> gap beside it; and `isAirborne` is true for a car *falling in*, so it cannot
+> witness a launch.
 
 ## What already exists
 
