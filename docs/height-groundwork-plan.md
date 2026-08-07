@@ -102,6 +102,21 @@ rather than fixing.
 
 ## 2b. Banking is an ATTRIBUTE, like pitch — not new shapes
 
+> **Shelved (2026-08-07), not rejected.** The design below is sound and cheap —
+> banking is a third independent axis on shapes that already exist — but the
+> *payoff* is the problem: on a phone screen, a top-down banked curve differs
+> from a flat one by a lateral brightness gradient a few pixels wide. That is a
+> lot of new authoring surface (another attribute to pick, another thing on the
+> palette, another axis in the encoding) for a difference the player has to be
+> told about to notice.
+>
+> Compare with what banking would have to compete with for the same screen: a
+> **crest or dip** changes the racing line and hides the road ahead, and
+> **narrower or wider road** changes where you can overtake. Both read instantly
+> at a glance. Revisit banking if the camera ever gets close enough that a tilted
+> road looks tilted.
+
+
 A banked curve has the **same centerline, ports and closure arithmetic** — it
 only tilts, which is the definition of an attribute rather than a shape. The
 docs already made this call for pitch: *"the catalog stays a set of SHAPES, and
