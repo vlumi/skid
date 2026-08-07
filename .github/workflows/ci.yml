@@ -66,6 +66,12 @@ jobs:
       - name: Run logic tests with coverage
         working-directory: Packages/SkidCore
         run: swift test --enable-code-coverage
+      # Experimental features are OFF for the run above, which is what ships. Build
+      # them too, so gated code cannot rot unnoticed behind its own flag — a compile
+      # is enough; the behaviour they gate is covered by tests that never read it.
+      - name: Build with experimental features on
+        working-directory: Packages/SkidCore
+        run: SKID_EXPERIMENTAL=1 swift build --build-tests
       - name: Export coverage report
         working-directory: Packages/SkidCore
         run: |

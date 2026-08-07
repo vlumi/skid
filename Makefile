@@ -22,22 +22,27 @@ Skid.xcodeproj: $(PROJECT_INPUTS)
 generate: Skid.xcodeproj  ## Regenerate Skid.xcodeproj from project.yml (if stale)
 
 .PHONY: run-iphone
-run-iphone: Skid.xcodeproj  ## Build + launch on an iPhone simulator (DEVICE="SE" / "17 Pro" to pick)
-	@Scripts/run-ios.sh iphone "$(DEVICE)"
+run-iphone: Skid.xcodeproj  ## Build + launch on an iPhone simulator (DEVICE="SE" / "17 Pro"; EXPERIMENTAL=1)
+	@EXPERIMENTAL=$(if $(EXPERIMENTAL),1,0) Scripts/run-ios.sh iphone "$(DEVICE)"
 
 .PHONY: run-ipad
-run-ipad: Skid.xcodeproj  ## Build + launch on an iPad simulator (DEVICE="Air" / "13-inch" to pick)
-	@Scripts/run-ios.sh ipad "$(DEVICE)"
+run-ipad: Skid.xcodeproj  ## Build + launch on an iPad simulator (DEVICE="Air" / "13-inch"; EXPERIMENTAL=1)
+	@EXPERIMENTAL=$(if $(EXPERIMENTAL),1,0) Scripts/run-ios.sh ipad "$(DEVICE)"
+
+# EXPERIMENTAL=1 turns on the unfinished editor chrome for ONE build, without
+# regenerating the project — the setting is resolved by Xcode at build time.
+# Off everywhere otherwise, debug included. See docs/experimental-features.md.
+EXPERIMENTAL_SETTING := $(if $(EXPERIMENTAL),SKID_EXPERIMENTAL_FLAG=SKID_EXPERIMENTAL,)
 
 .PHONY: build-ios
-build-ios: Skid.xcodeproj  ## Build the iOS app (simulator, unsigned)
+build-ios: Skid.xcodeproj  ## Build the iOS app (simulator, unsigned; EXPERIMENTAL=1 for unfinished features)
 	@xcodebuild build -project Skid.xcodeproj -scheme Skid-iOS \
 		-destination 'generic/platform=iOS Simulator' -derivedDataPath .build-xcode \
-		CODE_SIGNING_ALLOWED=NO -quiet
+		CODE_SIGNING_ALLOWED=NO $(EXPERIMENTAL_SETTING) -quiet
 
 .PHONY: test
-test:  ## Run the package logic tests (no Xcode project needed)
-	@swift test --package-path Packages/SkidCore
+test:  ## Run the package logic tests (EXPERIMENTAL=1 to include gated code)
+	@SKID_EXPERIMENTAL=$(if $(EXPERIMENTAL),1,0) swift test --package-path Packages/SkidCore
 
 .PHONY: lint
 lint:  ## SwiftLint + swift-format, both strict (as CI runs them)

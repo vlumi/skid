@@ -68,14 +68,26 @@ xcrun simctl bootstatus "$udid" -b >/dev/null 2>&1 || true
 # Build for the generic simulator destination (robust — no per-device matching),
 # then install the product to the chosen sim.
 echo "Building Skid-iOS..."
+# Unfinished editor chrome is off unless asked for, DEBUG included — an ordinary
+# debug build is the one being driven while testing everything else. Resolved by
+# Xcode at build time, so nothing on disk changes. See
+# docs/experimental-features.md.
+experimental=()
+if [ "${EXPERIMENTAL:-0}" = "1" ]; then
+    experimental=(SKID_EXPERIMENTAL_FLAG=SKID_EXPERIMENTAL)
+    echo "Experimental features: ON"
+fi
+
 xcodebuild -project Skid.xcodeproj -scheme Skid-iOS \
     -destination "generic/platform=iOS Simulator" \
     -derivedDataPath "$derived" -configuration Debug build \
+    "${experimental[@]}" \
     >/dev/null 2>&1 || {
     echo "build failed; re-running with full output:" >&2
     xcodebuild -project Skid.xcodeproj -scheme Skid-iOS \
         -destination "generic/platform=iOS Simulator" \
-        -derivedDataPath "$derived" -configuration Debug build
+        -derivedDataPath "$derived" -configuration Debug build \
+        "${experimental[@]}"
     exit 1
 }
 

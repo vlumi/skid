@@ -43,6 +43,22 @@ targets:
           - UIInterfaceOrientationLandscapeRight
     settings:
       base:
+        # **Experimental features are OFF unless asked for.**
+        #
+        # Deliberately NOT tied to the DEBUG configuration: an ordinary debug build
+        # is what gets driven while testing everything else, and half-finished
+        # chrome in the way of that is exactly what this avoids. See
+        # docs/experimental-features.md.
+        #
+        # Turn on for one build without regenerating anything:
+        #     xcodebuild ... SKID_EXPERIMENTAL_FLAG=SKID_EXPERIMENTAL
+        # or `make run-iphone EXPERIMENTAL=1`.
+        #
+        # `$(…)` is resolved by XCODE at build time, not by xcodegen — so the
+        # generated project is identical either way, and an unset value is simply
+        # empty rather than a literal left in the build settings.
+        SKID_EXPERIMENTAL_FLAG: ""
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) $(SKID_EXPERIMENTAL_FLAG)
         PRODUCT_BUNDLE_IDENTIFIER: fi.misaki.skid
         # User-visible app/bundle name; without this it'd be the target name
         # "Skid-iOS". The Xcode project + targets keep the short "Skid" name;
