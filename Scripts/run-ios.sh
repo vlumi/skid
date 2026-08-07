@@ -72,22 +72,25 @@ echo "Building Skid-iOS..."
 # debug build is the one being driven while testing everything else. Resolved by
 # Xcode at build time, so nothing on disk changes. See
 # docs/experimental-features.md.
-experimental=()
+# A plain STRING, not an array: macOS ships bash 3.2, where "${arr[@]}" on an
+# empty array counts as unbound under `set -u` and aborts the script. The value
+# is a single shell word with no spaces, so word-splitting it is safe here.
+experimental=""
 if [ "${EXPERIMENTAL:-0}" = "1" ]; then
-    experimental=(SKID_EXPERIMENTAL_FLAG=SKID_EXPERIMENTAL)
+    experimental="SKID_EXPERIMENTAL_FLAG=SKID_EXPERIMENTAL"
     echo "Experimental features: ON"
 fi
 
 xcodebuild -project Skid.xcodeproj -scheme Skid-iOS \
     -destination "generic/platform=iOS Simulator" \
     -derivedDataPath "$derived" -configuration Debug build \
-    "${experimental[@]}" \
+    ${experimental} \
     >/dev/null 2>&1 || {
     echo "build failed; re-running with full output:" >&2
     xcodebuild -project Skid.xcodeproj -scheme Skid-iOS \
         -destination "generic/platform=iOS Simulator" \
         -derivedDataPath "$derived" -configuration Debug build \
-        "${experimental[@]}"
+        ${experimental}
     exit 1
 }
 
