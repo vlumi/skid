@@ -110,11 +110,25 @@ rather than fixing.
 > palette, another axis in the encoding) for a difference the player has to be
 > told about to notice.
 >
-> Compare with what banking would have to compete with for the same screen: a
-> **crest or dip** changes the racing line and hides the road ahead, and
-> **narrower or wider road** changes where you can overtake. Both read instantly
-> at a glance. Revisit banking if the camera ever gets close enough that a tilted
-> road looks tilted.
+> Revisit banking if the camera ever gets close enough that a tilted road looks
+> tilted.
+>
+> **The same objection sinks crest/dip, and for a stronger reason.** A crest is
+> already buildable — 1U pitched up then 1U pitched down gives a smooth
+> 0 → 0.5 → 0 hump, and the ease rule even sharpens the apex — so there is no
+> piece to add. What is missing is any *consequence*: the camera is top-down, so
+> a crest hides nothing, and **slope has no physics at all**. Measured: a car
+> driven flat-out for two seconds covers 515 units on the flat and 515 over a
+> run of crests. Identical.
+>
+> So crest/dip is not content, it is a **physics** question — gravity along the
+> road, so a climb costs speed and a descent gives it back. That is where the
+> effort would go, and it is worth weighing against the same "does it read on a
+> phone?" test that shelved banking: a car visibly bogging down on a climb
+> probably does read; a 0.5-level hump on its own does not.
+>
+> **Road width** is the one nearby idea that changes play without new physics:
+> where you can overtake is a property of the geometry, and it reads at a glance.
 
 
 A banked curve has the **same centerline, ports and closure arithmetic** — it
