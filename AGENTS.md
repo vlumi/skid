@@ -22,6 +22,7 @@ One place per concern — don't duplicate, link:
 | **How to work on it** | this file — conventions, toolchain, PR process |
 | **What's next, and when** | [ROADMAP.md](ROADMAP.md) |
 | **Why a design was chosen** | `docs/*-plan.md`, linked from ARCHITECTURE.md |
+| **Hiding unfinished work** | [docs/experimental-features.md](docs/experimental-features.md) — the `SKID_EXPERIMENTAL` build flag, and the rule that it hides controls but never narrows the format |
 | **What shipped** | [CHANGELOG.md](CHANGELOG.md) |
 
 When something ships, move it out of ARCHITECTURE.md's *Planned* chapter and

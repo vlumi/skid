@@ -257,6 +257,19 @@ is useful on its own:
       v0.5; the live dials let this wait), **balance** the tracks / AI /
       difficulty, and sweep the remaining rough edges. This is why the
       control-feel tune was deferred here.
+- [ ] **Decide the fate of every experimental flag.** A flag with no verdict is
+      the failure mode — it accumulates code paths nobody drives. For each one:
+      promote it (delete the condition, ship the controls) or remove it (delete
+      the controls; the format keeps its pieces, since a track someone already
+      built and shared must not stop working). See
+      [docs/experimental-features.md](docs/experimental-features.md).
+      - **Gaps and warps** (`SKID_EXPERIMENTAL`). The physics shipped and are
+        unconditional; what is parked is the *authoring*. A warp is invisible
+        and adjusted by arrows that act on wherever you happen to be building,
+        and a gap is a piece made of nothing — both need explaining on a palette
+        that is otherwise "tap a shape". **Worth a fresh UI/UX attempt before
+        deciding**: the pieces work and race fine, so this is a question about
+        the editor rather than about the feature.
 - [ ] Icon polish pass (light/dark/tinted variants — the base icon ships with
       v0.5). App name is settled: **Skid Jam**.
 - [ ] One ASC record (Universal Purchase), listing text + screenshots,

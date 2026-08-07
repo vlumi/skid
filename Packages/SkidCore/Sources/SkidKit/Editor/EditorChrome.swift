@@ -88,9 +88,9 @@ extension EditorView {
                 } else {
                     buildStatus(walk: walk)
                     mainRow(walk: walk)
-                    // The hotbar returns when it has something to hold (jumps,
-                    // gaps, decorations); five empty slots are dead space.
-                    if !EditorView.hotbarPieces.isEmpty {
+                    // The hotbar appears when it has something to hold; empty slots
+                    // are dead space, and today its only entry is experimental.
+                    if !EditorView.hotbarPieces(experimental: EditorView.experimentalGaps).isEmpty {
                         hotbarRow(walk: walk)
                     }
                 }
