@@ -1,5 +1,19 @@
 // swift-tools-version:5.9
+import Foundation
 import PackageDescription
+
+// **Experimental features are opt-in**, and not tied to the DEBUG configuration:
+// an ordinary debug build is what gets driven while testing everything else, so
+// half-finished chrome must stay out of it unless asked for.
+//
+//     SKID_EXPERIMENTAL=1 swift build
+//     SKID_EXPERIMENTAL=1 make project     (for the Xcode app target)
+//
+// See docs/experimental-features.md. The Xcode side sets the same condition via
+// `SWIFT_ACTIVE_COMPILATION_CONDITIONS` in project.yml.
+let experimental = ProcessInfo.processInfo.environment["SKID_EXPERIMENTAL"] == "1"
+let experimentalSettings: [SwiftSetting] =
+    experimental ? [.define("SKID_EXPERIMENTAL")] : []
 
 let package = Package(
     name: "SkidCore",
@@ -21,7 +35,8 @@ let package = Package(
         .target(
             name: "SkidKit",
             dependencies: ["SkidCore"],
-            resources: [.process("Resources/Localizable.xcstrings")]
+            resources: [.process("Resources/Localizable.xcstrings")],
+            swiftSettings: experimentalSettings
         ),
         .executableTarget(
             name: "SkidIcon",
@@ -29,7 +44,8 @@ let package = Package(
         ),
         .testTarget(
             name: "SkidCoreTests",
-            dependencies: ["SkidCore", "SkidKit"]
+            dependencies: ["SkidCore", "SkidKit"],
+            swiftSettings: experimentalSettings
         ),
     ]
 )

@@ -23,6 +23,33 @@ struct EditorView: View {
     /// only primitive straight); both used to be, back when the palette offered
     /// compounds.
     @AppStorage("skid.editor.curveRadius") var radiusRaw = CurveRadius.medium.rawValue
+    /// **Whether the experimental building blocks are offered** — the Gap piece and
+    /// the warp arrows that drop the road a level.
+    ///
+    /// A BUILD flag, not a setting: there is nothing here a player should have to
+    /// decide, and a switch in the UI would be one more thing to explain about a
+    /// feature whose problem is already that it needs explaining.
+    ///
+    /// **Its own condition rather than `DEBUG`**, because an ordinary debug build is
+    /// what gets driven while testing everything else, and half-finished chrome in
+    /// the way of that is the thing this avoids. Off unless the project was
+    /// generated with `SKID_EXPERIMENTAL=1` — see docs/experimental-features.md.
+    ///
+    /// **The format and the sim are untouched.** Gaps and warps stay in the catalog,
+    /// the share code (tag 9) and the compiler, so a track that uses them decodes,
+    /// races and round-trips on any build. This hides two controls from the editor;
+    /// it does not remove a feature.
+    ///
+    /// Callers test this with a plain `if`, so the gated views are still type-checked
+    /// in a stock build and the optimiser drops the branch. The guarantee is
+    /// REACHABILITY — nothing offers them — rather than absence from the binary.
+    static var experimentalGaps: Bool {
+        #if SKID_EXPERIMENTAL
+        return true
+        #else
+        return false
+        #endif
+    }
 
     /// The hotbar's slots, as a comma-separated id list (AppStorage can't hold an
     /// array).
@@ -68,14 +95,14 @@ struct EditorView: View {
     /// Filtering on read needs no migration step and no version flag.
     var hotbar: [PieceID] {
         let stored = hotbarRaw.split(separator: ",").compactMap { PieceID($0) }
-            .filter { EditorView.hotbarPieces.contains($0) }
+            .filter { EditorView.hotbarPieces(experimental: Self.experimentalGaps).contains($0) }
         // Nothing assignable left in the stored bar? Then it describes a palette that
         // no longer exists, so the defaults are a better answer than a row of blanks.
         // A bar the author deliberately emptied is indistinguishable from a stale one,
         // and re-offering the default costs a tap where hiding a feature costs the
         // feature.
         let base = stored.isEmpty ? HotbarSlot.defaults : stored
-        return (0..<HotbarSlot.count).map { index in
+        return (0..<HotbarSlot.count(experimental: Self.experimentalGaps)).map { index in
             index < base.count ? base[index] : HotbarSlot.empty
         }
     }

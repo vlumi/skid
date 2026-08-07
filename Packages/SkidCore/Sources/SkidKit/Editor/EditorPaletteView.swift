@@ -29,8 +29,11 @@ extension EditorView {
                 // mode; adjacency implies scope, as the comment above says.
                 railBuildToggle
                 // WARP beside pitch: both are the vertical, and this is the one
-                // that steps rather than slopes.
-                warpStepper(height: appendHeight(walk))
+                // that steps rather than slopes. Experimental, so the whole stepper
+                // — arrows and height readout — goes with the Gap it exists to serve.
+                if EditorView.experimentalGaps {
+                    warpStepper(height: appendHeight(walk))
+                }
             }
             .padding(.trailing, 8)
             // Radius UNDER the corner pair, exactly their width: the setting
@@ -215,7 +218,9 @@ extension EditorView {
         case .hotbar(let slot):
             configurationBody(Text("Assign to slot", bundle: .module)) {
                 let columns = [GridItem(.adaptive(minimum: 64), spacing: 10)]
-                let options = EditorView.hotbarPieces + [EditorView.HotbarSlot.empty]
+                let options =
+                    EditorView.hotbarPieces(experimental: EditorView.experimentalGaps)
+                    + [EditorView.HotbarSlot.empty]
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(options, id: \.self) { piece in
                         Button {

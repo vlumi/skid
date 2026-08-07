@@ -56,17 +56,13 @@ extension EditorView {
     ///
     /// Separate from the primitives question on purpose. The corner/straight
     /// vocabulary is fixed and lives on the main row; the hotbar is for everything
-    /// *else*, and that set is about to grow — jumps, gaps and landings, then
+    /// *else*, and that set is about to grow — gaps today, then crossings and
     /// decorations — none of which is a compound. Keeping it assignable is what
     /// stops the palette growing a button per catalog family again.
     enum HotbarSlot {
-        /// What the hotbar holds on a fresh install: the jump. The ramp button
-        /// retired with the pitch selector (a ramp is a road with pitch, not a
-        /// shape); more slots fill in as decorations land.
-        ///
-        /// The jump is a **default** rather than merely available, because an empty
-        /// hotbar is indistinguishable from a missing feature: nothing on screen
-        /// says "assign something here".
+        /// What the hotbar holds when it appears at all: the Gap. A **default**
+        /// rather than merely available, because an empty slot is indistinguishable
+        /// from a missing feature — nothing on screen says "assign something here".
         static let defaults: [PieceID] = [PieceCatalog.ID.gap]
 
         /// An empty slot — draws as a placeholder and places nothing.
@@ -77,24 +73,27 @@ extension EditorView {
         /// Fixed at 5 while the row was speculative, which spent a whole strip of
         /// screen on four placeholders — reported from device as cramming the editor
         /// for the sake of one button. The row grows itself as the catalog does, so
-        /// there is nothing to remember to bump.
-        static var count: Int { max(1, EditorView.hotbarPieces.count) }
+        /// there is nothing to remember to bump. `max(1, …)` only guards division;
+        /// with nothing to hold, the row is not drawn at all.
+        static func count(experimental: Bool) -> Int {
+            max(1, EditorView.hotbarPieces(experimental: experimental).count)
+        }
     }
 
     /// Everything the hotbar can hold: the pieces that aren't part of the
     /// corner/straight vocabulary.
     ///
-    /// **The jump is one piece — lip, gap and landing together.** Not three
-    /// assignable parts: a bare gap would be placeable on its own, which makes an
-    /// unfinishable track buildable and forces the closure search and the
-    /// drivability warning to reason about holes. One tap that cannot be wrong.
+    /// **Gated on the experimental flag**, since today the Gap is the only entry —
+    /// see `GameSettings.experimentalGaps` for why the editing of it is the doubtful
+    /// part rather than the piece. With the flag off the list is empty, so the whole
+    /// row disappears rather than showing a lone dead slot.
     ///
     /// Crossings, forks and decorations join this list as they land — the catalog
     /// already carries some of that geometry, but the Phase-A compiler can't build
     /// it, so offering it would only produce tracks that fail to compile (see
     /// docs/track-pieces.md "Beyond the ring").
-    static var hotbarPieces: [PieceID] {
-        [PieceCatalog.ID.gap]
+    static func hotbarPieces(experimental: Bool) -> [PieceID] {
+        experimental ? [PieceCatalog.ID.gap] : []
     }
 
     /// A short label for any piece the palette can show.

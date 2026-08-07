@@ -86,6 +86,18 @@ jobs:
           files: Packages/SkidCore/coverage.lcov
           use_oidc: true
           fail_ci_if_error: false
+      # LAST, and deliberately so: this rebuilds the test binary with a different
+      # compilation condition, which leaves the .profdata stale against the new
+      # object ("profile data may be out of date - object is newer") and makes
+      # llvm-cov refuse. Coverage must be exported and uploaded before it runs.
+      #
+      # Experimental features are OFF for everything above, which is what ships.
+      # Building them here stops gated code rotting unnoticed behind its own flag —
+      # a compile is enough, since the behaviour they gate is covered by tests that
+      # never read the flag.
+      - name: Build with experimental features on
+        working-directory: Packages/SkidCore
+        run: SKID_EXPERIMENTAL=1 swift build --build-tests
 
   build:
     name: Build app
