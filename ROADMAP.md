@@ -225,6 +225,22 @@ What's left:
       without it (#108) — as a whole-track transform on the LAYOUT, not the
       compiler flag this plan sketched.
 
+- [ ] **First-glance usability — the first ten seconds.** Three reported problems
+      that are one bug from the player's side: nothing on screen explains itself
+      when it matters. Measured and planned in
+      [docs/first-glance-plan.md](docs/first-glance-plan.md).
+      - **Car colours too close together.** Red vs pink is ΔE 21 in CIELAB — the
+        same colour once a 20-unit sprite is moving. Swap pink for magenta and
+        keep the palette honest with a minimum-distance TEST, since it is
+        arithmetic rather than taste.
+      - **Which car is mine, on the grid.** A number bubble and a ring during the
+        countdown, the number **rotated to face its own player** — the rig already
+        knows that vector (`ZoneChrome.up`), and `Race.Phase.countdown` already
+        exists to hang it on.
+      - **The control pad should be visible before it is touched.** `origin` is nil
+        until touch-down today, so the control appears only once you already know
+        where to press. Give it a dimmed resting position at the centre of its own
+        zone. Note the default scheme is *casual*, so this is the aim stick first.
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
