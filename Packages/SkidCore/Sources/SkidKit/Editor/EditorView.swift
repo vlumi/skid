@@ -28,15 +28,23 @@ struct EditorView: View {
     ///
     /// A BUILD flag, not a setting: there is nothing here a player should have to
     /// decide, and a switch in the UI would be one more thing to explain about a
-    /// feature whose problem is already that it needs explaining. Debug builds get
-    /// them; a release build does not compile the controls at all.
+    /// feature whose problem is already that it needs explaining.
+    ///
+    /// **Its own condition rather than `DEBUG`**, because an ordinary debug build is
+    /// what gets driven while testing everything else, and half-finished chrome in
+    /// the way of that is the thing this avoids. Off unless the project was
+    /// generated with `SKID_EXPERIMENTAL=1` — see docs/experimental-features.md.
     ///
     /// **The format and the sim are untouched.** Gaps and warps stay in the catalog,
     /// the share code (tag 9) and the compiler, so a track that uses them decodes,
     /// races and round-trips on any build. This hides two controls from the editor;
     /// it does not remove a feature.
+    ///
+    /// Callers test this with a plain `if`, so the gated views are still type-checked
+    /// in a stock build and the optimiser drops the branch. The guarantee is
+    /// REACHABILITY — nothing offers them — rather than absence from the binary.
     static var experimentalGaps: Bool {
-        #if DEBUG
+        #if SKID_EXPERIMENTAL
         return true
         #else
         return false
