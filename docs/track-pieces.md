@@ -827,7 +827,7 @@ skip by length, so 254 costs exactly what 8 costs. Reserving the top for
 **envelope** sections keeps the low contiguous range for **content**, where the
 catalog keeps growing, and `SIG = 255` reads as the last thing in the record.
 It is named PUBKEY rather than AUTHOR because it holds a key, not a name — and
-real author names arrive with profiles in v0.9.
+real author names arrive with profiles in the real-game milestone.
 
 **SIG must be the last record**, enforced at parse, and the signature covers the
 body minus its own record — located by tag, not by a fixed byte count, so the
