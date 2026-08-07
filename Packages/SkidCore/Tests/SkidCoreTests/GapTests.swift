@@ -125,3 +125,50 @@ struct GapTests {
         #expect(points(withWarp) == points(without))
     }
 }
+
+/// **Hiding the editor's controls must not narrow the format.**
+///
+/// The Gap piece and the warp arrows sit behind a build flag because *editing* them
+/// is the doubtful part — a warp is invisible and a gap is a piece made of nothing.
+/// The pieces themselves are not in doubt, and a track built with them has to keep
+/// working on a build that cannot author one: it may arrive as a share code from
+/// someone else's device.
+struct ExperimentalGapsStayRaceableTests {
+    /// The catalog knows both pieces regardless of what the editor offers.
+    @Test func theCatalogAlwaysCarriesGapsAndWarps() throws {
+        let gap = try #require(PieceCatalog.piece(PieceCatalog.ID.gap))
+        let warp = try #require(PieceCatalog.piece(PieceCatalog.ID.warp))
+        #expect(gap.kind == .gap)
+        #expect(warp.kind == .warp)
+    }
+
+    /// A code carrying them decodes with both intact — including the warp's drop,
+    /// which is the part a "just hide the buttons" change could plausibly break.
+    @Test func aTrackUsingThemRoundTripsThroughTheShareCode() throws {
+        var layout = try #require(TestTracks.jumpRing().layout)
+        let warpIndex = try #require(layout.pieces.firstIndex(of: PieceCatalog.ID.warp))
+        layout.warpDrops[warpIndex] = -Track.levelHeight
+
+        let back = try TrackCode.decode(TrackCode.encode(layout))
+        #expect(back.pieces.contains(PieceCatalog.ID.gap))
+        #expect(back.pieces.contains(PieceCatalog.ID.warp))
+        let decodedWarp = try #require(back.pieces.firstIndex(of: PieceCatalog.ID.warp))
+        #expect(back.warpDrop(at: decodedWarp) == -Track.levelHeight)
+    }
+
+    /// And it still races: the AI laps it, and the car really leaves the road.
+    @Test func aTrackUsingThemStillRaces() {
+        let track = TestTracks.jumpRing()
+        var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: 1))
+        var driver = AIDriver()
+        var airborne = 0
+        for _ in 0..<(60 * Race.tickRate) {
+            race.advance(
+                inputs: [PlayerID(0): driver.input(car: race.cars[0].state, track: track)])
+            if race.cars[0].state.isAirborne { airborne += 1 }
+            if race.cars[0].progress.finishedAt != nil { break }
+        }
+        #expect(race.cars[0].progress.finishedAt != nil, "a gapped track must be lappable")
+        #expect(airborne > 0, "and the gap must still be a gap")
+    }
+}

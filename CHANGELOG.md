@@ -21,22 +21,18 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
-- **Jumps, built from a ramp, a gap and a drop.** A new **Gap** piece on the hotbar
-  is exactly what it sounds like: a stretch with no road at all. Ramp up to it and
-  the ramp keeps its full slope instead of levelling off at the top, so you leave it
-  and fly. New **up/down arrows** beside the pitch selector drop the road to a lower
-  level, which is how the far side of a jump gets back down — and the number between
-  them always shows the height you are building at.
+- **Cars fall properly.** Drive off a bridge with no railing, off the side of a ramp,
+  or off the end of a road that stops, and you drop along a real arc onto whatever is
+  beneath — which may be a lower deck rather than the ground. A ramp that ends in mid
+  air keeps its full slope instead of levelling off at the top, so leaving one throws
+  you rather than dribbling off an edge.
 
-  Nothing is special-cased: a gap works anywhere you want road missing, the drop
-  works anywhere you want a step down, and the flight is gravity acting on a car that
-  drove off a slope. A railed gap gets no railing along the hole, and a road can run
-  underneath one.
+  The **Launch** tuning slider is gone with the trigger it drove: cars are heavy, so
+  what speed buys is how far you get before you land, not how high you go.
 
-- **Falling off a road is the whole of flight now.** The old invisible launch trigger
-  is gone, along with its "Launch" tuning slider: cars are heavy, so a car drops off
-  a lip rather than being thrown over it, and what speed buys is how far you get
-  before you land.
+  *(Building the gaps and level-drops that make a jump is a work-in-progress and only
+  appears in development builds. Tracks that use them race normally on any build, so a
+  shared code always works.)*
 
 - **Track markings line up on raised roads.** The chequered start line, the
   construction stripes on an unfinished end, and the dashed checkpoint markers all
