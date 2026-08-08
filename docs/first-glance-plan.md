@@ -22,29 +22,122 @@ palette `[.red, .yellow, .cyan, .purple, green, .orange, .pink, .white]`:
 Below about 25 two cars read as the same colour once they are small, moving, and
 overlapping. Red/pink fails outright and both are in the first six seats.
 
-**The fix**: swap pink → magenta and nudge yellow/orange apart. Worst pair rises
-**21 → 36**, and the four seats that matter most (the common 1–4 player case) sit
-at ΔE 82–159 from each other:
+### What actually matters: finding YOUR car
+
+Two clarifications that make this much more tractable than "nine mutually distinct
+colours":
+
+- **A glow on every car** handles contrast against the background, which matters
+  once road surfaces vary (snow, gravel — see the roadmap). So the palette does
+  not have to survive every possible surface on its own.
+- **Recognising your own car is the goal**, not telling all nine apart. Nobody
+  needs to know which shade the AI in fourth place is.
+
+So the bar is: *your* colour must stand clear of the field, in any vision type.
+
+### The palette, chosen for accessibility
+
+The obvious answer fails. A hue-spread nine (red · orange · yellow · green · teal ·
+cyan · blue · purple · magenta) measures 32.8 in normal vision and then collapses,
+because nine **hues** cannot stay distinct once hue discrimination does:
+
+| vision | worst ΔE, hue-spread nine |
+|:--|--:|
+| normal | 32.8 |
+| protanopia | 13.3 |
+| deuteranopia | **9.9** |
+| tritanopia | **8.7** |
+
+What carries legibility is **lightness spread**. Searching hue × saturation × value
+for the nine whose worst pair survives all three CVD simulations:
 
 ```
-red      (0.94, 0.21, 0.18)
-yellow   (1.00, 0.82, 0.10)
-cyan     (0.30, 0.80, 0.98)
-purple   (0.68, 0.32, 0.90)
-green    (0.25, 0.80, 0.30)
-orange   (1.00, 0.52, 0.05)
-magenta  (0.95, 0.15, 0.75)     ← was pink
-white    (1.00, 1.00, 1.00)
+yellow   (0.95, 0.95, 0.05)   L* 93
+lime     (0.40, 1.00, 0.70)   L* 91
+pink     (1.00, 0.40, 0.85)   L* 66
+violet   (0.85, 0.40, 1.00)   L* 63
+olive    (0.47, 0.62, 0.03)   L* 60
+magenta  (0.95, 0.05, 0.50)   L* 53
+blue     (0.27, 0.05, 0.95)   L* 34
+maroon   (0.62, 0.03, 0.18)   L* 33
+indigo   (0.33, 0.03, 0.62)   L* 25
 ```
 
-Order matters as much as the values: `carPalette`'s first four are the seats a
-1–4 player game uses, so they must be the four most separated. Keep the check as
-a **test** — assert a minimum ΔE across the palette, and a higher one across the
-first four — so a future colour tweak cannot quietly reintroduce this.
+| vision | worst pair | your car vs nearest rival |
+|:--|--:|--:|
+| normal | 27.4 | ≥27.4 |
+| protanopia | 29.3 | ≥29.3 |
+| deuteranopia | 26.3 | ≥26.3 |
+| tritanopia | **24.7** | **≥24.7** |
 
-**Also worth checking against the track**, which this analysis did not: red on
-red/white kerbs, and white on the light grey of a raised deck. The palette is
-only half the question; contrast with the background is the other half.
+So **every seat sits ≥24.7 from its nearest rival in every vision type**, against
+the current palette's 21.0 in *normal* vision alone. L* runs 25 → 93, which is the
+property doing the work.
+
+Contrast with the track is fine — lowest is 27 (olive on grass, maroon on a red
+kerb), everything else 44+. Asphalt is `white: 0.62`, a *light* grey, so the dark
+colours contrast well rather than vanishing. The glow above is what generalises
+that to surfaces yet to exist.
+
+### What must NOT be done: muting the AI cars
+
+Local-vibrant / AI-recessive is a good instinct and the wrong lever, measurably:
+
+| AI saturation | worst ΔE across the nine |
+|--:|--:|
+| 1.00 | 24.7 |
+| 0.70 | 15.6 |
+| 0.55 | **6.5** |
+
+Desaturating collapses the palette, and HSV desaturation *raises* L\* (maroon
+33 → 43), flattening exactly the spread the accessibility rests on.
+
+Distinguish your own car by something that is **not the colour** — which is what
+§2 below already proposes: a ring, and the seat number. There is a second reason
+too: **"local" is a per-screen property.** Under networking the same car is local
+on one device and remote on another, so it cannot live in a shared palette.
+
+### A pool to pick from, in the lobby
+
+The better model, and it changes the requirement rather than the palette: colours
+are **chosen in the lobby** once everyone is connected, not assigned by seat index.
+
+**But a 16-colour pool cannot be mutually distinct.** Measured — the best
+achievable worst-pair ΔE across normal + all three CVD types:
+
+| pool size | best possible worst pair |
+|--:|--:|
+| 9 | 21.6 |
+| 12 | 15.0 |
+| 16 | **11.2** |
+
+So sixteen accessible-in-all-vision-types colours do not exist; at 16 the closest
+pair is worse than today's problematic red/pink. That is a fact about human vision,
+not about effort.
+
+Which is fine, because a pool has a **different** requirement: only the colours
+actually *picked* need to be distinct. Two ways to get there:
+
+- **Warn** when two picks are close, and let people do it anyway. Honest, no
+  nannying.
+- **Grey out** anything within ~20 ΔE of a taken colour. Cannot go wrong, but the
+  options thin out as the lobby fills.
+
+Either way the property that matters is the same: **the default assignment must be
+the accessible nine**, so a race nobody fiddles with is legible by default. The
+extra pool entries are then self-expression rather than a trap — someone who
+insists on two similar blues has chosen that.
+
+Worth noting the ordering consequence: with a lobby, "seat order" stops being a
+colour question. The nine below stay the **defaults**, in separation order, for
+anyone who does not pick.
+
+### Seat order (the defaults)
+
+The first four are the seats a 1–4 player game uses, so they should be the four
+*most* separated rather than the first four listed. Keep both as tests — a minimum
+ΔE across all nine **in every CVD simulation**, and a higher bar across the first
+four — so a future tweak cannot quietly undo either.
 
 ## 2. Which car is mine, at the start
 
