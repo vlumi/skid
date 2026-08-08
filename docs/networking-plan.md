@@ -47,68 +47,89 @@ Two consequences worth deciding early:
   screens — which the first-glance work (see
   [first-glance-plan.md](first-glance-plan.md)) makes more visible, not less.
 
-### How many devices, and how many players total? — **8 players, 4 per device**
+### How many devices, and how many players total? — **9 players, 4 per device**
 
 Worth fixing upfront, because a protocol needs a maximum and retrofitting one is
 worse than choosing it.
 
-**Total players: 8, and the grid is NOT the constraint** — an earlier version of
-this doc claimed it was, on the arithmetic of keeping the current 2-abreast
-staggering and simply adding rows. Wrong question: the grid is generously spaced
-and packs far more without lengthening the start piece.
+**9, and both the grid and the palette reach it comfortably.**
 
-Measured against the real geometry — the 2U (240-unit) start piece, a 120-wide
-road, a 34 × 20 car with a 12 collision radius:
+*The grid is not the constraint* — an earlier version of this doc said it was, on
+the arithmetic of keeping the current 2-abreast staggering and only adding rows.
+Wrong question. The two cars sit at ±28 with **36 units of air between them** and
+22 spare to each kerb, so the grid is wasting its width, not running out of length.
 
-| layout | cars | depth used | side clearance |
-|:--|--:|--:|--:|
-| current: 2 abreast × 4 | 8 | 220 / 240 | 36 between the pair |
-| **3 abreast × 3** | **9** | 170 / 240 | 24 |
-| 3 abreast × 4 | 12 | 220 / 240 | 24 |
-| 4 abreast × 4 | 16 | 220 / 240 | 9 — too tight |
+Measured against the real geometry (2U = 240-unit start piece, 120-wide road,
+34 × 20 car with a 12 collision radius):
 
-The current grid wastes its width: the two cars sit at ±28 with **36 units of air
-between them** and 22 units spare to each kerb. Three abreast across a ±44 span
-still leaves **24 units between cars** — more than a car's own collision diameter
-— and the outermost edge lands at 54 of the 60 half-width.
+| row width | centre pitch | clearance between cars |
+|--:|--:|--:|
+| 2 abreast | 88 | 68 |
+| **3 abreast** | **44** | **24** — more than a car's collision diameter |
+| 4 abreast | 29 | 9 — under the collision radius, cars start touching |
 
-So **3 abreast × 3 rows = 9 slots covers an 8-player cap with a row to spare**,
-using less of the start piece than the grid does today. Nothing about the start
-piece has to change.
+So **3 is the widest usable row**, and 3 × 3 = 9 slots needs only **170 of the 240
+units** at the existing `gap` of 50. Nothing about the start piece changes.
 
-Which makes the real ceiling the **palette**: 8 colours, and per
-[first-glance-plan.md](first-glance-plan.md) not all 8 are comfortably
-distinguishable (red vs pink is ΔE 21 today). "You can tell whose car is whose" is
-the point of a party game, so **8 is an honest cap for colour reasons, not
-geometric ones** — and raising it means finding more distinguishable colours, not
-more tarmac.
+*Nor is the palette* — nine distinguishable colours are easy once the hue circle
+is used properly rather than reaching for `.pink` and `.white`:
 
-4 abreast is where geometry does bite: 9 units of side clearance is less than a
-car's collision radius, so cars would start the race already touching. Not worth
-it for a cap the palette already limits.
+```
+red · orange · yellow · green · teal · cyan · blue · purple · magenta
+```
 
-**Per device: up to 4**, which is what a `CouchRig` already lays out (four control
-bands around one map) and what fits a phone screen. Nothing in the protocol should
-assume it — a device announces how many seats it brings.
+Worst pair **ΔE 32.8** (blue vs purple), against the current palette's **21.0**
+(red vs pink). So nine colours are *more* distinguishable than today's eight — the
+cap rises and legibility improves at the same time. Keep the minimum-ΔE test from
+[first-glance-plan.md](first-glance-plan.md) as the guard.
 
-So the shape to design for:
+**Per device: up to 4**, which is what a `CouchRig` lays out (four control bands
+around one map) and what fits a phone. Nothing in the protocol should assume it — a
+device announces how many seats it brings. That implies **up to 9 devices**, still
+inside MultipeerConnectivity's practical ceiling.
 
-- **max 8 players total** — pick the number the protocol reserves bits for, and
-  the number the lobby refuses to exceed
-- **max 4 per device**, because that is a screen-layout limit, not a network one
-- **max 8 devices**, trivially implied (8 devices × 1 seat), and comfortably under
-  MultipeerConnectivity's practical ~8-peer ceiling
+Both caps are policy and belong in one named place in `SkidCore`, not scattered as
+literal `4`s (`CouchGame`'s `min(4, count)` and `4 - playerCount`, plus
+`Grid.slots`).
 
-Both limits are *policy*, and they belong in one place in `SkidCore` rather than
-scattered as `4`s — today the cap appears as literal `4`s in `CouchGame`
-(`min(4, count)`, `4 - playerCount`) and as `Grid.slots`. Naming them is a
-prerequisite for raising either, and it is a cheap first step.
+### How the grid fills, per player count
 
-**What "raise the cap" actually means**, if 8 ever feels tight: **more
-distinguishable colours** first (the actual ceiling), and a `CouchRig` that lays
-out more than four bands per screen. The grid itself has room — 3 abreast × 4 rows
-is 12 slots inside the existing start piece. None of that is network work, which
-is the useful part: the transport can carry 8 from day one regardless.
+One rule does the work, and it is the one real grids obey: **a row is never wider
+than the row ahead of it**, and the short row goes at the **back**. Front rows fill
+first, so the cars ahead of you are never fewer than the cars beside you.
+
+That leaves one genuine choice: **2 abreast is much roomier per car** (68 units of
+air vs 24), so it is worth keeping while the count is small enough to fit in two
+rows.
+
+| cars | rows | why |
+|--:|:--|:--|
+| 1 | 1 | |
+| 2 | 2 | |
+| 3 | 2:1 | |
+| 4 | **2:2** | keeps the roomy pairs; **3:1** would strand one car alone behind three |
+| 5 | 3:2 | 3 abreast starts here — 2:2:1 would be three rows for five cars |
+| 6 | **3:3** | not 2:2:2 — same reason: two rows beat three, and 3:3 is symmetric |
+| 7 | 3:3:1 | |
+| 8 | 3:3:2 | |
+| 9 | 3:3:3 | |
+
+On the specific questions asked:
+
+- **5 as 3:2, not 2:2:1.** Both are legal, but 2:2:1 spends three rows on five
+  cars and puts the last one alone two rows back — a worse start for that player
+  and a longer grid for no gain.
+- **6 as 3:3, not 2:2:2.** Symmetric either way, but 3:3 is two rows instead of
+  three, so the field is tighter at the flag and the back row is not 100 units
+  behind the front.
+- **4 as 2:2** is the one place *not* to front-load. Pure front-loading gives 3:1,
+  which is monotonic and legal but wastes the width advantage of pairs and isolates
+  the fourth car. 4 players is also the most common couch case, so it is the one
+  worth tuning by hand.
+
+The rule in one line: **2-abreast while the field fits in two rows (≤ 4), then
+3-abreast, front-loaded.** Everything above falls out of that, and it needs no
+per-count table in the code.
 
 ## Where the network plugs in
 
