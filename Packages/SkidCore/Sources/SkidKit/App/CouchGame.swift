@@ -70,12 +70,24 @@ public final class CouchGame: ObservableObject {
 
     @Published public private(set) var phase: Phase = .setup
     @Published public var mode: Mode = .race
+    /// **The most cars a race can hold** — the grid's own limit, which the palette
+    /// matches (asserted by `CarPaletteTests`). Named here so the setup screen and
+    /// the AI cap cannot drift from the geometry.
+    public static let maxCars = PieceCompiler.Grid.slots
+    /// The most HUMAN players one device can seat: four control bands around one
+    /// map is what `CouchRig` lays out and what fits a phone. Separate from
+    /// `maxCars` on purpose — the rest of the field is AI, or (later) other devices.
+    public static let maxLocalPlayers = 4
+
     @Published public var playerCount = 1 {
-        didSet { aiCount = min(aiCount, 4 - playerCount) }
+        didSet { aiCount = min(aiCount, Self.maxCars - playerCount) }
     }
     @Published public var aiCount = 0
     @Published public var aiDifficulty: AIDriver.Difficulty = .medium
-    @Published public private(set) var colorIndices = [0, 1, 2, 3]
+    /// Default colour per seat, in palette order — which is separation order, so a
+    /// 1–4 player game gets the four furthest-apart colours. Sized to the whole
+    /// field rather than to four seats, since the AI fills the rest.
+    @Published public private(set) var colorIndices = Array(0..<PieceCompiler.Grid.slots)
     /// Each human player's control scheme, chosen in setup (Casual/Pro). One
     /// entry per seat; only the first `playerCount` are used.
     @Published public var schemes: [ControlScheme] = [.casual, .casual, .casual, .casual]
@@ -148,12 +160,12 @@ public final class CouchGame: ObservableObject {
         if let index = arguments.firstIndex(of: "-skid-players"),
             index + 1 < arguments.count, let count = Int(arguments[index + 1])
         {
-            playerCount = max(1, min(4, count))
+            playerCount = max(1, min(Self.maxLocalPlayers, count))
         }
         if let index = arguments.firstIndex(of: "-skid-ai"),
             index + 1 < arguments.count, let count = Int(arguments[index + 1])
         {
-            aiCount = max(0, min(4 - playerCount, count))
+            aiCount = max(0, min(Self.maxCars - playerCount, count))
         }
         if let index = arguments.firstIndex(of: "-skid-track"), index + 1 < arguments.count {
             trackID = TrackLibrary.track(id: arguments[index + 1]).id

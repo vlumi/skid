@@ -144,9 +144,12 @@ struct SetupView: View {
             if game.playerCount == 3 {
                 openCornerPicker
             }
-            if game.playerCount < 4 {
+            // AI fills the rest of the FIELD, not just the four local seats — so a
+            // solo player can face eight of them. Nine is the grid's own limit
+            // (`CouchGame.maxCars`), which the palette matches.
+            if game.playerCount < CouchGame.maxCars {
                 labeledRow(Text("AI", bundle: .module)) {
-                    ForEach(0...(4 - game.playerCount), id: \.self) { count in
+                    ForEach(0...(CouchGame.maxCars - game.playerCount), id: \.self) { count in
                         squareChoice(String(count), selected: game.aiCount == count) {
                             game.aiCount = count
                         }

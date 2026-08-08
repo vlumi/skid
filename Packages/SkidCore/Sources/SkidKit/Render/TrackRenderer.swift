@@ -76,11 +76,15 @@ enum TrackRenderer {
     static let rubber = Color(white: 0.15)
     private static let scuff = Color(red: 0.32, green: 0.26, blue: 0.16)
 
-    /// The car colors players pick from. Deliberately loud, classic-arcade.
-    static let carPalette: [Color] = [
-        .red, .yellow, .cyan, .purple,
-        Color(red: 0.3, green: 0.85, blue: 0.3), .orange, .pink, .white,
-    ]
+    /// The car colours, from `SkidCore`'s measured palette.
+    ///
+    /// The numbers live in `CarPalette` rather than here because they are
+    /// *arithmetic* — perceptual separation, in normal vision and all three kinds of
+    /// colour blindness — and `CarPaletteTests` measures them. This is only the
+    /// SwiftUI translation.
+    static let carPalette: [Color] = CarPalette.paints.map {
+        Color(red: $0.red, green: $0.green, blue: $0.blue)
+    }
 
     static func draw(scene: WorldScene, into context: inout GraphicsContext, size: CGSize) {
         let race = scene.race

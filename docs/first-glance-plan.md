@@ -115,22 +115,84 @@ So sixteen accessible-in-all-vision-types colours do not exist; at 16 the closes
 pair is worse than today's problematic red/pink. That is a fact about human vision,
 not about effort.
 
-Which is fine, because a pool has a **different** requirement: only the colours
-actually *picked* need to be distinct. Two ways to get there:
+Which is fine, because a pool has a **different** requirement — and the decision
+here is deliberately *not* to enforce anything:
 
-- **Warn** when two picks are close, and let people do it anyway. Honest, no
-  nannying.
-- **Grey out** anything within ~20 ΔE of a taken colour. Cannot go wrong, but the
-  options thin out as the lobby fills.
+**Players pick, including badly.** Somebody who takes the second-lightest blue when
+a similar one is gone has made a choice, and greying options out or nagging about
+ΔE would be the app second-guessing its own users. Two similar cars is a
+consequence they can see and fix themselves.
 
-Either way the property that matters is the same: **the default assignment must be
-the accessible nine**, so a race nobody fiddles with is legible by default. The
-extra pool entries are then self-expression rather than a trap — someone who
-insists on two similar blues has chosen that.
+So the palette's job shrinks to one thing that genuinely matters: **the DEFAULT
+assignment is the accessible nine.** A race nobody fiddles with is legible; the
+extra pool entries are self-expression. That is also the only part worth testing,
+which is a good sign it is the right split.
 
 Worth noting the ordering consequence: with a lobby, "seat order" stops being a
 colour question. The nine below stay the **defaults**, in separation order, for
 anyone who does not pick.
+
+### How many colours can we have? — and the sheen is the real limit
+
+**Nine is about the ceiling for mutually-distinct**, measured: the best achievable
+worst pair is 21.6 at nine, 15.0 at twelve, 11.2 at sixteen. That is a fact about
+human vision.
+
+But before adding a tenth, there is a **much larger loss already in the renderer**.
+Every car is drawn with a white sheen across its front half (up to opacity 0.55) as
+the facing cue — a lit nose. Measured against the palette:
+
+| what is compared | worst pair ΔE |
+|:--|--:|
+| body colour, as chosen | **24.7** |
+| **front half, sheen 0.55** | **9.1** |
+| front half, sheen 0.40 | 12.9 |
+| front half, sheen 0.25 | 17.0 |
+
+**The nose of every car is more than half white**, so on the half a player looks at
+first, nine carefully-chosen colours collapse to worse than the palette this work
+set out to replace. No palette can fix that; only the drawing can.
+
+Which answers the shapes question: **shape and shading are worth more than more
+colours.** Options, cheapest first:
+
+- **Tone down the sheen** and let the *tail* carry the colour — or gradient the
+  other way, so the identifying end is the saturated one.
+- **Keep the sheen but tint it** with the car's own colour rather than white, so a
+  lit nose stays a *blue* lit nose.
+- **Shape** — a different silhouette per car is the strongest cue of all and
+  survives both CVD and small size, but it is real art work and it fights the
+  "open-wheeler" look the renderer commits to today.
+- **A pattern** — stripe, roundel, number — which is what real racing uses
+  precisely because colour alone does not scale past a handful of cars.
+
+### Two-tone cars — the answer to "how many colours"
+
+Making the nose a **second palette colour** instead of a white wash turns the
+facing cue into part of the identity, and the arithmetic is decisive:
+
+**9 bodies × 8 noses = 72 distinct liveries**, from the same nine measured colours.
+That is far past the sixteen options wanted from a picker, and every one is
+identifiable, because both halves are real palette colours rather than a wash.
+
+Note what does *not* work: simply lightening the car's own colour for the nose. It
+keeps identity but the noses then differ by only ΔE 9–14 from each other, so it
+solves nothing that the white wash did not.
+
+Consequences worth thinking about before building:
+
+- **The facing cue must survive.** Nose and tail need enough contrast *within* one
+  car to read direction at speed — so a livery is a *pair* with a minimum internal
+  ΔE, which is a testable rule rather than a judgement.
+- **A pattern still beats both** at telling nine cars apart (real racing uses
+  numbers and stripes for exactly this reason), but two-tone is much cheaper than
+  new silhouettes and reuses everything already measured.
+- **Shapes stay a later question.** They are the strongest cue and the most art
+  work, and they fight the open-wheeler look the renderer commits to today.
+
+Recommendation, in order: **fix the sheen** (measure on device — it may just want
+toning down), then **two-tone** for the picker, and treat shapes as separate. Nine
+colours plus an honest nose beats sixteen colours behind a white wash.
 
 ### Seat order (the defaults)
 

@@ -46,16 +46,20 @@ public enum CarPalette {
     ///   flattening the very spread this rests on. A ring or the seat number does
     ///   that job. "Local" is also a per-screen property: under networking the same
     ///   car is local on one device and remote on another.
+    /// Order found by search, not by hand: seats 1–4 hold the four colours whose
+    /// worst pair is furthest apart (ΔE 49.9 across all vision types), then each
+    /// next seat is the one that degrades the set least. Hand-ordering these by
+    /// lightness gave the common 1–4 case only 30.
     public static let paints: [Paint] = [
-        Paint(0.95, 0.95, 0.05),  // yellow    L* 93
         Paint(0.27, 0.05, 0.95),  // blue      L* 34
-        Paint(1.00, 0.40, 0.85),  // pink      L* 66
-        Paint(0.47, 0.62, 0.03),  // olive     L* 60
         Paint(0.40, 1.00, 0.70),  // lime      L* 91
-        Paint(0.33, 0.03, 0.62),  // indigo    L* 25
-        Paint(0.95, 0.05, 0.50),  // magenta   L* 53
         Paint(0.85, 0.40, 1.00),  // violet    L* 63
         Paint(0.62, 0.03, 0.18),  // maroon    L* 33
+        Paint(0.95, 0.95, 0.05),  // yellow    L* 93
+        Paint(0.47, 0.62, 0.03),  // olive     L* 60
+        Paint(0.33, 0.03, 0.62),  // indigo    L* 25
+        Paint(0.95, 0.05, 0.50),  // magenta   L* 53
+        Paint(1.00, 0.40, 0.85),  // pink      L* 66
     ]
 
     /// How many cars a race can hold — the palette's own limit, which is also the
@@ -66,10 +70,17 @@ public enum CarPalette {
 // MARK: - Perceptual measurement
 
 extension CarPalette.Paint {
+    /// A colour in **CIELAB**: `l` is lightness, `a`/`b` the opponent axes.
+    public struct Lab: Equatable, Sendable {
+        public var l: Double
+        public var a: Double
+        public var b: Double
+    }
+
     /// This paint in **CIELAB**, where euclidean distance approximates how different
     /// two colours *look* — which is the only useful way to ask "can a player tell
     /// these apart". RGB distance says red and brown are far apart; the eye disagrees.
-    public var lab: (l: Double, a: Double, b: Double) {
+    public var lab: Lab {
         func linear(_ c: Double) -> Double {
             c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
         }
@@ -81,14 +92,15 @@ extension CarPalette.Paint {
             t > 0.008856 ? pow(t, 1.0 / 3) : 7.787 * t + 16.0 / 116
         }
         let fx = f(x / 0.95047), fy = f(y), fz = f(z / 1.08883)
-        return (116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz))
+        return Lab(l: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz))
     }
 
     /// Perceptual distance to another paint (CIELAB ΔE76). Below roughly 20 two cars
     /// read as the same colour once they are small, moving and overlapping.
     public func distance(to other: CarPalette.Paint) -> Double {
         let a = lab, b = other.lab
-        return ((a.l - b.l) * (a.l - b.l) + (a.a - b.a) * (a.a - b.a)
+        return
+            ((a.l - b.l) * (a.l - b.l) + (a.a - b.a) * (a.a - b.a)
             + (a.b - b.b) * (a.b - b.b)).squareRoot()
     }
 
