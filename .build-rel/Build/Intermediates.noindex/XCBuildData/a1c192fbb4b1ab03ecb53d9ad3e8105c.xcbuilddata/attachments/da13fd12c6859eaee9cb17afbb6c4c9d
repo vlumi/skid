@@ -1,0 +1,4 @@
+module SkidCore {
+header "SkidCore-Swift.h"
+export *
+}

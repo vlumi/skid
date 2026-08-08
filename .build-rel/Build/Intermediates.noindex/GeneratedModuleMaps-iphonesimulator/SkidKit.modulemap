@@ -1,0 +1,4 @@
+module SkidKit {
+header "SkidKit-Swift.h"
+export *
+}

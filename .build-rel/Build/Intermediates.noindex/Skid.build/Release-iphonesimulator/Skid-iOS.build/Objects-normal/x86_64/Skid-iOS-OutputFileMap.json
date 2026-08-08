@@ -1,0 +1,21 @@
+{
+  "" : {
+    "const-values" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/Skid-iOS-primary.swiftconstvalues",
+    "dependencies" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/Skid-iOS-primary.d",
+    "diagnostics" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/Skid-iOS-primary.dia",
+    "emit-module-dependencies" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/Skid-iOS-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/Skid-iOS-primary-emit-module.dia",
+    "pch" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/Skid-iOS-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/Skid-iOS-primary.swiftdeps"
+  },
+  "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/GeneratedAssetSymbols.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Sources/iOS/SkidApp.swift" : {
+    "index-unit-output-path" : "/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/SkidApp.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/SkidApp.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/Skid.build/Release-iphonesimulator/Skid-iOS.build/Objects-normal/x86_64/SkidApp.o"
+  }
+}

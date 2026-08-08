@@ -1,0 +1,48 @@
+{
+  "source": "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorChrome.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 18
+        }
+      },
+      {
+        "comment": "",
+        "key": "New track",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 22
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fit view",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "",
+        "key": "Copy code",
+        "location": {
+          "startingColumn": 81,
+          "startingLine": 31
+        }
+      },
+      {
+        "comment": "",
+        "key": "Paste code",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 42
+        }
+      }
+    ]
+  },
+  "version": 1
+}

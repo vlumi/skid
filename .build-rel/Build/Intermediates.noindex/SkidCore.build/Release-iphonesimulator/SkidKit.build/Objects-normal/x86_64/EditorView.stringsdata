@@ -1,0 +1,56 @@
+{
+  "source": "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Signed by you",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 318
+        }
+      },
+      {
+        "comment": "",
+        "key": "Signed",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 319
+        }
+      },
+      {
+        "comment": "",
+        "key": "Signature doesn't match",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "",
+        "key": "Not signed",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 321
+        }
+      },
+      {
+        "comment": "",
+        "key": "Track complete",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 346
+        }
+      },
+      {
+        "comment": "",
+        "key": "Extend the loose end to close the loop",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 354
+        }
+      }
+    ]
+  },
+  "version": 1
+}

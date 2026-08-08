@@ -1,0 +1,72 @@
+{
+  "source": "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Race/RaceHUD.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "GO!",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": "Lap %lld/%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "Best %@",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 232
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "",
+        "key": "Lap %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 192
+        }
+      },
+      {
+        "comment": "",
+        "key": "Best %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 274
+        }
+      },
+      {
+        "comment": "",
+        "key": "Race again",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 286
+        }
+      },
+      {
+        "comment": "",
+        "key": "Setup",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 291
+        }
+      }
+    ]
+  },
+  "version": 1
+}

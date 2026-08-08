@@ -1,0 +1,80 @@
+{
+  "source": "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorGateMode.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Leave gate mode",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 27
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit gates",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 27
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tap a seam to add a checkpoint — a track needs at least one",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tap seams to add or remove checkpoints",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 17
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gates",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 17
+        }
+      },
+      {
+        "comment": "",
+        "key": "None",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 142
+        }
+      },
+      {
+        "comment": "",
+        "key": "Direction",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": "Warning",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 144
+        }
+      }
+    ]
+  },
+  "version": 1
+}
