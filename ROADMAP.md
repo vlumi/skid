@@ -259,15 +259,32 @@ deterministic" but **"does inputs-only sync survive a real network"**: latency,
 jitter, a peer that stalls, a peer that joins late, two devices on different
 hardware.
 
+Groundwork, transport options and the packet-loss analysis are in
+[docs/networking-groundwork.md](docs/networking-groundwork.md). Three things are
+worth doing **before** the spike, each useful on its own: a per-tick `Race`
+state hash (which also sharpens the existing determinism tests — they currently
+say *that* two runs differ, not *when*), quantised inputs on the wire (also
+shrinks ghosts), and a written-down float-determinism assumption with a
+cross-device check, since the sim uses `sin`/`cos`/`atan2` on its hot path and
+IEEE-754 does not pin transcendentals.
+
 - [ ] **Two devices, one race, inputs over MultipeerConnectivity.** The
       smallest thing that answers the question: no lobby, no polish, no join
-      flow — one host, one peer, hardcoded if need be.
+      flow — one host, one peer, hardcoded if need be. **MC rather than
+      Network.framework because it is not LAN-only** — it falls back to
+      peer-to-peer Wi-Fi/Bluetooth, so two phones with no router still find each
+      other, which matters more for a couch game than throughput. Keep the
+      protocol transport-independent so UDP stays an escape hatch.
 - [ ] **Prove or break bit-identical divergence.** Log a per-tick checksum of
       the sim state on both peers and compare. A divergence here is the whole
       point of the spike; finding one late would invalidate the transport
       design, not just the UI around it.
 - [ ] **Measure what the couch actually needs.** Input delay that still feels
-      like driving, and behaviour when a peer drops mid-race.
+      like driving, and behaviour when a peer drops mid-race. Lockstep turns
+      packet loss into **input lag, not teleporting cars** — no peer can simulate
+      a tick until every input for it has arrived — so the knobs are redundant
+      input sends and how far behind the newest input the sim runs. Provoke it
+      deliberately rather than hoping.
 - [ ] **Write the verdict down**, whichever way it goes — as a
       `docs/*-plan.md` with the measurements, so the decision is reviewable
       rather than remembered.
