@@ -22,9 +22,21 @@ palette `[.red, .yellow, .cyan, .purple, green, .orange, .pink, .white]`:
 Below about 25 two cars read as the same colour once they are small, moving, and
 overlapping. Red/pink fails outright and both are in the first six seats.
 
-**The fix**: swap pink → magenta and nudge yellow/orange apart. Worst pair rises
-**21 → 36**, and the four seats that matter most (the common 1–4 player case) sit
-at ΔE 82–159 from each other:
+**The fix**: use the hue circle properly instead of reaching for `.pink` and
+`.white`. The palette also wants to grow to **nine**, since that is the player cap
+the grid supports (see [networking-plan.md](networking-plan.md)) — and nine
+hue-spread colours measure *better* than the current eight:
+
+```
+red · orange · yellow · green · teal · cyan · blue · purple · magenta
+```
+
+Worst pair **ΔE 32.8** (blue vs purple) against today's **21.0** (red vs pink), so
+the cap rises and legibility improves together. The eight-colour interim below is
+kept for reference; either way the minimum-ΔE test is the guard.
+
+Worst pair rises **21 → 36**, and the four seats that matter most (the common 1–4
+player case) sit at ΔE 82–159 from each other:
 
 ```
 red      (0.94, 0.21, 0.18)
