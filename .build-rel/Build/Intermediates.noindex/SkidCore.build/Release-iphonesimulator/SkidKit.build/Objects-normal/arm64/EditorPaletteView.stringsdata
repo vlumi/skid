@@ -1,0 +1,72 @@
+{
+  "source": "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorPaletteView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Climb",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "",
+        "key": "Descend",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "",
+        "key": "Level",
+        "location": {
+          "startingColumn": 71,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "",
+        "key": "Assign to slot",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 219
+        }
+      },
+      {
+        "comment": "",
+        "key": "Piece markings",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 236
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 288
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close the loop",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 330
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close with a fitted piece",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 342
+        }
+      }
+    ]
+  },
+  "version": 1
+}

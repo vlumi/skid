@@ -1,0 +1,128 @@
+{
+  "source": "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorPalette.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Tight",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 30
+        }
+      },
+      {
+        "comment": "",
+        "key": "Medium",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 31
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sweep",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "Piece",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "Empty slot",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 105
+        }
+      },
+      {
+        "comment": "",
+        "key": "Straight",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "",
+        "key": "Left (tight)",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 107
+        }
+      },
+      {
+        "comment": "",
+        "key": "Right (tight)",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "",
+        "key": "Left",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 109
+        }
+      },
+      {
+        "comment": "",
+        "key": "Right",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "",
+        "key": "Left (sweep)",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 111
+        }
+      },
+      {
+        "comment": "",
+        "key": "Right (sweep)",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 112
+        }
+      },
+      {
+        "comment": "",
+        "key": "Ramp up",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "",
+        "key": "Ramp down",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gap",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 115
+        }
+      }
+    ]
+  },
+  "version": 1
+}

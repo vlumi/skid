@@ -70,10 +70,27 @@ public final class CouchGame: ObservableObject {
 
     @Published public private(set) var phase: Phase = .setup
     @Published public var mode: Mode = .race
-    /// **The most cars a race can hold** — the grid's own limit, which the palette
-    /// matches (asserted by `CarPaletteTests`). Named here so the setup screen and
-    /// the AI cap cannot drift from the geometry.
-    public static let maxCars = PieceCompiler.Grid.slots
+    /// **What a race is allowed to hold today: four cars.**
+    ///
+    /// A **soft cap**, not a limit of the game. The grid seats nine
+    /// (`PieceCompiler.Grid.slots`), the palette carries nine measured colours, and
+    /// nine race correctly — that support is built, tested and staying. What is not
+    /// yet known is how nine behave on a real phone, and finding out belongs in the
+    /// device optimisation pass rather than now.
+    ///
+    /// Four is also enough on its own terms: four players on one screen is already
+    /// hectic, and a race is short enough that people rotate.
+    ///
+    /// **Raising it is this one number.** Everything downstream reads it — the setup
+    /// screen's ranges, both seat clamps, the AI fleet — so the day the device numbers
+    /// exist, `maxCars = fieldCapacity` is the whole change.
+    public static let maxCars = 4
+
+    /// What the grid and palette could seat if `maxCars` were lifted — kept named so
+    /// the soft cap reads as a deliberate ceiling rather than the engine's limit, and
+    /// so a test can assert the two have not drifted apart.
+    public static let fieldCapacity = PieceCompiler.Grid.slots
+
     /// The most HUMAN players one device can seat: four control bands around one
     /// map is what `CouchRig` lays out and what fits a phone. Separate from
     /// `maxCars` on purpose — the rest of the field is AI, or (later) other devices.

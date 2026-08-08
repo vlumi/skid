@@ -1,0 +1,12 @@
+Target dependency graph (5 targets)
+Target 'Skid-iOS' in project 'Skid'
+➜ Explicit dependency on target 'SkidKit' in project 'SkidCore'
+Target 'SkidKit' in project 'SkidCore'
+➜ Explicit dependency on target 'SkidKit' in project 'SkidCore'
+➜ Explicit dependency on target 'SkidCore_SkidKit' in project 'SkidCore'
+➜ Explicit dependency on target 'SkidCore' in project 'SkidCore'
+Target 'SkidKit' in project 'SkidCore'
+➜ Explicit dependency on target 'SkidCore_SkidKit' in project 'SkidCore'
+➜ Explicit dependency on target 'SkidCore' in project 'SkidCore'
+Target 'SkidCore' in project 'SkidCore' (no dependencies)
+Target 'SkidCore_SkidKit' in project 'SkidCore' (no dependencies)

@@ -1,0 +1,72 @@
+{
+  "source": "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorPieceProperties.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Level filter",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stop railing new pieces",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rail new pieces",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": "Levels",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 30
+        }
+      },
+      {
+        "comment": "",
+        "key": "Drop the road a level",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 117
+        }
+      },
+      {
+        "comment": "",
+        "key": "Raise the dropped road",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 117
+        }
+      },
+      {
+        "comment": "",
+        "key": "Building at level %lf",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "Railings",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 158
+        }
+      }
+    ]
+  },
+  "version": 1
+}

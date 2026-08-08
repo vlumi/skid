@@ -412,6 +412,18 @@ is useful on its own:
 
 ## The store release — *this one is 1.0 by definition*
 
+- [ ] **Raise the field cap, or keep it.** `CouchGame.maxCars` is a **soft cap of
+      4** while the engine seats 9: the grid, the palette and the sim all handle a
+      full nine-car field (pinned by `FullFieldTests`), but how nine behave on a
+      real phone is unmeasured. Raising it is one number.
+      Measured so far, all in a DEBUG simulator build and so not device-truth: on
+      the clover at 9 cars the sim costs ~7–11 ms/tick against a 16.7 ms budget,
+      and **cars that actually drive cost 58% more than cars sitting still**
+      (10.94 vs 6.92 ms) — so the cost tracks how many cars are *racing*, not how
+      many exist. Which is why 4 players + 5 AI felt fine while 1 + 8 did not: with
+      four seats and one driver, three cars barely move.
+      Note `GameSession.maxTicksPerFrame` is 12, so one late frame costs up to 12
+      ticks and stutter compounds — worth looking at first if choppiness returns.
 - [ ] **Final polish & balancing pass.** With all content and controls
       settled, do the tuning that only makes sense at the end: **bake the
       final control-feel dials** (the aim-drift model + defaults shipped in

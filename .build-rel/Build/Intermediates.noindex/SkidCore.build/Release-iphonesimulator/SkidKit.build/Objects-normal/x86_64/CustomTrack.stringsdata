@@ -1,0 +1,32 @@
+{
+  "source": "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/CustomTrack.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "My track",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": "Imported track",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "My track",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 163
+        }
+      }
+    ]
+  },
+  "version": 1
+}

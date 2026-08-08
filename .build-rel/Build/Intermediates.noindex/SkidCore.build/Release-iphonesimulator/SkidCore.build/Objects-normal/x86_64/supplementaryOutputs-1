@@ -1,0 +1,12 @@
+{
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidCore/AIDriver.swift" : {
+    "abi-baseline-json" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidCore.build/Objects-normal/x86_64/SkidCore.abi.json",
+    "const-values" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidCore.build/Objects-normal/x86_64/SkidCore-primary.swiftconstvalues",
+    "dependencies" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidCore.build/Objects-normal/x86_64/SkidCore-primary.d",
+    "diagnostics" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidCore.build/Objects-normal/x86_64/SkidCore-primary.dia",
+    "objc-header" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidCore.build/Objects-normal/x86_64/SkidCore-Swift.h",
+    "swiftdoc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidCore.build/Objects-normal/x86_64/SkidCore.swiftdoc",
+    "swiftmodule" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidCore.build/Objects-normal/x86_64/SkidCore.swiftmodule",
+    "swiftsourceinfo" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidCore.build/Objects-normal/x86_64/SkidCore.swiftsourceinfo"
+  }
+}

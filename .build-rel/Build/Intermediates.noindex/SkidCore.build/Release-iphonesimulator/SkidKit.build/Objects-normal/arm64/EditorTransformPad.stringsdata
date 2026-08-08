@@ -1,0 +1,80 @@
+{
+  "source": "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorTransformPad.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Undo",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 29
+        }
+      },
+      {
+        "comment": "",
+        "key": "Redo",
+        "location": {
+          "startingColumn": 65,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close transforms",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Transform the whole track",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 59
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rotate 45° left",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rotate 45° right",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "",
+        "key": "Raise track",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "",
+        "key": "Lower track",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reverse direction",
+        "location": {
+          "startingColumn": 65,
+          "startingLine": 97
+        }
+      }
+    ]
+  },
+  "version": 1
+}

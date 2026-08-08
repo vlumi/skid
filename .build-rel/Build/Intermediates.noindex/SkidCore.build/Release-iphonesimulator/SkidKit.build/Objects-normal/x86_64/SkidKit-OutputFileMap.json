@@ -1,0 +1,276 @@
+{
+  "" : {
+    "const-values" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SkidKit-primary.swiftconstvalues",
+    "dependencies" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SkidKit-primary.d",
+    "diagnostics" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SkidKit-primary.dia",
+    "emit-module-dependencies" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SkidKit-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SkidKit-primary-emit-module.dia",
+    "pch" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SkidKit-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SkidKit-primary.swiftdeps"
+  },
+  "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/DerivedSources/GeneratedStringSymbols_Localizable.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GeneratedStringSymbols_Localizable.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GeneratedStringSymbols_Localizable.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GeneratedStringSymbols_Localizable.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/DerivedSources/resource_bundle_accessor.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/resource_bundle_accessor.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/resource_bundle_accessor.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/resource_bundle_accessor.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/App/CouchGame.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/CouchGame.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/CouchGame.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/CouchGame.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/App/GameSession.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameSession.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameSession.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameSession.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/App/GameSettings.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameSettings.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameSettings.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameSettings.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/App/GameView.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameView.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameView.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameView.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/App/GameViewModifiers.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameViewModifiers.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameViewModifiers.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GameViewModifiers.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/App/KeychainSigningKeyStore.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/KeychainSigningKeyStore.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/KeychainSigningKeyStore.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/KeychainSigningKeyStore.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/App/OnChangeCompat.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/OnChangeCompat.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/OnChangeCompat.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/OnChangeCompat.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/CustomTrack.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/CustomTrack.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/CustomTrack.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/CustomTrack.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorActions.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorActions.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorActions.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorActions.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorChrome.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorChrome.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorChrome.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorChrome.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorClosureHint.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorClosureHint.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorClosureHint.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorClosureHint.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorGateMode.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorGateMode.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorGateMode.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorGateMode.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorPalette.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPalette.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPalette.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPalette.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorPaletteView.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPaletteView.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPaletteView.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPaletteView.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorPieceProperties.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPieceProperties.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPieceProperties.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPieceProperties.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorPieceSelection.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPieceSelection.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPieceSelection.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorPieceSelection.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorRailGlyph.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRailGlyph.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRailGlyph.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRailGlyph.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorSelection.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorSelection.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorSelection.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorSelection.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorTransformPad.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorTransformPad.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorTransformPad.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorTransformPad.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorUndo.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorUndo.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorUndo.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorUndo.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorView.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorView.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorView.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorView.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/Render/EditorRenderer+Bounds.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Bounds.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Bounds.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Bounds.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/Render/EditorRenderer+Edges.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Edges.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Edges.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Edges.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/Render/EditorRenderer+Levels.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Levels.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Levels.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Levels.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/Render/EditorRenderer+Overlays.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Overlays.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Overlays.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Overlays.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/Render/EditorRenderer+Selection.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Selection.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Selection.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer+Selection.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/Render/EditorRenderer.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRenderer.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/Render/EditorRibbon.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRibbon.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRibbon.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorRibbon.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/Render/EditorTransform.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorTransform.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorTransform.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EditorTransform.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/Render/PieceIcon.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/PieceIcon.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/PieceIcon.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/PieceIcon.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Feedback/Haptics.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/Haptics.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/Haptics.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/Haptics.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Feedback/SoundEngine.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SoundEngine.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SoundEngine.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SoundEngine.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Icon/AppIconScene.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/AppIconScene.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/AppIconScene.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/AppIconScene.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Input/CouchRig.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/CouchRig.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/CouchRig.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/CouchRig.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Input/OverlayRenderer.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/OverlayRenderer.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/OverlayRenderer.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/OverlayRenderer.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Input/RectBridge.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RectBridge.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RectBridge.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RectBridge.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Input/TouchRouting.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TouchRouting.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TouchRouting.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TouchRouting.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Race/AIFleet.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/AIFleet.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/AIFleet.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/AIFleet.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Race/GhostPlayback.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GhostPlayback.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GhostPlayback.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/GhostPlayback.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Race/HiscoreFile.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/HiscoreFile.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/HiscoreFile.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/HiscoreFile.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Race/MarkStore.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/MarkStore.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/MarkStore.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/MarkStore.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Race/RaceHUD.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RaceHUD.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RaceHUD.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RaceHUD.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Race/RaceScreen.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RaceScreen.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RaceScreen.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RaceScreen.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Race/TrackLibraryFile.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TrackLibraryFile.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TrackLibraryFile.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TrackLibraryFile.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Race/TuningPanel.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TuningPanel.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TuningPanel.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TuningPanel.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Render/DebugOverlay.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/DebugOverlay.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/DebugOverlay.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/DebugOverlay.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Render/EdgeDecoration.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EdgeDecoration.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EdgeDecoration.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/EdgeDecoration.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Render/RenderOrder.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RenderOrder.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RenderOrder.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/RenderOrder.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Render/TrackRenderer+Cars.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TrackRenderer+Cars.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TrackRenderer+Cars.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TrackRenderer+Cars.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Render/TrackRenderer.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TrackRenderer.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TrackRenderer.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/TrackRenderer.o"
+  },
+  "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Setup/SetupView.swift" : {
+    "index-unit-output-path" : "/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SetupView.o",
+    "llvm-bc" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SetupView.bc",
+    "object" : "/Users/vlumi/src/vlumi/skid/.build-rel/Build/Intermediates.noindex/SkidCore.build/Release-iphonesimulator/SkidKit.build/Objects-normal/x86_64/SetupView.o"
+  }
+}

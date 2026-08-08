@@ -1,0 +1,32 @@
+{
+  "source": "/Users/vlumi/src/vlumi/skid/Packages/SkidCore/Sources/SkidKit/Editor/EditorPieceSelection.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Delete piece",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "Piece markings",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "Railings on this piece",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 48
+        }
+      }
+    ]
+  },
+  "version": 1
+}
