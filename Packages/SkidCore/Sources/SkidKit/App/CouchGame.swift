@@ -70,12 +70,46 @@ public final class CouchGame: ObservableObject {
 
     @Published public private(set) var phase: Phase = .setup
     @Published public var mode: Mode = .race
-    @Published public var playerCount = 1 {
-        didSet { aiCount = min(aiCount, 4 - playerCount) }
+    /// **The most cars a race can hold** — the grid's own limit, which the palette
+    /// matches (asserted by `CarPaletteTests`). Named here so the setup screen and
+    /// the AI cap cannot drift from the geometry.
+    public static let maxCars = PieceCompiler.Grid.slots
+    /// The most HUMAN players one device can seat: four control bands around one
+    /// map is what `CouchRig` lays out and what fits a phone. Separate from
+    /// `maxCars` on purpose — the rest of the field is AI, or (later) other devices.
+    public static let maxLocalPlayers = 4
+
+    /// **Both counts clamp themselves**, so no caller can ask for a field the grid
+    /// cannot hold.
+    ///
+    /// This used to be enforced by whoever happened to be setting them — the setup
+    /// screen offered a valid range, the CLI parser clamped, and `startRace` clamped
+    /// again with its own literal. Three places, and the one that mattered was wrong:
+    /// a solo player's field was silently cut to three AI while the grid showed nine
+    /// slots. Clamping at the property makes the invariant impossible to route around.
+    @Published private var humanSeats = 1
+    @Published private var aiSeats = 0
+
+    /// How many people are playing on this device, 1…`maxLocalPlayers`.
+    public var playerCount: Int {
+        get { humanSeats }
+        set {
+            humanSeats = max(1, min(Self.maxLocalPlayers, newValue))
+            // Taking a seat evicts an AI rather than overfilling the grid.
+            aiSeats = min(aiSeats, Self.maxCars - humanSeats)
+        }
     }
-    @Published public var aiCount = 0
+
+    /// How many AI cars fill the rest of the field, 0…(`maxCars` − players).
+    public var aiCount: Int {
+        get { aiSeats }
+        set { aiSeats = max(0, min(Self.maxCars - humanSeats, newValue)) }
+    }
     @Published public var aiDifficulty: AIDriver.Difficulty = .medium
-    @Published public private(set) var colorIndices = [0, 1, 2, 3]
+    /// Default colour per seat, in palette order — which is separation order, so a
+    /// 1–4 player game gets the four furthest-apart colours. Sized to the whole
+    /// field rather than to four seats, since the AI fills the rest.
+    @Published public private(set) var colorIndices = Array(0..<PieceCompiler.Grid.slots)
     /// Each human player's control scheme, chosen in setup (Casual/Pro). One
     /// entry per seat; only the first `playerCount` are used.
     @Published public var schemes: [ControlScheme] = [.casual, .casual, .casual, .casual]
@@ -148,12 +182,12 @@ public final class CouchGame: ObservableObject {
         if let index = arguments.firstIndex(of: "-skid-players"),
             index + 1 < arguments.count, let count = Int(arguments[index + 1])
         {
-            playerCount = max(1, min(4, count))
+            playerCount = max(1, min(Self.maxLocalPlayers, count))
         }
         if let index = arguments.firstIndex(of: "-skid-ai"),
             index + 1 < arguments.count, let count = Int(arguments[index + 1])
         {
-            aiCount = max(0, min(4 - playerCount, count))
+            aiCount = max(0, min(Self.maxCars - playerCount, count))
         }
         if let index = arguments.firstIndex(of: "-skid-track"), index + 1 < arguments.count {
             trackID = TrackLibrary.track(id: arguments[index + 1]).id
@@ -184,7 +218,11 @@ public final class CouchGame: ObservableObject {
 
     public func startRace() {
         let humans = mode == .timeTrial ? 1 : playerCount
-        let ai = mode == .timeTrial ? 0 : min(aiCount, 4 - humans)
+        // Clamped against the FIELD, not the four local seats. This read
+        // `4 - humans` and silently dropped a solo player's field to three AI —
+        // the grid showed nine slots and only four cars turned up, reported from
+        // device. Two other clamps were named; this one was missed.
+        let ai = mode == .timeTrial ? 0 : min(aiCount, Self.maxCars - humans)
         let humanColors = Array(colorIndices.prefix(humans))
         // AI cars take the next free palette colors.
         var free = (0..<Self.palette.count).filter { !humanColors.contains($0) }

@@ -76,11 +76,15 @@ enum TrackRenderer {
     static let rubber = Color(white: 0.15)
     private static let scuff = Color(red: 0.32, green: 0.26, blue: 0.16)
 
-    /// The car colors players pick from. Deliberately loud, classic-arcade.
-    static let carPalette: [Color] = [
-        .red, .yellow, .cyan, .purple,
-        Color(red: 0.3, green: 0.85, blue: 0.3), .orange, .pink, .white,
-    ]
+    /// The car colours, from `SkidCore`'s measured palette.
+    ///
+    /// The numbers live in `CarPalette` rather than here because they are
+    /// *arithmetic* — perceptual separation, in normal vision and all three kinds of
+    /// colour blindness — and `CarPaletteTests` measures them. This is only the
+    /// SwiftUI translation.
+    static let carPalette: [Color] = CarPalette.paints.map {
+        Color(red: $0.red, green: $0.green, blue: $0.blue)
+    }
 
     static func draw(scene: WorldScene, into context: inout GraphicsContext, size: CGSize) {
         let race = scene.race
@@ -359,9 +363,25 @@ enum TrackRenderer {
         let infield =
             span.a.distance(to: worldCenter) <= span.b.distance(to: worldCenter)
             ? (post: span.a, other: span.b) : (post: span.b, other: span.a)
-        let direction = (infield.post - infield.other).normalized
+        // Away from the road, and along it: the grid wraps into ROWS so a full
+        // field stays a compact block near the post.
+        //
+        // A single line of nine reached 207 units — wider than the road itself
+        // (120) — so it ran across a tight infield and clipped whatever was
+        // there. Three rows brings that to 75. Reported from device once the
+        // field grew past four.
+        let outward = (infield.post - infield.other).normalized
+        let along = outward.perpendicular
+        let pitch = 22.0
+        let perRow = 3
         for (slot, color) in colors.enumerated() {
-            let center = infield.post + direction * (22 + Double(slot) * 22)
+            let row = slot / perRow
+            let seat = slot % perRow
+            // Rows centre themselves on the post, so a short last row is not
+            // lopsided against the ones above it.
+            let rowCount = min(perRow, colors.count - row * perRow)
+            let offset = (Double(seat) - Double(rowCount - 1) / 2) * pitch
+            let center = infield.post + outward * (pitch + Double(row) * pitch) + along * offset
             let dot = CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)
             context.fill(Path(ellipseIn: dot), with: .color(color))
             context.stroke(
