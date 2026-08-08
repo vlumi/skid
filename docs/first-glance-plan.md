@@ -23,36 +23,41 @@ Below about 25 two cars read as the same colour once they are small, moving, and
 overlapping. Red/pink fails outright and both are in the first six seats.
 
 **The fix**: use the hue circle properly instead of reaching for `.pink` and
-`.white`. The palette also wants to grow to **nine**, since that is the player cap
-the grid supports (see [networking-plan.md](networking-plan.md)) — and nine
-hue-spread colours measure *better* than the current eight:
-
-```
-red · orange · yellow · green · teal · cyan · blue · purple · magenta
-```
-
-Worst pair **ΔE 32.8** (blue vs purple) against today's **21.0** (red vs pink), so
-the cap rises and legibility improves together. The eight-colour interim below is
-kept for reference; either way the minimum-ΔE test is the guard.
-
-Worst pair rises **21 → 36**, and the four seats that matter most (the common 1–4
-player case) sit at ΔE 82–159 from each other:
+`.white` — and grow the palette to **nine**, which is the player cap the grid
+supports (see [networking-plan.md](networking-plan.md)). Nine hue-spread colours
+measure *better* than the current eight, so the cap rises and legibility improves
+together:
 
 ```
 red      (0.94, 0.21, 0.18)
-yellow   (1.00, 0.82, 0.10)
-cyan     (0.30, 0.80, 0.98)
-purple   (0.68, 0.32, 0.90)
-green    (0.25, 0.80, 0.30)
 orange   (1.00, 0.52, 0.05)
-magenta  (0.95, 0.15, 0.75)     ← was pink
-white    (1.00, 1.00, 1.00)
+yellow   (1.00, 0.84, 0.10)
+green    (0.22, 0.78, 0.28)
+teal     (0.05, 0.70, 0.65)
+cyan     (0.30, 0.80, 0.98)
+blue     (0.20, 0.40, 0.95)
+purple   (0.68, 0.32, 0.90)
+magenta  (0.95, 0.15, 0.75)
 ```
 
-Order matters as much as the values: `carPalette`'s first four are the seats a
-1–4 player game uses, so they must be the four most separated. Keep the check as
-a **test** — assert a minimum ΔE across the palette, and a higher one across the
-first four — so a future colour tweak cannot quietly reintroduce this.
+Worst pair **ΔE 32.8** (blue vs purple) against today's **21.0** (red vs pink).
+`.pink` and `.white` are both gone: pink was the red collision, and white is the
+one colour that fights the track rather than the other cars (see below).
+
+**Order matters as much as the values**, and hue order is the wrong order.
+`carPalette`'s first four are the seats a 1–4 player game actually uses, so they
+should be the four *most separated* — but listing by hue puts red/orange/yellow
+first, whose worst pair is ΔE 39.5. Front-loading the best four instead:
+
+```
+orange · green · cyan · magenta   ← seats 1–4, worst pair ΔE 94.2
+red · yellow · teal · blue · purple   ← seats 5–9
+```
+
+That more than doubles the separation in the common case at no cost to the full
+nine (still 32.8). Keep both as **tests**: a minimum ΔE across all nine, and a
+much higher one across the first four, so a future tweak cannot quietly undo
+either.
 
 **Also worth checking against the track**, which this analysis did not: red on
 red/white kerbs, and white on the light grey of a raised deck. The palette is
