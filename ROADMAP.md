@@ -259,6 +259,14 @@ deterministic" but **"does inputs-only sync survive a real network"**: latency,
 jitter, a peer that stalls, a peer that joins late, two devices on different
 hardware.
 
+The build order and the scope decisions are in
+[docs/networking-plan.md](docs/networking-plan.md) — **iOS first (two phones, so a
+divergence is a protocol bug rather than a platform question), up to 4 players per
+device, 8 total.** That 8 is geometric rather than arbitrary: the start grid lives
+on the 2U start piece and 4 slots need 220 of its 240 units, so more players means
+a longer start piece, not just a bigger constant. A device is not a player — it is
+a screen with some players at it, which `CouchRig` already models.
+
 Groundwork, transport options and the packet-loss analysis are in
 [docs/networking-groundwork.md](docs/networking-groundwork.md). Three things are
 worth doing **before** the spike, each useful on its own: a per-tick `Race`
