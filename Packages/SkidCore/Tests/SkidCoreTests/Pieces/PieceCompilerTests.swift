@@ -77,7 +77,7 @@ final class PieceCompilerTests: XCTestCase {
         XCTAssertLessThan(t.size.y, TrackValidator.canvas.y)
         XCTAssertGreaterThan(t.centerline.count, 8)  // arcs densified
         XCTAssertEqual(t.gates.count, 4)
-        XCTAssertEqual(t.startSlots.count, 4)
+        XCTAssertEqual(t.startSlots.count, PieceCompiler.Grid.slots)
     }
 
     /// A bridge's road climbs continuously: the compiler emits a height per
