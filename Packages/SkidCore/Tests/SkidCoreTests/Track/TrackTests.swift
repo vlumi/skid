@@ -24,7 +24,7 @@ final class TrackTests: XCTestCase {
 
     func testStartSlotsAreOnAsphaltFacingTheStartGate() {
         let track = TrackLibrary.testRing()
-        XCTAssertEqual(track.startSlots.count, 4)
+        XCTAssertEqual(track.startSlots.count, PieceCompiler.Grid.slots)
         for slot in track.startSlots {
             XCTAssertEqual(track.surface(at: slot), .asphalt, "grid slot \(slot) off the ribbon")
         }

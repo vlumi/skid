@@ -144,9 +144,12 @@ struct SetupView: View {
             if game.playerCount == 3 {
                 openCornerPicker
             }
-            if game.playerCount < 4 {
+            // AI fills the rest of the FIELD, not just the four local seats — so a
+            // solo player can face eight of them. Nine is the grid's own limit
+            // (`CouchGame.maxCars`), which the palette matches.
+            if game.playerCount < CouchGame.maxCars {
                 labeledRow(Text("AI", bundle: .module)) {
-                    ForEach(0...(4 - game.playerCount), id: \.self) { count in
+                    ForEach(0...(CouchGame.maxCars - game.playerCount), id: \.self) { count in
                         squareChoice(String(count), selected: game.aiCount == count) {
                             game.aiCount = count
                         }
@@ -269,12 +272,21 @@ struct SetupView: View {
         }
     }
 
+    /// A labelled row of choices that **wraps** rather than running off the screen.
+    ///
+    /// The AI row reaches nine buttons now that a solo player can face a full field,
+    /// which does not fit an SE's width — reported from device, with 0 clipped off the
+    /// left and 7–8 unreachable past the right edge. Same `LazyVGrid` the track picker
+    /// already uses for the same reason; fixed-width columns so the numbers line up in
+    /// a block instead of staggering.
     private func labeledRow(_ label: Text, @ViewBuilder content: () -> some View) -> some View {
         VStack(spacing: 8) {
             label
                 .font(.footnote.bold())
                 .foregroundStyle(.white.opacity(0.85))
-            HStack(spacing: 10, content: content)
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 58), spacing: 10)], spacing: 10,
+                content: content)
         }
     }
 

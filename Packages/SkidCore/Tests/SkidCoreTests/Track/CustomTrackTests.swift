@@ -30,7 +30,7 @@ final class CustomTrackTests: XCTestCase {
         XCTAssertTrue(TrackValidator.validate(layout).isSaveable)
         let track = try PieceCompiler.compile(layout, id: "my-track")
         // Drivable means: grid on asphalt, gates on the ribbon, a closed loop.
-        XCTAssertEqual(track.startSlots.count, 4)
+        XCTAssertEqual(track.startSlots.count, PieceCompiler.Grid.slots)
         for slot in track.startSlots {
             XCTAssertEqual(track.surface(at: slot), .asphalt, "grid slot off the ribbon")
         }
