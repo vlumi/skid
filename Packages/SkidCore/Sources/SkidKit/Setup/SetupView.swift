@@ -272,12 +272,21 @@ struct SetupView: View {
         }
     }
 
+    /// A labelled row of choices that **wraps** rather than running off the screen.
+    ///
+    /// The AI row reaches nine buttons now that a solo player can face a full field,
+    /// which does not fit an SE's width — reported from device, with 0 clipped off the
+    /// left and 7–8 unreachable past the right edge. Same `LazyVGrid` the track picker
+    /// already uses for the same reason; fixed-width columns so the numbers line up in
+    /// a block instead of staggering.
     private func labeledRow(_ label: Text, @ViewBuilder content: () -> some View) -> some View {
         VStack(spacing: 8) {
             label
                 .font(.footnote.bold())
                 .foregroundStyle(.white.opacity(0.85))
-            HStack(spacing: 10, content: content)
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 58), spacing: 10)], spacing: 10,
+                content: content)
         }
     }
 
