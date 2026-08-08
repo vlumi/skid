@@ -13,7 +13,11 @@ import Testing
 @MainActor
 struct FullFieldTests {
     @Test func everyRequestedCarActuallyStarts() {
-        for (humans, ai) in [(1, 8), (2, 7), (3, 6), (4, 5), (1, 0), (2, 2)] {
+        // Combinations within today's soft cap. The engine seats
+        // `fieldCapacity` (9) and races it correctly; `maxCars` is the smaller
+        // number the product currently offers — see `CouchGame.maxCars`.
+        let cap = CouchGame.maxCars
+        for (humans, ai) in [(1, cap - 1), (2, cap - 2), (cap, 0), (1, 0), (2, 2)] {
             let game = CouchGame()
             game.playerCount = humans
             game.aiCount = ai
@@ -26,7 +30,7 @@ struct FullFieldTests {
     }
 
     /// A solo player can face a **full** field — the case that was broken.
-    @Test func oneHumanCanRaceEightAI() {
+    @Test func oneHumanCanFillTheFieldWithAI() {
         let game = CouchGame()
         game.playerCount = 1
         game.aiCount = CouchGame.maxCars - 1
@@ -45,6 +49,39 @@ struct FullFieldTests {
         #expect(
             Set(colours.map { String(describing: $0) }).count == colours.count,
             "two cars share a colour")
+    }
+
+    /// **The soft cap is a product choice, not an engine limit.**
+    ///
+    /// `maxCars` is deliberately below what the grid and palette support, pending
+    /// device performance numbers. These pin that the capability underneath is intact,
+    /// so raising the cap stays a one-number change rather than a project.
+    @Test func theEngineStillSeatsAFullNineCars() throws {
+        #expect(CouchGame.fieldCapacity == PieceCompiler.Grid.slots)
+        #expect(CarPalette.count >= CouchGame.fieldCapacity, "a colour per slot")
+        #expect(
+            CouchGame.maxCars <= CouchGame.fieldCapacity,
+            "the soft cap must not exceed what the grid can seat")
+
+        // And a full field really races — driven here rather than assumed, since
+        // nothing in the product exercises it while the cap is lower.
+        let track = try #require(TrackLibrary.track(id: "eight"))
+        var race = Race(
+            track: track, players: (0..<CouchGame.fieldCapacity).map(PlayerID.init),
+            config: RaceConfig(laps: 1))
+        var drivers = (0..<CouchGame.fieldCapacity).map { _ in AIDriver() }
+        for _ in 0..<(30 * Race.tickRate) {
+            var inputs: [PlayerID: CarInput] = [:]
+            for index in 0..<CouchGame.fieldCapacity {
+                inputs[PlayerID(index)] = drivers[index].input(
+                    car: race.cars[index].state, track: track)
+            }
+            race.advance(inputs: inputs)
+            if race.cars.allSatisfy({ $0.progress.finishedAt != nil }) { break }
+        }
+        #expect(
+            race.cars.allSatisfy { $0.progress.finishedAt != nil },
+            "a full nine-car field must still complete a lap")
     }
 
     /// The setup screen must not offer a number the race then refuses — that is the
