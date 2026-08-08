@@ -52,22 +52,40 @@ Two consequences worth deciding early:
 Worth fixing upfront, because a protocol needs a maximum and retrofitting one is
 worse than choosing it.
 
-**Total players: 8, and that ceiling is geometric rather than arbitrary.** The
-start grid lives on the start piece, which is 2U = 240 units long, and slots run
-back from the line at `back 70 + (n−1) × gap 50`:
+**Total players: 8, and the grid is NOT the constraint** — an earlier version of
+this doc claimed it was, on the arithmetic of keeping the current 2-abreast
+staggering and simply adding rows. Wrong question: the grid is generously spaced
+and packs far more without lengthening the start piece.
 
-| slots | grid depth | fits the 2U start piece? |
-|--:|--:|:--|
-| 4 | 220 | **yes** (20 units spare) |
-| 6 | 320 | no |
-| 8 | 420 | no |
+Measured against the real geometry — the 2U (240-unit) start piece, a 120-wide
+road, a 34 × 20 car with a 12 collision radius:
 
-So **4 is what the current grid holds** (`PieceCompiler.Grid.slots`), and going
-beyond it needs a decision, not just a bigger number: a longer start piece, a
-tighter `gap`, or staggering more than two abreast. The **palette is also 8
-colours**, and per [first-glance-plan.md](first-glance-plan.md) the eight are not
-all comfortably distinguishable — so 8 is the honest ceiling for "you can tell
-whose car is whose", which is the point of a party game.
+| layout | cars | depth used | side clearance |
+|:--|--:|--:|--:|
+| current: 2 abreast × 4 | 8 | 220 / 240 | 36 between the pair |
+| **3 abreast × 3** | **9** | 170 / 240 | 24 |
+| 3 abreast × 4 | 12 | 220 / 240 | 24 |
+| 4 abreast × 4 | 16 | 220 / 240 | 9 — too tight |
+
+The current grid wastes its width: the two cars sit at ±28 with **36 units of air
+between them** and 22 units spare to each kerb. Three abreast across a ±44 span
+still leaves **24 units between cars** — more than a car's own collision diameter
+— and the outermost edge lands at 54 of the 60 half-width.
+
+So **3 abreast × 3 rows = 9 slots covers an 8-player cap with a row to spare**,
+using less of the start piece than the grid does today. Nothing about the start
+piece has to change.
+
+Which makes the real ceiling the **palette**: 8 colours, and per
+[first-glance-plan.md](first-glance-plan.md) not all 8 are comfortably
+distinguishable (red vs pink is ΔE 21 today). "You can tell whose car is whose" is
+the point of a party game, so **8 is an honest cap for colour reasons, not
+geometric ones** — and raising it means finding more distinguishable colours, not
+more tarmac.
+
+4 abreast is where geometry does bite: 9 units of side clearance is less than a
+car's collision radius, so cars would start the race already touching. Not worth
+it for a cap the palette already limits.
 
 **Per device: up to 4**, which is what a `CouchRig` already lays out (four control
 bands around one map) and what fits a phone screen. Nothing in the protocol should
@@ -86,11 +104,11 @@ scattered as `4`s — today the cap appears as literal `4`s in `CouchGame`
 (`min(4, count)`, `4 - playerCount`) and as `Grid.slots`. Naming them is a
 prerequisite for raising either, and it is a cheap first step.
 
-**What "raise the cap" actually means**, if 8 ever feels tight: a longer start
-piece (the grid is the binding constraint), more palette colours that survive the
-ΔE test, and a `CouchRig` that can lay out more than four bands. None of those are
-network work — which is the useful part: the transport can carry 8 from day one
-regardless.
+**What "raise the cap" actually means**, if 8 ever feels tight: **more
+distinguishable colours** first (the actual ceiling), and a `CouchRig` that lays
+out more than four bands per screen. The grid itself has room — 3 abreast × 4 rows
+is 12 slots inside the existing start piece. None of that is network work, which
+is the useful part: the transport can carry 8 from day one regardless.
 
 ## Where the network plugs in
 
