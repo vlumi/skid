@@ -17,6 +17,8 @@ struct NetworkStatusOverlay: View {
     /// anyway, so reading them as values is both correct and sufficient.
     let divergenceNote: String?
     let stallNote: String?
+    /// The real top safe-area inset, from the layout that still knows it.
+    let topInset: CGFloat
 
     var body: some View {
         VStack(spacing: 8) {
@@ -31,7 +33,14 @@ struct NetworkStatusOverlay: View {
                 banner(note, tint: .orange)
             }
         }
-        .padding(.top, 8)
+        // **Below the notch.** `RaceScreen` works in full-screen coordinates and
+        // ignores the safe area, so a top-aligned banner sits UNDER the Dynamic
+        // Island — a desync WAS reported from device as "no banner" when it had in
+        // fact fired and was hidden there. The inset is passed in rather than read
+        // from the environment, because this view is inside a full-bleed stack that
+        // has already discarded it (and `safeAreaPadding` is iOS 17+, while the
+        // deployment target is 16).
+        .padding(.top, topInset + 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .allowsHitTesting(false)
     }

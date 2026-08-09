@@ -115,6 +115,7 @@ final class LockstepSessionTests: XCTestCase {
     /// quiet, then came back" case.
     private final class GateDriver: GameSession.LockstepDriver {
         var mySeats: [PlayerID]
+        var delayTicks: Int { 0 }
         var open = false
         var published = 0
         private var queue: [[PlayerID: CarInput]] = []
@@ -162,6 +163,7 @@ final class LockstepSessionTests: XCTestCase {
     /// A driver that echoes our own input straight back — a one-device "network".
     fileprivate final class LoopbackDriver: GameSession.LockstepDriver {
         var mySeats: [PlayerID]
+        var delayTicks: Int { 0 }
         private var queue: [[PlayerID: CarInput]] = []
         var reported: [UInt64] = []
         init(seats: [PlayerID]) { mySeats = seats }
@@ -184,5 +186,68 @@ final class LockstepSessionTests: XCTestCase {
         // Every tick reported a hash, so a peer could have compared them.
         XCTAssertEqual(driver.reported.count, session.race.tick)
         XCTAssertEqual(Set(driver.reported).count, driver.reported.count, "hashes repeated")
+    }
+
+    /// A driver that withholds ticks, then releases — and records which ticks it was
+    /// asked to publish for.
+    private final class RecordingDriver: GameSession.LockstepDriver {
+        var mySeats: [PlayerID] { [PlayerID(0)] }
+        let delayTicks: Int
+        var open = false
+        var published: [Tick] = []
+        private var queue: [(Tick, [PlayerID: CarInput])] = []
+        init(delayTicks: Int) { self.delayTicks = delayTicks }
+        func publish(_ inputs: [PlayerID: CarInput], at tick: Tick) {
+            published.append(tick)
+            queue.append((tick, inputs))
+        }
+        func nextTick() -> [PlayerID: CarInput]? {
+            guard open, !queue.isEmpty else { return nil }
+            return queue.removeFirst().1
+        }
+        func report(hash: UInt64, at tick: Tick) {}
+    }
+
+    func testTheTickAnInputIsPublishedForComesFromTheSim() {
+        // **The desync, reported from device as a ~200-unit positional offset.**
+        //
+        // The publish tick was a LOCAL counter, incremented once per attempted tick
+        // — and this loop runs every frame, including the ones that stall. So a
+        // device that waited published 50 inputs for 31 simulated ticks (measured),
+        // and each peer drifted by however much IT stalled. The same thumb press was
+        // then labelled tick 40 on one device and tick 31 on the other, and the cars
+        // genuinely diverged. The hash comparison was right; I misread it.
+        //
+        // Deriving the tick from `race.tick` makes it a value both peers agree on,
+        // because it comes from the shared simulation rather than local wall time.
+        let driver = RecordingDriver(delayTicks: 2)
+        let session = GameSession(
+            track: TrackLibrary.testRing(), players: [PlayerID(0)], config: RaceConfig(),
+            seed: 4, inputFor: { _, _ in CarInput(throttle: 1) })
+        session.lockstep = driver
+
+        var time = 0.0
+        for frame in 0..<40 {
+            if frame == 20 { driver.open = true }  // stalled for the first 20 frames
+            time += Race.dt
+            session.advance(to: time)
+        }
+
+        // One publish per SIMULATED tick, never per attempt. Before the fix this was
+        // 50 for 31; the numbers now match by construction.
+        XCTAssertEqual(
+            driver.published.count, session.race.tick,
+            "published \(driver.published.count) inputs for \(session.race.tick) ticks")
+        XCTAssertGreaterThan(session.race.tick, 15, "the race never got going")
+        // Strictly increasing, no repeats — a repeat would be silently ignored by
+        // the clock's first-value-wins rule and lose that input.
+        XCTAssertEqual(driver.published, driver.published.sorted())
+        XCTAssertEqual(Set(driver.published).count, driver.published.count, "a tick repeated")
+        // And each one is the sim's tick plus the buffer, which is what the peer
+        // computes for the same press.
+        XCTAssertEqual(driver.published.first, driver.delayTicks)
+        XCTAssertEqual(
+            driver.published.last, session.race.tick - 1 + driver.delayTicks,
+            "the newest publish must be the sim's next tick plus the buffer")
     }
 }

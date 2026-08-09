@@ -162,6 +162,11 @@ public final class NetworkedGame:
     /// Seats this device reads thumbs for.
     public var mySeats: [PlayerID] { net?.localSeats ?? [] }
 
+    /// The buffer the HOST chose, carried in `RaceStart` — so every peer publishes
+    /// the same number of ticks ahead and cannot disagree about which tick an input
+    /// belongs to.
+    public var delayTicks: Int { net?.clock.delayTicks ?? 0 }
+
     /// Publish this device's input for `tick` and take in whatever has arrived.
     /// Call once per frame, before asking for ticks.
     public func publish(_ inputs: [PlayerID: CarInput], at tick: Tick) {
