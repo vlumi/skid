@@ -168,6 +168,28 @@ final class CarInputWireTests: XCTestCase {
         XCTAssertEqual(raw.first, quantised.first)
     }
 
+    // MARK: - Bytes
+
+    func testTheByteFormIsFourBytesAndRoundTrips() {
+        let input = CarInput(steer: -0.75, throttle: 0.5, aim: 2.1)
+        let wire = CarInputWire(input)
+        XCTAssertEqual(wire.bytes.count, CarInputWire.byteCount)
+        XCTAssertEqual(CarInputWire(bytes: wire.bytes[...]), wire)
+        // No-aim survives the byte form too — it is a reserved pattern, not a flag.
+        let steering = CarInputWire(CarInput(steer: 1, aim: nil))
+        XCTAssertNil(CarInputWire(bytes: steering.bytes[...])?.input.aim)
+    }
+
+    func testAWrongLengthSliceIsRejected() {
+        // `CarInputWire(bytes:)` is public and takes a slice, so a caller can hand
+        // it any length — the packet decoder passes exact slices, but this guard is
+        // the one that has to hold for anything else that parses bytes.
+        let bytes = CarInputWire(CarInput(steer: 1)).bytes
+        XCTAssertNil(CarInputWire(bytes: bytes[0..<3]), "a short slice was accepted")
+        XCTAssertNil(CarInputWire(bytes: (bytes + [0])[...]), "a long slice was accepted")
+        XCTAssertNil(CarInputWire(bytes: [][...]), "an empty slice was accepted")
+    }
+
     // MARK: - Encoding
 
     func testWireEncodesAsCodable() {

@@ -104,3 +104,37 @@ extension CarInput {
     /// raw thumb value against a neighbour's quantised one does not.
     public var quantised: CarInput { CarInputWire(self).input }
 }
+
+extension CarInputWire {
+    /// The four bytes themselves, for a packet that wants to be four bytes.
+    ///
+    /// **`Codable` is not a wire format.** A `Packet` of two seats × three ticks
+    /// is 28 bytes of payload and encodes to 438 bytes of JSON — 15× — because
+    /// every seat's id is spelled out as a dictionary key on every tick. At 60 Hz
+    /// that is 26 KB/s per peer for data that fits in 1.7. Measured, not guessed.
+    ///
+    /// So the packet encodes seats *positionally* against an agreed roster and
+    /// concatenates these bytes. Little-endian is stated rather than assumed: the
+    /// bytes cross a network, and both current peers being arm64 is a fact about
+    /// today's hardware, not about the format.
+    public var bytes: [UInt8] {
+        [
+            UInt8(bitPattern: steerByte), UInt8(bitPattern: throttleByte),
+            UInt8(truncatingIfNeeded: aimUnits), UInt8(truncatingIfNeeded: aimUnits >> 8),
+        ]
+    }
+
+    /// Rebuild from `bytes`. Nil if the slice is the wrong length — a malformed
+    /// packet must be dropped, not guessed at.
+    public init?(bytes: ArraySlice<UInt8>) {
+        guard bytes.count == CarInputWire.byteCount else { return nil }
+        var iterator = bytes.makeIterator()
+        guard
+            let steer = iterator.next(), let throttle = iterator.next(),
+            let low = iterator.next(), let high = iterator.next()
+        else { return nil }
+        steerByte = Int8(bitPattern: steer)
+        throttleByte = Int8(bitPattern: throttle)
+        aimUnits = UInt16(low) | (UInt16(high) << 8)
+    }
+}
