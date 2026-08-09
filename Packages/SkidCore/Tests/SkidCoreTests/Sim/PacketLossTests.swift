@@ -135,10 +135,12 @@ final class PacketLossTests: XCTestCase {
 
     func testRedundancyCoversARealisticBurst() {
         // Three ticks — 33 ms — was the original depth, and it was an assumption
-        // dressed as a measurement. A phone's Wi-Fi loses far longer bursts.
+        // dressed as a measurement. Deepening it to twenty then did NOT fix the
+        // device, which is what settled the design: redundancy alone cannot repair
+        // sustained loss at any depth, so input now rides the RELIABLE channel and
+        // this is a head start on reordering rather than a loss budget.
         XCTAssertGreaterThanOrEqual(
-            LockstepClock.Packet.history, 12,
-            "redundancy is the only repair mechanism; a fifth of a second is the floor")
+            LockstepClock.Packet.history, 4, "redundancy must cover more than a frame")
         // And it stays inside one datagram for a full field, since fragmenting would
         // multiply the transport's failure modes.
         let full = (0..<9).map { PlayerID($0) }
