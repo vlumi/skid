@@ -49,6 +49,20 @@ public struct NetworkedRace: Sendable {
     /// exactly as remote input is, and the delay buffer applies to it equally.
     /// That is also why the input lag is uniform rather than "smooth for me,
     /// laggy for them".
+    /// Record this device's input for a tick without producing a packet.
+    ///
+    /// The newest tick's packet carries the last `Packet.history` ticks, so an older
+    /// tick reaches the peer inside it. Sending a packet per tick meant ~100 packets a
+    /// second, which backed MultipeerConnectivity's queue up until it choked.
+    public mutating func record(_ inputs: [PlayerID: CarInput], at tick: Tick) {
+        var quantised: [PlayerID: CarInputWire] = [:]
+        for seat in localSeats {
+            quantised[seat] = CarInputWire(inputs[seat] ?? .coast)
+        }
+        sent[tick] = quantised
+        clock.receive(LockstepClock.Packet(tick: tick, inputs: [quantised]))
+    }
+
     public mutating func send(_ inputs: [PlayerID: CarInput], at tick: Tick) -> [UInt8] {
         var quantised: [PlayerID: CarInputWire] = [:]
         for seat in localSeats {

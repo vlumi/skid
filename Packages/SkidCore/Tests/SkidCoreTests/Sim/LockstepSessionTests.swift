@@ -124,6 +124,9 @@ final class LockstepSessionTests: XCTestCase {
             published += 1
             queue.append(inputs)
         }
+        // Recorded, not sent — the queue still gets it, but `published` (which counts
+        // PACKETS) does not move.
+        func record(_ inputs: [PlayerID: CarInput], at tick: Tick) { queue.append(inputs) }
         func nextTick() -> [PlayerID: CarInput]? {
             guard open, !queue.isEmpty else { return nil }
             return queue.removeFirst()
@@ -175,6 +178,7 @@ final class LockstepSessionTests: XCTestCase {
         var reported: [UInt64] = []
         init(seats: [PlayerID]) { mySeats = seats }
         func publish(_ inputs: [PlayerID: CarInput], at tick: Tick) { queue.append(inputs) }
+        func record(_ inputs: [PlayerID: CarInput], at tick: Tick) { queue.append(inputs) }
         func nextTick() -> [PlayerID: CarInput]? { queue.isEmpty ? nil : queue.removeFirst() }
         func report(hash: UInt64, at tick: Tick) { reported.append(hash) }
     }
@@ -201,10 +205,20 @@ final class LockstepSessionTests: XCTestCase {
         var mySeats: [PlayerID] { [PlayerID(0)] }
         let delayTicks: Int
         var open = false
+        /// Ticks that produced a PACKET — what the transport actually carries.
+        var sentPackets: [Tick] = []
+        /// Every tick the session claimed input for, sent or not.
         var published: [Tick] = []
         private var queue: [(Tick, [PlayerID: CarInput])] = []
         init(delayTicks: Int) { self.delayTicks = delayTicks }
         func publish(_ inputs: [PlayerID: CarInput], at tick: Tick) {
+            sentPackets.append(tick)
+            published.append(tick)
+            queue.append((tick, inputs))
+        }
+        // Recorded, never sent: it rides in the next packet's history, so it must NOT
+        // count as a packet.
+        func record(_ inputs: [PlayerID: CarInput], at tick: Tick) {
             published.append(tick)
             queue.append((tick, inputs))
         }
@@ -348,18 +362,16 @@ final class LockstepSessionTests: XCTestCase {
         // attempt. The window has to cover the ticks the sim is about to run, so it
         // legitimately grows several ticks in a frame that owes several ticks; what
         // must not happen is a publish per *loop iteration* on top of that.
-        // **The invariant, not an arithmetic identity.** I got the exact offset wrong
-        // three times (the publish runs before the loop, so it sees the pre-loop
-        // tick): what actually matters is that the window stays a bounded distance
-        // ahead of the sim rather than running away from it, which is what desynced
-        // the two devices.
-        let ahead = (driver.published.last ?? 0) - session.race.tick
-        XCTAssertLessThanOrEqual(ahead, driver.delayTicks, "the window ran ahead of the sim")
-        XCTAssertGreaterThanOrEqual(ahead, -1, "the window fell behind the sim")
-        let expected: [Tick] = Array(0...(driver.published.last ?? 0))
-        XCTAssertEqual(
-            driver.published, expected, "the published ticks must be a gapless run from 0")
-        XCTAssertEqual(Set(driver.published).count, driver.published.count, "a tick repeated")
-        XCTAssertGreaterThan(session.race.tick, 20, "the race did not advance")
+        // **One PACKET per frame, whatever the window covers.** `publish` sends, so
+        // publishing a 6-tick window emitted six packets of ~130 bytes — around 100 a
+        // second, which backed MultipeerConnectivity's queue up until it choked (the
+        // client froze outright while the host waited on input stuck in a send queue).
+        // Older ticks are `record`ed instead; they ride in the newest packet's history.
+        XCTAssertLessThanOrEqual(
+            driver.sentPackets.count, 20,
+            "sent \(driver.sentPackets.count) packets in 20 frames")
+        // Every tick still gets input — the window is covered, just in one packet.
+        XCTAssertGreaterThan(driver.published.count, driver.sentPackets.count)
+        XCTAssertGreaterThan(session.race.tick, 15, "the race did not advance")
     }
 }

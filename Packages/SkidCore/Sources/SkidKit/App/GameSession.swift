@@ -73,8 +73,11 @@ public final class GameSession: ObservableObject {
     public protocol LockstepDriver: AnyObject {
         /// Seats this device reads thumbs for. Others' inputs arrive off the wire.
         var mySeats: [PlayerID] { get }
-        /// Publish this device's own input for `tick`.
+        /// Publish this device's own input for `tick` — records it AND sends.
         func publish(_ inputs: [PlayerID: CarInput], at tick: Tick)
+        /// Record input for a tick without sending a packet for it. The newest tick's
+        /// packet repeats recent history, so an older tick needs no packet of its own.
+        func record(_ inputs: [PlayerID: CarInput], at tick: Tick)
         /// How far ahead of the sim this device publishes — the delay buffer. Read
         /// rather than assumed, so the session cannot disagree with the clock about
         /// which tick an input belongs to.
@@ -247,10 +250,24 @@ public final class GameSession: ObservableObject {
         let elapsedTicks = Tick((totalSimTime / Race.dt).rounded(.down))
         let edge = max(elapsedTicks + lockstep.delayTicks, race.tick + lockstep.delayTicks)
         guard edge > lastPublished else { return }
+        // **One packet per frame, not one per tick.** `publish` sends, so publishing a
+        // 6-tick window emitted SIX packets of ~130 bytes each — around 100 packets a
+        // second, growing with the buffer. MultipeerConnectivity cannot sustain that:
+        // its queue backs up until the transport chokes, which showed up as a client
+        // that looked smooth (its own input is local) and then froze outright, while
+        // the host sat waiting for input that was stuck in a send queue.
+        //
+        // Every tick in the window carries the same reading anyway, and each packet
+        // already repeats the last `Packet.history` ticks — so the newest tick's packet
+        // contains the whole window. Publishing only the edge sends one packet and
+        // loses nothing.
         let from = lastPublished < 0 ? 0 : lastPublished + 1
-        for tick in from...edge {
-            lockstep.publish(mine, at: tick)
+        if from < edge {
+            // Record the older ticks without sending — they ride along in the edge
+            // packet's history.
+            for tick in from..<edge { lockstep.record(mine, at: tick) }
         }
+        lockstep.publish(mine, at: edge)
         lastPublished = edge
     }
 
