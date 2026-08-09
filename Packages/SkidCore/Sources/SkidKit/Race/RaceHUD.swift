@@ -33,8 +33,15 @@ struct RaceHUD: View {
             // Every layout — including 1P — shows one chip per player in
             // their own control band (1P is the face-to-face layout with a
             // single near player).
-            ForEach(Array(rig.players.enumerated()), id: \.offset) { index, controls in
-                playerChip(index: index, controls: controls)
+            ForEach(Array(rig.players.enumerated()), id: \.offset) { _, controls in
+                // **Keyed by the SEAT the band drives, not by band index.** On a
+                // networked guest, band 0 drives seat 1 — so indexing `race.cars` and
+                // `colors` by the band showed the guest the HOST's car and colour.
+                // Reported from device: the chip was blue on both screens when the
+                // cars were blue and green.
+                playerChip(
+                    index: race.cars.firstIndex { $0.id == controls.player } ?? 0,
+                    controls: controls)
             }
         }
         .allowsHitTesting(false)
