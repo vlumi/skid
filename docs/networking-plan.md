@@ -16,8 +16,9 @@ is a *protocol* bug rather than a platform question.
 
 **But structure it so the Mac is a later step, not a rewrite**: nothing in the
 protocol should mention a device kind, and the cross-device determinism check
-(§Step 1) is exactly the thing that will later say whether an Intel Mac can join
-at all.
+(§Step 1) is exactly the thing that will later say whether an Apple-silicon Mac
+can join. **Intel Macs are out of scope** — there is none available to test on,
+and an untestable platform is not a supported one.
 
 Second reason to start on iOS: two phones is the configuration a couch actually
 has.
@@ -236,7 +237,11 @@ arithmetic and `sqrt` but **not** transcendentals.
   holds on Apple silicon, the assumption is *validated* rather than assumed.
 - **If it ever fails**, the fallback is known and contained: own the
   transcendentals on the sim path so every peer computes bit-identical values by
-  construction. Not doing that speculatively.
+  construction. Not doing that speculatively — and now much less likely to be
+  needed at all, since dropping Intel leaves every supported peer on arm64 with
+  Apple's own libm. Hand-rolling `sin`/`cos`/`atan2`/`pow` across ~10 hot-path
+  sites would cost accuracy and speed to solve a problem no supported
+  configuration has.
 
 ### Step 3.5 — The lockstep clock, transport-free *(no networking)* — **done**
 
@@ -324,8 +329,11 @@ Honest list, in rough order of likelihood:
 1. **Input lag that ruins the feel.** The drift model is twitchy — that is the
    point of it — and 50 ms may be more noticeable here than in a slower game.
    This is a feel question and the spike must answer it on device.
-2. **Float divergence across devices.** Unlikely within Apple silicon, real
-   across architectures. Step 3 makes it visible rather than mysterious.
+2. **Float divergence across devices.** Was second on this list; now much
+   smaller. Intel is out of scope (nothing to test on), so every supported peer
+   is arm64 running Apple's libm — leaving only the iOS-vs-macOS libm difference
+   on identical silicon, which the golden hash catches if it ever bites. What is
+   left of this risk the spike measures for free, by trading hashes.
 3. **MC's transport behaviour** — send latency or reliability semantics that do
    not suit 60 Hz. The escape hatch is UDP via Network.framework, which is why
    the protocol must not name its transport.
