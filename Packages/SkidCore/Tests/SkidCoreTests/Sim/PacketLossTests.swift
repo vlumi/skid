@@ -1,12 +1,14 @@
 import XCTest
 
 @testable import SkidCore
+@testable import SkidKit
 
 /// **Packet loss, taken seriously.**
 ///
 /// The original harness dropped 3 packets in 400 and the redundancy window covered
 /// 33 ms — an assumption dressed as a measurement, and it hid a real desync. A
 /// phone's Wi-Fi loses far longer bursts than that.
+@MainActor
 final class PacketLossTests: XCTestCase {
     private let seats = [PlayerID(0), PlayerID(1)]
 
@@ -152,5 +154,85 @@ final class PacketLossTests: XCTestCase {
         }
         let bytes = LockstepClock.Packet(tick: 9999, inputs: frames).encoded(roster: full)
         XCTAssertLessThan(bytes.count, 1024, "a full field's packet outgrew a datagram")
+    }
+
+    func testTwoPeersDoNotStarveEachOther() {
+        // **The steady stutter, reported from device three times across two channel
+        // modes** — which was the clue it was never a network problem.
+        //
+        // Publishing keyed off `race.tick + delayTicks`, and `race.tick` only advances
+        // when the clock releases a tick, which needs the PEER's input. So a stall
+        // froze our publish edge, which starved the peer, which stalled it, which
+        // starved us. A mutual deadlock that breaks and re-forms with a rhythm.
+        //
+        // This drives both peers through the real `GameSession` loop with a link that
+        // delivers everything — no loss at all — so any stalling is self-inflicted.
+        var roster = RaceRoster()
+        try? roster.join("host#aaaa", seats: 1)
+        try? roster.join("guest#bbbb", seats: 1)
+        let start = RaceStart(
+            course: .builtin("small"), seed: 5, roster: roster, laps: 3, delayTicks: 2)
+
+        let hostNet = NetworkedGame(displayName: "host#aaaa")
+        let guestNet = NetworkedGame(displayName: "guest#bbbb")
+        hostNet.adoptForTesting(start)
+        guestNet.adoptForTesting(start)
+        let host = makeSession(start, hostNet)
+        let guest = makeSession(start, guestNet)
+
+        // **With LATENCY, which is what the harness was missing.** Delivering
+        // instantly and synchronously let both peers advance every frame no matter how
+        // publishing was keyed — so the starvation could not reproduce. Real packets
+        // arrive a frame or two later, and that delay is what turns a sim-driven
+        // publish edge into mutual deadlock.
+        var stalls = 0
+        var time = 0.0
+        var inFlightToGuest: [(deliverAt: Int, bytes: [UInt8])] = []
+        var inFlightToHost: [(deliverAt: Int, bytes: [UInt8])] = []
+        let latencyFrames = 2
+
+        for frame in 0..<600 {
+            time += Race.dt
+            let before = host.race.tick
+            host.advance(to: time)
+            guest.advance(to: time)
+
+            for b in hostNet.drainOutbox() {
+                inFlightToGuest.append((frame + latencyFrames, b))
+            }
+            for b in guestNet.drainOutbox() {
+                inFlightToHost.append((frame + latencyFrames, b))
+            }
+            for packet in inFlightToGuest where packet.deliverAt <= frame {
+                guestNet.deliverForTesting(packet.bytes, from: "host#aaaa")
+            }
+            for packet in inFlightToHost where packet.deliverAt <= frame {
+                hostNet.deliverForTesting(packet.bytes, from: "guest#bbbb")
+            }
+            inFlightToGuest.removeAll { $0.deliverAt <= frame }
+            inFlightToHost.removeAll { $0.deliverAt <= frame }
+
+            if host.race.tick == before { stalls += 1 }
+        }
+
+        // On a perfect link the race must run essentially every frame. Before the fix
+        // it stalled roughly half of them, in a rhythm.
+        XCTAssertLessThan(stalls, 60, "stalled on \(stalls) of 600 frames with NO packet loss")
+        XCTAssertGreaterThan(host.race.tick, 540, "the host barely advanced")
+        XCTAssertEqual(host.race.tick, guest.race.tick, "the peers ran to different ticks")
+        XCTAssertEqual(host.race.stateHash, guest.race.stateHash, "the peers diverged")
+    }
+
+    @MainActor
+    private func makeSession(_ start: RaceStart, _ driver: GameSession.LockstepDriver)
+        -> GameSession
+    {
+        let session = GameSession(
+            track: TrackLibrary.track(id: "small"), players: start.roster.seats,
+            config: RaceConfig(laps: start.laps, countdownTicks: 3 * Race.tickRate),
+            seed: start.seed, tuning: start.tuning,
+            inputFor: { _, _ in CarInput(throttle: 1) })
+        session.lockstep = driver
+        return session
     }
 }

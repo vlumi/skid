@@ -91,6 +91,13 @@ public final class GameSession: ObservableObject {
     /// to. See `inputsForNextTick()`.
     private var lastPublished: Tick = -1
 
+    /// Ticks of input published, advanced by wall time rather than by the sim.
+    ///
+    /// The sim's tick cannot drive publishing: it only moves when the peer's input
+    /// arrives, so keying off it makes two devices starve each other in a rhythm.
+    /// This counts frames instead — one reading per frame, always available.
+    private var publishClock: Tick = -1
+
     private var lastTime: TimeInterval?
     private var accumulator: TimeInterval = 0
     /// Don't spiral after a long pause (backgrounding, debugger): cap the
@@ -214,18 +221,23 @@ public final class GameSession: ObservableObject {
         // Publishing a tick the clock has already consumed is harmless — it keeps the
         // first value it saw — so a gapless run costs nothing and removes the hazard.
         //
-        // **One tick per frame, so a tick's input is sampled once.** Publishing the
-        // whole window every frame filled each tick with whatever reading that frame
-        // happened to take — and two devices' frames are never aligned, so each filled
-        // tick N differently. The countdown masked it (input is locked to coast until
-        // GO), and it bit at the FIRST unlocked tick: the desync was reported at tick
-        // 182 twice, which is exactly `countdownTicks + delayTicks`.
+        // **Publishing must NOT depend on the sim advancing.** It used to key off
+        // `race.tick + delayTicks`, and `race.tick` only moves when the clock releases
+        // a tick — which needs the peer's input. So a stall froze the publish edge,
+        // which starved the peer, which stalled it, which starved us: a mutual
+        // deadlock that broke and re-formed with a rhythm. Reported from device as a
+        // steady stutter with the "waiting" pill flashing in time, and it survived
+        // both channel modes because it was never a network problem.
         //
-        // The buffer is primed on the first frame instead, where both devices are
-        // genuinely at tick 0 with no history to disagree about.
-        let edge = race.tick + lockstep.delayTicks
+        // Publishing is driven by WALL TIME instead — one tick per frame's worth of
+        // owed sim time, whatever the clock is doing. Our own thumb is always
+        // available, so there is never a reason to withhold it. The tick numbers stay
+        // derived from a counter both peers advance at the same real-time rate, so
+        // they still agree about which tick a press belongs to.
+        publishClock += 1
+        let edge = max(publishClock, race.tick + lockstep.delayTicks)
         guard edge > lastPublished else { return }
-        let from = lastPublished < 0 ? 0 : min(lastPublished + 1, edge)
+        let from = lastPublished < 0 ? 0 : lastPublished + 1
         for tick in from...edge {
             lockstep.publish(mine, at: tick)
         }
