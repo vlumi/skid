@@ -26,6 +26,21 @@ struct NetworkLobbyView: View {
                 }
 
                 Spacer()
+
+                // The handshake, on screen. Two device sessions were spent on
+                // failures whose cause was invisible from the lobby; this is the
+                // cheapest way to make the next one diagnosable.
+                if !net.trace.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(net.trace.enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.65))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 Button {
                     net.leave()
                     game.backToSetup()
