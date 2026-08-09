@@ -37,6 +37,9 @@ public final class NetworkedGame:
     @Published public private(set) var divergenceNote: String?
     /// Buffered input ticks — the health readout. Growing means falling behind.
     @Published public private(set) var bufferedTicks = 0
+    /// Why a device could not be seated, for the host's lobby. A join that fails
+    /// silently is indistinguishable from one that never arrived.
+    @Published public private(set) var joinNote: String?
 
     /// How many players this device brings.
     public var localSeats: Int = 1
@@ -156,7 +159,23 @@ public final class NetworkedGame:
         stallNote = Self.describe(net.stall, roster: net.roster)
         if let divergence = net.divergence, divergenceNote == nil {
             divergenceNote =
-                "Desync at tick \(divergence.tick) vs \(divergence.peer)"
+                "Desync at tick \(divergence.tick) vs \(DeviceName.display(divergence.peer))"
+        }
+    }
+
+    private static func describe(_ error: Error, peer: RaceRoster.PeerName) -> String {
+        let name = DeviceName.display(peer)
+        switch error as? RaceRoster.JoinError {
+        case .fieldFull(_, let available):
+            return available == 0
+                ? "\(name) could not join: the field is full"
+                : "\(name) could not join: room for only \(available) more"
+        case .alreadyJoined:
+            return "\(name) is already in the race"
+        case .seatCountOutOfRange(let requested, let max):
+            return "\(name) asked for \(requested) seats; \(max) is the most per device"
+        case nil:
+            return "\(name) could not join"
         }
     }
 
@@ -166,7 +185,9 @@ public final class NetworkedGame:
     private static func describe(_ stall: LockstepClock.Stall?, roster: RaceRoster) -> String? {
         switch stall {
         case .waitingForInput(_, let missing):
-            let names = Set(missing.compactMap { roster.peer(driving: $0) }).sorted()
+            let names = Set(
+                missing.compactMap { roster.peer(driving: $0) }.map(DeviceName.display)
+            ).sorted()
             return names.isEmpty ? "Waiting…" : "Waiting for \(names.joined(separator: ", "))"
         case .buffering, nil:
             // Buffering is the normal state between ticks, not something to report.
@@ -218,7 +239,7 @@ public final class NetworkedGame:
             // race. Whether to abandon it is the player's call.
             net?.peerLeft(peer)
             refreshDiagnostics()
-            stallNote = "Lost \(peer)"
+            stallNote = "Lost \(DeviceName.display(peer))"
             return
         }
         roster.remove(peer: peer)
@@ -227,9 +248,19 @@ public final class NetworkedGame:
 
     private func seat(_ peer: RaceRoster.PeerName, seats: Int) {
         guard isHost, case .hosting = phase else { return }
-        // A refused join is not fatal — the guest simply never appears in the
-        // roster, and the host's lobby shows the field is full.
-        try? roster.join(peer, seats: seats)
+        // **A refused join must be visible.** `try?` here swallowed the reason a
+        // device failed to appear, and that cost a device session: two phones both
+        // called "iPhone" collided as one peer, the join was rejected as
+        // `alreadyJoined`, and the lobby simply showed one device with Start
+        // disabled and no explanation. Unique peer keys fix the collision; this
+        // makes any future refusal say so.
+        do {
+            try roster.join(peer, seats: seats)
+            joinNote = nil
+        } catch {
+            joinNote = Self.describe(error, peer: peer)
+            return  // nothing changed, so there is no new roster to push
+        }
         // Guests cannot derive the roster themselves: only the host assigns seat
         // numbers, so without this push a guest's lobby stays empty until the race
         // starts, which reads as a broken join.

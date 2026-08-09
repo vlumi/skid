@@ -103,8 +103,12 @@ struct NetworkLobbyView: View {
             VStack(spacing: 6) {
                 ForEach(net.roster.entries, id: \.peer) { entry in
                     HStack {
-                        Text(entry.peer == net.me ? "\(entry.peer) (you)" : entry.peer)
-                            .foregroundStyle(.white)
+                        Text(
+                            entry.peer == net.me
+                                ? "\(DeviceName.display(entry.peer)) (you)"
+                                : DeviceName.display(entry.peer)
+                        )
+                        .foregroundStyle(.white)
                         Spacer()
                         Text(entry.seats.map { "\($0.rawValue + 1)" }.joined(separator: ", "))
                             .foregroundStyle(.white.opacity(0.7))
@@ -114,6 +118,13 @@ struct NetworkLobbyView: View {
             }
             .padding(14)
             .background(.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
+
+            if let note = net.joinNote {
+                Text(note)
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+            }
 
             if net.isHost {
                 Button {
