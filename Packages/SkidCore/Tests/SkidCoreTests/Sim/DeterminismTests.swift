@@ -19,25 +19,36 @@ final class DeterminismTests: XCTestCase {
         return CarInput(steer: steer, throttle: throttle)
     }
 
-    private func runRace(seed: UInt64, ticks: Int) -> Race {
+    /// Runs the script, returning the final state and the per-tick hash trail.
+    private func runRace(seed: UInt64, ticks: Int) -> (race: Race, hashes: [UInt64]) {
         let players = [PlayerID(0), PlayerID(1), PlayerID(2), PlayerID(3)]
         var race = Race(track: TrackLibrary.testRing(), players: players, seed: seed)
+        var hashes: [UInt64] = []
         for _ in 0..<ticks {
             var inputs: [PlayerID: CarInput] = [:]
             for player in players {
                 inputs[player] = scriptedInput(player: player, tick: race.tick)
             }
             race.advance(inputs: inputs)
+            hashes.append(race.stateHash)
         }
-        return race
+        return (race, hashes)
     }
 
     func testIdenticalRunsProduceIdenticalStates() {
         let a = runRace(seed: 42, ticks: 1800)  // 30 sim-seconds, 4 cars
         let b = runRace(seed: 42, ticks: 1800)
-        XCTAssertEqual(a, b)
+
+        // **Report the first diverging TICK, not just that 1800 of them differ.**
+        // `XCTAssertEqual(a, b)` on the races dumps two whole `Race` values and
+        // leaves the question "since when?" — which is the expensive part of the
+        // debugging. The hash trail answers it before the state comparison runs.
+        if let tick = Array(zip(a.hashes, b.hashes)).firstIndex(where: { $0 != $1 }) {
+            XCTFail("runs diverged at tick \(tick) of 1800")
+        }
+        XCTAssertEqual(a.race, b.race)
         // Sanity: the script actually moved the cars off the grid.
-        XCTAssertNotEqual(a.cars[0].state.position, TrackLibrary.testRing().startSlots[0])
+        XCTAssertNotEqual(a.race.cars[0].state.position, TrackLibrary.testRing().startSlots[0])
     }
 
     func testGridShuffleIsAValidPermutationAndSeedStable() {

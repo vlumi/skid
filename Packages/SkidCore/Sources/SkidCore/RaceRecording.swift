@@ -26,9 +26,31 @@ public struct RaceRecording: Equatable, Sendable, Codable {
         on track: Track, tuning: CarTuning = CarTuning(), config: RaceConfig = RaceConfig()
     ) -> Race {
         var race = Race(track: track, players: players, tuning: tuning, seed: seed, config: config)
+        step(&race) { _ in }
+        return race
+    }
+
+    /// Re-run the recording, collecting `Race.stateHash` after every tick.
+    ///
+    /// The sequence a lockstep divergence check compares — one number per tick,
+    /// so two runs are not merely unequal but disagree *at a tick*. Networking
+    /// will compare a live peer's sequence against this; a test compares two local
+    /// ones. Same operation either way, which is why it lives here rather than in
+    /// the tests that use it first.
+    public func replayHashes(
+        on track: Track, tuning: CarTuning = CarTuning(), config: RaceConfig = RaceConfig()
+    ) -> [UInt64] {
+        var race = Race(track: track, players: players, tuning: tuning, seed: seed, config: config)
+        var hashes: [UInt64] = []
+        hashes.reserveCapacity(inputs.count)
+        step(&race) { hashes.append($0.stateHash) }
+        return hashes
+    }
+
+    private func step(_ race: inout Race, after: (Race) -> Void) {
         for tickInputs in inputs {
             race.advance(inputs: tickInputs)
+            after(race)
         }
-        return race
     }
 }
