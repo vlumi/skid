@@ -31,6 +31,17 @@ targets:
         # when signing landed rather than inherited.
         ITSAppUsesNonExemptEncryption: false
         LSApplicationCategoryType: public.app-category.racing
+        # **Networked racing needs both of these, and getting the Bonjour list
+        # wrong fails SILENTLY** — iOS 14+ simply refuses to browse, which looks
+        # like "no peers found" rather than an error. The service names must match
+        # `MultipeerTransport.serviceType` exactly, and MultipeerConnectivity
+        # needs BOTH the _tcp and _udp spellings registered.
+        NSLocalNetworkUsageDescription:
+          Skid Jam finds other players' devices nearby so you can race together.
+          Nothing leaves your local network.
+        NSBonjourServices:
+          - _skid-race._tcp
+          - _skid-race._udp
         # System-default launch screen (plain background) — the track fades in.
         UILaunchScreen: {}
         # All four orientations: a universal (iPhone + iPad) app must support
