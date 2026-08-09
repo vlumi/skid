@@ -190,14 +190,35 @@ Two things learned in the building, both worth keeping in mind:
   over a haptics counter; missing real state hides the failure. When a new field
   is ambiguous, hash it.
 
-### Step 2 — A wire format for inputs *(no networking)*
+### Step 2 — A wire format for inputs *(no networking)* — **done**
 
-- **Quantise `CarInput`**: one byte each for steer and throttle, two for aim.
-  24 bytes → 4 per player per tick, and both peers then step from *identical*
-  quantised values rather than two float paths.
-- **Round-trip tests**, and one that matters more: a race driven by quantised
-  inputs must still be deterministic, and its hash sequence stable.
-- Free side-effect: **ghosts get smaller**, since they are already input streams.
+- **`CarInputWire`**: one byte each for steer and throttle, two for aim. 24 bytes
+  → 4 per player per tick, and both peers then step from *identical* quantised
+  values rather than two float paths.
+- **`CarInput.quantised` is the rule that makes it work.** Apply it to local input
+  too, not only to what arrives off the wire. A peer that sends quantised input
+  while stepping its own raw thumb value has two different races and diverges
+  slowly, invisibly, and for a reason that looks like a physics bug. A test asserts
+  that a quantised race *differs* from a raw one, so the asymmetry cannot be
+  mistaken for harmless.
+- **A quantised race stays deterministic**, hash sequence stable, verified against
+  Step 1's hash.
+
+Two things found in the building:
+
+- **NaN and infinity trapped.** `max(-1, min(1, nan))` is `nan` in Swift, so the
+  ordinary clamp does not catch it and `Int8(nan.rounded())` crashes — a malformed
+  packet from a peer would have taken the app down rather than driving badly.
+  Guarded on `isFinite`, with the crash reproduced by sabotage first.
+- **Ghosts do *not* shrink for free**, as this doc previously claimed.
+  `RaceRecording` is persisted inside `Hiscores`, so changing its stored format
+  invalidates every existing ghost. Real saving, but it is a migration and belongs
+  with other hiscore-file work.
+
+`aim` needed no range agreement: the sim consumes it only as
+`atan2(sin(aim - heading), cos(aim - heading))`, so it is a direction on a circle
+and π/−π are one command. 65 535 steps over a full turn is 0.0055°, some three
+orders finer than a thumb on glass.
 
 ### Step 3 — The float-determinism question, answered *(no networking)*
 
