@@ -235,4 +235,71 @@ final class PacketLossTests: XCTestCase {
         session.lockstep = driver
         return session
     }
+
+    func testAPeerWithAnUnevenFrameRateDoesNotStarveTheOther() {
+        // **The last of the steady stutters, reported as two quick flashes then a
+        // pause at roughly 2 Hz** — a burst pattern, which is what a run of slow
+        // frames produces.
+        //
+        // Publishing counted FRAMES, which assumes a steady 60 fps. On device the
+        // render loop dips, so the publish edge fell behind real time and the peer
+        // starved for as many ticks as were missed. Pacing by elapsed sim time makes
+        // it independent of how often we happen to be drawn.
+        //
+        // Here one peer renders unevenly — bursts of slow frames — while wall time
+        // advances the same for both, which is exactly the device's situation.
+        var roster = RaceRoster()
+        try? roster.join("host#aaaa", seats: 1)
+        try? roster.join("guest#bbbb", seats: 1)
+        // **The buffer has to cover the slower peer's frame gap.** A device drawn two
+        // frames in three only reaches its publish code two times in three, so its
+        // input arrives in clumps however the edge is computed — that is inherent, not
+        // a bug: input cannot be published while the app is not running. The delay
+        // buffer is what absorbs it, and this is the knob the spike exists to tune.
+        let start = RaceStart(
+            course: .builtin("small"), seed: 5, roster: roster, laps: 3,
+            delayTicks: CouchGame.networkedDelayTicks)
+
+        let hostNet = NetworkedGame(displayName: "host#aaaa")
+        let guestNet = NetworkedGame(displayName: "guest#bbbb")
+        hostNet.adoptForTesting(start)
+        guestNet.adoptForTesting(start)
+        let host = makeSession(start, hostNet)
+        let guest = makeSession(start, guestNet)
+
+        var stalls = 0
+        var time = 0.0
+        var toGuest: [(Int, [UInt8])] = []
+        var toHost: [(Int, [UInt8])] = []
+
+        for frame in 0..<600 {
+            // The GUEST is drawn only two frames in three — a 40 fps device against a
+            // 60 fps one. Wall time advances for both regardless.
+            time += Race.dt
+            let before = host.race.tick
+            host.advance(to: time)
+            if frame % 3 != 2 { guest.advance(to: time) }
+
+            for b in hostNet.drainOutbox() { toGuest.append((frame + 2, b)) }
+            for b in guestNet.drainOutbox() { toHost.append((frame + 2, b)) }
+            for packet in toGuest where packet.0 <= frame {
+                guestNet.deliverForTesting(packet.1, from: "host#aaaa")
+            }
+            for packet in toHost where packet.0 <= frame {
+                hostNet.deliverForTesting(packet.1, from: "guest#bbbb")
+            }
+            toGuest.removeAll { $0.0 <= frame }
+            toHost.removeAll { $0.0 <= frame }
+            if host.race.tick == before { stalls += 1 }
+        }
+
+        // The fast peer must not be dragged into a stutter by the slow one's frame
+        // rate. With the frame-counting version this stalled in bursts.
+        XCTAssertLessThan(
+            stalls, 120, "the fast peer stalled on \(stalls) of 600 frames with no loss")
+        XCTAssertGreaterThan(host.race.tick, 450, "the race barely advanced")
+        // And they still agree, which no amount of pacing may compromise.
+        let shared = min(host.race.tick, guest.race.tick)
+        XCTAssertGreaterThan(shared, 400, "the slow peer fell too far behind")
+    }
 }

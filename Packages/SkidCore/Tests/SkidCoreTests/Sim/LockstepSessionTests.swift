@@ -240,12 +240,16 @@ final class LockstepSessionTests: XCTestCase {
             session.advance(to: time)
         }
 
-        // One publish per SIMULATED tick, plus the buffer's worth held ahead — never
-        // one per ATTEMPT. Before the fix this was 50 publishes for 31 ticks, and it
-        // grew with every stall.
-        XCTAssertEqual(
-            driver.published.count, session.race.tick + driver.delayTicks,
-            "published \(driver.published.count) inputs for \(session.race.tick) ticks")
+        // Publishing is paced by REAL TIME, deliberately not tied to the sim's tick:
+        // tying them made two peers starve each other, and a frame counter fell behind
+        // whenever rendering dipped. So the count tracks elapsed sim time, and may run
+        // a little ahead of a stalled sim — which is the entire point. What must not
+        // happen is one publish per loop ATTEMPT, which grew without bound (50 for 31).
+        // 40 frames, each advancing time by one tick (see the loop above).
+        let elapsed: Tick = 40
+        XCTAssertLessThanOrEqual(
+            driver.published.count, elapsed + driver.delayTicks + 2,
+            "published \(driver.published.count) inputs in \(elapsed) frames")
         XCTAssertGreaterThan(session.race.tick, 15, "the race never got going")
         // Strictly increasing, no repeats — a repeat would be silently ignored by
         // the clock's first-value-wins rule and lose that input.
@@ -254,9 +258,11 @@ final class LockstepSessionTests: XCTestCase {
         // Starts at tick 0 — the buffer is primed from the first frame, or the race
         // deadlocks waiting for ticks nobody sent (it stuck at "3" on two phones).
         XCTAssertEqual(driver.published.first, 0)
-        XCTAssertEqual(
-            driver.published.last, session.race.tick - 1 + driver.delayTicks,
-            "the newest publish must be the sim's next tick plus the buffer")
+        // Never behind the sim: the peer must always have the input for the tick we
+        // are about to run, or everyone stalls.
+        XCTAssertGreaterThanOrEqual(
+            driver.published.last ?? -1, session.race.tick,
+            "publishing fell behind the sim, which starves the peer")
     }
 
     func testTwoSessionsActuallyGetOffTheGrid() {
