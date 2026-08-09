@@ -1,0 +1,154 @@
+import XCTest
+
+@testable import SkidCore
+
+/// **Packet loss, taken seriously.**
+///
+/// The original harness dropped 3 packets in 400 and the redundancy window covered
+/// 33 ms — an assumption dressed as a measurement, and it hid a real desync. A
+/// phone's Wi-Fi loses far longer bursts than that.
+final class PacketLossTests: XCTestCase {
+    private let seats = [PlayerID(0), PlayerID(1)]
+
+    private func script(_ seat: PlayerID, _ tick: Tick) -> CarInput {
+        CarInput(
+            steer: sin(Double(tick) / 35 + Double(seat.rawValue)),
+            throttle: tick % 200 < 170 ? 1 : -1)
+    }
+
+    // MARK: - Packet loss, taken seriously
+
+    func testAGapInPublishedTicksIsNeverMisattributed() {
+        // **The desync, reported from device.** The redundancy window was built with
+        // `compactMap`, so a tick that was never published SHORTENED the frame array
+        // — and the wire format is positional, frame *i* meaning `tick - i`. Measured:
+        // publishing 0, 1, 2 then 4 produced a packet whose "tick 3" slot carried
+        // tick 2's input. The receiver applied the wrong input to tick 3, both peers
+        // computed different states from the same packet, and tick 3 never
+        // legitimately arrived — the constant "waiting for iPhone".
+        var roster = RaceRoster()
+        try? roster.join("a", seats: 1)
+        var net = NetworkedRace(roster: roster, me: "a", delayTicks: 0)
+        let seat = PlayerID(0)
+
+        for tick in [0, 1, 2, 4] {  // 3 deliberately skipped
+            let bytes = net.send([seat: CarInput(steer: Double(tick) / 10)], at: Tick(tick))
+            guard let packet = LockstepClock.Packet(bytes: Array(bytes.dropFirst()), roster: [seat])
+            else { return XCTFail("packet did not decode") }
+            // Every frame must land on the tick it claims.
+            for (offset, frame) in packet.inputs.enumerated() {
+                let claimed = packet.tick - offset
+                guard let steer = frame[seat]?.input.steer else {
+                    return XCTFail("no input for the seat at tick \(claimed)")
+                }
+                // A published tick carries its own value; a skipped one coasts. What
+                // must NEVER happen is carrying a DIFFERENT tick's value.
+                let expected = claimed == 3 ? 0.0 : Double(claimed) / 10
+                XCTAssertEqual(
+                    steer, expected, accuracy: 0.01,
+                    "tick \(claimed) carried the wrong input")
+            }
+        }
+    }
+
+    func testARaceSurvivesHeavyPacketLoss() {
+        // My harness previously dropped 3 packets in 400. Real Wi-Fi on a phone loses
+        // far more than that, and the user was right that assuming otherwise is what
+        // hid the bug above. This drops a fifth of everything, in bursts.
+        var roster = RaceRoster()
+        try? roster.join("a", seats: 1)
+        try? roster.join("b", seats: 1)
+        var a = NetworkedRace(roster: roster, me: "a", delayTicks: 2)
+        var b = NetworkedRace(roster: roster, me: "b", delayTicks: 2)
+        var raceA = Race(track: TrackLibrary.testRing(), players: roster.seats, seed: 5)
+        var raceB = Race(track: TrackLibrary.testRing(), players: roster.seats, seed: 5)
+        var rng = SeededRNG(seed: 4242)
+
+        for tick in 0..<600 {
+            let fromA = a.send([PlayerID(0): script(PlayerID(0), Tick(tick))], at: Tick(tick))
+            let fromB = b.send([PlayerID(1): script(PlayerID(1), Tick(tick))], at: Tick(tick))
+            // 20% loss each way, independently.
+            if rng.next() % 5 != 0 { b.receive(fromA, from: "a") }
+            if rng.next() % 5 != 0 { a.receive(fromB, from: "b") }
+            while let inputs = a.nextTick() {
+                raceA.advance(inputs: inputs)
+                _ = a.report(hash: raceA.stateHash, at: raceA.tick)
+            }
+            while let inputs = b.nextTick() {
+                raceB.advance(inputs: inputs)
+                _ = b.report(hash: raceB.stateHash, at: raceB.tick)
+            }
+        }
+        // Loss costs progress — that is the honest trade — but it must NEVER cost
+        // agreement. Both peers reached the same state, whatever tick they got to.
+        XCTAssertEqual(raceA.tick, raceB.tick, "the peers ran to different ticks")
+        XCTAssertEqual(raceA.stateHash, raceB.stateHash, "20% loss diverged the race")
+        XCTAssertGreaterThan(raceA.tick, 300, "loss stopped the race entirely")
+    }
+
+    func testLossCostsProgressButNeverAgreement() {
+        // **The property that matters more than any loss rate.** Measured: gapless,
+        // deeply-redundant input holds full speed AND agreement through 60% loss, and
+        // at 80% it falls behind — which is the correct failure. What must never
+        // happen is the peers diverging, because there is no state on the wire to
+        // correct them and every frame after a divergence is fiction.
+        for lossPercent in [40, 60, 80] {
+            var roster = RaceRoster()
+            try? roster.join("a", seats: 1)
+            try? roster.join("b", seats: 1)
+            var a = NetworkedRace(roster: roster, me: "a", delayTicks: 2)
+            var b = NetworkedRace(roster: roster, me: "b", delayTicks: 2)
+            var raceA = Race(track: TrackLibrary.testRing(), players: roster.seats, seed: 5)
+            var raceB = Race(track: TrackLibrary.testRing(), players: roster.seats, seed: 5)
+            var rng = SeededRNG(seed: 99)
+            var hashesA: [Tick: UInt64] = [:]
+            var hashesB: [Tick: UInt64] = [:]
+
+            for tick in 0..<600 {
+                let fromA = a.send([PlayerID(0): script(PlayerID(0), Tick(tick))], at: Tick(tick))
+                let fromB = b.send([PlayerID(1): script(PlayerID(1), Tick(tick))], at: Tick(tick))
+                if Int(rng.next() % 100) >= lossPercent { b.receive(fromA, from: "a") }
+                if Int(rng.next() % 100) >= lossPercent { a.receive(fromB, from: "b") }
+                while let i = a.nextTick() {
+                    raceA.advance(inputs: i)
+                    hashesA[raceA.tick] = raceA.stateHash
+                }
+                while let i = b.nextTick() {
+                    raceB.advance(inputs: i)
+                    hashesB[raceB.tick] = raceB.stateHash
+                }
+            }
+            // Compare every tick BOTH peers reached. One may be behind; where they
+            // overlap they must agree exactly.
+            // At 95% nothing advances at all, which is a correct stall but leaves no
+            // shared ticks to compare — so the sweep stops at 80%, where one peer
+            // falls behind and agreement still has to hold.
+            let shared = Set(hashesA.keys).intersection(hashesB.keys)
+            XCTAssertFalse(shared.isEmpty, "no shared ticks at \(lossPercent)% loss")
+            for tick in shared.sorted() {
+                XCTAssertEqual(
+                    hashesA[tick], hashesB[tick],
+                    "peers diverged at tick \(tick) under \(lossPercent)% loss")
+            }
+        }
+    }
+
+    func testRedundancyCoversARealisticBurst() {
+        // Three ticks — 33 ms — was the original depth, and it was an assumption
+        // dressed as a measurement. A phone's Wi-Fi loses far longer bursts.
+        XCTAssertGreaterThanOrEqual(
+            LockstepClock.Packet.history, 12,
+            "redundancy is the only repair mechanism; a fifth of a second is the floor")
+        // And it stays inside one datagram for a full field, since fragmenting would
+        // multiply the transport's failure modes.
+        let full = (0..<9).map { PlayerID($0) }
+        var frames: [[PlayerID: CarInputWire]] = []
+        for _ in 0..<LockstepClock.Packet.history {
+            frames.append(
+                Dictionary(
+                    uniqueKeysWithValues: full.map { ($0, CarInputWire(CarInput(steer: 0.5))) }))
+        }
+        let bytes = LockstepClock.Packet(tick: 9999, inputs: frames).encoded(roster: full)
+        XCTAssertLessThan(bytes.count, 1024, "a full field's packet outgrew a datagram")
+    }
+}

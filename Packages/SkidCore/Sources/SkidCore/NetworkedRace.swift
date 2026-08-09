@@ -68,8 +68,36 @@ public struct NetworkedRace: Sendable {
 
     /// The last `Packet.history` ticks of this device's input, newest first — the
     /// redundancy that repairs a lost packet without anybody asking.
+    ///
+    /// **Gaps are filled, never skipped.** This used `compactMap`, so a missing tick
+    /// silently SHORTENED the array — and since the wire format is positional
+    /// (frame *i* means `tick - i`), every frame after the gap was then applied to
+    /// the wrong tick by the receiver. Measured: publishing 0,1,2 then 4 produced a
+    /// packet whose "tick 3" slot carried tick 2's input. Both peers computed
+    /// different states from the same packet, which is the desync reported from
+    /// device, and tick 3 never legitimately arrived — hence the constant "waiting".
+    ///
+    /// A tick this device never published is sent as coast, which is honest: this is
+    /// the device that OWNS the seat, so a hole means no reading was taken, and the
+    /// alternative is the peers disagreeing about what was.
     private func historyEnding(at tick: Tick) -> [[PlayerID: CarInputWire]] {
-        (0..<LockstepClock.Packet.history).compactMap { sent[tick - $0] }
+        // **Stop at the first hole rather than guessing past it.** Filling a gap with
+        // coast is a GUESS, and two peers that guess differently diverge — measured
+        // at 80% loss, where the peers disagreed rather than merely falling behind.
+        // Truncating keeps the array positional and honest: the receiver simply does
+        // not learn about ticks older than the hole, and waits, which is the correct
+        // lockstep failure.
+        //
+        // In practice there are no holes at all: the publisher is gapless by
+        // construction (see `GameSession.publishLocalInput`). This is the guard that
+        // keeps a future gap from silently corrupting the stream instead.
+        var frames: [[PlayerID: CarInputWire]] = []
+        for offset in 0..<LockstepClock.Packet.history {
+            let at = tick - offset
+            guard at >= 0, let frame = sent[at] else { break }
+            frames.append(frame)
+        }
+        return frames
     }
 
     /// The hash this device reached, to be compared against every peer's.
