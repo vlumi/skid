@@ -162,20 +162,33 @@ test corpus before any socket exists.
 Each step is independently useful and independently mergeable. The first three
 have no networking in them at all.
 
-### Step 1 — Determinism you can point at *(no networking)*
+### Step 1 — Determinism you can point at *(no networking)* — **done**
 
-- **A per-tick state hash on `Race`.** `Race` is `Equatable` but not `Codable`;
-  a digest over cars' position/velocity/heading/progress is what a divergence
-  check compares. Deliberately **not** making `Race` Codable — a summary invites
-  comparison, a serialised race invites *sending* it, which is the opposite of
-  inputs-only.
-- **Sharpen the existing determinism tests with it.** Today
-  `XCTAssertEqual(a, b)` says two 1800-tick runs differ without saying *when*.
-  Per-tick hashes give the first diverging tick, which is the difference between a
-  five-minute and a five-hour debug session.
-- **A replay-from-recording check**: feed a `RaceRecording` back through a fresh
-  `Race` and assert the hash sequence matches. This is lockstep, single-process —
-  if it fails, nothing downstream can work.
+- **A per-tick state hash on `Race`** (`Race.stateHash`, FNV-1a over the whole
+  car state). `Race` is `Equatable` but not `Codable`, and it stays that way — a
+  summary invites comparison, a serialised race invites *sending* it, which is
+  the opposite of inputs-only.
+- **The existing determinism test now reports the tick.** Sabotaged with unseeded
+  randomness at tick 900, it prints `runs diverged at tick 900 of 1800` ahead of
+  the 30 KB state dump that previously said only "these differ".
+- **`RaceRecording.replayHashes(on:)`** — the sequence a divergence check
+  compares, and the same call a networked peer will use. A replayed recording
+  matches a live run tick for tick.
+- **The golden-hash tripwire landed early** (it was Step 3's), since it cost
+  nothing once the hash existed: a fixed script's sampled hashes are pinned as
+  literals, so a new Xcode, a different libm or another architecture turns the
+  build red instead of silently disagreeing on device.
+
+Two things learned in the building, both worth keeping in mind:
+
+- **The hash covers the whole car state, not a chosen subset.** `steerActuator`
+  reads like a rendering detail and is carried state; a partial digest would
+  *earn* trust it does not have.
+- **`CarState.wallContact` is excluded**, verified rather than assumed: every
+  read of it is `RaceWalls` reading back its own accumulator, and none of it
+  reaches position, velocity or heading. Hashing an output risks peers halting
+  over a haptics counter; missing real state hides the failure. When a new field
+  is ambiguous, hash it.
 
 ### Step 2 — A wire format for inputs *(no networking)*
 
@@ -192,11 +205,14 @@ The real cross-device risk, and worth settling before building a lobby on it. Th
 sim calls `sin`/`cos`/`atan2`/`pow` on its hot path (~10 sites), and IEEE-754 pins
 arithmetic and `sqrt` but **not** transcendentals.
 
-- **A golden-hash test**: a fixed input script's hash sequence, pinned as a
-  literal in the test. It passes trivially on the dev machine and becomes a
-  tripwire the moment CI, a new Xcode, or another architecture disagrees.
-- Ship that hash to a second device in Step 4 and compare. If it holds on Apple
-  silicon, the assumption is *validated* rather than assumed.
+- **A golden-hash test** — **done in Step 1**: a fixed input script's sampled
+  hash sequence, pinned as literals. It passes trivially on the dev machine and
+  is a tripwire the moment CI, a new Xcode, or another architecture disagrees.
+  **If it ever fails, do not re-pin the number** before finding out what changed
+  — a physics change legitimately needs re-pinning, a *platform* difference is
+  the thing lockstep cannot survive, and re-pinning hides it.
+- What remains for Step 4: ship that hash to a second device and compare. If it
+  holds on Apple silicon, the assumption is *validated* rather than assumed.
 - **If it ever fails**, the fallback is known and contained: own the
   transcendentals on the sim path so every peer computes bit-identical values by
   construction. Not doing that speculatively.
