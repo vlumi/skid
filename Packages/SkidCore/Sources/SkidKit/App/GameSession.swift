@@ -135,6 +135,14 @@ public final class GameSession: ObservableObject {
         lastTime = time
         accumulator += max(0, time - last)
 
+        // **Publish once per FRAME, before consuming anything.** Publishing used to
+        // live inside the tick loop, so a frame that released three ticks published
+        // three times and ran `lastPublished` three ticks further ahead — the two
+        // devices then drifted apart at whatever rate each was releasing ticks.
+        // One reading per frame is also the honest thing: a thumb has one position
+        // per frame, however many sim ticks that frame owes.
+        publishLocalInput()
+
         var ticks = 0
         while accumulator >= Race.dt, ticks < Self.maxTicksPerFrame {
             guard let inputs = inputsForNextTick() else {
@@ -149,7 +157,11 @@ public final class GameSession: ObservableObject {
             accumulator -= Race.dt
             ticks += 1
         }
-        if ticks == Self.maxTicksPerFrame {
+        if ticks == Self.maxTicksPerFrame, lockstep == nil {
+            // Local play: don't spiral after a long pause. A networked race must not
+            // do this — with one publish per frame the loop legitimately works
+            // through a backlog over several frames, and dumping the accumulator
+            // here would throw away ticks the clock has already released.
             accumulator = 0
         }
         // **A networked race keeps a short debt but drops a hopeless one.**
@@ -179,6 +191,27 @@ public final class GameSession: ObservableObject {
     /// Nil only ever means "networked, and the tick is not ready". Local play
     /// always has an answer, because a thumb that is not touching the glass is a
     /// coast rather than a missing input.
+    /// Read this device's thumbs and publish them for every tick the buffer window
+    /// still needs. Once per frame, never per tick — see `advance(to:)`.
+    private func publishLocalInput() {
+        guard let lockstep else { return }
+        var mine: [PlayerID: CarInput] = [:]
+        for seat in lockstep.mySeats {
+            mine[seat] = inputFor(seat, race)
+        }
+        // Every tick from the sim's next up to the buffer's edge. That primes the
+        // window at the start — publishing only the leading edge deadlocks, since
+        // `race.tick` cannot advance without the ticks below it — and refills it
+        // after a stall. The tick NUMBERS come from the shared sim, which is what
+        // keeps the peers agreeing about which tick a press belongs to.
+        let edge = race.tick + lockstep.delayTicks
+        guard edge > lastPublished else { return }
+        for tick in max(lastPublished + 1, race.tick)...edge {
+            lockstep.publish(mine, at: tick)
+        }
+        lastPublished = edge
+    }
+
     private func inputsForNextTick() -> [PlayerID: CarInput]? {
         guard let lockstep else {
             var inputs: [PlayerID: CarInput] = [:]
@@ -186,43 +219,6 @@ public final class GameSession: ObservableObject {
                 inputs[player] = inputFor(player, race)
             }
             return inputs
-        }
-        // Read our own thumbs and publish them, then take whatever the clock
-        // releases — which may be a tick whose inputs arrived several frames ago.
-        //
-        // **The tick we publish for is derived from the SIM, not counted locally.**
-        // A local counter incremented once per attempt drifts: this loop runs on
-        // every frame, including the ones that stall, so a device that waited 19
-        // ticks published 50 inputs for 31 simulated ticks (measured). Each peer's
-        // counter then drifts by however much IT stalled, so the same thumb press
-        // is labelled tick 40 on one device and tick 31 on the other — the cars
-        // then genuinely diverge, which is what the hash comparison correctly
-        // reported. Reported from device as a ~200-unit positional offset.
-        //
-        // `race.tick` plus the buffer is the one value both peers agree on, because
-        // it comes from the shared simulation rather than from local wall time.
-        //
-        // **The whole window is published, not just its leading edge.** Gating on
-        // "one per frame" deadlocks at the start: at tick 0 with a 2-tick buffer a
-        // device publishes tick 2 and then cannot advance, because `race.tick` needs
-        // ticks 0 and 1 that nobody ever sent. It stuck at "3" on both phones.
-        //
-        // So every tick from the sim's next up to the buffer's edge gets this
-        // frame's reading. That primes the buffer at the start and refills it after a
-        // stall, while the tick NUMBERS still come from the shared sim — which is
-        // what keeps the peers agreeing about which tick a press belongs to. A tick
-        // already published is skipped: the clock keeps the first value it saw, so
-        // re-sending would be discarded anyway.
-        var mine: [PlayerID: CarInput] = [:]
-        for seat in lockstep.mySeats {
-            mine[seat] = inputFor(seat, race)
-        }
-        let edge = race.tick + lockstep.delayTicks
-        if edge > lastPublished {
-            for tick in max(lastPublished + 1, race.tick)...edge {
-                lockstep.publish(mine, at: tick)
-            }
-            lastPublished = edge
         }
         return lockstep.nextTick()
     }

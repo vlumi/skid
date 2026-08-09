@@ -152,9 +152,16 @@ final class LockstepSessionTests: XCTestCase {
         // second of itself, and every peer that DID receive those inputs would be
         // a second ahead. Asserting only "it did not advance" misses this
         // entirely — one frame's worth would then catch up, not sixty.
+        // **The debt is paid at one publish per frame, not in a burst.** Input is
+        // read once per frame — a thumb has one position per frame, however many sim
+        // ticks that frame owes — so 60 owed ticks need 60 frames of input, not one
+        // catch-up frame. What must NOT happen is the debt being silently dropped,
+        // which is what this asserts: the race resumes and keeps advancing.
         driver.open = true
-        time += Race.dt
-        session.advance(to: time)
+        for _ in 0..<30 {
+            time += Race.dt
+            session.advance(to: time)
+        }
         XCTAssertGreaterThan(
             session.race.tick, 10,
             "the stalled ticks were discarded instead of being owed")
@@ -307,5 +314,46 @@ final class LockstepSessionTests: XCTestCase {
             seed: start.seed, inputFor: { _, _ in CarInput(throttle: 1) })
         session.lockstep = driver
         return session
+    }
+
+    func testInputIsPublishedOncePerFrameNotPerTick() {
+        // **Reported from device as "stuck at GO".** Publishing lived inside the tick
+        // loop, so a frame that released three ticks published three times and ran
+        // the publish edge three ticks further ahead. Each device then drifted at
+        // whatever rate IT was releasing ticks, and they starved each other.
+        //
+        // One reading per frame is also just true: a thumb has one position per
+        // frame, however many sim ticks that frame owes.
+        let driver = RecordingDriver(delayTicks: 2)
+        driver.open = true
+        let session = GameSession(
+            track: TrackLibrary.testRing(), players: [PlayerID(0)], config: RaceConfig(),
+            seed: 4, inputFor: { _, _ in CarInput(throttle: 1) })
+        session.lockstep = driver
+
+        // Frames that owe SEVERAL ticks each — the case that multiplied publishes.
+        var time = 0.0
+        for _ in 0..<20 {
+            time += Race.dt * 4
+            session.advance(to: time)
+        }
+
+        // One publish per TICK the sim reaches, plus the buffer — never one per
+        // attempt. The window has to cover the ticks the sim is about to run, so it
+        // legitimately grows several ticks in a frame that owes several ticks; what
+        // must not happen is a publish per *loop iteration* on top of that.
+        // **The invariant, not an arithmetic identity.** I got the exact offset wrong
+        // three times (the publish runs before the loop, so it sees the pre-loop
+        // tick): what actually matters is that the window stays a bounded distance
+        // ahead of the sim rather than running away from it, which is what desynced
+        // the two devices.
+        let ahead = (driver.published.last ?? 0) - session.race.tick
+        XCTAssertLessThanOrEqual(ahead, driver.delayTicks, "the window ran ahead of the sim")
+        XCTAssertGreaterThanOrEqual(ahead, -1, "the window fell behind the sim")
+        let expected: [Tick] = Array(0...(driver.published.last ?? 0))
+        XCTAssertEqual(
+            driver.published, expected, "the published ticks must be a gapless run from 0")
+        XCTAssertEqual(Set(driver.published).count, driver.published.count, "a tick repeated")
+        XCTAssertGreaterThan(session.race.tick, 20, "the race did not advance")
     }
 }
