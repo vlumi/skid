@@ -91,12 +91,15 @@ public final class GameSession: ObservableObject {
     /// to. See `inputsForNextTick()`.
     private var lastPublished: Tick = -1
 
-    /// Ticks of input published, advanced by wall time rather than by the sim.
+    /// Wall time this race has been running, in seconds — the clock publishing is
+    /// paced by.
     ///
-    /// The sim's tick cannot drive publishing: it only moves when the peer's input
-    /// arrives, so keying off it makes two devices starve each other in a rhythm.
-    /// This counts frames instead — one reading per frame, always available.
-    private var publishClock: Tick = -1
+    /// Neither the sim's tick nor a frame counter works. The sim's tick only moves
+    /// when the peer's input arrives, so keying off it makes two devices starve each
+    /// other in a rhythm; a frame counter assumes a steady 60 fps and falls behind
+    /// real time whenever rendering dips, which starves the peer in bursts. Elapsed
+    /// time is the one clock both peers advance at the same rate regardless.
+    private var totalSimTime: TimeInterval = 0
 
     private var lastTime: TimeInterval?
     private var accumulator: TimeInterval = 0
@@ -140,7 +143,9 @@ public final class GameSession: ObservableObject {
             return
         }
         lastTime = time
-        accumulator += max(0, time - last)
+        let elapsed = max(0, time - last)
+        accumulator += elapsed
+        totalSimTime += elapsed
 
         // **Publish once per FRAME, before consuming anything.** Publishing used to
         // live inside the tick loop, so a frame that released three ticks published
@@ -234,8 +239,13 @@ public final class GameSession: ObservableObject {
         // available, so there is never a reason to withhold it. The tick numbers stay
         // derived from a counter both peers advance at the same real-time rate, so
         // they still agree about which tick a press belongs to.
-        publishClock += 1
-        let edge = max(publishClock, race.tick + lockstep.delayTicks)
+        // **Sim time, not frame count.** `publishClock += 1` per frame assumed a steady
+        // 60 fps: on device the render loop dips, so the publish edge fell behind real
+        // time and the peer starved — a stutter that came in bursts, since a run of
+        // slow frames costs a run of ticks. Deriving the edge from elapsed sim time
+        // makes it independent of how often we happen to be drawn.
+        let elapsedTicks = Tick((totalSimTime / Race.dt).rounded(.down))
+        let edge = max(elapsedTicks + lockstep.delayTicks, race.tick + lockstep.delayTicks)
         guard edge > lastPublished else { return }
         let from = lastPublished < 0 ? 0 : lastPublished + 1
         for tick in from...edge {

@@ -14,13 +14,19 @@ extension CouchGame {
 
     /// **How far behind the newest input a networked race runs.**
     ///
-    /// Two ticks is 33 ms of input lag. This is the single knob the spike exists to
-    /// tune, and it can only be judged on a device by feel: the drift model is
-    /// twitchy, so what is invisible in a slower game may not be here. 0 is
-    /// legal (least lag, least tolerance for a late packet); 4 is 66 ms.
+    /// The buffer that absorbs everything jittery about a real link: delivery latency,
+    /// packet loss repaired by the next packet, and — the one that forced this number
+    /// up — a peer whose frame rate dips. A device drawn 40 times a second only
+    /// publishes 40 times a second, so its input arrives in clumps no matter how the
+    /// publish edge is computed; input cannot be sent while the app is not running.
     ///
-    /// The host's value wins — it travels in `RaceStart`, so peers cannot disagree.
-    public static var networkedDelayTicks = 2
+    /// Two ticks (33 ms) left a 40 fps peer stalling the other on a third of its
+    /// frames, measured. Six (100 ms) covers a frame gap plus delivery latency with
+    /// room to spare. The cost is input lag, and that is a feel judgement that can
+    /// only be made on a device — which is exactly what this knob is for.
+    ///
+    /// The host's value wins: it travels in `RaceStart`, so peers cannot disagree.
+    public static var networkedDelayTicks = 6
 
     /// Open the host/join lobby for a networked race.
     public func openNetworking() {
