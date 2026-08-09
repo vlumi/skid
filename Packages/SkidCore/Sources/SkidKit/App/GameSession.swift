@@ -45,6 +45,34 @@ public final class GameSession: ObservableObject {
     @Published public private(set) var raceOver = false
     private let inputFor: (PlayerID, Race) -> CarInput
 
+    /// **The lockstep driver, when this race is networked.**
+    ///
+    /// Nil for local play, and that is the whole design of this seam: the local
+    /// path below is byte-for-byte the code that shipped, so wiring networking
+    /// cannot regress a couch race. Set it and the *condition for running a tick*
+    /// changes from "wall time owes one" to "wall time owes one AND every peer's
+    /// input for it has arrived".
+    public var lockstep: LockstepDriver?
+
+    /// What `GameSession` needs from the network, kept to three calls so the
+    /// session never learns what a peer is. `NetworkedGame` conforms.
+    @MainActor
+    public protocol LockstepDriver: AnyObject {
+        /// Seats this device reads thumbs for. Others' inputs arrive off the wire.
+        var mySeats: [PlayerID] { get }
+        /// Publish this device's own input for `tick`.
+        func publish(_ inputs: [PlayerID: CarInput], at tick: Tick)
+        /// The next tick's inputs, or nil to wait. **Nil means do not step.**
+        func nextTick() -> [PlayerID: CarInput]?
+        /// Tell peers what state we reached, so a divergence is caught.
+        func report(hash: UInt64, at tick: Tick)
+    }
+
+    /// Which tick this device is *publishing* input for, which runs ahead of
+    /// `race.tick` by the delay buffer. Separate counter because the sim's tick
+    /// only moves when the clock releases one, while our thumbs keep being read.
+    private var publishTick: Tick = 0
+
     private var lastTime: TimeInterval?
     private var accumulator: TimeInterval = 0
     /// Don't spiral after a long pause (backgrounding, debugger): cap the
@@ -86,17 +114,15 @@ public final class GameSession: ObservableObject {
 
         var ticks = 0
         while accumulator >= Race.dt, ticks < Self.maxTicksPerFrame {
-            var inputs: [PlayerID: CarInput] = [:]
-            for player in players {
-                inputs[player] = inputFor(player, race)
+            guard let inputs = inputsForNextTick() else {
+                // **Networked and not ready: stop, keeping the debt.** The
+                // accumulator is deliberately NOT drained — the ticks are still
+                // owed and will run as soon as the inputs land, which is what
+                // turns packet loss into lag rather than into a race that
+                // silently skipped part of itself.
+                break
             }
-            recording.append(inputs)
-            race.advance(inputs: inputs)
-            ghost?.advanceTick()
-            for car in race.cars {
-                marks.record(car: car, on: race.track, tick: race.tick)
-            }
-            onTick?(race)
+            step(with: inputs)
             accumulator -= Race.dt
             ticks += 1
         }
@@ -108,6 +134,46 @@ public final class GameSession: ObservableObject {
                 self?.raceOver = true
             }
         }
+    }
+
+    /// This tick's inputs — from local controls, or from the lockstep clock.
+    ///
+    /// Nil only ever means "networked, and the tick is not ready". Local play
+    /// always has an answer, because a thumb that is not touching the glass is a
+    /// coast rather than a missing input.
+    private func inputsForNextTick() -> [PlayerID: CarInput]? {
+        guard let lockstep else {
+            var inputs: [PlayerID: CarInput] = [:]
+            for player in players {
+                inputs[player] = inputFor(player, race)
+            }
+            return inputs
+        }
+        // Read our own thumbs and publish them, then take whatever the clock
+        // releases — which may be a tick whose inputs arrived several frames ago.
+        var mine: [PlayerID: CarInput] = [:]
+        for seat in lockstep.mySeats {
+            mine[seat] = inputFor(seat, race)
+        }
+        lockstep.publish(mine, at: publishTick)
+        publishTick += 1
+        return lockstep.nextTick()
+    }
+
+    /// One tick, identical whether the inputs came from thumbs or the wire.
+    ///
+    /// Shared on purpose: two copies of this would be the hardest kind of bug to
+    /// find, since a networked race would diverge from a local one for a reason
+    /// invisible in both.
+    private func step(with inputs: [PlayerID: CarInput]) {
+        recording.append(inputs)
+        race.advance(inputs: inputs)
+        lockstep?.report(hash: race.stateHash, at: race.tick)
+        ghost?.advanceTick()
+        for car in race.cars {
+            marks.record(car: car, on: race.track, tick: race.tick)
+        }
+        onTick?(race)
     }
 }
 
