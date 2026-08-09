@@ -94,7 +94,12 @@ public final class CouchGame: ObservableObject {
     /// The most HUMAN players one device can seat: four control bands around one
     /// map is what `CouchRig` lays out and what fits a phone. Separate from
     /// `maxCars` on purpose — the rest of the field is AI, or (later) other devices.
-    public static let maxLocalPlayers = 4
+    ///
+    /// Reads from `RaceRoster`, which is where the same number is a *protocol*
+    /// limit: a joining device announces how many seats it brings and the host
+    /// validates that claim. Two independent 4s could drift, and a peer whose UI
+    /// offered a seat the protocol refused would fail to join for no visible reason.
+    public static let maxLocalPlayers = RaceRoster.maxSeatsPerDevice
 
     /// **Both counts clamp themselves**, so no caller can ask for a field the grid
     /// cannot hold.
