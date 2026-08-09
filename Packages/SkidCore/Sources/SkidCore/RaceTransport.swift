@@ -63,18 +63,39 @@ public struct RaceStart: Equatable, Sendable, Codable {
     public var roster: RaceRoster
     /// Laps, countdown — the rules both peers score against.
     public var laps: Int?
+    /// Whether cars collide. Physics, so the host owns it — the same trap as
+    /// `tuning`: it was read from each device's own settings, and two peers
+    /// disagreeing about whether a touch is a collision diverge on first contact.
+    public var carContact: Bool
     /// How far behind the newest input to run. The host decides, so every peer
     /// buffers alike; a peer running a different delay would stall the others.
     public var delayTicks: Int
 
+    /// **The physics, from the host.**
+    ///
+    /// Nineteen numbers that decide how a car accelerates, grips and slides. Each
+    /// device used to race with its OWN persisted tuning — so any value a player had
+    /// nudged on either phone made the cars physically different, and the two sims
+    /// diverged from the first applied input. Measured on device: a repeatable desync
+    /// at tick 182, which is `countdownTicks + delayTicks` — the very first tick whose
+    /// input is not locked to coast.
+    ///
+    /// The tuning panel stays a local toy for local play. In a networked race there
+    /// is one set of physics and the host owns it, for the same reason it owns the
+    /// seed: anything the simulation reads must come from one place.
+    public var tuning: CarTuning
+
     public init(
-        course: Course, seed: UInt64, roster: RaceRoster, laps: Int?, delayTicks: Int = 2
+        course: Course, seed: UInt64, roster: RaceRoster, laps: Int?, delayTicks: Int = 2,
+        tuning: CarTuning = CarTuning(), carContact: Bool = true
     ) {
         self.course = course
         self.seed = seed
         self.roster = roster
         self.laps = laps
         self.delayTicks = delayTicks
+        self.tuning = tuning
+        self.carContact = carContact
     }
 
     /// Reliable-channel bytes. JSON rather than the compact packing used for
