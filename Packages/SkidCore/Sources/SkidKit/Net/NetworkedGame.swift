@@ -30,13 +30,24 @@ public final class NetworkedGame:
     @Published public private(set) var phase: Phase = .idle
     @Published public private(set) var peers: [RaceRoster.PeerName] = []
     @Published public private(set) var roster = RaceRoster()
-    /// What to show when the race is not moving, or nil when it is.
-    @Published public private(set) var stallNote: String?
+    /// What to show when the race is not moving, or nil when it is. Read per
+    /// frame by the overlay; NOT published, for the reason on `bufferedTicks`.
+    public private(set) var stallNote: String?
     /// Set once if the peers ever disagree. Sticky, and worth surfacing loudly:
     /// it is the one outcome that means the whole design does not work.
-    @Published public private(set) var divergenceNote: String?
+    ///
+    /// Not published either — it is set from the tick loop. The overlay reads it
+    /// every frame anyway, since `RaceScreen` redraws continuously.
+    public private(set) var divergenceNote: String?
     /// Buffered input ticks — the health readout. Growing means falling behind.
-    @Published public private(set) var bufferedTicks = 0
+    ///
+    /// **Not `@Published`, and that is load-bearing.** This is updated on every
+    /// simulated tick, and `RaceScreen` observes this object — so publishing it
+    /// mutated observable state from inside the render pass, which invalidated the
+    /// view, which re-entered the tick loop. The lobby reached `.racing` and the
+    /// app then froze solid. `GameSession` already documents the same trap and
+    /// deliberately publishes nothing per-frame; this reintroduced it.
+    public private(set) var bufferedTicks = 0
     /// Why a device could not be seated, for the host's lobby. A join that fails
     /// silently is indistinguishable from one that never arrived.
     @Published public private(set) var joinNote: String?
@@ -106,7 +117,13 @@ public final class NetworkedGame:
     public func startRace(
         course: RaceStart.Course, seed: UInt64, laps: Int?, delayTicks: Int = 2
     ) {
-        guard isHost else { return }
+        // Traced BEFORE the guard: "the note that did not print" has been the only
+        // usable signal from a device each time this flow broke.
+        note("start tapped: isHost=\(isHost)")
+        guard isHost else {
+            note("REFUSED: not the host (me=\(DeviceName.display(transport.me)))")
+            return
+        }
         let message = RaceStart(
             course: course, seed: seed, roster: roster, laps: laps, delayTicks: delayTicks)
         note("sending start: seed \(seed), \(roster.seatCount) cars")

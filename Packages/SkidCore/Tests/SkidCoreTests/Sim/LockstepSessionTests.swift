@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 
 @testable import SkidCore
@@ -40,6 +41,33 @@ final class LockstepSessionTests: XCTestCase {
             session.advance(to: time)
         }
         XCTAssertGreaterThan(session.race.tick, 30, "the countdown never moved")
+    }
+
+    func testDrivingTheRaceDoesNotPublishPerTick() {
+        // **The freeze, reported from device three times.** `RaceScreen` observes
+        // `NetworkedGame`, and its per-tick diagnostics were `@Published` — so every
+        // simulated tick mutated observable state from inside the render pass, which
+        // invalidated the view, which re-entered the tick loop. The lobby reached
+        // `.racing` and the app locked up.
+        //
+        // `GameSession` already documents this trap and publishes nothing per frame;
+        // the networking reintroduced it. So: count the change notifications a
+        // frame's worth of ticks produces. It must be zero.
+        let net = NetworkedGame(displayName: "solo#aaaa")
+        net.host(seats: 1)
+        var published = 0
+        let token = net.objectWillChange.sink { _ in published += 1 }
+        defer { token.cancel() }
+
+        net.startRace(course: .builtin("small"), seed: 3, laps: 3)
+        published = 0  // the start itself legitimately publishes (phase, roster)
+
+        for tick in 0..<120 {
+            net.publish([PlayerID(0): CarInput(throttle: 1)], at: Tick(tick))
+            _ = net.nextTick()
+            net.report(hash: UInt64(tick), at: Tick(tick))
+        }
+        XCTAssertEqual(published, 0, "driving the race published \(published) times")
     }
 
     func testALocalRaceStillWaitsForItsReadyTap() {
