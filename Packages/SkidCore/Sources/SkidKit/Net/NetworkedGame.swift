@@ -193,6 +193,15 @@ public final class NetworkedGame:
     private func refreshDiagnostics() {
         guard let net else { return }
         bufferedTicks = net.clock.bufferedTicks
+        // A named departure outranks a generic "waiting": a peer that MC has told
+        // us is gone will never send the input the clock is waiting for, and saying
+        // "waiting for iPhone" forever reads as a hang rather than a disconnection.
+        if !net.stalledOn.isEmpty {
+            let names = Set(net.stalledOn.compactMap { net.roster.peer(driving: $0) })
+                .map(DeviceName.display).sorted()
+            stallNote = "Lost \(names.joined(separator: ", "))"
+            return
+        }
         stallNote = Self.describe(net.stall, roster: net.roster)
         if let divergence = net.divergence, divergenceNote == nil {
             divergenceNote =
@@ -235,9 +244,11 @@ public final class NetworkedGame:
     // MARK: - RaceTransportDelegate
 
     public func transport(didReceive bytes: [UInt8], from peer: RaceRoster.PeerName) {
-        // Lobby messages first: they are rarer and distinguishable by tag.
+        // Lobby messages first: they are rarer and distinguishable by tag. Ignored
+        // once the race has started — the roster is frozen, and a late-arriving
+        // reliable lobby message must not rewrite the field mid-race.
         if let request = JoinRequest(bytes: bytes) {
-            seat(peer, seats: request.seats)
+            if start == nil { seat(peer, seats: request.seats) }
             return
         }
         if let update = RosterUpdate(bytes: bytes) {
@@ -260,6 +271,11 @@ public final class NetworkedGame:
     public func transport(peerJoined peer: RaceRoster.PeerName) {
         peers = transport.connectedPeers
         note("connected: \(DeviceName.display(peer))")
+        // **A peer state change during a race must not restart the lobby.** MC
+        // reports connections at times of its own choosing, and re-announcing here
+        // would reset the guest's phase out of `.racing` and re-send a JoinRequest
+        // that the host would try to seat mid-race.
+        guard start == nil else { return }
         if isHost {
             // The host waits to be told how many seats the guest brings.
             return
