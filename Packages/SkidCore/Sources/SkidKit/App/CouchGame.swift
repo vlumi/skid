@@ -174,7 +174,7 @@ public final class CouchGame: ObservableObject {
     let aiFleet = AIFleet()
     private let sound = SoundEngine()
     private let haptics = Haptics()
-    private var aiColorIndices: [Int] = []
+    var aiColorIndices: [Int] = []
     /// Race seed, bumped before every race and recorded with each replay so
     /// runs stay reproducible. Seeded from the clock ONCE at launch (view
     /// layer only — the sim itself never touches wall-clock time) so grids
@@ -440,11 +440,5 @@ public final class CouchGame: ObservableObject {
         if improved {
             hiscoreFile.save(hiscores)
         }
-    }
-
-    /// Car colors in car order (humans first, then AI), for renderer + HUD.
-    public var carColors: [Color] {
-        let humanColors = rig?.players.map(\.colorIndex) ?? Array(colorIndices.prefix(playerCount))
-        return (humanColors + aiColorIndices).map { Self.palette[$0] }
     }
 }

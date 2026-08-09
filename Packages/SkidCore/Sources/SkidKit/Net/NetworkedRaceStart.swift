@@ -54,12 +54,18 @@ extension CouchGame {
         }
         let mySeats = driver.mySeats
         aiFleet.drivers = [:]
-        // Local seats get the palette colours they picked; every other car is
-        // coloured by its seat, which both devices agree on via the roster.
+        // **Colour by GLOBAL seat, so both devices agree.** Taking the first N of
+        // this device's own picks gave every device the same first two colours —
+        // both phones showed blue and orange, and no player could tell which car
+        // was theirs. A seat number is the one thing every peer agrees on, so it is
+        // what the colour hangs off.
         let rig = CouchRig(
-            colorIndices: Array(colorIndices.prefix(mySeats.count)),
+            colorIndices: mySeats.map { $0.rawValue % Self.palette.count },
             schemes: Array(schemes.prefix(mySeats.count)),
-            seating: SeatingConfig(faceToFace: faceToFace, openCorner: openCorner))
+            seating: SeatingConfig(faceToFace: faceToFace, openCorner: openCorner),
+            // The seats these bands actually drive. Without this every device
+            // builds players 0 and 1 and steers the host's cars.
+            seats: mySeats)
         self.rig = rig
         let session = makeNetworkedSession(track: track, start: start, localSeats: mySeats)
         session.lockstep = driver
@@ -72,10 +78,10 @@ extension CouchGame {
     ) -> GameSession {
         let config = RaceConfig(
             laps: start.laps, countdownTicks: 3 * Race.tickRate, carContact: carContact)
-        // **Local seats map to control bands by POSITION, not by seat number.**
-        // Global seat numbers are sparse — this device might drive seats 2 and 3 —
-        // so indexing the rig by `rawValue` would read past its end. The rig has
-        // one band per local player, in the order the roster lists them.
+        // **Bands are found by seat, not by index.** Global seat numbers are sparse
+        // — this device might drive seats 2 and 3 — so indexing the rig by
+        // `rawValue` would read past its end. The rig's players now carry their real
+        // seat numbers, so a lookup by seat is both correct and direct.
         let bandForSeat = Dictionary(
             uniqueKeysWithValues: localSeats.enumerated().map { ($1, $0) })
         let session = GameSession(
@@ -98,5 +104,20 @@ extension CouchGame {
                 return source.input(for: player, at: race.tick)
             })
         return session
+    }
+
+    /// Car colors in car order (humans first, then AI), for renderer + HUD.
+    ///
+    /// **Networked, colour comes from the seat.** This built the list from the LOCAL
+    /// players, so on a guest driving seats 2–3 the array's first entry was seat 2's
+    /// colour and every car on screen was painted as somebody else. A seat number is
+    /// the one thing all peers agree on, so it is what the colour hangs off — and
+    /// that also makes the two screens match, which is the point.
+    public var carColors: [Color] {
+        if let session, session.lockstep != nil {
+            return session.race.cars.map { Self.palette[$0.id.rawValue % Self.palette.count] }
+        }
+        let humanColors = rig?.players.map(\.colorIndex) ?? Array(colorIndices.prefix(playerCount))
+        return (humanColors + aiColorIndices).map { Self.palette[$0] }
     }
 }
