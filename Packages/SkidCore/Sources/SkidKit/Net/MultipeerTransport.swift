@@ -22,6 +22,17 @@ import UIKit
 /// delegate on private queues, and the race state it feeds is main-actor-confined;
 /// letting a packet mutate the sim from a background queue is a data race that
 /// would look exactly like a determinism bug.
+///
+/// **And nothing goes the other way on the main thread.** Every call INTO MC —
+/// send, disconnect, start/stop advertising and browsing, invite — is synchronous
+/// and can block while the transport does its work. Three separate device sessions
+/// were lost to this: a frozen lobby, an unresponsive Back button, and a "Start
+/// race" that wedged the UI before it could redraw. The logic tests cannot see any
+/// of it, because they replace this whole class with nothing.
+///
+/// So they all go through `sendQueue`, which is **serial** — reliable messages must
+/// keep their order, or a `RosterUpdate` could overtake the `RaceStart` that froze
+/// it and leave the peers disagreeing about who is racing.
 public final class MultipeerTransport: NSObject, RaceTransport {
     /// Bonjour service type. Must match the `NSBonjourServices` entry in
     /// Info.plist or iOS 14+ silently refuses to browse — a failure that looks
@@ -64,8 +75,8 @@ public final class MultipeerTransport: NSObject, RaceTransport {
         let advertiser = MCNearbyServiceAdvertiser(
             peer: localPeer, discoveryInfo: nil, serviceType: Self.serviceType)
         advertiser.delegate = self
-        advertiser.startAdvertisingPeer()
         self.advertiser = advertiser
+        Self.sendQueue.async { advertiser.startAdvertisingPeer() }
     }
 
     /// Guest: look for a host and invite ourselves in.
@@ -73,8 +84,8 @@ public final class MultipeerTransport: NSObject, RaceTransport {
         stopDiscovery()
         let browser = MCNearbyServiceBrowser(peer: localPeer, serviceType: Self.serviceType)
         browser.delegate = self
-        browser.startBrowsingForPeers()
         self.browser = browser
+        Self.sendQueue.async { browser.startBrowsingForPeers() }
     }
 
     /// Stop looking, but stay connected — called once the race starts, so a
@@ -87,7 +98,7 @@ public final class MultipeerTransport: NSObject, RaceTransport {
         self.advertiser = nil
         self.browser = nil
         guard advertiser != nil || browser != nil else { return }
-        DispatchQueue.global(qos: .userInitiated).async {
+        Self.sendQueue.async {
             advertiser?.stopAdvertisingPeer()
             browser?.stopBrowsingForPeers()
         }
@@ -101,9 +112,7 @@ public final class MultipeerTransport: NSObject, RaceTransport {
         // "Back" is exactly what that looks like. The session is retained by the
         // closure, so it outlives this call.
         let session = session
-        DispatchQueue.global(qos: .userInitiated).async {
-            session.disconnect()
-        }
+        Self.sendQueue.async { session.disconnect() }
     }
 
     // MARK: - Sending
@@ -111,12 +120,31 @@ public final class MultipeerTransport: NSObject, RaceTransport {
     public func send(_ bytes: [UInt8], reliable: Bool) {
         let peers = session.connectedPeers
         guard !peers.isEmpty else { return }
-        // A failed send is not worth propagating: unreliable input is repaired by
-        // the next packet's redundancy, and a reliable send failing means the peer
-        // is gone, which arrives separately as a state change.
-        try? session.send(
-            Data(bytes), toPeers: peers, with: reliable ? .reliable : .unreliable)
+        let data = Data(bytes)
+        let mode: MCSessionSendDataMode = reliable ? .reliable : .unreliable
+        let session = session
+        // **Off the main thread — this is what jammed the lobby.** `MCSession.send`
+        // is synchronous and can block while the transport does its work, and the
+        // reliable send in `startRace` runs straight from a button action. Tapping
+        // "Start race" wedged the main thread before the UI could redraw, so the
+        // lobby froze with the button stuck and Back unresponsive. Reported from
+        // device twice; the logic tests could never see it, because they replace
+        // this call with nothing.
+        //
+        // Ordering still holds for reliable traffic: one serial queue, so the
+        // roster and the start message cannot overtake each other.
+        Self.sendQueue.async {
+            // A failed send is not worth propagating: unreliable input is repaired
+            // by the next packet's redundancy, and a reliable send failing means
+            // the peer is gone, which arrives separately as a state change.
+            try? session.send(data, toPeers: peers, with: mode)
+        }
     }
+
+    /// Serial, so reliable messages keep their order — a `RosterUpdate` overtaking
+    /// the `RaceStart` that froze it would leave the peers disagreeing about who is
+    /// racing.
+    private static let sendQueue = DispatchQueue(label: "fi.misaki.skid.mc-send")
 }
 
 // MARK: - MCSessionDelegate
@@ -182,7 +210,10 @@ extension MultipeerTransport: MCNearbyServiceBrowserDelegate {
         // two sessions and MC resolves that by dropping one, which shows up as a
         // peer that connects and immediately disconnects. The guest browses and
         // invites; the host only advertises and accepts.
-        browser.invitePeer(peerID, to: session, withContext: nil, timeout: 15)
+        let session = session
+        Self.sendQueue.async {
+            browser.invitePeer(peerID, to: session, withContext: nil, timeout: 15)
+        }
     }
 
     public func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {}
