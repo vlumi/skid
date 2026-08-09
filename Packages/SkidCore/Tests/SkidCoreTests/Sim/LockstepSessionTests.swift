@@ -233,21 +233,79 @@ final class LockstepSessionTests: XCTestCase {
             session.advance(to: time)
         }
 
-        // One publish per SIMULATED tick, never per attempt. Before the fix this was
-        // 50 for 31; the numbers now match by construction.
+        // One publish per SIMULATED tick, plus the buffer's worth held ahead — never
+        // one per ATTEMPT. Before the fix this was 50 publishes for 31 ticks, and it
+        // grew with every stall.
         XCTAssertEqual(
-            driver.published.count, session.race.tick,
+            driver.published.count, session.race.tick + driver.delayTicks,
             "published \(driver.published.count) inputs for \(session.race.tick) ticks")
         XCTAssertGreaterThan(session.race.tick, 15, "the race never got going")
         // Strictly increasing, no repeats — a repeat would be silently ignored by
         // the clock's first-value-wins rule and lose that input.
         XCTAssertEqual(driver.published, driver.published.sorted())
         XCTAssertEqual(Set(driver.published).count, driver.published.count, "a tick repeated")
-        // And each one is the sim's tick plus the buffer, which is what the peer
-        // computes for the same press.
-        XCTAssertEqual(driver.published.first, driver.delayTicks)
+        // Starts at tick 0 — the buffer is primed from the first frame, or the race
+        // deadlocks waiting for ticks nobody sent (it stuck at "3" on two phones).
+        XCTAssertEqual(driver.published.first, 0)
         XCTAssertEqual(
             driver.published.last, session.race.tick - 1 + driver.delayTicks,
             "the newest publish must be the sim's next tick plus the buffer")
+    }
+
+    func testTwoSessionsActuallyGetOffTheGrid() {
+        // **The start, which is where two fixes in a row broke it.** A per-frame
+        // publish counter desynced the peers; deriving the tick from the sim then
+        // deadlocked, because at tick 0 with a 2-tick buffer each device published
+        // tick 2 and could go no further — `race.tick` needed ticks 0 and 1 that
+        // nobody sent. Both phones stuck at "3".
+        //
+        // So this drives TWO real sessions against each other through the real
+        // coordinator, from tick 0, and requires that they both actually move. No
+        // test I had did that: they all used a loopback or a stub, which cannot
+        // deadlock because it never withholds a tick the peer owes.
+        var roster = RaceRoster()
+        try? roster.join("host#aaaa", seats: 1)
+        try? roster.join("guest#bbbb", seats: 1)
+
+        let hostNet = NetworkedGame(displayName: "host#aaaa")
+        let guestNet = NetworkedGame(displayName: "guest#bbbb")
+        let start = RaceStart(
+            course: .builtin("small"), seed: 5, roster: roster, laps: 3, delayTicks: 2)
+        hostNet.adoptForTesting(start)
+        guestNet.adoptForTesting(start)
+
+        let host = session(for: start, driver: hostNet)
+        let guest = session(for: start, driver: guestNet)
+
+        var time = 0.0
+        for _ in 0..<90 {
+            time += Race.dt
+            host.advance(to: time)
+            guest.advance(to: time)
+            // The "network": hand each side whatever the other just queued.
+            for bytes in hostNet.drainOutbox() {
+                guestNet.deliverForTesting(bytes, from: "host#aaaa")
+            }
+            for bytes in guestNet.drainOutbox() {
+                hostNet.deliverForTesting(bytes, from: "guest#bbbb")
+            }
+        }
+
+        XCTAssertGreaterThan(host.race.tick, 60, "the host never got off the grid")
+        XCTAssertGreaterThan(guest.race.tick, 60, "the guest never got off the grid")
+        // And they agree — the whole point.
+        XCTAssertEqual(host.race.tick, guest.race.tick)
+        XCTAssertEqual(host.race.stateHash, guest.race.stateHash, "the peers diverged")
+        XCTAssertNil(hostNet.divergenceNote)
+        XCTAssertNil(guestNet.divergenceNote)
+    }
+
+    private func session(for start: RaceStart, driver: GameSession.LockstepDriver) -> GameSession {
+        let session = GameSession(
+            track: TrackLibrary.track(id: "small"), players: start.roster.seats,
+            config: RaceConfig(laps: start.laps, countdownTicks: 3 * Race.tickRate),
+            seed: start.seed, inputFor: { _, _ in CarInput(throttle: 1) })
+        session.lockstep = driver
+        return session
     }
 }
