@@ -2,6 +2,10 @@ import Foundation
 import MultipeerConnectivity
 import SkidCore
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 /// **MultipeerConnectivity, wrapped down to `RaceTransport`.**
 ///
 /// Chosen because it is *not* LAN-only: it uses infrastructure Wi-Fi when peers
@@ -167,4 +171,19 @@ extension MultipeerTransport: MCNearbyServiceBrowserDelegate {
     }
 
     public func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {}
+}
+
+/// What to call this device on another player's screen.
+public enum DeviceName {
+    /// The user's device name where it is available, falling back to something
+    /// human rather than a UUID — a lobby listing "iPhone" twice is confusing, but
+    /// one listing a hex string is worse.
+    public static var current: String {
+        #if canImport(UIKit)
+        let name = UIDevice.current.name
+        #else
+        let name = Host.current().localizedName ?? ""
+        #endif
+        return name.isEmpty ? "Skid player" : name
+    }
 }
