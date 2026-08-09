@@ -118,7 +118,8 @@ public final class NetworkedGame:
     /// the two diverge the moment the two code paths disagree about anything — so
     /// the host applies its own message, exactly as a guest does.
     public func startRace(
-        course: RaceStart.Course, seed: UInt64, laps: Int?, delayTicks: Int = 2
+        course: RaceStart.Course, seed: UInt64, laps: Int?, delayTicks: Int = 2,
+        tuning: CarTuning = CarTuning(), carContact: Bool = true
     ) {
         // Traced BEFORE the guard: "the note that did not print" has been the only
         // usable signal from a device each time this flow broke.
@@ -128,7 +129,8 @@ public final class NetworkedGame:
             return
         }
         let message = RaceStart(
-            course: course, seed: seed, roster: roster, laps: laps, delayTicks: delayTicks)
+            course: course, seed: seed, roster: roster, laps: laps, delayTicks: delayTicks,
+            tuning: tuning, carContact: carContact)
         note("sending start: seed \(seed), \(roster.seatCount) cars")
         transport.send(message.encoded, reliable: true)
         // **Discovery is NOT torn down here.** Stopping the advertiser mid-handshake

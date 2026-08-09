@@ -10,15 +10,29 @@ import XCTest
 final class TuningWireTests: XCTestCase {
     /// `@AppStorage` is real UserDefaults, shared across the whole test run — so a
     /// test that moves a knob leaves it moved for every later one. Reset to stock.
+    /// **Every knob `isStockPhysics` inspects**, not just the wall ones.
+    ///
+    /// `GameSettings` is `@AppStorage`, so all of these live in one shared
+    /// `UserDefaults` that persists between runs — a test elsewhere that leaves
+    /// `turnRate` tuned made `testAMovedAirKnobIsNotStockPhysics` fail here, on a
+    /// value it never touches. Resetting a subset is what allowed that; resetting
+    /// the whole set is what `isStockPhysics` actually reads.
     private func stockSettings() -> GameSettings {
         let settings = GameSettings()
         let stock = CarTuning()
+        settings.aimTurnRate = stock.aimTurnRate
+        settings.aimFlipBoost = stock.aimFlipBoost
+        settings.steerFlipBoost = stock.steerFlipBoost
+        settings.driftRetention = stock.driftRetention
+        settings.turnRate = stock.turnRate
+        settings.gripScale = stock.gripScale
         settings.wallRestitution = stock.wallRestitution
         settings.wallGlanceBounce = stock.wallGlanceBounce
         settings.wallFriction = stock.wallFriction
         settings.wallDragFloor = stock.wallDragFloor
         settings.wallYaw = stock.wallYaw
         settings.gravity = stock.gravity
+        settings.pace = 1
         return settings
     }
 

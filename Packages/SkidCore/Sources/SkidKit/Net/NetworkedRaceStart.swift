@@ -77,7 +77,9 @@ extension CouchGame {
         track: Track, start: RaceStart, localSeats: [PlayerID]
     ) -> GameSession {
         let config = RaceConfig(
-            laps: start.laps, countdownTicks: 3 * Race.tickRate, carContact: carContact)
+            // Every value the SIM reads comes from the host's message. `carContact` is
+            // physics, so a peer with it toggled the other way diverges on first touch.
+            laps: start.laps, countdownTicks: 3 * Race.tickRate, carContact: start.carContact)
         // **Bands are found by seat, not by index.** Global seat numbers are sparse
         // — this device might drive seats 2 and 3 — so indexing the rig by
         // `rawValue` would read past its end. The rig's players now carry their real
@@ -86,7 +88,10 @@ extension CouchGame {
             uniqueKeysWithValues: localSeats.enumerated().map { ($1, $0) })
         let session = GameSession(
             track: track, players: start.roster.seats, config: config, seed: start.seed,
-            tuning: settings.carTuning,
+            // **The HOST's tuning, never this device's.** Every device used to race
+            // with its own persisted panel values, so one nudged slider made the cars
+            // physically different and the sims diverged immediately.
+            tuning: start.tuning,
             inputFor: { [weak rig] player, race in
                 guard let band = bandForSeat[player], let rig,
                     rig.players.indices.contains(band)

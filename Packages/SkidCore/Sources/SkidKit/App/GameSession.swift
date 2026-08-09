@@ -213,9 +213,20 @@ public final class GameSession: ObservableObject {
         //
         // Publishing a tick the clock has already consumed is harmless — it keeps the
         // first value it saw — so a gapless run costs nothing and removes the hazard.
+        //
+        // **One tick per frame, so a tick's input is sampled once.** Publishing the
+        // whole window every frame filled each tick with whatever reading that frame
+        // happened to take — and two devices' frames are never aligned, so each filled
+        // tick N differently. The countdown masked it (input is locked to coast until
+        // GO), and it bit at the FIRST unlocked tick: the desync was reported at tick
+        // 182 twice, which is exactly `countdownTicks + delayTicks`.
+        //
+        // The buffer is primed on the first frame instead, where both devices are
+        // genuinely at tick 0 with no history to disagree about.
         let edge = race.tick + lockstep.delayTicks
         guard edge > lastPublished else { return }
-        for tick in (lastPublished + 1)...edge {
+        let from = lastPublished < 0 ? 0 : min(lastPublished + 1, edge)
+        for tick in from...edge {
             lockstep.publish(mine, at: tick)
         }
         lastPublished = edge
