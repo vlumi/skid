@@ -119,6 +119,12 @@ struct RaceScreen: View {
             .frame(width: mapRect.width, height: mapRect.height)
             .position(x: mapRect.midX, y: mapRect.midY)
             .onTapGesture {
+                // **No pause in a networked race.** `paused` is per-device and stops
+                // this device publishing input, which stalls every peer — the same
+                // deadlock the ready gate caused. Whose tap may freeze everyone is
+                // a real design question (host-only, or a vote); until it is
+                // answered, the map tap does nothing rather than something broken.
+                guard session.lockstep == nil else { return }
                 if !session.started {
                     session.started = true
                 } else {
