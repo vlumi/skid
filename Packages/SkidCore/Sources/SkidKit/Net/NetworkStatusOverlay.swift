@@ -11,18 +11,23 @@ import SwiftUI
 /// Stays quiet when everything is fine — a permanent readout would just be noise
 /// once the design is trusted.
 struct NetworkStatusOverlay: View {
-    @ObservedObject var net: NetworkedGame
+    /// Plain values, not an `@ObservedObject`. These are updated on every simulated
+    /// tick, so observing them would publish from inside the render pass — which
+    /// froze the app solid. `RaceScreen` redraws every frame via `TimelineView`
+    /// anyway, so reading them as values is both correct and sufficient.
+    let divergenceNote: String?
+    let stallNote: String?
 
     var body: some View {
         VStack(spacing: 8) {
             // A desync means the whole design does not work. Loud, and sticky:
             // it does not clear, because everything after it is fiction.
-            if let note = net.divergenceNote {
+            if let note = divergenceNote {
                 banner(note, tint: .red)
             }
             // A stall names who it is waiting for, so "frozen" becomes "Ville's
             // phone went away" — actionable rather than mysterious.
-            if let note = net.stallNote {
+            if let note = stallNote {
                 banner(note, tint: .orange)
             }
         }

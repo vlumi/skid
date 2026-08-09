@@ -7,11 +7,14 @@ struct RaceScreen: View {
     @ObservedObject var game: CouchGame
     @ObservedObject var session: GameSession
     @ObservedObject var rig: CouchRig
-    /// Always present — `NetworkedGame` is created once by `GameView` — but idle
-    /// in a couch race, where it publishes no stall and no divergence. So the
-    /// status overlay draws nothing at all locally rather than being conditional
-    /// on an optional an `@ObservedObject` cannot hold.
-    @ObservedObject var net: NetworkedGame
+    /// Always present — `NetworkedGame` is created once by `GameView` — but idle in
+    /// a couch race, where it reports no stall and no divergence, so the status
+    /// overlay draws nothing at all locally.
+    ///
+    /// **Not observed.** Its per-tick fields are deliberately unpublished: watching
+    /// them would invalidate this view from inside its own render pass. The values
+    /// are read fresh each frame instead, which `TimelineView` already guarantees.
+    let net: NetworkedGame
 
     var body: some View {
         // The GeometryReader must NOT ignore the safe area, or its
@@ -81,7 +84,8 @@ struct RaceScreen: View {
                     // a stall that names who it waits for, or a desync. Both are
                     // otherwise silent, and a frozen screen with no explanation
                     // reads as a crash.
-                    NetworkStatusOverlay(net: net)
+                    NetworkStatusOverlay(
+                        divergenceNote: net.divergenceNote, stallNote: net.stallNote)
 
                     // The map center is meta-control space (no car races there,
                     // and map-area touches are otherwise inert). A tap on it
