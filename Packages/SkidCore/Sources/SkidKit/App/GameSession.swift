@@ -34,6 +34,12 @@ public final class GameSession: ObservableObject {
     /// in place) and only begins once a player taps to start. Freezing before
     /// the countdown reuses the exact `paused` mechanism (clock stays
     /// anchored), so the countdown then runs cleanly from tick 0.
+    ///
+    /// **A networked race starts itself** — see `lockstep`. The gate is per-device,
+    /// so waiting for a tap on each screen deadlocks: a device that has not started
+    /// publishes no input, so no peer's clock can release a tick, so nobody's
+    /// countdown moves. It stuck at "3" on two phones. The host's "Start race" in
+    /// the lobby IS the shared ready gate, and it is the only one there can be.
     @Published public var started = false
     /// Called after every sim tick with the fresh race — the event stream
     /// consumer seam (sound, haptics). Events from intermediate ticks in a
@@ -52,7 +58,14 @@ public final class GameSession: ObservableObject {
     /// cannot regress a couch race. Set it and the *condition for running a tick*
     /// changes from "wall time owes one" to "wall time owes one AND every peer's
     /// input for it has arrived".
-    public var lockstep: LockstepDriver?
+    public var lockstep: LockstepDriver? {
+        didSet {
+            // Networked: the lobby already gated the start, so open the local gate
+            // immediately. Leaving it shut is a deadlock rather than a delay,
+            // because a frozen device never publishes the input its peers need.
+            if lockstep != nil { started = true }
+        }
+    }
 
     /// What `GameSession` needs from the network, kept to three calls so the
     /// session never learns what a peer is. `NetworkedGame` conforms.

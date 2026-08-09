@@ -140,8 +140,13 @@ public final class CouchGame: ObservableObject {
     @Published public var carContact = true
     /// The chosen circuit (a `Track.id` from `TrackLibrary.all`).
     @Published public var trackID = TrackLibrary.builtins[0].id
-    /// 2P seating: side-by-side vs face-to-face.
-    @Published public var faceToFace = false
+    /// 2P seating: face-to-face (default) vs side-by-side.
+    ///
+    /// Face-to-face is what two people do with a phone flat on a table — full-width
+    /// band each. Side-by-side halves that and is cramped on an iPhone; it exists
+    /// because cramming 3–4 players onto one screen needs it, not because two
+    /// players want it. Eventually a per-device choice, once devices differ.
+    @Published public var faceToFace = true
     /// 3P seating: which quadrant stays open.
     @Published public var openCorner: ZoneCorner = .topLeft
 

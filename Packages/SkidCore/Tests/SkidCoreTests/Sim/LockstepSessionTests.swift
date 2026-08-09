@@ -18,6 +18,46 @@ final class LockstepSessionTests: XCTestCase {
         return session
     }
 
+    func testANetworkedRaceDoesNotWaitOnALocalReadyTap() {
+        // **The deadlock, reported from device: stuck at "3" on both phones.**
+        // `started` is a per-device gate, and a device that has not started
+        // publishes no input — so no peer's clock can release a tick, so nobody's
+        // countdown ever moves. The lobby's "Start race" is the shared gate, and it
+        // is the only one there can be.
+        let seats = [PlayerID(0)]
+        let session = GameSession(
+            track: TrackLibrary.testRing(), players: seats, config: RaceConfig(),
+            seed: 4, inputFor: { _, _ in CarInput(throttle: 1) })
+        XCTAssertFalse(session.started, "a local race still waits for its tap")
+
+        session.lockstep = LoopbackDriver(seats: seats)
+        XCTAssertTrue(session.started, "a networked race waited for a tap nobody can give")
+
+        // And it really advances, rather than merely claiming to be started.
+        var time = 0.0
+        for _ in 0..<60 {
+            time += Race.dt
+            session.advance(to: time)
+        }
+        XCTAssertGreaterThan(session.race.tick, 30, "the countdown never moved")
+    }
+
+    func testALocalRaceStillWaitsForItsReadyTap() {
+        // The other half, and a real regression risk: opening the gate for every
+        // race would skip the ready screen a couch game depends on — everyone gets
+        // their thumbs in place before the lights.
+        let session = GameSession(
+            track: TrackLibrary.testRing(), players: [PlayerID(0)], config: RaceConfig(),
+            seed: 4, inputFor: { _, _ in CarInput(throttle: 1) })
+        XCTAssertFalse(session.started)
+        var time = 0.0
+        for _ in 0..<60 {
+            time += Race.dt
+            session.advance(to: time)
+        }
+        XCTAssertEqual(session.race.tick, 0, "a local race started without being tapped")
+    }
+
     func testLocalPlayIsUnaffectedByTheLockstepSeam() {
         // The regression that would matter most: adding networking must not change
         // a couch race by one tick.
@@ -92,7 +132,7 @@ final class LockstepSessionTests: XCTestCase {
     }
 
     /// A driver that echoes our own input straight back — a one-device "network".
-    private final class LoopbackDriver: GameSession.LockstepDriver {
+    fileprivate final class LoopbackDriver: GameSession.LockstepDriver {
         var mySeats: [PlayerID]
         private var queue: [[PlayerID: CarInput]] = []
         var reported: [UInt64] = []
