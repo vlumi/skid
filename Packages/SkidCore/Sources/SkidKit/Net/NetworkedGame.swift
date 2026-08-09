@@ -178,17 +178,20 @@ public final class NetworkedGame:
         guard var net else { return }
         let bytes = net.send(inputs, at: tick)
         self.net = net
-        // **Input goes RELIABLY.** The plan argued unreliable was right — a
-        // retransmitted late packet arrives after its tick and only adds
-        // head-of-line delay — and that reasoning holds only if redundancy actually
-        // repairs the loss. On real device Wi-Fi it did not: 20 ticks of cover was
-        // still losing enough that the peers stalled constantly and diverged.
+        // **Input goes UNRELIABLY, as the plan originally argued.**
         //
-        // Lockstep input is idempotent and addressed by tick number, so a
-        // retransmission is never wrong, only late; and a late input is exactly what
-        // the delay buffer exists to absorb. MC's reliable channel gives us the
-        // retransmission that redundancy alone cannot.
-        if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: true) }
+        // I switched this to reliable while hunting a desync that turned out to be
+        // mismatched car tuning, not packet loss at all. Reliable delivery then caused
+        // its own problem, reported from device: a constant ~2 Hz stutter with the
+        // "waiting" banner pulsing in time with it. MC's reliable channel coalesces
+        // like TCP, so sixty tiny packets a second arrive in clumps — each clump
+        // releasing a burst of ticks, then starvation until the next. Head-of-line
+        // delivery is exactly wrong for a 60 Hz stream where a late packet is useless.
+        //
+        // Unreliable sends go out immediately, and loss is repaired by the redundancy
+        // each packet carries. That was always the right shape; the desync just made
+        // it look otherwise.
+        if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: false) }
     }
 
     /// The next tick's inputs, or nil if the race must wait. **Nil means do not
