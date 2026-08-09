@@ -71,17 +71,17 @@ public struct LockstepClock: Sendable {
 
         /// How many ticks of redundancy to carry.
         ///
-        /// **Three was badly wrong.** At 60 Hz it survives 33 ms of loss, and real
-        /// Wi-Fi on a phone loses bursts far longer — measured in a test at 20%
-        /// loss, one peer reached tick 150 while the other reached 22. "More than
-        /// enough on a couch network" was an assumption dressed as a measurement.
+        /// **Three was wrong, twenty was the wrong fix.** Three covers 33 ms and a
+        /// phone's Wi-Fi loses far longer bursts — at 20% loss two peers ended 128
+        /// ticks apart. Deepening to twenty made the tests pass and did NOT fix the
+        /// device: still constant stalling, still diverging, because redundancy alone
+        /// cannot repair sustained loss no matter how deep it goes.
         ///
-        /// Twenty ticks is a third of a second of cover, at 4 bytes per seat per
-        /// tick: 80 bytes per seat, ~170 for a two-seat device, still one small
-        /// datagram. Redundancy is the *only* repair mechanism here — there is no
-        /// retransmission — so it should be sized to the worst burst worth
-        /// surviving, not the cheapest one.
-        public static let history = 20
+        /// So input now goes on the RELIABLE channel, which retransmits — see
+        /// `NetworkedGame.publish`. Redundancy is then a cheap head start on
+        /// reordering rather than the only repair, and eight ticks (133 ms) is ample
+        /// without competing for bandwidth with the retransmissions themselves.
+        public static let history = 8
 
         public init(tick: Tick, inputs: [[PlayerID: CarInputWire]]) {
             self.tick = tick

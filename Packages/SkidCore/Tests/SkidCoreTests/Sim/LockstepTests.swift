@@ -121,8 +121,11 @@ final class LockstepTests: XCTestCase {
         // Wi-Fi loses far longer bursts; at 20% loss two peers ended 128 ticks apart.
         // The depth is now sized to a realistic burst, and this test follows it
         // rather than hardcoding a number that would silently un-fix that.
+        // Redundancy is no longer the ONLY repair — input rides the reliable channel,
+        // which retransmits — so the depth is a head start on reordering rather than a
+        // loss budget. It still has to cover more than a frame or two.
         let depth = LockstepClock.Packet.history
-        XCTAssertGreaterThanOrEqual(depth, 12, "redundancy is the only repair here")
+        XCTAssertGreaterThanOrEqual(depth, 4, "redundancy must cover more than a frame")
 
         // One short of the depth: fully repaired, every tick runs.
         var survives = LockstepClock(players: seats, delayTicks: 0)

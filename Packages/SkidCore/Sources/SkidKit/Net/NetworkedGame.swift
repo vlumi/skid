@@ -176,7 +176,17 @@ public final class NetworkedGame:
         guard var net else { return }
         let bytes = net.send(inputs, at: tick)
         self.net = net
-        if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: false) }
+        // **Input goes RELIABLY.** The plan argued unreliable was right — a
+        // retransmitted late packet arrives after its tick and only adds
+        // head-of-line delay — and that reasoning holds only if redundancy actually
+        // repairs the loss. On real device Wi-Fi it did not: 20 ticks of cover was
+        // still losing enough that the peers stalled constantly and diverged.
+        //
+        // Lockstep input is idempotent and addressed by tick number, so a
+        // retransmission is never wrong, only late; and a late input is exactly what
+        // the delay buffer exists to absorb. MC's reliable channel gives us the
+        // retransmission that redundancy alone cannot.
+        if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: true) }
     }
 
     /// The next tick's inputs, or nil if the race must wait. **Nil means do not
@@ -194,6 +204,8 @@ public final class NetworkedGame:
         guard var net else { return }
         let bytes = net.report(hash: hash, at: tick)
         self.net = net
+        // Hashes stay UNRELIABLE: a lost one costs a comparison, not correctness, and
+        // putting diagnostics on the reliable channel would delay the input behind them.
         if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: false) }
         refreshDiagnostics()
     }
