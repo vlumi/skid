@@ -172,6 +172,14 @@ public final class NetworkedGame:
     /// belongs to.
     public var delayTicks: Int { net?.clock.delayTicks ?? 0 }
 
+    /// Record input for a tick without sending — it rides in the next packet's
+    /// history. See `GameSession.LockstepDriver.record`.
+    public func record(_ inputs: [PlayerID: CarInput], at tick: Tick) {
+        guard var net else { return }
+        net.record(inputs, at: tick)
+        self.net = net
+    }
+
     /// Publish this device's input for `tick` and take in whatever has arrived.
     /// Call once per frame, before asking for ticks.
     public func publish(_ inputs: [PlayerID: CarInput], at tick: Tick) {

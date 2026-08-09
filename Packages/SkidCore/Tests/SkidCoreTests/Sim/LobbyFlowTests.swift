@@ -113,6 +113,7 @@ final class LobbyFlowTests: XCTestCase {
         var mySeats: [PlayerID] { seats }
         var delayTicks: Int { 0 }
         func publish(_ inputs: [PlayerID: CarInput], at tick: Tick) {}
+        func record(_ inputs: [PlayerID: CarInput], at tick: Tick) {}
         func nextTick() -> [PlayerID: CarInput]? { nil }
         func report(hash: UInt64, at tick: Tick) {}
     }
