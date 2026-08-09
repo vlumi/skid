@@ -78,6 +78,21 @@ final class DivergenceWatchTests: XCTestCase {
         XCTAssertEqual(watch.agreeingPeers, ["good"])
     }
 
+    func testAPeerRunningAheadOfUsIsNotYetAgreeing() {
+        // A peer ahead of us has reported ticks we have not simulated, so there is
+        // nothing to compare — it must not count as agreeing. Reachable in normal
+        // play (any peer with a shorter input path runs ahead), and the branch
+        // Codecov flagged as unreached in #149.
+        var watch = DivergenceWatch()
+        watch.record(tick: 5, hash: 42)
+        watch.received(tick: 99, hash: 42, from: "ahead")
+        XCTAssertEqual(watch.agreeingPeers, [], "a peer with no shared tick counted as agreeing")
+        XCTAssertNil(watch.agreement(at: 99), "we cannot vouch for a tick we have not run")
+        // Once it reports a tick we HAVE run, it counts.
+        watch.received(tick: 5, hash: 42, from: "ahead")
+        XCTAssertEqual(watch.agreeingPeers, ["ahead"])
+    }
+
     func testAgreementNeedsEveryReporterNotJustOne() {
         // `agreement(at:)` is a claim about all reports for that tick. One matching
         // peer must not vouch for a disagreeing one.

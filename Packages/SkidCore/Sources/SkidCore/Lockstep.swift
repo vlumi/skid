@@ -79,9 +79,6 @@ public struct LockstepClock: Sendable {
             self.inputs = inputs
         }
 
-        /// The tick each entry belongs to, newest first.
-        var ticks: [Tick] { inputs.indices.map { tick - $0 } }
-
         // MARK: - The compact form
 
         /// The packet as bytes: `tick` then every seat's four bytes, **positionally

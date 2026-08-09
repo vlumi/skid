@@ -204,6 +204,39 @@ final class LockstepTests: XCTestCase {
         XCTAssertEqual(clock.stall, .waitingForInput(tick: 30, missing: [solo]))
     }
 
+    func testStallIsNilWhenTheClockCanRun() {
+        // `stall` answers "why are we not moving" and must say nothing when we ARE
+        // moving — chrome keyed off it would otherwise flash "waiting for players"
+        // between every tick.
+        var clock = LockstepClock(players: seats, delayTicks: 0)
+        clock.receive(packet(tick: 0))
+        XCTAssertTrue(clock.canAdvance)
+        XCTAssertNil(clock.stall, "a runnable clock reported a stall")
+    }
+
+    func testASenderSendsCoastForSeatsItDoesNotOwn() {
+        // `encoded(roster:)` fills a missing seat with coast. Safe only because a
+        // SENDER always has its own seats' input, so a hole means "not mine" — and
+        // the roster passed in is the sender's own. Pinned because the same
+        // fallback on the RECEIVING side would silently fork the race.
+        let mine = seats[0]
+        let packet = LockstepClock.Packet(tick: 3, inputs: [[mine: wire(0.5)]])
+        let bytes = packet.encoded(roster: seats)
+        let back = LockstepClock.Packet(bytes: bytes, roster: seats)
+        XCTAssertEqual(back?.inputs.first?[mine]?.input.steer ?? 0, 0.5, accuracy: 0.01)
+        XCTAssertEqual(back?.inputs.first?[seats[1]], CarInputWire(.coast), "absent seat not coast")
+    }
+
+    func testASeatlessClockAdvancesWithoutInput() {
+        // The degenerate roster: no seats, so there is nothing to wait for. Worth
+        // pinning because `advance()` reads a pending entry that will not exist,
+        // and the empty case must return an empty input set rather than trap.
+        var clock = LockstepClock(players: [], delayTicks: 0)
+        clock.receive(LockstepClock.Packet(tick: 0, inputs: [[:]]))
+        XCTAssertEqual(clock.advance()?.isEmpty, true)
+        XCTAssertEqual(clock.tick, 1)
+    }
+
     // MARK: - Health readout
 
     func testBufferedTicksReportsHowFarAheadTheInputIs() {
