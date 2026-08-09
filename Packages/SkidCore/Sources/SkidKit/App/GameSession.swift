@@ -92,6 +92,11 @@ public final class GameSession: ObservableObject {
     /// ticks owed by any single frame.
     private static let maxTicksPerFrame = 12
 
+    /// Owed sim time past which a networked race abandons its backlog — a second,
+    /// comfortably more than any stall the delay buffer is meant to absorb and far
+    /// less than a backgrounded app accrues.
+    private static let maxNetworkedDebt: TimeInterval = 1.0
+
     public init(
         track: Track,
         players: [PlayerID],
@@ -140,6 +145,21 @@ public final class GameSession: ObservableObject {
             ticks += 1
         }
         if ticks == Self.maxTicksPerFrame {
+            accumulator = 0
+        }
+        // **A networked race keeps a short debt but drops a hopeless one.**
+        //
+        // A brief stall must keep what it owes: that is exactly how packet loss
+        // becomes input lag instead of a race that silently skipped part of itself,
+        // and `testAStalledNetworkFreezesTheSimWithoutLosingTheDebt` pins it.
+        //
+        // But backgrounding stops the render loop entirely, so nothing publishes,
+        // every peer stalls, and returning owes *seconds* of ticks that
+        // `maxTicksPerFrame` can never work through — the race looks permanently
+        // stuck. Lockstep keeps the peers in step by construction, so wall-clock
+        // debt past a second is not information, it is a backlog. Drop it and run at
+        // whatever rate the clock releases ticks.
+        if lockstep != nil, accumulator > Self.maxNetworkedDebt {
             accumulator = 0
         }
         if !raceOver, race.phase == .finished {
