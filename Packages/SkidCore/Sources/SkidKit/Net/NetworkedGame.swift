@@ -70,6 +70,9 @@ public final class NetworkedGame:
     private var start: RaceStart?
     /// Set by the host so a guest can be told what to race on.
     private var pendingStart: ((RaceStart) -> Void)?
+    /// Set by `adoptForTesting` so per-tick traffic lands in `outbox` rather than
+    /// going to a transport there is none of.
+    private var captureSends = false
 
     public var me: RaceRoster.PeerName { transport.me }
     public var isHost: Bool { roster.host == transport.me }
@@ -173,7 +176,7 @@ public final class NetworkedGame:
         guard var net else { return }
         let bytes = net.send(inputs, at: tick)
         self.net = net
-        transport.send(bytes, reliable: false)
+        if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: false) }
     }
 
     /// The next tick's inputs, or nil if the race must wait. **Nil means do not
@@ -191,7 +194,7 @@ public final class NetworkedGame:
         guard var net else { return }
         let bytes = net.report(hash: hash, at: tick)
         self.net = net
-        transport.send(bytes, reliable: false)
+        if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: false) }
         refreshDiagnostics()
     }
 
@@ -331,5 +334,30 @@ public final class NetworkedGame:
         // numbers, so without this push a guest's lobby stays empty until the race
         // starts, which reads as a broken join.
         transport.send(RosterUpdate(roster: roster).encoded, reliable: true)
+    }
+
+    // MARK: - Test seams
+
+    /// Bytes this device would have sent, captured instead of transmitted — so two
+    /// `NetworkedGame`s can be driven against each other in one process. The device
+    /// failures that cost the most were all in this loop, and nothing could exercise
+    /// it without a radio.
+    private var outbox: [[UInt8]] = []
+
+    /// Start a race without a lobby handshake.
+    func adoptForTesting(_ message: RaceStart) {
+        captureSends = true
+        apply(message)
+    }
+
+    /// Take everything queued since the last call.
+    func drainOutbox() -> [[UInt8]] {
+        defer { outbox.removeAll() }
+        return outbox
+    }
+
+    /// Feed in what a peer sent.
+    func deliverForTesting(_ bytes: [UInt8], from peer: RaceRoster.PeerName) {
+        transport(didReceive: bytes, from: peer)
     }
 }
