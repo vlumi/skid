@@ -75,16 +75,21 @@ public final class GameSession: ObservableObject {
         var mySeats: [PlayerID] { get }
         /// Publish this device's own input for `tick`.
         func publish(_ inputs: [PlayerID: CarInput], at tick: Tick)
+        /// How far ahead of the sim this device publishes — the delay buffer. Read
+        /// rather than assumed, so the session cannot disagree with the clock about
+        /// which tick an input belongs to.
+        var delayTicks: Int { get }
         /// The next tick's inputs, or nil to wait. **Nil means do not step.**
         func nextTick() -> [PlayerID: CarInput]?
         /// Tell peers what state we reached, so a divergence is caught.
         func report(hash: UInt64, at tick: Tick)
     }
 
-    /// Which tick this device is *publishing* input for, which runs ahead of
-    /// `race.tick` by the delay buffer. Separate counter because the sim's tick
-    /// only moves when the clock releases one, while our thumbs keep being read.
-    private var publishTick: Tick = 0
+    /// The newest tick this device has published input for. Only used to avoid
+    /// publishing the same tick twice — the tick itself is derived from `race.tick`,
+    /// never counted, so two peers cannot disagree about which tick a press belongs
+    /// to. See `inputsForNextTick()`.
+    private var lastPublished: Tick = -1
 
     private var lastTime: TimeInterval?
     private var accumulator: TimeInterval = 0
@@ -184,12 +189,26 @@ public final class GameSession: ObservableObject {
         }
         // Read our own thumbs and publish them, then take whatever the clock
         // releases — which may be a tick whose inputs arrived several frames ago.
+        //
+        // **The tick we publish for is derived from the SIM, not counted locally.**
+        // A local counter incremented once per attempt drifts: this loop runs on
+        // every frame, including the ones that stall, so a device that waited 19
+        // ticks published 50 inputs for 31 simulated ticks (measured). Each peer's
+        // counter then drifts by however much IT stalled, so the same thumb press
+        // is labelled tick 40 on one device and tick 31 on the other — the cars
+        // then genuinely diverge, which is what the hash comparison correctly
+        // reported. Reported from device as a ~200-unit positional offset.
+        //
+        // `race.tick` plus the buffer is the one value both peers agree on, because
+        // it comes from the shared simulation rather than from local wall time.
+        let publishFor = race.tick + lockstep.delayTicks
+        guard publishFor > lastPublished else { return lockstep.nextTick() }
         var mine: [PlayerID: CarInput] = [:]
         for seat in lockstep.mySeats {
             mine[seat] = inputFor(seat, race)
         }
-        lockstep.publish(mine, at: publishTick)
-        publishTick += 1
+        lockstep.publish(mine, at: publishFor)
+        lastPublished = publishFor
         return lockstep.nextTick()
     }
 

@@ -85,7 +85,8 @@ struct RaceScreen: View {
                     // otherwise silent, and a frozen screen with no explanation
                     // reads as a crash.
                     NetworkStatusOverlay(
-                        divergenceNote: net.divergenceNote, stallNote: net.stallNote)
+                        divergenceNote: net.divergenceNote, stallNote: net.stallNote,
+                        topInset: insets.top)
 
                     // The map center is meta-control space (no car races there,
                     // and map-area touches are otherwise inert). A tap on it
