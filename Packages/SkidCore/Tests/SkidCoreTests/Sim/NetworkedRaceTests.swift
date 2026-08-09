@@ -290,7 +290,11 @@ final class NetworkedRaceTests: XCTestCase {
             for seat in link.a.localSeats { inputs[seat] = script(seat, tick) }
             biggest = max(biggest, link.a.send(inputs, at: tick).count)
         }
-        XCTAssertLessThan(biggest, 128, "an input packet outgrew a datagram")
+        // Deep redundancy costs bytes and that is the right trade: it is the ONLY
+        // repair mechanism here, so it is sized to the worst survivable burst rather
+        // than the cheapest one. Still far inside a single datagram, which is what
+        // actually matters — fragmenting would multiply the transport's failure modes.
+        XCTAssertLessThan(biggest, 1024, "an input packet outgrew a datagram")
         XCTAssertEqual(link.a.report(hash: 12345, at: 1).count, 13, "tag + tick + hash")
     }
 }

@@ -204,9 +204,18 @@ public final class GameSession: ObservableObject {
         // `race.tick` cannot advance without the ticks below it — and refills it
         // after a stall. The tick NUMBERS come from the shared sim, which is what
         // keeps the peers agreeing about which tick a press belongs to.
+        // **Contiguous, always.** This used `max(lastPublished + 1, race.tick)` to
+        // avoid re-publishing settled ticks — but when the sim ran ahead of the
+        // publish edge that left a permanent HOLE, and the wire format is positional,
+        // so the receiver applied the following frame's input to the missing tick.
+        // Both peers then computed different states from the same packet: the desync,
+        // and the never-satisfied wait for the tick that was skipped.
+        //
+        // Publishing a tick the clock has already consumed is harmless — it keeps the
+        // first value it saw — so a gapless run costs nothing and removes the hazard.
         let edge = race.tick + lockstep.delayTicks
         guard edge > lastPublished else { return }
-        for tick in max(lastPublished + 1, race.tick)...edge {
+        for tick in (lastPublished + 1)...edge {
             lockstep.publish(mine, at: tick)
         }
         lastPublished = edge

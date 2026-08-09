@@ -115,28 +115,35 @@ final class LockstepTests: XCTestCase {
         XCTAssertEqual(simulated, Array(0..<12), "a lost packet left a hole")
     }
 
-    func testTwoConsecutiveLossesAreSurvivedAndThreeAreNot() {
-        // `Packet.history` is 3, so the design's claim is exactly this: two
-        // consecutive losses are repaired, and the third is where it stalls. Both
-        // halves asserted, because the limit is the useful part of the claim.
-        XCTAssertEqual(LockstepClock.Packet.history, 3)
+    func testRedundancySurvivesLossUpToItsDepthAndStallsBeyond() {
+        // The limit is the useful half of the claim, so both halves are asserted —
+        // but the DEPTH is no longer 3. Three ticks is 33 ms of cover, and a phone's
+        // Wi-Fi loses far longer bursts; at 20% loss two peers ended 128 ticks apart.
+        // The depth is now sized to a realistic burst, and this test follows it
+        // rather than hardcoding a number that would silently un-fix that.
+        let depth = LockstepClock.Packet.history
+        XCTAssertGreaterThanOrEqual(depth, 12, "redundancy is the only repair here")
 
+        // One short of the depth: fully repaired, every tick runs.
         var survives = LockstepClock(players: seats, delayTicks: 0)
-        for tick in 0..<12 where tick != 5 && tick != 6 {
-            survives.receive(redundantPacket(tick: tick))
+        let lost = Set((5..<(5 + depth - 1)).map { Tick($0) })
+        for tick in 0..<(depth * 3) where !lost.contains(Tick(tick)) {
+            survives.receive(redundantPacket(tick: Tick(tick)))
         }
         var ticks = 0
         while survives.advance() != nil { ticks += 1 }
-        XCTAssertEqual(ticks, 12, "two consecutive losses should be repairable")
+        XCTAssertEqual(ticks, depth * 3, "\(depth - 1) consecutive losses should be repairable")
 
+        // A full depth of consecutive loss outruns the window and stalls at the hole.
         var stalls = LockstepClock(players: seats, delayTicks: 0)
-        for tick in 0..<12 where tick < 4 || tick > 6 {  // 4, 5, 6 all lost
-            stalls.receive(redundantPacket(tick: tick))
+        let tooMany = Set((5..<(5 + depth)).map { Tick($0) })
+        for tick in 0..<(depth * 3) where !tooMany.contains(Tick(tick)) {
+            stalls.receive(redundantPacket(tick: Tick(tick)))
         }
         var before = 0
         while stalls.advance() != nil { before += 1 }
-        XCTAssertEqual(before, 4, "three consecutive losses must stall at tick 4")
-        XCTAssertEqual(stalls.stall, .waitingForInput(tick: 4, missing: seats))
+        XCTAssertEqual(before, 5, "\(depth) consecutive losses must stall at the hole")
+        XCTAssertEqual(stalls.stall, .waitingForInput(tick: 5, missing: seats))
     }
 
     func testRedundantCopiesDoNotOverwriteWhatArrivedFirst() {
@@ -258,7 +265,9 @@ final class LockstepTests: XCTestCase {
         let bytes = packet.encoded(roster: seats)
         let payload = seats.count * LockstepClock.Packet.history * CarInputWire.byteCount
         XCTAssertEqual(bytes.count, 5 + payload, "4 bytes of tick, 1 of seat count, then inputs")
-        XCTAssertEqual(bytes.count, 29, "two seats, three ticks of redundancy")
+        XCTAssertEqual(
+            bytes.count, 5 + 2 * LockstepClock.Packet.history * 4,
+            "two seats at the current redundancy depth")
 
         // Well under a datagram, so redundancy costs nothing structural: even a
         // nine-seat field with three ticks of history fits comfortably.
@@ -268,8 +277,11 @@ final class LockstepTests: XCTestCase {
             frames.append(Dictionary(uniqueKeysWithValues: full.map { ($0, wire(0.5)) }))
         }
         let big = LockstepClock.Packet(tick: 9999, inputs: frames).encoded(roster: full)
-        XCTAssertEqual(big.count, 5 + 9 * 3 * 4)
-        XCTAssertLessThan(big.count, 512, "a full field must fit a small datagram")
+        XCTAssertEqual(big.count, 5 + 9 * LockstepClock.Packet.history * 4)
+        // Deep redundancy costs bytes deliberately — it is the only repair mechanism
+        // — and what matters is fitting ONE datagram, since fragmenting would
+        // multiply the transport's failure modes.
+        XCTAssertLessThan(big.count, 1024, "a full field must fit a single datagram")
     }
 
     func testAPacketRoundTripsThroughItsBytes() {
