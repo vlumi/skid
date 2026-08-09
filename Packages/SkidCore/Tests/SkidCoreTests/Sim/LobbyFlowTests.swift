@@ -85,6 +85,37 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertTrue(CouchGame().faceToFace, "two players default to side-by-side")
     }
 
+    @MainActor
+    func testTheHostStartPathBuildsASessionAndARig() {
+        // The whole hand-off, which two device sessions never got through: the
+        // lobby's start message must produce a session, a rig with one band per
+        // LOCAL seat, and a racing phase.
+        let game = CouchGame()
+        var roster = RaceRoster()
+        let me = "hostPhone#aaaa"
+        try? roster.join(me, seats: 2)
+        try? roster.join("guest#bbbb", seats: 2)
+        let start = RaceStart(
+            course: .builtin(game.trackID), seed: 9, roster: roster, laps: 3, delayTicks: 2)
+
+        game.startNetworkedRace(start, driver: StubDriver(roster.seats(for: me)))
+
+        XCTAssertNotNil(game.session, "no session was built")
+        XCTAssertEqual(game.rig?.players.count, 2, "a band per local seat")
+        // Four cars in the sim, two thumbs on this device — that split is the point.
+        XCTAssertEqual(game.session?.race.cars.count, 4)
+        XCTAssertEqual(game.session?.started, true, "a networked race must not wait for a tap")
+    }
+
+    private final class StubDriver: GameSession.LockstepDriver {
+        private let seats: [PlayerID]
+        init(_ seats: [PlayerID]) { self.seats = seats }
+        var mySeats: [PlayerID] { seats }
+        func publish(_ inputs: [PlayerID: CarInput], at tick: Tick) {}
+        func nextTick() -> [PlayerID: CarInput]? { nil }
+        func report(hash: UInt64, at tick: Tick) {}
+    }
+
     func testAMalformedLobbyMessageIsRejected() {
         XCTAssertNil(RaceStart(bytes: []))
         XCTAssertNil(RaceStart(bytes: [200]))

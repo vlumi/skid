@@ -80,15 +80,30 @@ public final class MultipeerTransport: NSObject, RaceTransport {
     /// Stop looking, but stay connected — called once the race starts, so a
     /// latecomer cannot join mid-race and discovery stops costing radio.
     public func stopDiscovery() {
-        advertiser?.stopAdvertisingPeer()
-        advertiser = nil
-        browser?.stopBrowsingForPeers()
-        browser = nil
+        // Same reasoning as `disconnect()`: stopping the radio can block, and
+        // nothing here needs to happen before the next line of UI code runs.
+        let advertiser = advertiser
+        let browser = browser
+        self.advertiser = nil
+        self.browser = nil
+        guard advertiser != nil || browser != nil else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            advertiser?.stopAdvertisingPeer()
+            browser?.stopBrowsingForPeers()
+        }
     }
 
     public func disconnect() {
         stopDiscovery()
-        session.disconnect()
+        // **Off the main thread.** `MCSession.disconnect()` and the advertiser and
+        // browser teardowns can block while the transport unwinds its connections,
+        // and this is called from a button action — a UI that stops responding to
+        // "Back" is exactly what that looks like. The session is retained by the
+        // closure, so it outlives this call.
+        let session = session
+        DispatchQueue.global(qos: .userInitiated).async {
+            session.disconnect()
+        }
     }
 
     // MARK: - Sending

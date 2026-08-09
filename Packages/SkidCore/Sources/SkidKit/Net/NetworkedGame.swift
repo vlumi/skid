@@ -40,6 +40,16 @@ public final class NetworkedGame:
     /// Why a device could not be seated, for the host's lobby. A join that fails
     /// silently is indistinguishable from one that never arrived.
     @Published public private(set) var joinNote: String?
+    /// **A running log of the handshake, shown in the lobby.** Two device sessions
+    /// were spent on failures whose cause was invisible from the screen — a peer
+    /// name collision, then a lobby that stopped responding. On-device is the only
+    /// place this flow can be observed, so it reports itself.
+    @Published public private(set) var trace: [String] = []
+
+    private func note(_ line: String) {
+        trace.append(line)
+        if trace.count > 12 { trace.removeFirst(trace.count - 12) }
+    }
 
     /// How many players this device brings.
     public var localSeats: Int = 1
@@ -66,6 +76,7 @@ public final class NetworkedGame:
         roster = RaceRoster()
         try? roster.join(transport.me, seats: seats)
         phase = .hosting
+        note("hosting as \(DeviceName.display(transport.me))")
         transport.startHosting()
     }
 
@@ -73,6 +84,7 @@ public final class NetworkedGame:
         localSeats = seats
         roster = RaceRoster()
         phase = .joining
+        note("looking for a host as \(DeviceName.display(transport.me))")
         transport.startBrowsing()
     }
 
@@ -95,14 +107,22 @@ public final class NetworkedGame:
         course: RaceStart.Course, seed: UInt64, laps: Int?, delayTicks: Int = 2
     ) {
         guard isHost else { return }
-        transport.stopDiscovery()  // no latecomers once the lights are on
         let message = RaceStart(
             course: course, seed: seed, roster: roster, laps: laps, delayTicks: delayTicks)
+        note("sending start: seed \(seed), \(roster.seatCount) cars")
         transport.send(message.encoded, reliable: true)
+        // **Discovery is NOT torn down here.** Stopping the advertiser mid-handshake
+        // can drop the MC session, which arrives as `peerLeft` — and that removed
+        // the guest from the roster, disabling the Start button the host had just
+        // pressed and stranding the lobby with no way forward. Latecomers are
+        // already impossible once `phase` leaves `.hosting` (see `seat`), so
+        // stopping the radio is an optimisation, not a correctness measure.
         apply(message)
     }
 
     private func apply(_ message: RaceStart) {
+        let mine = message.roster.seats(for: transport.me).map(\.rawValue)
+        note("starting \(message.roster.seatCount) cars, my seats \(mine)")
         start = message
         roster = message.roster
         net = NetworkedRace(
@@ -222,6 +242,7 @@ public final class NetworkedGame:
 
     public func transport(peerJoined peer: RaceRoster.PeerName) {
         peers = transport.connectedPeers
+        note("connected: \(DeviceName.display(peer))")
         if isHost {
             // The host waits to be told how many seats the guest brings.
             return
@@ -233,6 +254,7 @@ public final class NetworkedGame:
 
     public func transport(peerLeft peer: RaceRoster.PeerName) {
         peers = transport.connectedPeers
+        note("lost: \(DeviceName.display(peer))")
         if case .racing = phase {
             // **The race stalls rather than ending.** Its cars still have to be
             // simulated by everyone else, and quietly dropping them would fork the
@@ -242,6 +264,11 @@ public final class NetworkedGame:
             stallNote = "Lost \(DeviceName.display(peer))"
             return
         }
+        // Once the start message has gone out the roster is FROZEN: the race is
+        // built from it on every device, so editing it here would leave the peers
+        // disagreeing about who is in the field. A departure after that point is a
+        // stall, handled above.
+        guard start == nil else { return }
         roster.remove(peer: peer)
         if isHost { transport.send(RosterUpdate(roster: roster).encoded, reliable: true) }
     }
@@ -257,6 +284,7 @@ public final class NetworkedGame:
         do {
             try roster.join(peer, seats: seats)
             joinNote = nil
+            note("seated \(DeviceName.display(peer)) (\(seats)) -> \(roster.seatCount) cars")
         } catch {
             joinNote = Self.describe(error, peer: peer)
             return  // nothing changed, so there is no new roster to push
