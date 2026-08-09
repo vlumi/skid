@@ -173,17 +173,60 @@ extension MultipeerTransport: MCNearbyServiceBrowserDelegate {
     public func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {}
 }
 
-/// What to call this device on another player's screen.
+/// What to call this device, and — separately — how to tell it apart.
+///
+/// **A device name is not an identity.** Two iPhones are both called "iPhone"
+/// unless their owners renamed them, and the roster is keyed by peer name: the
+/// host was already seated as "iPhone", so the guest's join was refused as
+/// `alreadyJoined` and silently dropped. Both screens then showed one device, both
+/// believed they were the host, and Start stayed disabled. Reported from device.
+///
+/// So the key carries a short random suffix and the lobby shows only the part
+/// before it. Both halves matter: a bare UUID would be unreadable in a lobby, and
+/// a bare name is not unique.
 public enum DeviceName {
-    /// The user's device name where it is available, falling back to something
-    /// human rather than a UUID — a lobby listing "iPhone" twice is confusing, but
-    /// one listing a hex string is worse.
-    public static var current: String {
+    /// Separator between the friendly name and the uniquing suffix. `#` cannot
+    /// appear in a device name a user typed, and survives MC's 63-byte limit.
+    static let separator: Character = "#"
+
+    /// The human part — what a player sees in someone else's lobby.
+    public static var friendly: String {
         #if canImport(UIKit)
         let name = UIDevice.current.name
         #else
         let name = Host.current().localizedName ?? ""
         #endif
         return name.isEmpty ? "Skid player" : name
+    }
+
+    /// A unique key for this launch: the friendly name plus a random suffix.
+    ///
+    /// Uniqueness is per *launch*, not per install, which is the right scope: it
+    /// only has to distinguish the devices in one race, and a value that survived
+    /// a reinstall would be a device identifier — more than this needs.
+    public static func uniqueKey(suffixLength: Int = 4) -> String {
+        key(for: friendly, suffixLength: suffixLength)
+    }
+
+    /// The keying rule itself, with the name injected so a long one is testable.
+    /// This machine's device name is short, so `uniqueKey()` alone can never
+    /// exercise the length clamp — and a test that cannot reach a limit is not
+    /// testing it.
+    static func key(for name: String, suffixLength: Int = 4) -> String {
+        let alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+        let suffix = String((0..<suffixLength).map { _ in alphabet.randomElement() ?? "x" })
+        // Trimmed so name + separator + suffix stays inside MC's 63-byte limit;
+        // MC truncates silently past it, which would chop the suffix off and
+        // reintroduce the very collision this exists to prevent.
+        let room = max(1, 60 - suffixLength - 1)
+        return "\(name.prefix(room))\(separator)\(suffix)"
+    }
+
+    /// The friendly half of a peer key, for display. Falls back to the whole
+    /// string, so a peer from a build without the suffix still shows sensibly.
+    public static func display(_ peer: String) -> String {
+        guard let index = peer.lastIndex(of: separator) else { return peer }
+        let name = String(peer[peer.startIndex..<index])
+        return name.isEmpty ? peer : name
     }
 }

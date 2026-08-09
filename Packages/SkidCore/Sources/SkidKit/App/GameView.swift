@@ -6,7 +6,7 @@ public struct GameView: View {
     /// Created up front so the transport's delegate is live before the lobby
     /// appears — a peer that connects while the view is being built would
     /// otherwise be missed, which reads as a join that silently did nothing.
-    @StateObject private var net = NetworkedGame(displayName: DeviceName.current)
+    @StateObject private var net = NetworkedGame(displayName: DeviceName.uniqueKey())
 
     public init() {}
 
