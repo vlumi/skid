@@ -238,6 +238,44 @@ arithmetic and `sqrt` but **not** transcendentals.
   transcendentals on the sim path so every peer computes bit-identical values by
   construction. Not doing that speculatively.
 
+### Step 3.5 — The lockstep clock, transport-free *(no networking)* — **done**
+
+Everything about lockstep that can be wrong in an interesting way turned out to be
+testable in one process, so it was built before touching MultipeerConnectivity.
+That leaves the spike itself to answer only what genuinely needs two devices.
+
+- **`LockstepClock`** — decides *when* a tick may run: every seat's input in hand,
+  plus the delay buffer's slack. Returns `nil` rather than an empty input set when
+  a tick is not ready, because **substituting a coast for a late input is the one
+  shortcut that silently forks the race** (the peer that received it simulates
+  something else). A test asserts the absence of that convenience.
+- **`Stall`** names its cause — `waitingForInput(tick:missing:)` or
+  `buffering(tick:ticksBehind:)`. A stall with a named cause is a measurement; a
+  frozen screen is a bug report.
+- **Redundancy works and its limit is pinned.** `Packet.history` is 3, so two
+  consecutive losses are repaired by the next packet and the third stalls. Both
+  halves are asserted — the limit is the useful part of the claim.
+- **First value wins on a redundant copy.** If a later copy could overwrite an
+  earlier one, two peers receiving the copies in different orders would diverge —
+  a desync caused by the repair mechanism itself.
+- **`DivergenceWatch`** — trades `stateHash` per tick and reports the first
+  disagreement, by tick and by peer. `agreement(at:)` returns `nil` rather than
+  `true` when nobody has reported: "nobody disagreed" and "everybody agreed" are
+  different claims, and conflating them lets a silent peer read as a healthy one.
+  Earliest tick wins even when reported late, since reports arrive out of order.
+
+**`Codable` is not a wire format — measured.** A packet of two seats × three ticks
+is 28 bytes of payload and **438 bytes of JSON**, because every seat id is spelled
+out as a dictionary key on every tick: 26 KB/s per peer at 60 Hz for data that fits
+in 1.7. So `Packet.encoded(roster:)` names the seats *once*, positionally against
+the roster both peers agreed at join time. A nine-seat field with full redundancy is
+**113 bytes**.
+
+That change surfaced a genuine hazard: **a 24-byte payload divides evenly by a
+3-seat roster as well as a 2-seat one**, so a roster mismatch decoded cleanly and
+invented inputs for a seat that never sent any. Length alone cannot catch it, so the
+packet states its own seat count.
+
 ### Step 4 — The spike: two phones, one race
 
 The smallest thing that answers the question. No lobby, no menus, no join flow —
@@ -247,17 +285,26 @@ hardcode if it helps.
   LAN-only (falls back to peer-to-peer Wi-Fi/Bluetooth), which suits a couch.
 - **Exchange the golden hash first**, before any race: same track, same seed,
   same build → same hash, or stop and find out why.
-- **Then per-tick inputs**, with each packet carrying the last few ticks
-  redundantly — loss is repaired by the next packet ~16 ms later.
-- **Compare per-tick hashes live** and log the first divergence. A divergence is
-  the point of the spike, not a setback.
+- **Then per-tick inputs** via `LockstepClock.Packet` — redundancy, gating and
+  parsing already built and tested (§Step 3.5), so the spike supplies only the
+  transport.
+- **Compare per-tick hashes live** with `DivergenceWatch` and log the first
+  divergence. A divergence is the point of the spike, not a setback.
 - **Provoke the bad cases deliberately**: kill a peer mid-race, background one,
   walk out of Wi-Fi range.
 - **Write the verdict down** either way, with the measurements.
 
-The knob to tune here is **how far behind the newest input the sim runs** (2–4
-ticks). That converts packet loss into constant input lag instead of stalls, and
-what it costs in *feel* is a device question, not a measurement.
+The knob to tune here is **how far behind the newest input the sim runs** —
+`LockstepClock.delayTicks`, already wired and defaulting to 2. That converts packet
+loss into constant input lag instead of stalls, and what it costs in *feel* is a
+device question, not a measurement. It is the one parameter here that no test can
+settle.
+
+**What the spike still has to supply**, now that the logic is done: the
+MultipeerConnectivity session and its local-network privacy strings, wiring
+`LockstepClock` into `GameSession.advance(to:)` in place of the bare accumulator
+condition, and a seat roster agreed at join time (global numbering, per §"One player
+per device").
 
 ### Step 5 — The product, only if Step 4 says yes
 
