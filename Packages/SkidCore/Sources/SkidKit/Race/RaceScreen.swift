@@ -7,6 +7,11 @@ struct RaceScreen: View {
     @ObservedObject var game: CouchGame
     @ObservedObject var session: GameSession
     @ObservedObject var rig: CouchRig
+    /// Always present — `NetworkedGame` is created once by `GameView` — but idle
+    /// in a couch race, where it publishes no stall and no divergence. So the
+    /// status overlay draws nothing at all locally rather than being conditional
+    /// on an optional an `@ObservedObject` cannot hold.
+    @ObservedObject var net: NetworkedGame
 
     var body: some View {
         // The GeometryReader must NOT ignore the safe area, or its
@@ -71,6 +76,12 @@ struct RaceScreen: View {
                     RaceHUD(
                         race: race, colors: colors, rig: rig, size: fullSize,
                         started: session.started)
+
+                    // Only in a networked race, and only when something is wrong:
+                    // a stall that names who it waits for, or a desync. Both are
+                    // otherwise silent, and a frozen screen with no explanation
+                    // reads as a crash.
+                    NetworkStatusOverlay(net: net)
 
                     // The map center is meta-control space (no car races there,
                     // and map-area touches are otherwise inert). A tap on it

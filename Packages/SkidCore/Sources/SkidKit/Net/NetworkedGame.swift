@@ -9,7 +9,9 @@ import SwiftUI
 /// lives in `SkidCore` and is already tested — this is the part that needs a radio
 /// and a screen, and it is kept as thin as that allows.
 @MainActor
-public final class NetworkedGame: ObservableObject, RaceTransportDelegate {
+public final class NetworkedGame:
+    ObservableObject, RaceTransportDelegate, GameSession.LockstepDriver
+{
     /// Where in the flow we are. The UI switches on this and nothing else.
     public enum Phase: Equatable {
         case idle

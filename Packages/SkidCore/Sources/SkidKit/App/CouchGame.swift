@@ -7,6 +7,8 @@ public final class CouchGame: ObservableObject {
         case setup
         case racing
         case editing
+        /// Host/join lobby for a networked race.
+        case networking
     }
 
     /// The track being built in the editor. A piece list, live-previewed and
@@ -68,7 +70,7 @@ public final class CouchGame: ObservableObject {
 
     static let palette: [Color] = TrackRenderer.carPalette
 
-    @Published public private(set) var phase: Phase = .setup
+    @Published public internal(set) var phase: Phase = .setup
     @Published public var mode: Mode = .race
     /// **What a race is allowed to hold today: four cars.**
     ///
@@ -143,8 +145,8 @@ public final class CouchGame: ObservableObject {
     /// 3P seating: which quadrant stays open.
     @Published public var openCorner: ZoneCorner = .topLeft
 
-    @Published public private(set) var session: GameSession?
-    public private(set) var rig: CouchRig?
+    @Published public internal(set) var session: GameSession?
+    public internal(set) var rig: CouchRig?
     public private(set) var hiscores: HiscoreBook
     public let settings = GameSettings()
 
@@ -164,7 +166,7 @@ public final class CouchGame: ObservableObject {
     let signingKeys: SigningKeyStore
     /// What the last pasted code claimed — computed on paste, never on render.
     @Published var pastedAttributionRaw: TrackAttribution = .unsigned
-    private let aiFleet = AIFleet()
+    let aiFleet = AIFleet()
     private let sound = SoundEngine()
     private let haptics = Haptics()
     private var aiColorIndices: [Int] = []
