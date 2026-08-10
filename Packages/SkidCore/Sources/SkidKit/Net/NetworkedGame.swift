@@ -15,8 +15,10 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         case idle
         /// Advertising, waiting for guests. Only the host sees this.
         case hosting
-        /// Browsing for a host.
+        /// Browsing for a host — nothing chosen yet.
         case joining
+        /// Asked to join a specific host; waiting for its verdict.
+        case awaitingApproval
         /// Connected, roster agreed, waiting for the host to start.
         case lobby
         /// Racing.
@@ -25,20 +27,20 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         case ended(reason: String?)
     }
 
-    @Published public private(set) var phase: Phase = .idle
-    @Published public private(set) var peers: [RaceRoster.PeerName] = []
-    @Published public private(set) var roster = RaceRoster()
+    @Published public internal(set) var phase: Phase = .idle
+    @Published public internal(set) var peers: [RaceRoster.PeerName] = []
+    @Published public internal(set) var roster = RaceRoster()
     /// What to show when the race is not moving, or nil when it is. Read per
     /// frame by the overlay and deliberately NOT `@Published`: it changes per
     /// frame, `RaceScreen` observes this object, and publishing per-frame state
     /// from inside the render pass froze the app solid once already.
-    public private(set) var stallNote: String?
+    public internal(set) var stallNote: String?
     /// The client's link, measured: worst recent arrival gap and the latency the
     /// jitter buffer is paying to absorb it. Plain (not `@Published`) and updated
     /// about once a second — the instrument the next device session reads, so a
     /// bad link is a number rather than an adjective.
-    public private(set) var linkNote: String?
-    private var linkNoteAge: TimeInterval = 0
+    public internal(set) var linkNote: String?
+    var linkNoteAge: TimeInterval = 0
     /// Why a device could not be seated, for the host's lobby. A join that fails
     /// silently is indistinguishable from one that never arrived.
     @Published public private(set) var joinNote: String?
@@ -48,25 +50,51 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     /// place this flow can be observed, so it reports itself.
     @Published public private(set) var trace: [String] = []
 
-    private func note(_ line: String) {
+    func note(_ line: String) {
         trace.append(line)
         if trace.count > 12 { trace.removeFirst(trace.count - 12) }
     }
 
     /// How many players this device brings.
     public var localSeats: Int = 1
+    /// The host this guest chose, so a second advertiser's traffic is ignored.
+    var chosenHost: RaceRoster.PeerName?
 
-    private let transport: MultipeerTransport
+    /// Hosts this device can see and choose between. Only a browsing guest fills
+    /// this — the spike joined whatever it found first, which is fine for a spike
+    /// and wrong in a room with two races in it.
+    @Published public internal(set) var visibleHosts: [RaceRoster.PeerName] = []
+    /// Guests waiting on the host's yes or no, in arrival order.
+    @Published public internal(set) var pendingJoins: [PendingJoin] = []
+    /// Why the race ended, when it ended for a reason worth naming.
+    @Published public internal(set) var endedReason: String?
+
+    /// A guest asking in, and how many seats it brings.
+    public struct PendingJoin: Equatable, Identifiable {
+        public let peer: RaceRoster.PeerName
+        public let seats: Int
+        public var id: RaceRoster.PeerName { peer }
+        /// What the host's lobby shows on the button.
+        public var display: String { DeviceName.display(peer) }
+    }
+
+    let transport: MultipeerTransport
+    /// Losses waiting out their grace period — a brief drop is not a departure.
+    var presence = PeerPresence()
+    /// What the last race was raced on, so Rematch needs no new decisions.
+    var lastCourse: RaceStart.Course?
+    var lastTuning = CarTuning()
+    var lastCarContact = true
     /// The host's half of the sync, or nil on a client.
-    private var relay: HostRelay?
+    var relay: HostRelay?
     /// The client's half, or nil on the host.
-    private var clientView: ClientView?
-    private var start: RaceStart?
+    var clientView: ClientView?
+    var start: RaceStart?
     /// Set by the host so a guest can be told what to race on.
     private var pendingStart: ((RaceStart) -> Void)?
     /// Set by `adoptForTesting` so per-tick traffic lands in `outbox` rather than
     /// going to a transport there is none of.
-    private var captureSends = false
+    var captureSends = false
 
     public var me: RaceRoster.PeerName { transport.me }
     public var isHost: Bool { roster.host == transport.me }
@@ -82,6 +110,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     public func host(seats: Int) {
         localSeats = seats
         roster = RaceRoster()
+        resetSession()
         try? roster.join(transport.me, seats: seats)
         phase = .hosting
         note("hosting as \(DeviceName.display(transport.me))")
@@ -91,19 +120,10 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     public func join(seats: Int) {
         localSeats = seats
         roster = RaceRoster()
+        resetSession()
         phase = .joining
         note("looking for a host as \(DeviceName.display(transport.me))")
         transport.startBrowsing()
-    }
-
-    public func leave() {
-        transport.disconnect()
-        relay = nil
-        clientView = nil
-        start = nil
-        roster = RaceRoster()
-        peers = []
-        phase = .idle
     }
 
     /// Host only: freeze the roster, tell everyone what to race, and begin.
@@ -137,11 +157,35 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         apply(message)
     }
 
-    private func apply(_ message: RaceStart) {
+    /// **Race again with the same field.** The roster and the connection are
+    /// already agreed, so a rematch is one fresh `RaceStart` — a new seed, the same
+    /// everything else. Host only, and only from the lobby: mid-race it would yank
+    /// the field out from under a race in progress.
+    public func rematch(seed: UInt64) {
+        guard isHost, start == nil, let course = lastCourse else { return }
+        note("rematch: seed \(seed)")
+        startRace(
+            course: course, seed: seed, laps: CouchGame.networkedLaps,
+            tuning: lastTuning, carContact: lastCarContact)
+    }
+
+    /// Whether Rematch is available: the host, out of a race, with a course to
+    /// repeat and somebody to race against.
+    public var canRematch: Bool {
+        isHost && start == nil && lastCourse != nil && roster.entries.count > 1
+    }
+
+    func apply(_ message: RaceStart) {
         let mine = message.roster.seats(for: transport.me).map(\.rawValue)
         note("starting \(message.roster.seatCount) cars, my seats \(mine)")
         start = message
         roster = message.roster
+        // Remembered so Rematch needs no new decisions from anybody.
+        lastCourse = message.course
+        lastTuning = message.tuning
+        lastCarContact = message.carContact
+        endedReason = nil
+        presence.reset()
         if message.roster.host == transport.me {
             relay = HostRelay(roster: message.roster, me: transport.me)
         } else {
@@ -177,6 +221,8 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     /// one 50 ms later, and the reliable channel's coalescing turned a 60 Hz
     /// stream into 2 Hz clumps once already.
     public func broadcast(_ race: Race) {
+        // The host's grace clock ticks with the sim, which is the only clock it has.
+        noteTime(Race.dt)
         guard let relay, relay.shouldBroadcast(after: race.tick) else { return }
         let bytes = HostRelay.snapshotMessage(for: race)
         if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: false) }
@@ -197,6 +243,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     /// note comes from — a host gone quiet is the only thing left that can
     /// freeze a client, and it should say so rather than look like a crash.
     public func view(advancedBy dt: TimeInterval) -> RaceSnapshot? {
+        noteTime(dt)
         guard var view = clientView else { return nil }
         let shown = view.view(advancedBy: dt)
         clientView = view
@@ -233,24 +280,9 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     // MARK: - RaceTransportDelegate
 
     public func transport(didReceive bytes: [UInt8], from peer: RaceRoster.PeerName) {
-        // Lobby messages first: they are rarer and distinguishable by tag. Ignored
-        // once the race has started — the roster is frozen, and a late-arriving
-        // reliable lobby message must not rewrite the field mid-race.
-        if let request = JoinRequest(bytes: bytes) {
-            if start == nil { seat(peer, seats: request.seats) }
-            return
-        }
-        if let update = RosterUpdate(bytes: bytes) {
-            guard !isHost else { return }  // the host is the source of truth
-            roster = update.roster
-            phase = .lobby
-            return
-        }
-        if let message = RaceStart(bytes: bytes) {
-            guard !isHost else { return }  // our own start, echoed back
-            apply(message)
-            return
-        }
+        // Lobby traffic first — rarer, reliable, and distinguishable by tag. Race
+        // traffic is the hot path and falls through.
+        if receiveLobbyMessage(bytes, from: peer) { return }
         // Per-tick traffic: inputs to the host's relay, snapshots to the client's
         // view. Anything unrecognised — including the retired lockstep hash tag —
         // is dropped, never believed.
@@ -271,41 +303,85 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         // would reset the guest's phase out of `.racing` and re-send a JoinRequest
         // that the host would try to seat mid-race.
         guard start == nil else { return }
-        if isHost {
-            // The host waits to be told how many seats the guest brings.
+        // A returning peer inside its grace period is not a new arrival.
+        if presence.recovered(peer) {
+            note("recovered: \(DeviceName.display(peer))")
             return
         }
-        // Guest: announce ourselves.
-        transport.send(JoinRequest(seats: localSeats).encoded, reliable: true)
-        phase = .lobby
+        if isHost {
+            // The host waits to be asked, and then decides. See `approve`.
+            return
+        }
+        // Guest: a visible host to choose from. Announcing ourselves is now a
+        // deliberate act (`askToJoin`), not a reflex — a room can hold two races.
+        if !visibleHosts.contains(peer) { visibleHosts.append(peer) }
+        // Already chosen this host (a reconnect during the handshake): re-ask.
+        if peer == chosenHost { askToJoin(peer) }
     }
 
     public func transport(peerLeft peer: RaceRoster.PeerName) {
         peers = transport.connectedPeers
-        note("lost: \(DeviceName.display(peer))")
-        if case .racing = phase {
-            // The race carries on — that is the model's point. On the host a
-            // departed player's cars coast; on a client, only the HOST leaving
-            // matters, and it should read as a disconnection, not a hang.
-            if var relay {
-                relay.peerLeft(peer)
-                self.relay = relay
-                stallNote = "Lost \(DeviceName.display(peer))"
-            } else if peer == roster.host {
-                stallNote = "Lost \(DeviceName.display(peer)) — the race is over"
-            }
+        note("link down: \(DeviceName.display(peer))")
+        visibleHosts.removeAll { $0 == peer }
+        pendingJoins.removeAll { $0.peer == peer }
+        // **Provisional.** MC reports a peer lost on brief interruptions, so this
+        // is a fading link, not a departure, until the grace period says otherwise
+        // (see `PeerPresence` and `noteTime`). Ejecting someone for a hiccup is the
+        // failure mode that matters here.
+        guard start != nil else {
+            // Not racing: nobody is mid-corner, so the lobby can just drop them.
+            peerDeparted(peer, byHost: peer == roster.host, announced: false)
             return
         }
-        // Once the start message has gone out the roster is FROZEN: the race is
-        // built from it on every device, so editing it here would leave the peers
-        // disagreeing about who is in the field. A departure after that point is a
-        // stall, handled above.
+        presence.lost(peer)
+        stallNote = "\(DeviceName.display(peer)) is dropping out…"
+    }
+
+    /// A peer is gone for good — announced, or its grace expired.
+    ///
+    /// The asymmetry is the whole of it: a guest leaving costs its own cars, while
+    /// the host leaving ends the race, because there is no race without the device
+    /// simulating it.
+    func peerDeparted(
+        _ peer: RaceRoster.PeerName, byHost: Bool, announced: Bool
+    ) {
+        note("\(announced ? "left" : "dropped"): \(DeviceName.display(peer))")
+        if byHost || peer == roster.host, !isHost {
+            let why = announced ? "The host left the race" : "Lost the host"
+            transport.disconnect()
+            resetSession()
+            roster = RaceRoster()
+            peers = []
+            endedReason = why
+            phase = .ended(reason: why)
+            return
+        }
+        // A guest is out: its cars leave the field, and the host tells everyone by
+        // pushing the shortened roster. Mid-race the roster stays FROZEN — every
+        // device built its race from it — so the cars simply coast (`HostRelay`
+        // already does that) and the field changes at the next race.
+        if var relay {
+            relay.peerLeft(peer)
+            self.relay = relay
+        }
+        stallNote =
+            announced
+            ? "\(DeviceName.display(peer)) left"
+            : "\(DeviceName.display(peer)) dropped out"
         guard start == nil else { return }
         roster.remove(peer: peer)
         if isHost { transport.send(RosterUpdate(roster: roster).encoded, reliable: true) }
     }
 
-    private func seat(_ peer: RaceRoster.PeerName, seats: Int) {
+    /// Advance the grace clock. Called once a frame by whoever is driving the race
+    /// — timing lives in `PeerPresence`, not in a scattering of timers here.
+    public func noteTime(_ dt: TimeInterval) {
+        for peer in presence.advance(by: dt) {
+            peerDeparted(peer, byHost: peer == roster.host, announced: false)
+        }
+    }
+
+    func seat(_ peer: RaceRoster.PeerName, seats: Int) {
         guard isHost, case .hosting = phase else { return }
         // **A refused join must be visible.** `try?` here swallowed the reason a
         // device failed to appear, and that cost a device session: two phones both

@@ -104,7 +104,8 @@ struct RaceScreen: View {
                             game: game, session: session, rig: rig, settings: game.settings)
                     }
                     if race.phase == .finished {
-                        ResultsCard(game: game, race: race, colors: colors)
+                        ResultsCard(
+                            game: game, session: session, net: net, race: race, colors: colors)
                     }
                 }
                 .ignoresSafeArea()
