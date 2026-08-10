@@ -21,6 +21,13 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Race again without restarting the app.** A networked race can now be left
+  from either side, and the field stays together between races: finish, tap
+  Lobby, and the host starts the next one. Joining is deliberate too — pick which
+  race to join, and the host lets you in. A brief Wi-Fi wobble no longer throws
+  anyone out of a race, though a real disconnection still ends it for you.
+  Networked races have engine sound now, too.
+
 - **Race together on two devices.** "Play together" in the setup screen hosts or
   joins a race over the local network — same Wi-Fi, or nothing but proximity —
   with up to four players per device sharing each screen as usual. The host's
