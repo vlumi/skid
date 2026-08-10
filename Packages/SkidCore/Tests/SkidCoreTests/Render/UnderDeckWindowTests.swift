@@ -119,9 +119,18 @@ final class UnderDeckWindowTests: XCTestCase {
             let point = track.centerline[index]
             let height = track.heights[index]
             // Is any road genuinely a level or more above this point, and over it?
+            //
+            // **A LEVEL, not half a storey.** This asked `levelSeparation` (0.5),
+            // which is less than a curved ramp climbs while bending back over its own
+            // footprint — so it counted a ramp's own continuation as cover and
+            // demanded a window for it. That is the bug reported from device on the
+            // clover at h 0.41, so the predicate has to match the renderer or it pins
+            // the bug. Measured across the clover, the eight and this fixture: self
+            // overlap never exceeds a 0.754 gap, every genuine deck clears exactly
+            // 1.0 or more.
             let covered = track.centerline.indices.contains { other in
                 let roadHeight = track.height(ofSegment: other)
-                guard roadHeight > height + Track.levelSeparation else { return false }
+                guard roadHeight > height + Track.levelHeight - 0.001 else { return false }
                 let a = track.centerline[other]
                 let b = track.centerline[(other + 1) % track.centerline.count]
                 return point.distance(toSegment: a, b)
@@ -222,5 +231,90 @@ final class UnderDeckWindowTests: XCTestCase {
             spans: track.gates.map { (a: $0.a, b: $0.b) }, nextByGate: [:],
             worldCenter: Vec2(track.size.x / 2, track.size.y / 2),
             heights: track.gates.map(\.height))
+    }
+
+    /// **Reported from device on the clover, at h 0.41 — and NOT reproducible on the
+    /// eight, which is the clue that cracked it.** A tight curved ramp bends back over
+    /// its own footprint while it climbs, so a car mid-climb sat within reach of the
+    /// very stretch it was about to drive onto and got a cutout with nothing overhead.
+    /// The eight's ramps are straight, so its road never passes over itself.
+    ///
+    /// The defect was borrowing `levelSeparation` (half a storey, and documented for
+    /// solidity-interval gaps) as the "is there a deck overhead" threshold. Half a
+    /// level is less than a curved ramp climbs while turning back over itself.
+    func testARampDoesNotShadeItsOwnClimb() throws {
+        for id in ["clover", "eight"] {
+            let track = TrackLibrary.track(id: id)
+            let count = track.centerline.count
+            for index in track.centerline.indices {
+                let height = track.heights[index]
+                // Mid-climb only: the reported case is a fractional height.
+                guard height > 0.05, height.truncatingRemainder(dividingBy: 1) > 0.05 else {
+                    continue
+                }
+                // Nothing a full level above this point, so no window is due...
+                let covered = track.centerline.indices.contains { other in
+                    let roadHeight = track.height(ofSegment: other)
+                    guard roadHeight > height + Track.levelHeight - 0.001 else { return false }
+                    let a = track.centerline[other]
+                    let b = track.centerline[(other + 1) % count]
+                    return track.centerline[index].distance(toSegment: a, b)
+                        < track.footprintHalfWidth(atHeight: roadHeight)
+                }
+                guard !covered else { continue }
+                // ...so the renderer must not draw one.
+                var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
+                race.cars[0].state.position = track.centerline[index]
+                race.cars[0].state.height = height
+                var order = RenderOrder.Builder()
+                TrackRenderer.addCars(
+                    scene: scene(race), gateChrome: chrome(for: track),
+                    colorAt: { _ in .red }, to: &order)
+                XCTAssertTrue(
+                    order.debugOrder.filter { $0.hasSuffix("/window") }.isEmpty,
+                    "\(id): a car at h=\(height) has nothing overhead and must not be cut out")
+            }
+        }
+    }
+
+    /// The threshold is not a tuned number: a whole level separates the two cases with
+    /// wide margins on both sides, measured across every track with a ramp.
+    func testTheClearanceRuleSeparatesRampsFromDecksWithMargin() throws {
+        let babel = try PieceCompiler.compile(
+            TrackCode.decode(TestTracks.Code.towerOfBabel), id: "babel")
+        for track in [TrackLibrary.track(id: "clover"), TrackLibrary.track(id: "eight"), babel] {
+            let count = track.centerline.count
+            var selfOverlap = 0.0
+            var genuine = Double.greatestFiniteMagnitude
+            for index in track.centerline.indices {
+                let height = track.heights[index]
+                let point = track.centerline[index]
+                for other in track.centerline.indices {
+                    let roadHeight = track.height(ofSegment: other)
+                    guard roadHeight > height + 0.01 else { continue }
+                    let a = track.centerline[other]
+                    let b = track.centerline[(other + 1) % count]
+                    guard
+                        point.distance(toSegment: a, b)
+                            < track.footprintHalfWidth(atHeight: roadHeight)
+                    else { continue }
+                    let ring = min(abs(index - other), count - abs(index - other))
+                    // A stretch within a piece or two of this one is the same road.
+                    if ring <= 30 {
+                        selfOverlap = max(selfOverlap, roadHeight - height)
+                    } else {
+                        genuine = min(genuine, roadHeight - height)
+                    }
+                }
+            }
+            // Decks sit on whole levels by construction; a ramp's self-overlap is a
+            // fraction of one. `levelSeparation` (0.5) falls INSIDE the self-overlap
+            // band, which is exactly why borrowing it produced the bug.
+            XCTAssertLessThan(selfOverlap, Track.levelHeight, "a ramp self-overlaps a full level")
+            XCTAssertGreaterThanOrEqual(genuine, Track.levelHeight - 0.001)
+            XCTAssertGreaterThan(
+                Track.levelHeight - selfOverlap, 0.2,
+                "no margin above the self-overlap band — the threshold would be tuned")
+        }
     }
 }
