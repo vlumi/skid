@@ -2,8 +2,9 @@ import Foundation
 
 /// **What the race needs from a network, and nothing more.**
 ///
-/// The seam that keeps MultipeerConnectivity out of the simulation. `NetworkedRace`
-/// produces and consumes `[UInt8]`; this is how those bytes get moved, and it is
+/// The seam that keeps MultipeerConnectivity out of the simulation. `HostRelay`
+/// and `ClientView` produce and consume `[UInt8]`; this is how those bytes get
+/// moved, and it is
 /// deliberately small enough that the UDP escape hatch (Network.framework) is a
 /// second conformance rather than a rewrite.
 ///
@@ -14,7 +15,7 @@ import Foundation
 /// `reliable`: a lost roster or seed does not repeat, and ordering matters more
 /// than latency.
 public protocol RaceTransport: AnyObject {
-    /// This device's name, and the key `NetworkedRace` uses for "mine".
+    /// This device's name, and the key the sync layer uses for "mine".
     var me: RaceRoster.PeerName { get }
     /// Peers currently connected.
     var connectedPeers: [RaceRoster.PeerName] { get }
@@ -109,8 +110,8 @@ public struct RaceStart: Equatable, Sendable, Codable {
         self = decoded
     }
 
-    /// Distinct from `NetworkedRace.Message`'s tags, so one receive path can tell a
-    /// lobby message from per-tick traffic.
+    /// Distinct from `SyncMessage`'s per-tick tags, so one receive path can tell a
+    /// lobby message from race traffic.
     static let tag: UInt8 = 200
 }
 
