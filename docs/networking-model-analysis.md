@@ -1,5 +1,12 @@
 # The networking model, analyzed fresh
 
+> **Decision taken.** Option C was built: `RaceSnapshot` (the codec),
+> `HostRelay`/`ClientView` (the sync), the `snapshotClient` seam in
+> `GameSession`, and the lockstep runtime path deleted. The lockstep patch of
+> §"A residual bug" was skipped deliberately — the scaling argument settled the
+> direction, so its only remaining value (diagnosis) could not change the
+> decision. This document stays as the reasoning of record.
+
 Written after the spike (see [networking-spike-log.md](networking-spike-log.md))
 with the question: patch lockstep, restructure it, or change the model. The
 answer proposed here: **fix one residual transport bug regardless, then switch

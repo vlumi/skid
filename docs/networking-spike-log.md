@@ -4,11 +4,20 @@ Step 4 of [networking-plan.md](networking-plan.md), run on two iPhones over
 several sessions. This is the record of what actually broke, because most of it
 was invisible to the tests and would otherwise be rediscovered.
 
-## Status: not yet playable
+## Status: superseded — the model changed
 
-**Current symptom: symmetric ~2 Hz pauses on both devices.** Everything below is
-fixed and verified, and the race does run — but a steady stutter remains, and its
-cause is not yet known.
+The spike concluded. Lockstep held agreement through 60% simulated loss, but its
+defining trade — stall rather than lie — was the wrong trade for this product,
+and stalls compound with every device added (waiting on the slowest of N−1
+peers). The runtime moved to **host-authoritative snapshots**; see
+[networking-model-analysis.md](networking-model-analysis.md) for the decision
+and its grounds. Everything below stays as the record of what the spike found —
+the transport lessons and the bug catalogue carry over unchanged.
+
+A fresh-eyes read during the analysis also found the likely cause of the final
+symptom (symmetric ~2 Hz pauses): hash reports still went out one packet per
+simulated tick, ~120 messages/second per device. The new model sends 20
+snapshots + 30 inputs a second and the question is moot.
 
 ## What the tests could not see
 
