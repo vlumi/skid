@@ -234,7 +234,8 @@ final class LobbyFlowTests: XCTestCase {
         let join = JoinRequest(seats: 2).encoded
         let update = RosterUpdate(roster: roster).encoded
         let start = RaceStart(
-            course: .builtin("small"), seed: 1, roster: roster, laps: 3).encoded
+            course: .builtin("small"), seed: 1, roster: roster, laps: 3
+        ).encoded
 
         // **The tags themselves must differ.** Decoding alone is a weak check —
         // sabotage proved it: colliding the join and roster tags still passed,
