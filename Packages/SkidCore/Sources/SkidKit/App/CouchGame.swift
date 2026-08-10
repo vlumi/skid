@@ -172,8 +172,8 @@ public final class CouchGame: ObservableObject {
     /// What the last pasted code claimed — computed on paste, never on render.
     @Published var pastedAttributionRaw: TrackAttribution = .unsigned
     let aiFleet = AIFleet()
-    private let sound = SoundEngine()
-    private let haptics = Haptics()
+    let sound = SoundEngine()
+    let haptics = Haptics()
     var aiColorIndices: [Int] = []
     /// Race seed, bumped before every race and recorded with each replay so
     /// runs stay reproducible. Seeded from the clock ONCE at launch (view
