@@ -44,13 +44,12 @@ Shipped milestones (v0.1–v0.5) are summarized in the
 [README version history](README.md#version-history); full detail is in
 [CHANGELOG.md](CHANGELOG.md). This file keeps only open work.
 
-## Track editor & shareable tracks — *in progress, cuts as v0.6.x*
+## Track editor & shareable tracks — *shipped as v0.6.0; the rest is open*
 
-> **The one milestone that keeps a version**, because it is already shipping in
-> builds. It is also far bigger than the rest: most of it has landed, and what
-> remains below is deliberately ordered so it can be **cut in several builds**
-> rather than held for a single release. Nothing here blocks the spike that
-> follows.
+> **Shipped as v0.6.0** — the editor, bridges and ramps, share codes, the track
+> library and track signing are all in players' hands. What remains below is the
+> tail of the milestone, kept because it is still wanted rather than because it
+> blocks anything: it can be cut in any later build.
 >
 > **What is left divides into two kinds, and they are worth telling apart.**
 >
@@ -250,10 +249,10 @@ What's left:
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
 
-## Networked play — *the spike is answered; the mechanics need finishing*
+## Networked play — *shipped as v0.7.0; polish and scale remain*
 
-**Two devices race, verified on phones as a smooth 2v2 — and one restart-free
-session is still impossible.** The spike asked "does inputs-only sync survive a
+**Two devices race, verified on phones as a smooth 2v2 with four consecutive
+races over one connection.** The spike asked "does inputs-only sync survive a
 real network" and answered **no**: lockstep held agreement (through 60% simulated
 loss) but its defining trade, stall rather than lie, compounds with every device
 and lost to the real link's burstiness. One device now simulates the race and the
@@ -269,59 +268,19 @@ the platform milestone below is on rather than re-argued.
 back to peer-to-peer Wi-Fi/Bluetooth, so two phones with no router still find each
 other), a global seat roster (a device is a screen with up to 4 players at it, not
 a player), the host's physics and track on the wire, snapshots at 20 Hz with
-client input at 30 Hz, and a link readout on the client.
+client input at 30 Hz, and a link readout on the client. Plus the session loop
+that made it usable: leave from either side, race again over the same connection,
+deliberate joining with host approval, a three-second grace so a Wi-Fi wobble does
+not eject anyone, and engine sound (haptics stay host-only — a client renders the
+host's state and has no local events to feel).
 
-### The session loop — *first, and not optional*
+### Lobby colour picking
 
-**Every networked race today ends in force-quitting both apps.** That is one
-restart per race, hit by every player in every session, and it makes the feature
-untestable at any length — so it comes before anything that adds to it.
-
-- [ ] **Leave a race, from either side.** A client leaving returns to the lobby
-      and its cars drop out; the host leaving ends the race for everyone with a
-      reason on screen rather than a freeze. The teardown already exists
-      (`NetworkedGame.leave`); what is missing is a way to reach it mid-race and a
-      state machine that survives it.
-- [ ] **Rematch without re-joining.** The roster and the connection are already
-      agreed — a new race is a fresh `RaceStart` from the host over the same
-      session. Cheap, and it is what a couch actually does: five short races in a
-      row, not one.
-- [ ] **After a drop, you are out — but only after a grace period.** Decided:
-      **no mid-race rejoin.** A host authority makes it technically possible (a
-      late client could adopt a snapshot and start rendering, which lockstep never
-      could) and it is still not worth it — after a few seconds away, rejoining a
-      short race is meaningless. So a dropped peer returns to the lobby and races
-      the next one.
-      The care goes into the other half: **a brief hiccup must not eject anyone.**
-      MC reports a peer lost on short interruptions, so a drop is only final after
-      the link stays down for a few seconds; before that the car holds its last
-      input and the screen says so.
-- [ ] **Sound and haptics in a networked race.** A pre-existing gap, not a
-      regression: the host's `onTick` now carries the broadcast, and the audio hook
-      wants wiring alongside it. Silence reads as broken.
-
-### Joining on purpose — *same pipeline as the session loop*
-
-Automatic connection was right for a spike and wrong for a product: two phones
-in a room join whatever they find. This is lobby mechanics, so it ships with the
-session loop rather than after it.
-
-**Deliberately minimal, on the maintainer's call.** The menus get a complete
-redesign later — a proper new-game flow with real thought about what is
-selectable where (see the Real Game milestone) — and that redesign will replace
-whatever lobby chrome exists. So this round buys *mechanics*, not layout: the
-smallest UI that makes each choice possible, and no more.
-
-- [ ] **Pick which race to join.** The client lists what it can see and chooses,
-      instead of taking the first advertiser.
-- [ ] **Host approves or declines.** Deliberately not a security feature — the
-      roster's field cap already bounds who gets in — but the host should know who
-      arrived and be able to say no.
-- [ ] **Colour picking in the lobby**, from the measured accessible nine, with
-      the default assignment being the accessible set (see
-      [docs/first-glance-plan.md](docs/first-glance-plan.md) — the palette work
-      is done, the picker is not). Under networking a colour must be agreed
-      centrally, since "local" is a per-screen property.
+- [ ] **Choose your colour in the lobby**, from the measured accessible nine,
+      with the default assignment being the accessible set (see
+      [docs/first-glance-plan.md](docs/first-glance-plan.md) — the palette work is
+      done, the picker is not). Under networking a colour must be agreed centrally,
+      since "local" is a per-screen property.
 
 ### Known bugs
 
