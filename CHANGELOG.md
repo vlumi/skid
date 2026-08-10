@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 12 — 2026-08-10
+
 - **Race together across devices.** "Play together" in the setup screen hosts or
   joins a race over the local network — same Wi-Fi, or nothing but proximity — with
   up to four players per device sharing each screen as usual, and up to nine cars in
