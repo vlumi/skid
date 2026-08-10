@@ -168,6 +168,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         lastCarContact = message.carContact
         endedReason = nil
         presence.reset()
+        generation += 1
         if message.roster.host == transport.me {
             relay = HostRelay(roster: message.roster, me: transport.me)
         } else {
@@ -189,6 +190,11 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
 
     /// Seats this device reads thumbs for.
     public var mySeats: [PlayerID] { start?.roster.seats(for: transport.me) ?? [] }
+
+    /// Bumped for every race, so a session built for an earlier one can tell it is
+    /// obsolete. A rematch leaves the old session alive for a frame or two, and
+    /// both hold this same driver.
+    public private(set) var generation = 0
 
     public var isRaceHost: Bool { relay != nil }
 
