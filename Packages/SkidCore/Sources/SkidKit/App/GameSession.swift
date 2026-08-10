@@ -22,6 +22,9 @@ public final class GameSession: ObservableObject {
     public private(set) var recording: RaceRecording
     /// Where each gate paints its checkpoint line on the road.
     public let gateSpans: [(a: Vec2, b: Vec2)?]
+    /// The seed this race was built from — part of `raceKey`, so two races differ
+    /// even when nothing else the view can see does.
+    public let seed: UInt64
 
     public let players: [PlayerID]
     /// The PB ghost running alongside, if any (time trial).
@@ -74,6 +77,17 @@ public final class GameSession: ObservableObject {
     /// tick. Reported from device. A session whose generation is stale does nothing.
     public var generation = 0
 
+    /// A value that changes for every race, for SwiftUI's `.id`.
+    ///
+    /// Deliberately not `ObjectIdentifier(self)`: that is an address, the previous
+    /// session is freed before this one is allocated, and a reused address makes the
+    /// id compare equal — so the view is reused and keeps the old race's wiring.
+    /// Measured as working on the first rematch and failing on the second.
+    ///
+    /// The seed is in it as well as the generation, since a local race bumps neither
+    /// `generation` (which only networking sets) nor anything else the view can see.
+    public var raceKey: String { "\(generation)-\(seed)" }
+
     /// What a client session needs from the network. `NetworkedGame` conforms.
     @MainActor
     public protocol SnapshotClientDriver: AnyObject {
@@ -111,6 +125,7 @@ public final class GameSession: ObservableObject {
         self.ghost = ghost
         self.race = Race(
             track: track, players: players, tuning: tuning, seed: seed, config: config)
+        self.seed = seed
         self.recording = RaceRecording(seed: seed, players: players)
         self.gateSpans = track.gates.map { track.ribbonSpan(of: $0) }
     }
