@@ -1,5 +1,14 @@
 # Networked play — the steps
 
+> **Superseded in part.** Steps 1–3.5 were built and Step 4 (the spike) ran on
+> two phones — and answered its question with a measured *no for this product*:
+> lockstep's stall-rather-than-lie is the wrong trade on a bursty transport, and
+> it worsens with every device added. The runtime now uses **host-authoritative
+> snapshots** — see [networking-model-analysis.md](networking-model-analysis.md)
+> for the decision and [networking-spike-log.md](networking-spike-log.md) for
+> what the spike found. The groundwork below (wire format, roster, lobby,
+> transport, determinism) carries over; the lockstep-specific steps do not.
+
 Groundwork, transport choice and the packet-loss analysis are in
 [networking-groundwork.md](networking-groundwork.md). This is the build order,
 and the three scope decisions that shape it.
