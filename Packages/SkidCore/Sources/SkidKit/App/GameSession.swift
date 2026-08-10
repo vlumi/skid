@@ -22,6 +22,9 @@ public final class GameSession: ObservableObject {
     public private(set) var recording: RaceRecording
     /// Where each gate paints its checkpoint line on the road.
     public let gateSpans: [(a: Vec2, b: Vec2)?]
+    /// The seed this race was built from — part of `raceKey`, so two races differ
+    /// even when nothing else the view can see does.
+    public let seed: UInt64
 
     public let players: [PlayerID]
     /// The PB ghost running alongside, if any (time trial).
@@ -67,11 +70,32 @@ public final class GameSession: ObservableObject {
     /// rendering.
     public var isNetworked = false
 
+    /// **Which race this session is for.** A rematch builds a new session while the
+    /// old one may still be on screen for a frame or two, and both hold the same
+    /// driver — so the stale one kept pulling the driver's snapshots for a race that
+    /// no longer existed, and the client's car froze at the previous race's last
+    /// tick. Reported from device. A session whose generation is stale does nothing.
+    public var generation = 0
+
+    /// A value that changes for every race, for SwiftUI's `.id`.
+    ///
+    /// Deliberately not `ObjectIdentifier(self)`: that is an address, the previous
+    /// session is freed before this one is allocated, and a reused address makes the
+    /// id compare equal — so the view is reused and keeps the old race's wiring.
+    /// Measured as working on the first rematch and failing on the second.
+    ///
+    /// The seed is in it as well as the generation, since a local race bumps neither
+    /// `generation` (which only networking sets) nor anything else the view can see.
+    public var raceKey: String { "\(generation)-\(seed)" }
+
     /// What a client session needs from the network. `NetworkedGame` conforms.
     @MainActor
     public protocol SnapshotClientDriver: AnyObject {
         /// Seats this device reads thumbs for.
         var mySeats: [PlayerID] { get }
+        /// Which race the driver is currently running. A session built for an older
+        /// one must not touch it — see `generation`.
+        var generation: Int { get }
         /// This frame's thumbs, off to the host. Rate limiting lives behind the
         /// seam — the spike's measured lesson is that MC congests above ~100
         /// small messages a second, so the driver decides which frames send.
@@ -101,6 +125,7 @@ public final class GameSession: ObservableObject {
         self.ghost = ghost
         self.race = Race(
             track: track, players: players, tuning: tuning, seed: seed, config: config)
+        self.seed = seed
         self.recording = RaceRecording(seed: seed, players: players)
         self.gateSpans = track.gates.map { track.ribbonSpan(of: $0) }
     }
@@ -143,6 +168,9 @@ public final class GameSession: ObservableObject {
     /// simulating locally, because a client treating its own sim as truth is
     /// this model's one unforgivable bug.
     private func advanceClient(by dt: TimeInterval, client: SnapshotClientDriver) {
+        // Superseded by a newer race: do nothing at all. Publishing would send this
+        // race's thumbs, and consuming would steal the new session's snapshots.
+        guard generation == client.generation else { return }
         var mine: [PlayerID: CarInput] = [:]
         for seat in client.mySeats {
             mine[seat] = inputFor(seat, race)

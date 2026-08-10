@@ -245,6 +245,10 @@ struct RaceHUD: View {
 /// Final standings once every car has taken the flag.
 struct ResultsCard: View {
     let game: CouchGame
+    /// A networked race exits to the LOBBY rather than to setup — the connection is
+    /// worth keeping, since the next race reuses it.
+    let session: GameSession
+    let net: NetworkedGame
     let race: Race
     let colors: [Color]
 
@@ -288,11 +292,24 @@ struct ResultsCard: View {
             }
             HStack(spacing: 12) {
                 Button {
-                    game.raceAgain()
+                    // **A networked race exits to the LOBBY, not to setup**, and
+                    // "race again" is the host's call there: the connection and the
+                    // roster are already agreed, so the next race costs one message.
+                    // Keeping the session is the difference between a couch playing
+                    // five short races and force-quitting between each one.
+                    if session.isNetworked {
+                        net.returnToLobby()
+                        game.openNetworking()
+                    } else {
+                        game.raceAgain()
+                    }
                 } label: {
-                    Text("Race again", bundle: .module).pillStyle()
+                    Text(
+                        session.isNetworked ? "Lobby" : "Race again", bundle: .module
+                    ).pillStyle()
                 }
                 Button {
+                    if session.isNetworked { net.leave() }
                     game.backToSetup()
                 } label: {
                     Text("Setup", bundle: .module).pillStyle()
