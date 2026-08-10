@@ -55,6 +55,13 @@ Planned arc:
 High-level only — see [CHANGELOG.md](CHANGELOG.md) for the full detail and
 [ROADMAP.md](ROADMAP.md) for what's next. Skid Jam is in TestFlight beta.
 
+- **v0.7.0 — Networked play.** Race on two devices over the local network — no
+  server, no accounts — with up to four players sharing each screen. One device
+  runs the race and the others show it live, riding out rough Wi-Fi by trading a
+  little delay for smoothness.
+- **v0.6.0 — Build your own tracks.** A piece-based track editor with bridges,
+  ramps and multi-level circuits, tracks shared as short codes, a track library,
+  and signed tracks so a shared circuit says who made it.
 - **v0.5.0 — Content & polish.** A track set with two-layer circuits,
   aim-to-drive controls, procedural sound + haptics, and the release lane —
   the first TestFlight builds.

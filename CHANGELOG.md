@@ -17,23 +17,20 @@ script can promote it with a one-line edit. A user-facing PR writes its own
 bullet here; the `## vX.Y.Z` marketing heading is hand-set when a milestone
 ships (see [AGENTS.md](AGENTS.md)).
 
-## v0.6.0
+## v0.7.0
 
 ### Unreleased (next build)
 
-- **Race again without restarting the app.** A networked race can now be left
-  from either side, and the field stays together between races: finish, tap
-  Lobby, and the host starts the next one. Joining is deliberate too — pick which
-  race to join, and the host lets you in. A brief Wi-Fi wobble no longer throws
-  anyone out of a race, though a real disconnection still ends it for you.
-  Networked races have engine sound now, too.
-
 - **Race together on two devices.** "Play together" in the setup screen hosts or
-  joins a race over the local network — same Wi-Fi, or nothing but proximity —
-  with up to four players per device sharing each screen as usual. The host's
-  device runs the race; everyone else's shows it live, riding out rough Wi-Fi by
-  trading a little delay for smoothness. No accounts, no internet, nothing
-  leaves the room.
+  joins a race over the local network — same Wi-Fi, or nothing but proximity — with
+  up to four players per device sharing each screen as usual. The host's device runs
+  the race; everyone else's shows it live, riding out rough Wi-Fi by trading a little
+  delay for smoothness. Pick which race to join, and the host lets you in.
+
+  Races come one after another without restarting: finish, tap Lobby, and the host
+  starts the next one with the same field. A brief Wi-Fi wobble no longer throws
+  anyone out mid-race, though a real disconnection ends it for you. No accounts, no
+  internet, nothing leaves the room.
 
 - **Cars fall properly.** Drive off a bridge with no railing, off the side of a ramp,
   or off the end of a road that stops, and you drop along a real arc onto whatever is
@@ -48,13 +45,20 @@ ships (see [AGENTS.md](AGENTS.md)).
   appears in development builds. Tracks that use them race normally on any build, so a
   shared code always works.)*
 
-- **Track markings line up on raised roads.** The chequered start line, the
-  construction stripes on an unfinished end, and the dashed checkpoint markers all
-  stopped short of the edges of a road that sits high up, where the road is drawn wider.
+- **See and edit one level at a time.** The **Levels** button cycles through the
+  storeys your track uses: it badges every raised piece with its level, and picking a
+  level dims the others and aims your taps at that one — which is the only way to get
+  at a piece with two more stacked on top of it.
+
+- **A warning when a track can't be driven.** If a wall ends up standing across the
+  road — a high ramp's bank cutting off the road beneath it, say — the offending piece
+  is marked in the editor. The track still races: it points at the problem rather
+  than hiding your track from the picker.
 
 - **The palette shows whether the next piece will be walled.** Every shape button's
   casing turns the railing's blue when the rails toggle is on, so you can see what you
   are about to lay instead of remembering.
+
 - **The editor's buttons are grouped by what they do, and stay put.** Delete and
   markings no longer float over the track — they sit in a fixed row with a railings
   toggle, so you can trim several pieces without the bin moving and without deleting
@@ -64,18 +68,16 @@ ships (see [AGENTS.md](AGENTS.md)).
   sit out front the rest of the time. The railings-while-building switch moves
   into the palette beside the climb selector, where the pieces it affects are.
 
-- **See and edit one level at a time.** The **Levels** button cycles through the
-  storeys your track uses: it badges every raised piece with its level, and picking a
-  level dims the others and aims your taps at that one — which is the only way to get
-  at a piece with two more stacked on top of it.
+- **Track markings line up on raised roads.** The chequered start line, the
+  construction stripes on an unfinished end, and the dashed checkpoint markers all
+  stopped short of the edges of a road that sits high up, where the road is drawn wider.
+
 - **Tapping a raised piece works across its whole width.** A high bridge is drawn
   wider than the ground, but taps were still measured against the ground's width, so
   the edges of a raised road did not respond. Where pieces stack, a tap now takes the
   topmost rather than an arbitrary one.
-- **A warning when a track can't be driven.** If a wall ends up standing across the
-  road — a high ramp's bank cutting off the road beneath it, say — the offending piece
-  is marked in the editor. The track still races: it points at the problem rather
-  than hiding your track from the picker.
+
+## v0.6.0
 
 ### build 11 — 2026-08-04
 
