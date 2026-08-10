@@ -266,4 +266,86 @@ final class NetworkedSyncTests: XCTestCase {
         XCTAssertGreaterThan(view.lagTicks, 25, "the lag never adapted to the burst")
         XCTAssertLessThanOrEqual(view.lagTicks, 45, "the lag must stay bounded")
     }
+
+    /// **Three devices, and each seat driven by the device that owns it.**
+    ///
+    /// The protocol was written for up to nine seats across nine devices, but only
+    /// two phones have ever been in a room together — so "it scales" was an
+    /// architectural claim, not a measurement. This is the measurement, and it is
+    /// cheap: the model fans out by construction (the host sends to every connected
+    /// peer, and inputs are keyed per peer), so the interesting question is whether
+    /// any of it is accidentally two-peer-shaped.
+    ///
+    /// It is not a substitute for a third phone in the room: the packet budget and
+    /// MultipeerConnectivity's own ceiling can only be measured on hardware.
+    func testThreeDevicesEachDriveTheirOwnSeats() {
+        var roster = RaceRoster()
+        try? roster.join("host#aaaa", seats: 1)
+        try? roster.join("g1#bbbb", seats: 2)
+        try? roster.join("g2#cccc", seats: 1)
+        XCTAssertEqual(roster.seatCount, 4)
+        XCTAssertEqual(roster.peers.count, 3)
+
+        var relay = HostRelay(roster: roster, me: "host#aaaa")
+        var v1 = ClientView(roster: roster, me: "g1#bbbb")
+        var v2 = ClientView(roster: roster, me: "g2#cccc")
+        var race = Race(track: TrackLibrary.testRing(), players: roster.seats, seed: 5)
+        var rng = SeededRNG(seed: 12)
+        var lastSeen1 = -1
+        var lastSeen2 = -1
+
+        // Each device steers its seats differently, so a mixed-up seat shows as the
+        // wrong heading rather than as nothing at all. 20% loss both ways.
+        for _ in 0..<300 {
+            var inputs: [PlayerID: CarInput] = [:]
+            for seat in roster.seats {
+                inputs[seat] =
+                    seat == PlayerID(0)
+                    ? CarInput(steer: 0.3, throttle: 1) : relay.input(for: seat)
+            }
+            race.advance(inputs: inputs)
+            if relay.shouldBroadcast(after: race.tick) {
+                let snapshot = HostRelay.snapshotMessage(for: race)
+                if rng.next() % 5 != 0 { v1.receive(snapshot, from: "host#aaaa") }
+                if rng.next() % 5 != 0 { v2.receive(snapshot, from: "host#aaaa") }
+            }
+            if let bytes = v1.publish([
+                PlayerID(1): CarInput(steer: -0.5, throttle: 1),
+                PlayerID(2): CarInput(steer: 0.5, throttle: 1),
+            ]), rng.next() % 5 != 0 {
+                relay.receive(bytes, from: "g1#bbbb")
+            }
+            if let bytes = v2.publish([PlayerID(3): CarInput(steer: 0.9, throttle: 1)]),
+                rng.next() % 5 != 0
+            {
+                relay.receive(bytes, from: "g2#cccc")
+            }
+            if let shown = v1.view(advancedBy: Race.dt) { lastSeen1 = shown.tick }
+            if let shown = v2.view(advancedBy: Race.dt) { lastSeen2 = shown.tick }
+        }
+
+        // The host never stalls, whatever the peer count.
+        XCTAssertEqual(race.tick, 300)
+        // BOTH clients see the race — a second guest is not starved by the first.
+        XCTAssertGreaterThan(lastSeen1, 250, "guest 1 barely rendered")
+        XCTAssertGreaterThan(lastSeen2, 250, "guest 2 barely rendered")
+
+        assertEachSeatGotItsOwnInput(race)
+    }
+
+    /// No device's input was dropped, and none was applied to a neighbour's seat.
+    private func assertEachSeatGotItsOwnInput(_ race: Race) {
+        func car(_ seat: Int) -> Car { race.cars.first { $0.id == PlayerID(seat) }! }
+        for seat in 0..<4 {
+            XCTAssertGreaterThan(car(seat).state.velocity.length, 50, "seat \(seat) never moved")
+        }
+        // Seats 1 and 2 belong to the SAME device and steer opposite ways, which a
+        // per-device (rather than per-seat) mix-up would collapse into one heading.
+        XCTAssertLessThan(car(1).state.heading, 0, "seat 1 steered right, not left")
+        XCTAssertGreaterThan(car(2).state.heading, 0, "seat 2 steered left, not right")
+        // Seat 3 steers hardest of all, so it must have turned furthest.
+        XCTAssertGreaterThan(
+            abs(car(3).state.heading), abs(car(2).state.heading),
+            "seat 3's harder steering did not reach the host")
+    }
 }
