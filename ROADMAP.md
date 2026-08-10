@@ -11,20 +11,25 @@ work. Settled rules, conventions, and design decisions live in
 **Milestones are not version numbers.** A version is assigned when a milestone
 is *cut*, not when it is planned — because some of these will be reordered, split,
 or dropped outright, and renumbering the rest each time is the churn that stops a
-roadmap being updated at all. One milestone below is explicitly a spike that may
-kill the two after it; that cannot have a version.
+roadmap being updated at all. The networking spike below was exactly that: an
+unversioned milestone whose job was to kill or confirm the two after it.
 
 Guiding order: **the drift is the game.** The first milestone existed to answer
 "is the driving fun?", and multiplayer-on-one-device came next because it is the
 product's heart.
 
-**What comes early now is whatever answers a question that changes the plan.**
-Networking used to sit late, on the reasoning that lockstep is designed in from
-the first line of the sim rather than bolted on. That reasoning is sound and is
-exactly why the *validation* should be early and cheap: if inputs-only sync over
-a local network does not hold up, the Mac port and landscape/iPad work lose most
-of their point, and two milestones' worth of plans need rewriting. Better to know
-that before building them than after.
+**What comes early is whatever answers a question that changes the plan** — and
+the networking spike is the case in point, both for being worth it and for what
+it cost. It ran early precisely because the answer reshaped two later milestones,
+and the answer was **not the expected one**: inputs-only lockstep held its
+agreement but lost to the real link, so the model is host-authoritative snapshots
+instead. Cross-device play works, which keeps the platform milestone; and it
+works in a way that makes a Mac peer *cheaper* than planned.
+
+The bill is worth remembering when scheduling the next spike: eleven bugs found
+only on hardware, most invisible to a passing test suite, because a harness that
+delivers packets instantly cannot fail the way a network does. Validation on
+device was the right call and was not the cheap one.
 
 What stays late is the game *around* the race, and the app around that. Today a
 result evaporates the moment it ends, and the UI is a harness built to reach the
@@ -245,92 +250,94 @@ What's left:
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
 
-## Networking spike — *does lockstep hold over a local network?*
+## Networked play — *the spike is answered; the mechanics need finishing*
 
-> **Answered — no, and the working answer is host-authoritative snapshots.**
-> Lockstep held agreement (through 60% simulated loss) but its defining trade —
-> stall rather than lie — compounds with every device and lost to the real
-> link's burstiness. One device now simulates the race and the rest render its
-> snapshots through an adaptive jitter buffer; verified on two phones as a
-> smooth 2v2. Decision and grounds:
-> [docs/networking-model-analysis.md](docs/networking-model-analysis.md);
-> what the spike found along the way:
-> [docs/networking-spike-log.md](docs/networking-spike-log.md). So the two
-> milestones gated on this are ON — and the Mac-peer question got easier, since
-> a rendering client needs no float determinism at all.
+**Two devices race, verified on phones as a smooth 2v2 — and one restart-free
+session is still impossible.** The spike asked "does inputs-only sync survive a
+real network" and answered **no**: lockstep held agreement (through 60% simulated
+loss) but its defining trade, stall rather than lie, compounds with every device
+and lost to the real link's burstiness. One device now simulates the race and the
+rest render its snapshots through an adaptive jitter buffer.
 
-**A spike, not a feature, and deliberately the next thing after the editor.** No
-version: its output is a yes/no that decides whether the two milestones after it
-are worth building.
+Decision and grounds: [docs/networking-model-analysis.md](docs/networking-model-analysis.md).
+The eleven device-found bugs and the transport lessons:
+[docs/networking-spike-log.md](docs/networking-spike-log.md). **The Mac-peer
+question got easier** — a rendering client needs no float determinism at all — so
+the platform milestone below is on rather than re-argued.
 
-The sim was written for this from the first line — fixed 60 Hz tick, integer/exact
-track geometry, inputs-only state, and a determinism suite that already replays
-races bit-for-bit (`DeterminismTests`, plus per-feature determinism tests for the
-AI, aim drift, contact and elevation). So the question is not "can the sim be made
-deterministic" but **"does inputs-only sync survive a real network"**: latency,
-jitter, a peer that stalls, a peer that joins late, two devices on different
-hardware.
+**What shipped:** host/join over MultipeerConnectivity (not LAN-only — it falls
+back to peer-to-peer Wi-Fi/Bluetooth, so two phones with no router still find each
+other), a global seat roster (a device is a screen with up to 4 players at it, not
+a player), the host's physics and track on the wire, snapshots at 20 Hz with
+client input at 30 Hz, and a link readout on the client.
 
-The build order and the scope decisions are in
-[docs/networking-plan.md](docs/networking-plan.md) — **iOS first (two phones, so a
-divergence is a protocol bug rather than a platform question), up to 4 players per
-device, **9 total**.** Neither the grid nor the palette is the constraint at 9: the
-grid packs 3 abreast × 3 rows into 170 of the start piece's 240 units (the current
-2-abreast layout wastes 36 units of air between the pair), and nine hue-spread
-colours measure *better* than today's eight — worst pair ΔE 33 against the current
-21. The grid fills **2-abreast up to 4 players, then 3-abreast front-loaded**, so a
-row is never wider than the row ahead. A device is not a player: it is a screen
-with some players at it, which `CouchRig` already models.
+### The session loop — *first, and not optional*
 
-Groundwork, transport options and the packet-loss analysis are in
-[docs/networking-groundwork.md](docs/networking-groundwork.md). Three things are
-worth doing **before** the spike, each useful on its own: a per-tick `Race`
-state hash (which also sharpens the existing determinism tests — they currently
-say *that* two runs differ, not *when*), quantised inputs on the wire (also
-shrinks ghosts), and a written-down float-determinism assumption with a
-cross-device check, since the sim uses `sin`/`cos`/`atan2` on its hot path and
-IEEE-754 does not pin transcendentals.
+**Every networked race today ends in force-quitting both apps.** That is one
+restart per race, hit by every player in every session, and it makes the feature
+untestable at any length — so it comes before anything that adds to it.
 
-- [ ] **Two devices, one race, inputs over MultipeerConnectivity.** The
-      smallest thing that answers the question: no lobby, no polish, no join
-      flow — one host, one peer, hardcoded if need be. **MC rather than
-      Network.framework because it is not LAN-only** — it falls back to
-      peer-to-peer Wi-Fi/Bluetooth, so two phones with no router still find each
-      other, which matters more for a couch game than throughput. Keep the
-      protocol transport-independent so UDP stays an escape hatch.
-- [ ] **Prove or break bit-identical divergence.** Log a per-tick checksum of
-      the sim state on both peers and compare. A divergence here is the whole
-      point of the spike; finding one late would invalidate the transport
-      design, not just the UI around it.
-- [ ] **Measure what the couch actually needs.** Input delay that still feels
-      like driving, and behaviour when a peer drops mid-race. Lockstep turns
-      packet loss into **input lag, not teleporting cars** — no peer can simulate
-      a tick until every input for it has arrived — so the knobs are redundant
-      input sends and how far behind the newest input the sim runs. Provoke it
-      deliberately rather than hoping.
-- [ ] **Write the verdict down**, whichever way it goes — as a
-      `docs/*-plan.md` with the measurements, so the decision is reviewable
-      rather than remembered.
+- [ ] **Leave a race, from either side.** A client leaving returns to the lobby
+      and its cars drop out; the host leaving ends the race for everyone with a
+      reason on screen rather than a freeze. The teardown already exists
+      (`NetworkedGame.leave`); what is missing is a way to reach it mid-race and a
+      state machine that survives it.
+- [ ] **Rematch without re-joining.** The roster and the connection are already
+      agreed — a new race is a fresh `RaceStart` from the host over the same
+      session. Cheap, and it is what a couch actually does: five short races in a
+      row, not one.
+- [ ] **Rejoin after a drop.** A peer that loses the link mid-race cannot join
+      *that* race (the host's sim is already elsewhere), so the honest behaviour
+      is: return to the lobby, be seated again, race the next one. Worth
+      confirming rather than assuming that mid-race rejoin is impossible — with a
+      host authority a late client CAN in principle adopt a snapshot and start
+      rendering, which lockstep could never have done.
+- [ ] **Sound and haptics in a networked race.** A pre-existing gap, not a
+      regression: the host's `onTick` now carries the broadcast, and the audio hook
+      wants wiring alongside it. Silence reads as broken.
 
-**What the answer changes.** If lockstep holds, the two milestones below are worth
-their cost and the Mac port has a purpose beyond "it runs on a Mac". If it does
-not, then cross-device play is off the table and **the Mac port and the
-landscape/iPad work should be re-argued on their own merits** — they were partly
-justified as groundwork for a networked room, and without that they are a smaller,
-optional platform nicety.
+### Joining on purpose — *the lobby people actually use*
 
-Spiking early is affordable precisely because the sim is already lockstep-shaped:
-this is transport and clock work against an engine that does not have to change.
+Automatic connection was right for a spike and wrong for a product: two phones
+in a room join whatever they find.
 
-## Platforms & input — *scope depends on the spike*
+- [ ] **Pick which race to join.** The client lists what it can see and chooses,
+      instead of taking the first advertiser.
+- [ ] **Host approves or declines.** Deliberately not a security feature — the
+      roster's field cap already bounds who gets in — but the host should know who
+      arrived and be able to say no.
+- [ ] **Colour picking in the lobby**, from the measured accessible nine, with
+      the default assignment being the accessible set (see
+      [docs/first-glance-plan.md](docs/first-glance-plan.md) — the palette work
+      is done, the picker is not). Under networking a colour must be agreed
+      centrally, since "local" is a per-screen property.
+
+### Feel and scale — *measure before building*
+
+- [ ] **Judge the client's input latency on a real link.** Your thumb reaches the
+      host and the result comes back a snapshot later; the on-screen
+      `gap · lag` readout is the number. If it feels bad, the fix is
+      **client-side prediction of the own car with reconciliation** — measured
+      feasible (0.37 ms/tick for 4 cars, so a 20-tick re-simulation is
+      single-digit milliseconds) and explicitly NOT worth building until the feel
+      demands it.
+- [ ] **Three or more devices.** The protocol caps at 9 seats and the model scales
+      the right way (the host absorbs N−1 tiny input streams; a late peer costs one
+      car, not the field), but "should scale" is not "does" — the packet budget and
+      MC's ceiling want measuring with a third phone in the room.
+- [ ] **Host pause.** Deliberately unresolved: a per-device pause would freeze one
+      screen of a shared race, so today the map tap does nothing when networked.
+      Host-only, a vote, or no pause at all is a design question, not a bug.
+
+## Platforms & input — *on: the spike said yes to networked play*
 
 The game only runs one way on one kind of device: portrait, on a phone, driven
 by thumbs on glass. This milestone is about the OTHER ways in.
 
-**Re-argue this if the spike says no.** A Mac target was always partly a means to
-an end — a keyboard player joining a couch race — so if cross-device play is dead,
-what is left is a standalone Mac build and a bigger-screen layout, which may or may
-not earn a milestone of their own.
+**No longer conditional.** A Mac target was partly a means to an end — a keyboard
+player joining a couch race — and cross-device play works, so that purpose stands.
+It also got *cheaper*: a Mac joining as a rendering client needs no float
+determinism from its libm, which was the one real risk in a cross-platform race.
 
 This used to sit *before* networking, on the reasoning that a Mac joining a race
 needs a keyboard scheme to exist and a locked orientation is one less thing to
@@ -355,22 +362,6 @@ all.
       screen ≠ giant map, map floats with margins); **landscape = bands dock
       left/right** of the map (free space is on the sides), which needs
       `CouchRig` side-band support (today it only does top/bottom).
-
-## Local-network multiplayer — *only if the spike says yes*
-
-The product version of what the spike proved: the room, the flow, and the edge
-cases, on a transport already known to work.
-
-- [ ] Deterministic lockstep over **MultipeerConnectivity**: inputs-only
-      sync, one peer as clock host, join/leave flow
-- [ ] Cross-device play (iPhone/iPad/Mac in one room), no server
-- [ ] Local network privacy strings + Bonjour service declarations
-- [ ] Stretch: scale beyond 4 players (lockstep makes it reachable)
-- [ ] **Decide pause semantics for networked play.** The couch map-tap pause
-      freezes one device; under lockstep that's a whole different problem
-      (whose tap freezes everyone? re-sync on resume?). Likely: no free pause
-      in a networked race (or a vote/host-only pause). Decide here, not in the
-      couch code.
 
 ## The real game — UI redesign, profiles, records, tournaments
 
