@@ -147,7 +147,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
             course: course, seed: seed, roster: roster, laps: laps,
             tuning: tuning, carContact: carContact)
         note("sending start: seed \(seed), \(roster.seatCount) cars")
-        transport.send(message.encoded, reliable: true)
+        transmit(message.encoded, reliable: true)
         // **Discovery is NOT torn down here.** Stopping the advertiser mid-handshake
         // can drop the MC session, which arrives as `peerLeft` — and that removed
         // the guest from the roster, disabling the Start button the host had just
@@ -155,24 +155,6 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         // already impossible once `phase` leaves `.hosting` (see `seat`), so
         // stopping the radio is an optimisation, not a correctness measure.
         apply(message)
-    }
-
-    /// **Race again with the same field.** The roster and the connection are
-    /// already agreed, so a rematch is one fresh `RaceStart` — a new seed, the same
-    /// everything else. Host only, and only from the lobby: mid-race it would yank
-    /// the field out from under a race in progress.
-    public func rematch(seed: UInt64) {
-        guard isHost, start == nil, let course = lastCourse else { return }
-        note("rematch: seed \(seed)")
-        startRace(
-            course: course, seed: seed, laps: CouchGame.networkedLaps,
-            tuning: lastTuning, carContact: lastCarContact)
-    }
-
-    /// Whether Rematch is available: the host, out of a race, with a course to
-    /// repeat and somebody to race against.
-    public var canRematch: Bool {
-        isHost && start == nil && lastCourse != nil && roster.entries.count > 1
     }
 
     func apply(_ message: RaceStart) {
@@ -225,7 +207,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         noteTime(Race.dt)
         guard let relay, relay.shouldBroadcast(after: race.tick) else { return }
         let bytes = HostRelay.snapshotMessage(for: race)
-        if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: false) }
+        transmit(bytes, reliable: false)
     }
 
     /// Client: this frame's thumbs, off to the host. `ClientView` decides which
@@ -236,7 +218,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         let bytes = view.publish(inputs)
         clientView = view
         guard let bytes else { return }
-        if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: false) }
+        transmit(bytes, reliable: false)
     }
 
     /// Client: the smoothed state to draw. Also where the one remaining stall
@@ -298,16 +280,23 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     public func transport(peerJoined peer: RaceRoster.PeerName) {
         peers = transport.connectedPeers
         note("connected: \(DeviceName.display(peer))")
+        // **A returning peer inside its grace period is not a new arrival**, and
+        // this must run BEFORE the racing guard below: the grace period exists for
+        // mid-race hiccups, so a race is exactly when a recovery needs noticing.
+        // Checking it after the guard meant a returning player was never recovered
+        // during a race and got ejected anyway when the grace expired.
+        if presence.recovered(peer) {
+            note("recovered: \(DeviceName.display(peer))")
+            // Clear the fading notice, or a player who came back is still announced
+            // as dropping out for the rest of the race.
+            stallNote = nil
+            return
+        }
         // **A peer state change during a race must not restart the lobby.** MC
         // reports connections at times of its own choosing, and re-announcing here
         // would reset the guest's phase out of `.racing` and re-send a JoinRequest
         // that the host would try to seat mid-race.
         guard start == nil else { return }
-        // A returning peer inside its grace period is not a new arrival.
-        if presence.recovered(peer) {
-            note("recovered: \(DeviceName.display(peer))")
-            return
-        }
         if isHost {
             // The host waits to be asked, and then decides. See `approve`.
             return
@@ -370,7 +359,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
             : "\(DeviceName.display(peer)) dropped out"
         guard start == nil else { return }
         roster.remove(peer: peer)
-        if isHost { transport.send(RosterUpdate(roster: roster).encoded, reliable: true) }
+        if isHost { transmit(RosterUpdate(roster: roster).encoded, reliable: true) }
     }
 
     /// Advance the grace clock. Called once a frame by whoever is driving the race
@@ -382,7 +371,17 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     }
 
     func seat(_ peer: RaceRoster.PeerName, seats: Int) {
-        guard isHost, case .hosting = phase else { return }
+        // **Out of a race, whatever the lobby phase is.** This used to demand
+        // `.hosting`, which was true when seating happened automatically on
+        // connect — but the host also sits in `.lobby` between races now, and
+        // `approve` is an explicit act that must not be silently dropped. `start`
+        // is the real condition: the roster freezes when a race begins.
+        //
+        // `receiveLobbyMessage` already drops a mid-race request, so this is the
+        // second of two guards on the field's integrity — deliberately, because
+        // seating someone into a frozen roster would leave every device disagreeing
+        // about who is racing, and that class of bug cost a device session.
+        guard isHost, start == nil else { return }
         // **A refused join must be visible.** `try?` here swallowed the reason a
         // device failed to appear, and that cost a device session: two phones both
         // called "iPhone" collided as one peer, the join was rejected as
@@ -400,31 +399,26 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         // Guests cannot derive the roster themselves: only the host assigns seat
         // numbers, so without this push a guest's lobby stays empty until the race
         // starts, which reads as a broken join.
-        transport.send(RosterUpdate(roster: roster).encoded, reliable: true)
+        transmit(RosterUpdate(roster: roster).encoded, reliable: true)
     }
-
-    // MARK: - Test seams
 
     /// Bytes this device would have sent, captured instead of transmitted — so two
     /// `NetworkedGame`s can be driven against each other in one process. The device
     /// failures that cost the most were all in this loop, and nothing could exercise
     /// it without a radio.
-    private var outbox: [[UInt8]] = []
+    /// A stored property cannot live in an extension, so this stays with the
+    /// class while the seams that use it live in `NetworkedTestSeams.swift`.
+    var outbox: [[UInt8]] = []
 
-    /// Start a race without a lobby handshake.
-    func adoptForTesting(_ message: RaceStart) {
-        captureSends = true
-        apply(message)
-    }
-
-    /// Take everything queued since the last call.
-    func drainOutbox() -> [[UInt8]] {
-        defer { outbox.removeAll() }
-        return outbox
-    }
-
-    /// Feed in what a peer sent.
-    func deliverForTesting(_ bytes: [UInt8], from peer: RaceRoster.PeerName) {
-        transport(didReceive: bytes, from: peer)
+    /// **The only way bytes leave this device.** Every send goes through here so the
+    /// test seam cannot diverge from production: `decline` sent via `transport`
+    /// directly and its message vanished in tests, which read as a protocol bug and
+    /// was a plumbing one.
+    func transmit(_ bytes: [UInt8], reliable: Bool) {
+        if captureSends {
+            outbox.append(bytes)
+        } else {
+            transport.send(bytes, reliable: reliable)
+        }
     }
 }

@@ -59,6 +59,10 @@ public final class MultipeerTransport: NSObject, RaceTransport {
         session.delegate = self
     }
 
+    /// Whether the advertiser is running — a host between races must be findable,
+    /// and "the phase says hosting" is not the same claim as "the radio is on".
+    public var isAdvertising: Bool { advertiser != nil }
+
     public var connectedPeers: [RaceRoster.PeerName] {
         session.connectedPeers.map(\.displayName)
     }
