@@ -201,4 +201,60 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertEqual(back.carContact, false)
         XCTAssertEqual(back.laps, 5)
     }
+
+    func testAJoinRequestCarriesTheSeatCountToTheHost() {
+        // **The message that seats a player**, and it was untested in both
+        // directions — Codecov caught that, and it matters: the host builds the
+        // roster from this number, and a guest silently never appearing is the
+        // failure that already cost a device session (the peer-name collision).
+        for seats in 1...RaceRoster.maxSeatsPerDevice {
+            let request = JoinRequest(seats: seats)
+            guard let back = JoinRequest(bytes: request.encoded) else {
+                return XCTFail("a request for \(seats) seats did not round-trip")
+            }
+            XCTAssertEqual(back.seats, seats)
+            XCTAssertEqual(back, request)
+        }
+        // End to end: the number a guest sends is the number the host seats.
+        var roster = RaceRoster()
+        try? roster.join("host#aaaa", seats: 1)
+        guard let decoded = JoinRequest(bytes: JoinRequest(seats: 3).encoded) else {
+            return XCTFail("no request")
+        }
+        let assigned = try? roster.join("guest#bbbb", seats: decoded.seats)
+        XCTAssertEqual(assigned?.count, 3)
+        XCTAssertEqual(roster.seatCount, 4)
+    }
+
+    func testAJoinRequestIsDistinctFromTheOtherLobbyMessages() {
+        // Three lobby messages share one receive path, so a tag collision would
+        // route a join into the roster decoder or vice versa.
+        var roster = RaceRoster()
+        try? roster.join("a#1111", seats: 1)
+        let join = JoinRequest(seats: 2).encoded
+        let update = RosterUpdate(roster: roster).encoded
+        let start = RaceStart(
+            course: .builtin("small"), seed: 1, roster: roster, laps: 3).encoded
+
+        // **The tags themselves must differ.** Decoding alone is a weak check —
+        // sabotage proved it: colliding the join and roster tags still passed,
+        // because a `{seats:}` payload does not parse as a roster regardless. The
+        // shared receive path dispatches on the tag byte, so that is what to pin.
+        let tags = [join[0], update[0], start[0]]
+        XCTAssertEqual(Set(tags).count, 3, "two lobby messages share a tag byte")
+        // Lobby tags stay clear of the per-tick tags (input 1, snapshot 3), which
+        // travel the same channel.
+        XCTAssertTrue(tags.allSatisfy { $0 >= 200 }, "a lobby tag entered the per-tick range")
+
+        XCTAssertNil(RosterUpdate(bytes: join), "a join decoded as a roster")
+        XCTAssertNil(RaceStart(bytes: join), "a join decoded as a start")
+        XCTAssertNil(JoinRequest(bytes: update), "a roster decoded as a join")
+        XCTAssertNil(JoinRequest(bytes: start), "a start decoded as a join")
+        // And an absurd seat count survives the wire unchanged — validation is the
+        // roster's job (it refuses with a reason the lobby shows), not the codec's,
+        // so the codec must not quietly "fix" it.
+        XCTAssertEqual(JoinRequest(bytes: JoinRequest(seats: 99).encoded)?.seats, 99)
+        var full = RaceRoster()
+        XCTAssertThrowsError(try full.join("greedy#0000", seats: 99))
+    }
 }
