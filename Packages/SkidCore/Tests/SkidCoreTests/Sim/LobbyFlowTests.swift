@@ -45,7 +45,7 @@ final class LobbyFlowTests: XCTestCase {
         try? roster.join("a#1111", seats: 2)
         try? roster.join("b#2222", seats: 1)
         let start = RaceStart(
-            course: .builtin("clover"), seed: 12345, roster: roster, laps: 3, delayTicks: 2)
+            course: .builtin("clover"), seed: 12345, roster: roster, laps: 3)
 
         guard let back = RaceStart(bytes: start.encoded) else {
             return XCTFail("the start message did not round-trip")
@@ -53,7 +53,6 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertEqual(back, start)
         XCTAssertEqual(back.seed, 12345)
         XCTAssertEqual(back.roster.seats, roster.seats)
-        XCTAssertEqual(back.delayTicks, 2)
         if case .builtin(let id) = back.course {
             XCTAssertEqual(id, "clover")
         } else {
@@ -68,7 +67,7 @@ final class LobbyFlowTests: XCTestCase {
         try? roster.join("a#1111", seats: 1)
         let code = TrackCode.encode(TrackLibrary.layout(id: "eight") ?? TrackLayout(pieces: []))
         let start = RaceStart(
-            course: .shared(code), seed: 7, roster: roster, laps: 3, delayTicks: 2)
+            course: .shared(code), seed: 7, roster: roster, laps: 3)
         guard let back = RaceStart(bytes: start.encoded), case .shared(let got) = back.course
         else { return XCTFail("a shared course did not survive") }
         XCTAssertEqual(got, code)
@@ -96,7 +95,7 @@ final class LobbyFlowTests: XCTestCase {
         try? roster.join(me, seats: 2)
         try? roster.join("guest#bbbb", seats: 2)
         let start = RaceStart(
-            course: .builtin(game.trackID), seed: 9, roster: roster, laps: 3, delayTicks: 2)
+            course: .builtin(game.trackID), seed: 9, roster: roster, laps: 3)
 
         game.startNetworkedRace(start, driver: StubDriver(roster.seats(for: me)))
 
@@ -107,15 +106,18 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertEqual(game.session?.started, true, "a networked race must not wait for a tap")
     }
 
-    private final class StubDriver: GameSession.LockstepDriver {
+    private final class StubDriver: NetworkedRaceDriver {
         private let seats: [PlayerID]
-        init(_ seats: [PlayerID]) { self.seats = seats }
+        let isRaceHost: Bool
+        init(_ seats: [PlayerID], host: Bool = true) {
+            self.seats = seats
+            isRaceHost = host
+        }
         var mySeats: [PlayerID] { seats }
-        var delayTicks: Int { 0 }
-        func publish(_ inputs: [PlayerID: CarInput], at tick: Tick) {}
-        func record(_ inputs: [PlayerID: CarInput], at tick: Tick) {}
-        func nextTick() -> [PlayerID: CarInput]? { nil }
-        func report(hash: UInt64, at tick: Tick) {}
+        func remoteInput(for seat: PlayerID) -> CarInput { .coast }
+        func broadcast(_ race: Race) {}
+        func publish(_ inputs: [PlayerID: CarInput]) {}
+        func view(advancedBy dt: TimeInterval) -> RaceSnapshot? { nil }
     }
 
     func testAMalformedLobbyMessageIsRejected() {
@@ -163,7 +165,7 @@ final class LobbyFlowTests: XCTestCase {
         hostTuning.gripScale += 0.3
         let start = RaceStart(
             course: .builtin(game.trackID), seed: 9, roster: roster, laps: 3,
-            delayTicks: 2, tuning: hostTuning, carContact: true)
+            tuning: hostTuning, carContact: true)
         game.startNetworkedRace(start, driver: StubDriver(roster.seats(for: me)))
 
         guard let session = game.session else { return XCTFail("no session was built") }
@@ -188,8 +190,8 @@ final class LobbyFlowTests: XCTestCase {
         tuning.engineAccel += 123
         tuning.aimFlipBoost += 0.5
         let start = RaceStart(
-            course: .builtin("clover"), seed: 42, roster: roster, laps: 5,
-            delayTicks: 3, tuning: tuning, carContact: false)
+            course: .builtin("clover"), seed: 42, roster: roster, laps: 5, tuning: tuning,
+            carContact: false)
 
         guard let back = RaceStart(bytes: start.encoded) else {
             return XCTFail("the start message did not round-trip")
@@ -197,7 +199,6 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertEqual(back, start)
         XCTAssertEqual(back.tuning, tuning, "the physics did not survive the wire")
         XCTAssertEqual(back.carContact, false)
-        XCTAssertEqual(back.delayTicks, 3)
         XCTAssertEqual(back.laps, 5)
     }
 }

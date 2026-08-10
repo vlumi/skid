@@ -84,9 +84,7 @@ struct RaceScreen: View {
                     // a stall that names who it waits for, or a desync. Both are
                     // otherwise silent, and a frozen screen with no explanation
                     // reads as a crash.
-                    NetworkStatusOverlay(
-                        divergenceNote: net.divergenceNote, stallNote: net.stallNote,
-                        topInset: insets.top)
+                    NetworkStatusOverlay(stallNote: net.stallNote, topInset: insets.top)
 
                     // The map center is meta-control space (no car races there,
                     // and map-area touches are otherwise inert). A tap on it
@@ -124,12 +122,11 @@ struct RaceScreen: View {
             .frame(width: mapRect.width, height: mapRect.height)
             .position(x: mapRect.midX, y: mapRect.midY)
             .onTapGesture {
-                // **No pause in a networked race.** `paused` is per-device and stops
-                // this device publishing input, which stalls every peer — the same
-                // deadlock the ready gate caused. Whose tap may freeze everyone is
-                // a real design question (host-only, or a vote); until it is
-                // answered, the map tap does nothing rather than something broken.
-                guard session.lockstep == nil else { return }
+                // **No pause in a networked race yet.** A client has nothing to
+                // pause (it renders the host's stream) and a host pausing everyone
+                // is a design question — until it is answered, the map tap does
+                // nothing rather than something broken.
+                guard !session.isNetworked else { return }
                 if !session.started {
                     session.started = true
                 } else {

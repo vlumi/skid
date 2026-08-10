@@ -51,69 +51,41 @@ public final class GameSession: ObservableObject {
     @Published public private(set) var raceOver = false
     private let inputFor: (PlayerID, Race) -> CarInput
 
-    /// **The lockstep driver, when this race is networked.**
+    /// **The networking seam, host-authoritative.**
     ///
-    /// Nil for local play, and that is the whole design of this seam: the local
-    /// path below is byte-for-byte the code that shipped, so wiring networking
-    /// cannot regress a couch race. Set it and the *condition for running a tick*
-    /// changes from "wall time owes one" to "wall time owes one AND every peer's
-    /// input for it has arrived".
-    public var lockstep: LockstepDriver? {
-        didSet {
-            // Networked: the lobby already gated the start, so open the local gate
-            // immediately. Leaving it shut is a deadlock rather than a delay,
-            // because a frozen device never publishes the input its peers need.
-            if lockstep != nil { started = true }
-        }
-    }
+    /// Three roles, one class. Local play: `isNetworked` false, nothing here in
+    /// use — the loop below is the code that has always shipped. Hosting: the
+    /// host IS local play, which is the model's whole point — remote seats'
+    /// inputs arrive through the ordinary `inputFor` closure and every tick is
+    /// broadcast from `onTick`; nothing in this file knows it is hosting.
+    /// Client: `snapshotClient` set, and the sim never runs — the race value
+    /// becomes a display buffer for the host's snapshots.
+    public var snapshotClient: SnapshotClientDriver?
 
-    /// What `GameSession` needs from the network, kept to three calls so the
-    /// session never learns what a peer is. `NetworkedGame` conforms.
+    /// True for any networked role. The pause guard keys off this (a per-device
+    /// pause would freeze one screen of a shared race), as does seat-coloured
+    /// rendering.
+    public var isNetworked = false
+
+    /// What a client session needs from the network. `NetworkedGame` conforms.
     @MainActor
-    public protocol LockstepDriver: AnyObject {
-        /// Seats this device reads thumbs for. Others' inputs arrive off the wire.
+    public protocol SnapshotClientDriver: AnyObject {
+        /// Seats this device reads thumbs for.
         var mySeats: [PlayerID] { get }
-        /// Publish this device's own input for `tick` — records it AND sends.
-        func publish(_ inputs: [PlayerID: CarInput], at tick: Tick)
-        /// Record input for a tick without sending a packet for it. The newest tick's
-        /// packet repeats recent history, so an older tick needs no packet of its own.
-        func record(_ inputs: [PlayerID: CarInput], at tick: Tick)
-        /// How far ahead of the sim this device publishes — the delay buffer. Read
-        /// rather than assumed, so the session cannot disagree with the clock about
-        /// which tick an input belongs to.
-        var delayTicks: Int { get }
-        /// The next tick's inputs, or nil to wait. **Nil means do not step.**
-        func nextTick() -> [PlayerID: CarInput]?
-        /// Tell peers what state we reached, so a divergence is caught.
-        func report(hash: UInt64, at tick: Tick)
+        /// This frame's thumbs, off to the host. Rate limiting lives behind the
+        /// seam — the spike's measured lesson is that MC congests above ~100
+        /// small messages a second, so the driver decides which frames send.
+        func publish(_ inputs: [PlayerID: CarInput])
+        /// The smoothed state to draw, `dt` seconds after the previous frame.
+        /// Nil until the first snapshot lands.
+        func view(advancedBy dt: TimeInterval) -> RaceSnapshot?
     }
-
-    /// The newest tick this device has published input for. Only used to avoid
-    /// publishing the same tick twice — the tick itself is derived from `race.tick`,
-    /// never counted, so two peers cannot disagree about which tick a press belongs
-    /// to. See `inputsForNextTick()`.
-    private var lastPublished: Tick = -1
-
-    /// Wall time this race has been running, in seconds — the clock publishing is
-    /// paced by.
-    ///
-    /// Neither the sim's tick nor a frame counter works. The sim's tick only moves
-    /// when the peer's input arrives, so keying off it makes two devices starve each
-    /// other in a rhythm; a frame counter assumes a steady 60 fps and falls behind
-    /// real time whenever rendering dips, which starves the peer in bursts. Elapsed
-    /// time is the one clock both peers advance at the same rate regardless.
-    private var totalSimTime: TimeInterval = 0
 
     private var lastTime: TimeInterval?
     private var accumulator: TimeInterval = 0
     /// Don't spiral after a long pause (backgrounding, debugger): cap the
     /// ticks owed by any single frame.
     private static let maxTicksPerFrame = 12
-
-    /// Owed sim time past which a networked race abandons its backlog — a second,
-    /// comfortably more than any stall the delay buffer is meant to absorb and far
-    /// less than a backgrounded app accrues.
-    private static let maxNetworkedDebt: TimeInterval = 1.0
 
     public init(
         track: Track,
@@ -147,53 +119,58 @@ public final class GameSession: ObservableObject {
         }
         lastTime = time
         let elapsed = max(0, time - last)
+        if let client = snapshotClient {
+            advanceClient(by: elapsed, client: client)
+            return
+        }
         accumulator += elapsed
-        totalSimTime += elapsed
-
-        // **Publish once per FRAME, before consuming anything.** Publishing used to
-        // live inside the tick loop, so a frame that released three ticks published
-        // three times and ran `lastPublished` three ticks further ahead — the two
-        // devices then drifted apart at whatever rate each was releasing ticks.
-        // One reading per frame is also the honest thing: a thumb has one position
-        // per frame, however many sim ticks that frame owes.
-        publishLocalInput()
 
         var ticks = 0
         while accumulator >= Race.dt, ticks < Self.maxTicksPerFrame {
-            guard let inputs = inputsForNextTick() else {
-                // **Networked and not ready: stop, keeping the debt.** The
-                // accumulator is deliberately NOT drained — the ticks are still
-                // owed and will run as soon as the inputs land, which is what
-                // turns packet loss into lag rather than into a race that
-                // silently skipped part of itself.
-                break
-            }
-            step(with: inputs)
+            step(with: localInputs())
             accumulator -= Race.dt
             ticks += 1
         }
-        if ticks == Self.maxTicksPerFrame, lockstep == nil {
-            // Local play: don't spiral after a long pause. A networked race must not
-            // do this — with one publish per frame the loop legitimately works
-            // through a backlog over several frames, and dumping the accumulator
-            // here would throw away ticks the clock has already released.
+        if ticks == Self.maxTicksPerFrame {
             accumulator = 0
         }
-        // **A networked race keeps a short debt but drops a hopeless one.**
-        //
-        // A brief stall must keep what it owes: that is exactly how packet loss
-        // becomes input lag instead of a race that silently skipped part of itself,
-        // and `testAStalledNetworkFreezesTheSimWithoutLosingTheDebt` pins it.
-        //
-        // But backgrounding stops the render loop entirely, so nothing publishes,
-        // every peer stalls, and returning owes *seconds* of ticks that
-        // `maxTicksPerFrame` can never work through — the race looks permanently
-        // stuck. Lockstep keeps the peers in step by construction, so wall-clock
-        // debt past a second is not information, it is a backlog. Drop it and run at
-        // whatever rate the clock releases ticks.
-        if lockstep != nil, accumulator > Self.maxNetworkedDebt {
-            accumulator = 0
+        noteRaceOverIfFinished()
+    }
+
+    /// A client frame: thumbs out, the host's state in. No simulation happens
+    /// here at all — the race value is a display buffer, `apply` refuses
+    /// anything that does not fit it, and there is deliberately no fallback to
+    /// simulating locally, because a client treating its own sim as truth is
+    /// this model's one unforgivable bug.
+    private func advanceClient(by dt: TimeInterval, client: SnapshotClientDriver) {
+        var mine: [PlayerID: CarInput] = [:]
+        for seat in client.mySeats {
+            mine[seat] = inputFor(seat, race)
         }
+        client.publish(mine)
+        if let shown = client.view(advancedBy: dt) {
+            race.apply(shown)
+            // Skid marks come off the applied states — 60 rendered frames of a
+            // 20 Hz stream, so they draw as they do locally. The recording does
+            // NOT run on a client: the host records the true race, and a stream
+            // of snapshots is not an input recording.
+            for car in race.cars {
+                marks.record(car: car, on: race.track, tick: race.tick)
+            }
+            onTick?(race)
+        }
+        noteRaceOverIfFinished()
+    }
+
+    private func localInputs() -> [PlayerID: CarInput] {
+        var inputs: [PlayerID: CarInput] = [:]
+        for player in players {
+            inputs[player] = inputFor(player, race)
+        }
+        return inputs
+    }
+
+    private func noteRaceOverIfFinished() {
         if !raceOver, race.phase == .finished {
             Task { @MainActor [weak self] in
                 self?.raceOver = true
@@ -201,96 +178,11 @@ public final class GameSession: ObservableObject {
         }
     }
 
-    /// This tick's inputs — from local controls, or from the lockstep clock.
-    ///
-    /// Nil only ever means "networked, and the tick is not ready". Local play
-    /// always has an answer, because a thumb that is not touching the glass is a
-    /// coast rather than a missing input.
-    /// Read this device's thumbs and publish them for every tick the buffer window
-    /// still needs. Once per frame, never per tick — see `advance(to:)`.
-    private func publishLocalInput() {
-        guard let lockstep else { return }
-        var mine: [PlayerID: CarInput] = [:]
-        for seat in lockstep.mySeats {
-            mine[seat] = inputFor(seat, race)
-        }
-        // Every tick from the sim's next up to the buffer's edge. That primes the
-        // window at the start — publishing only the leading edge deadlocks, since
-        // `race.tick` cannot advance without the ticks below it — and refills it
-        // after a stall. The tick NUMBERS come from the shared sim, which is what
-        // keeps the peers agreeing about which tick a press belongs to.
-        // **Contiguous, always.** This used `max(lastPublished + 1, race.tick)` to
-        // avoid re-publishing settled ticks — but when the sim ran ahead of the
-        // publish edge that left a permanent HOLE, and the wire format is positional,
-        // so the receiver applied the following frame's input to the missing tick.
-        // Both peers then computed different states from the same packet: the desync,
-        // and the never-satisfied wait for the tick that was skipped.
-        //
-        // Publishing a tick the clock has already consumed is harmless — it keeps the
-        // first value it saw — so a gapless run costs nothing and removes the hazard.
-        //
-        // **Publishing must NOT depend on the sim advancing.** It used to key off
-        // `race.tick + delayTicks`, and `race.tick` only moves when the clock releases
-        // a tick — which needs the peer's input. So a stall froze the publish edge,
-        // which starved the peer, which stalled it, which starved us: a mutual
-        // deadlock that broke and re-formed with a rhythm. Reported from device as a
-        // steady stutter with the "waiting" pill flashing in time, and it survived
-        // both channel modes because it was never a network problem.
-        //
-        // Publishing is driven by WALL TIME instead — one tick per frame's worth of
-        // owed sim time, whatever the clock is doing. Our own thumb is always
-        // available, so there is never a reason to withhold it. The tick numbers stay
-        // derived from a counter both peers advance at the same real-time rate, so
-        // they still agree about which tick a press belongs to.
-        // **Sim time, not frame count.** `publishClock += 1` per frame assumed a steady
-        // 60 fps: on device the render loop dips, so the publish edge fell behind real
-        // time and the peer starved — a stutter that came in bursts, since a run of
-        // slow frames costs a run of ticks. Deriving the edge from elapsed sim time
-        // makes it independent of how often we happen to be drawn.
-        let elapsedTicks = Tick((totalSimTime / Race.dt).rounded(.down))
-        let edge = max(elapsedTicks + lockstep.delayTicks, race.tick + lockstep.delayTicks)
-        guard edge > lastPublished else { return }
-        // **One packet per frame, not one per tick.** `publish` sends, so publishing a
-        // 6-tick window emitted SIX packets of ~130 bytes each — around 100 packets a
-        // second, growing with the buffer. MultipeerConnectivity cannot sustain that:
-        // its queue backs up until the transport chokes, which showed up as a client
-        // that looked smooth (its own input is local) and then froze outright, while
-        // the host sat waiting for input that was stuck in a send queue.
-        //
-        // Every tick in the window carries the same reading anyway, and each packet
-        // already repeats the last `Packet.history` ticks — so the newest tick's packet
-        // contains the whole window. Publishing only the edge sends one packet and
-        // loses nothing.
-        let from = lastPublished < 0 ? 0 : lastPublished + 1
-        if from < edge {
-            // Record the older ticks without sending — they ride along in the edge
-            // packet's history.
-            for tick in from..<edge { lockstep.record(mine, at: tick) }
-        }
-        lockstep.publish(mine, at: edge)
-        lastPublished = edge
-    }
-
-    private func inputsForNextTick() -> [PlayerID: CarInput]? {
-        guard let lockstep else {
-            var inputs: [PlayerID: CarInput] = [:]
-            for player in players {
-                inputs[player] = inputFor(player, race)
-            }
-            return inputs
-        }
-        return lockstep.nextTick()
-    }
-
-    /// One tick, identical whether the inputs came from thumbs or the wire.
-    ///
-    /// Shared on purpose: two copies of this would be the hardest kind of bug to
-    /// find, since a networked race would diverge from a local one for a reason
-    /// invisible in both.
+    /// One tick, identical for local play and for a host — a hosted race IS a
+    /// local race whose remote seats read from the network.
     private func step(with inputs: [PlayerID: CarInput]) {
         recording.append(inputs)
         race.advance(inputs: inputs)
-        lockstep?.report(hash: race.stateHash, at: race.tick)
         ghost?.advanceTick()
         for car in race.cars {
             marks.record(car: car, on: race.track, tick: race.tick)

@@ -1,6 +1,20 @@
 import SkidCore
 import SwiftUI
 
+/// What a networked race needs from the network, both roles in one protocol so
+/// the start path takes a single object. A host uses the top half and ignores
+/// the client half; a client the reverse. `NetworkedGame` conforms.
+@MainActor
+public protocol NetworkedRaceDriver: GameSession.SnapshotClientDriver {
+    /// Whether this device simulates the race (true) or renders it (false).
+    var isRaceHost: Bool { get }
+    /// Host: the freshest input a remote seat has sent — held between packets.
+    func remoteInput(for seat: PlayerID) -> CarInput
+    /// Host: called after every simulated tick; the driver decides which ticks
+    /// actually put a snapshot on the wire.
+    func broadcast(_ race: Race)
+}
+
 /// **Starting a race whose inputs arrive off the wire.**
 ///
 /// Split from `CouchGame` because it is a different concern with the same owner:
@@ -12,37 +26,22 @@ extension CouchGame {
     /// a mismatch between peers would be a silent desync rather than a short race.
     public static let networkedLaps = 3
 
-    /// **How far behind the newest input a networked race runs.**
-    ///
-    /// The buffer that absorbs everything jittery about a real link: delivery latency,
-    /// packet loss repaired by the next packet, and — the one that forced this number
-    /// up — a peer whose frame rate dips. A device drawn 40 times a second only
-    /// publishes 40 times a second, so its input arrives in clumps no matter how the
-    /// publish edge is computed; input cannot be sent while the app is not running.
-    ///
-    /// Two ticks (33 ms) left a 40 fps peer stalling the other on a third of its
-    /// frames, measured. Six (100 ms) covers a frame gap plus delivery latency with
-    /// room to spare. The cost is input lag, and that is a feel judgement that can
-    /// only be made on a device — which is exactly what this knob is for.
-    ///
-    /// The host's value wins: it travels in `RaceStart`, so peers cannot disagree.
-    public static var networkedDelayTicks = 6
-
     /// Open the host/join lobby for a networked race.
     public func openNetworking() {
         phase = .networking
     }
 
-    /// **Start a race whose inputs come off the wire.**
+    /// **Start a race driven over the network — host or client.**
     ///
-    /// The difference from `startRace()` is which seats get a control band: the
-    /// `rig` lays out only the seats THIS device drives, while the sim carries
-    /// every car in the roster. No AI — a networked field is people.
+    /// The host is local play wearing a different input source: its sim carries
+    /// every car in the roster, remote seats read `driver.remoteInput`, and every
+    /// tick is offered to `driver.broadcast`. A client never simulates at all —
+    /// its session gets `snapshotClient` and its race value becomes a display
+    /// buffer for the host's snapshots.
     ///
-    /// The seed and the track come from the host, so both devices build the same
-    /// `Race`. Getting either wrong would be a divergence at tick 1, which is
-    /// exactly what the hash comparison would report.
-    public func startNetworkedRace(_ start: RaceStart, driver: GameSession.LockstepDriver) {
+    /// Either way the `rig` lays out only the seats THIS device drives, and no AI
+    /// joins — a networked field is people.
+    public func startNetworkedRace(_ start: RaceStart, driver: NetworkedRaceDriver) {
         let track: Track
         switch start.course {
         case .builtin(let id):
@@ -73,14 +72,24 @@ extension CouchGame {
             // builds players 0 and 1 and steers the host's cars.
             seats: mySeats)
         self.rig = rig
-        let session = makeNetworkedSession(track: track, start: start, localSeats: mySeats)
-        session.lockstep = driver
+        let session = makeNetworkedSession(
+            track: track, start: start, localSeats: mySeats, driver: driver)
+        session.isNetworked = true
+        // The lobby's "Start race" is the shared ready gate — a per-device tap
+        // deadlocked the countdown once already under lockstep, and under a host
+        // authority a client has no sim to hold back anyway.
+        session.started = true
+        if driver.isRaceHost {
+            session.onTick = { race in driver.broadcast(race) }
+        } else {
+            session.snapshotClient = driver
+        }
         self.session = session
         phase = .racing
     }
 
     private func makeNetworkedSession(
-        track: Track, start: RaceStart, localSeats: [PlayerID]
+        track: Track, start: RaceStart, localSeats: [PlayerID], driver: NetworkedRaceDriver
     ) -> GameSession {
         let config = RaceConfig(
             // Every value the SIM reads comes from the host's message. `carContact` is
@@ -98,10 +107,15 @@ extension CouchGame {
             // with its own persisted panel values, so one nudged slider made the cars
             // physically different and the sims diverged immediately.
             tuning: start.tuning,
-            inputFor: { [weak rig] player, race in
+            inputFor: { [weak rig, weak driver] player, race in
                 guard let band = bandForSeat[player], let rig,
                     rig.players.indices.contains(band)
-                else { return .coast }
+                else {
+                    // Not one of this device's seats: on the host that is a remote
+                    // player's car, and its input is whatever they sent last. On a
+                    // client this path never runs — only local seats are read.
+                    return driver?.remoteInput(for: player) ?? .coast
+                }
                 let controls = rig.players[band]
                 let source = controls.source(for: controls.scheme)
                 if let headingAware = source as? HeadingAwareControlSource,
@@ -125,7 +139,7 @@ extension CouchGame {
     /// the one thing all peers agree on, so it is what the colour hangs off — and
     /// that also makes the two screens match, which is the point.
     public var carColors: [Color] {
-        if let session, session.lockstep != nil {
+        if let session, session.isNetworked {
             return session.race.cars.map { Self.palette[$0.id.rawValue % Self.palette.count] }
         }
         let humanColors = rig?.players.map(\.colorIndex) ?? Array(colorIndices.prefix(playerCount))

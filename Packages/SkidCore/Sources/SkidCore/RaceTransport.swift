@@ -67,10 +67,6 @@ public struct RaceStart: Equatable, Sendable, Codable {
     /// `tuning`: it was read from each device's own settings, and two peers
     /// disagreeing about whether a touch is a collision diverge on first contact.
     public var carContact: Bool
-    /// How far behind the newest input to run. The host decides, so every peer
-    /// buffers alike; a peer running a different delay would stall the others.
-    public var delayTicks: Int
-
     /// **The physics, from the host.**
     ///
     /// Nineteen numbers that decide how a car accelerates, grips and slides. Each
@@ -86,14 +82,13 @@ public struct RaceStart: Equatable, Sendable, Codable {
     public var tuning: CarTuning
 
     public init(
-        course: Course, seed: UInt64, roster: RaceRoster, laps: Int?, delayTicks: Int = 2,
+        course: Course, seed: UInt64, roster: RaceRoster, laps: Int?,
         tuning: CarTuning = CarTuning(), carContact: Bool = true
     ) {
         self.course = course
         self.seed = seed
         self.roster = roster
         self.laps = laps
-        self.delayTicks = delayTicks
         self.tuning = tuning
         self.carContact = carContact
     }
