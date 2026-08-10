@@ -79,10 +79,23 @@ extension CouchGame {
         // deadlocked the countdown once already under lockstep, and under a host
         // authority a client has no sim to hold back anyway.
         session.started = true
+        let humans = mySeats.count
         if driver.isRaceHost {
-            session.onTick = { race in driver.broadcast(race) }
+            session.onTick = { [weak self] race in
+                driver.broadcast(race)
+                self?.playRaceAudio(race, humans: humans, events: true)
+            }
         } else {
             session.snapshotClient = driver
+            // **Sound yes, haptics no.** Engine noise reads off the cars' state, which
+            // a snapshot carries — so a client sounds right. Haptics fire off
+            // `lastEvents` (impacts, laps), and a client has none: it renders the
+            // host's state rather than simulating, so no event ever happens locally.
+            // Sending events would mean putting them on the wire, which is more than
+            // a rumble is worth right now.
+            session.onTick = { [weak self] race in
+                self?.playRaceAudio(race, humans: humans, events: false)
+            }
         }
         self.session = session
         phase = .racing
@@ -129,6 +142,17 @@ extension CouchGame {
                 return source.input(for: player, at: race.tick)
             })
         return session
+    }
+
+    /// Engine sound, and haptics only where events exist. A networked race was
+    /// silent, which reads as broken.
+    private func playRaceAudio(_ race: Race, humans: Int, events: Bool) {
+        if settings.soundOn {
+            sound.update(race: race, humanCount: humans, paused: false)
+        }
+        if events, settings.hapticsOn {
+            haptics.play(events: race.lastEvents, humanCount: humans)
+        }
     }
 
     /// Car colors in car order (humans first, then AI), for renderer + HUD.
