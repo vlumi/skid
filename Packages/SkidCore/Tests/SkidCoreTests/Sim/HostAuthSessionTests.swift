@@ -45,6 +45,7 @@ final class HostAuthSessionTests: XCTestCase {
             })
         session.isNetworked = true
         session.started = true
+        session.generation = driver.generation
         session.onTick = { race in driver.broadcast(race) }
         return session
     }
@@ -60,6 +61,7 @@ final class HostAuthSessionTests: XCTestCase {
             })
         session.isNetworked = true
         session.started = true
+        session.generation = driver.generation
         session.snapshotClient = driver
         return session
     }
@@ -231,5 +233,75 @@ final class HostAuthSessionTests: XCTestCase {
             direct.advance(inputs: inputs)
         }
         XCTAssertEqual(direct.stateHash, session.race.stateHash, "the local path changed")
+    }
+
+    func testARematchLeavesTheOldSessionInertAndTheNewOneDriving() {
+        // **Reported from device: after a rematch, the client's car did not move.**
+        // A rematch builds a new session while the old one may still be on screen,
+        // and both hold the same driver — so the stale session kept pulling the
+        // driver's snapshots for a race that no longer existed. Measured before the
+        // fix: the stale session sat frozen at the previous race's last tick (191)
+        // while the new one never left 0, and it was the stale one on screen.
+        let hostNet = NetworkedGame(displayName: "host#aaaa")
+        let guestNet = NetworkedGame(displayName: "guest#bbbb")
+        hostNet.captureSendsForTesting()
+        guestNet.captureSendsForTesting()
+        hostNet.host(seats: 1)
+        guestNet.join(seats: 1)
+        guestNet.transport(peerJoined: "host#aaaa")
+        hostNet.transport(peerJoined: "guest#bbbb")
+        guestNet.askToJoin("host#aaaa")
+        settle(hostNet, guestNet)
+        hostNet.approve("guest#bbbb")
+        settle(hostNet, guestNet)
+
+        var host: GameSession?
+        var client: GameSession?
+        hostNet.onStart { start in host = self.hostSession(start, driver: hostNet) }
+        guestNet.onStart { start in client = self.clientSession(start, driver: guestNet) }
+
+        hostNet.startRace(course: .builtin("small"), seed: 1, laps: 3)
+        settle(hostNet, guestNet)
+        var time = 0.0
+        for _ in 0..<200 {
+            time += Race.dt
+            host?.advance(to: time)
+            client?.advance(to: time)
+            settle(hostNet, guestNet, rounds: 1)
+        }
+        let firstRaceTick = client?.race.tick ?? -1
+        XCTAssertGreaterThan(firstRaceTick, 150, "the first race did not run")
+
+        // Rematch, keeping the old session alive as the app does for a frame or two.
+        let stale = client
+        hostNet.returnToLobby()
+        guestNet.returnToLobby()
+        hostNet.rematch(seed: 2)
+        settle(hostNet, guestNet)
+        XCTAssertFalse(stale === client, "the session was not rebuilt")
+
+        for _ in 0..<200 {
+            time += Race.dt
+            host?.advance(to: time)
+            stale?.advance(to: time)  // still on screen
+            client?.advance(to: time)
+            settle(hostNet, guestNet, rounds: 1)
+        }
+
+        // The stale session must be INERT: it neither advances nor eats snapshots.
+        XCTAssertEqual(stale?.race.tick, firstRaceTick, "the stale session kept running")
+        // And the new one must actually be driving.
+        XCTAssertGreaterThan(client?.race.tick ?? -1, 150, "the new race never moved")
+        XCTAssertGreaterThan(host?.race.tick ?? -1, 150)
+    }
+
+    private func settle(_ a: NetworkedGame, _ b: NetworkedGame, rounds: Int = 6) {
+        for _ in 0..<rounds {
+            let fromA = a.drainOutbox()
+            let fromB = b.drainOutbox()
+            if fromA.isEmpty, fromB.isEmpty { return }
+            for bytes in fromA { b.deliverForTesting(bytes, from: a.me) }
+            for bytes in fromB { a.deliverForTesting(bytes, from: b.me) }
+        }
     }
 }

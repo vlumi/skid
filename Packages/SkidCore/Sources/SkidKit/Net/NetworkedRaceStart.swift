@@ -75,6 +75,9 @@ extension CouchGame {
         let session = makeNetworkedSession(
             track: track, start: start, localSeats: mySeats, driver: driver)
         session.isNetworked = true
+        // Stamped with the race it belongs to, so a session left on screen by a
+        // rematch stops driving the shared client view.
+        session.generation = driver.generation
         // The lobby's "Start race" is the shared ready gate — a per-device tap
         // deadlocked the countdown once already under lockstep, and under a host
         // authority a client has no sim to hold back anyway.

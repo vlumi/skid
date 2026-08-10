@@ -114,6 +114,7 @@ final class LobbyFlowTests: XCTestCase {
             isRaceHost = host
         }
         var mySeats: [PlayerID] { seats }
+        var generation: Int { 0 }
         func remoteInput(for seat: PlayerID) -> CarInput { .coast }
         func broadcast(_ race: Race) {}
         func publish(_ inputs: [PlayerID: CarInput]) {}
