@@ -21,6 +21,13 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Race together on two devices.** "Play together" in the setup screen hosts or
+  joins a race over the local network — same Wi-Fi, or nothing but proximity —
+  with up to four players per device sharing each screen as usual. The host's
+  device runs the race; everyone else's shows it live, riding out rough Wi-Fi by
+  trading a little delay for smoothness. No accounts, no internet, nothing
+  leaves the room.
+
 - **Cars fall properly.** Drive off a bridge with no railing, off the side of a ramp,
   or off the end of a road that stops, and you drop along a real arc onto whatever is
   beneath — which may be a lower deck rather than the ground. A ramp that ends in mid

@@ -247,6 +247,18 @@ What's left:
 
 ## Networking spike — *does lockstep hold over a local network?*
 
+> **Answered — no, and the working answer is host-authoritative snapshots.**
+> Lockstep held agreement (through 60% simulated loss) but its defining trade —
+> stall rather than lie — compounds with every device and lost to the real
+> link's burstiness. One device now simulates the race and the rest render its
+> snapshots through an adaptive jitter buffer; verified on two phones as a
+> smooth 2v2. Decision and grounds:
+> [docs/networking-model-analysis.md](docs/networking-model-analysis.md);
+> what the spike found along the way:
+> [docs/networking-spike-log.md](docs/networking-spike-log.md). So the two
+> milestones gated on this are ON — and the Mac-peer question got easier, since
+> a rendering client needs no float determinism at all.
+
 **A spike, not a feature, and deliberately the next thing after the editor.** No
 version: its output is a yes/no that decides whether the two milestones after it
 are worth building.

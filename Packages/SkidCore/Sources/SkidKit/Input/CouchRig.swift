@@ -109,12 +109,22 @@ public final class CouchRig: ObservableObject {
     private var lastMapRect: CGRect = .zero
     private var lastInsets = EdgeInsets()
 
+    /// `seats` names the cars these bands drive, defaulting to `0..<n` for a couch
+    /// race where the local players ARE the whole field.
+    ///
+    /// **A networked device must pass its own seats.** Global seat numbers are
+    /// assigned by the host, so the guest drives (say) 2 and 3 — and hardcoding
+    /// `PlayerID(index)` meant every device built players 0 and 1. Both phones then
+    /// steered the host's two cars, nobody published seats 2 and 3, and the clock
+    /// waited for input that could never come: "waiting for iPhone", forever.
+    /// Reported from device.
     public init(
         colorIndices: [Int], schemes: [ControlScheme] = [],
-        seating: SeatingConfig = SeatingConfig()
+        seating: SeatingConfig = SeatingConfig(), seats: [PlayerID]? = nil
     ) {
         self.players = colorIndices.enumerated().map { index, colorIndex in
-            let controls = PlayerControls(player: PlayerID(index), colorIndex: colorIndex)
+            let seat = seats?.indices.contains(index) == true ? seats![index] : PlayerID(index)
+            let controls = PlayerControls(player: seat, colorIndex: colorIndex)
             controls.scheme = index < schemes.count ? schemes[index] : .casual
             return controls
         }

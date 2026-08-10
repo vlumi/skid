@@ -7,6 +7,14 @@ struct RaceScreen: View {
     @ObservedObject var game: CouchGame
     @ObservedObject var session: GameSession
     @ObservedObject var rig: CouchRig
+    /// Always present — `NetworkedGame` is created once by `GameView` — but idle in
+    /// a couch race, where it reports no stall and no divergence, so the status
+    /// overlay draws nothing at all locally.
+    ///
+    /// **Not observed.** Its per-tick fields are deliberately unpublished: watching
+    /// them would invalidate this view from inside its own render pass. The values
+    /// are read fresh each frame instead, which `TimelineView` already guarantees.
+    let net: NetworkedGame
 
     var body: some View {
         // The GeometryReader must NOT ignore the safe area, or its
@@ -72,6 +80,14 @@ struct RaceScreen: View {
                         race: race, colors: colors, rig: rig, size: fullSize,
                         started: session.started)
 
+                    // Only in a networked race, and only when something is wrong:
+                    // a stall that names who it waits for, or a desync. Both are
+                    // otherwise silent, and a frozen screen with no explanation
+                    // reads as a crash.
+                    NetworkStatusOverlay(
+                        stallNote: net.stallNote, linkNote: net.linkNote,
+                        topInset: insets.top)
+
                     // The map center is meta-control space (no car races there,
                     // and map-area touches are otherwise inert). A tap on it
                     // starts the race off the ready gate, and after that opens
@@ -108,6 +124,11 @@ struct RaceScreen: View {
             .frame(width: mapRect.width, height: mapRect.height)
             .position(x: mapRect.midX, y: mapRect.midY)
             .onTapGesture {
+                // **No pause in a networked race yet.** A client has nothing to
+                // pause (it renders the host's stream) and a host pausing everyone
+                // is a design question — until it is answered, the map tap does
+                // nothing rather than something broken.
+                guard !session.isNetworked else { return }
                 if !session.started {
                     session.started = true
                 } else {
