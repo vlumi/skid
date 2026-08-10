@@ -21,8 +21,11 @@ struct NetworkLobbyView: View {
 
                 switch net.phase {
                 case .idle: chooser
-                case .hosting, .joining, .lobby: waiting
-                case .racing, .ended: connecting
+                case .joining: hostList
+                case .awaitingApproval: asking
+                case .hosting, .lobby: waiting
+                case .racing: connecting
+                case .ended(let reason): ended(reason)
                 }
 
                 Spacer()
@@ -134,6 +137,33 @@ struct NetworkLobbyView: View {
             .padding(14)
             .background(.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
 
+            // Guests asking in. The host decides — not security (the field cap
+            // bounds who gets in) but so nobody appears unannounced.
+            ForEach(net.pendingJoins) { pending in
+                HStack(spacing: 10) {
+                    Text(verbatim: "\(pending.display) (\(pending.seats))")
+                        .font(.subheadline)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button {
+                        net.approve(pending.peer)
+                    } label: {
+                        Text("Let in", bundle: .module).font(.subheadline.bold())
+                    }
+                    Button {
+                        net.decline(pending.peer)
+                    } label: {
+                        Text("No", bundle: .module).font(.subheadline)
+                    }
+                }
+            }
+
+            if let note = net.endedReason {
+                Text(note)
+                    .font(.footnote)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+
             if let note = net.joinNote {
                 Text(note)
                     .font(.footnote)
@@ -145,7 +175,9 @@ struct NetworkLobbyView: View {
                 Button {
                     start()
                 } label: {
-                    label(Text("Start race", bundle: .module), filled: true)
+                    label(
+                        Text(net.canRematch ? "Race again" : "Start race", bundle: .module),
+                        filled: true)
                 }
                 .disabled(net.roster.entries.count < 2)
                 .opacity(net.roster.entries.count < 2 ? 0.4 : 1)
@@ -153,6 +185,50 @@ struct NetworkLobbyView: View {
                 Text("Waiting for the host to start…", bundle: .module)
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.7))
+            }
+        }
+    }
+
+    /// Pick a race, rather than joining whatever answers first — a room can hold
+    /// two of them. Deliberately a plain list: the menus get a real redesign later
+    /// and it will replace this.
+    private var hostList: some View {
+        VStack(spacing: 14) {
+            Text("Looking for a race…", bundle: .module)
+                .font(.headline)
+                .foregroundStyle(.white)
+            if let note = net.endedReason {
+                Text(note)
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+            }
+            ForEach(net.visibleHosts, id: \.self) { host in
+                Button {
+                    net.askToJoin(host)
+                } label: {
+                    label(Text(verbatim: DeviceName.display(host)), filled: true)
+                }
+            }
+        }
+    }
+
+    private var asking: some View {
+        Text("Asking to join…", bundle: .module)
+            .font(.headline)
+            .foregroundStyle(.white)
+    }
+
+    private func ended(_ reason: String?) -> some View {
+        VStack(spacing: 14) {
+            Text(reason ?? String(localized: "The race ended"))
+                .font(.headline)
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+            Button {
+                net.leave()
+                game.backToSetup()
+            } label: {
+                label(Text("Done", bundle: .module), filled: true)
             }
         }
     }

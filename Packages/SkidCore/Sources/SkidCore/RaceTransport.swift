@@ -167,3 +167,70 @@ public struct RosterUpdate: Equatable, Sendable, Codable {
 
     static let tag: UInt8 = 202
 }
+
+/// **Announcing a departure, rather than being noticed missing.**
+///
+/// A peer that taps Leave says so on the reliable channel, and the difference
+/// matters: a silent exit only becomes visible when the grace period expires
+/// (`PeerPresence`), so for three seconds a car nobody is driving keeps its last
+/// input. An announced one is immediate and unambiguous — the host drops the
+/// seats now, and everyone knows it was a choice rather than a bad link.
+///
+/// `byHost` is the asymmetry: a guest leaving removes its own cars, while the
+/// host leaving ends the race for everyone, because there is no race without the
+/// device simulating it.
+public struct LeaveNotice: Equatable, Sendable, Codable {
+    public var byHost: Bool
+
+    public init(byHost: Bool) {
+        self.byHost = byHost
+    }
+
+    public var encoded: [UInt8] {
+        guard let data = try? JSONEncoder().encode(self) else { return [] }
+        return [LeaveNotice.tag] + [UInt8](data)
+    }
+
+    public init?(bytes: [UInt8]) {
+        guard bytes.first == LeaveNotice.tag,
+            let decoded = try? JSONDecoder().decode(
+                LeaveNotice.self, from: Data(bytes.dropFirst()))
+        else { return nil }
+        self = decoded
+    }
+
+    static let tag: UInt8 = 203
+}
+
+/// The host's answer to a `JoinRequest`.
+///
+/// **Not a security feature** — the roster's field cap already bounds who gets
+/// in, and anyone in radio range can be seen. It exists so the host knows who
+/// arrived and can say no, and so a refusal reaches the guest as a sentence
+/// instead of a lobby that never fills. A declined guest hears why; a silent
+/// refusal was the failure that already cost a device session.
+public struct JoinVerdict: Equatable, Sendable, Codable {
+    public var accepted: Bool
+    /// Shown to the declined guest. Empty when accepted.
+    public var reason: String
+
+    public init(accepted: Bool, reason: String = "") {
+        self.accepted = accepted
+        self.reason = reason
+    }
+
+    public var encoded: [UInt8] {
+        guard let data = try? JSONEncoder().encode(self) else { return [] }
+        return [JoinVerdict.tag] + [UInt8](data)
+    }
+
+    public init?(bytes: [UInt8]) {
+        guard bytes.first == JoinVerdict.tag,
+            let decoded = try? JSONDecoder().decode(
+                JoinVerdict.self, from: Data(bytes.dropFirst()))
+        else { return nil }
+        self = decoded
+    }
+
+    static let tag: UInt8 = 204
+}
