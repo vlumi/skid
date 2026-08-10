@@ -180,7 +180,7 @@ struct NetworkLobbyView: View {
         let course: RaceStart.Course = .builtin(game.trackID)
         net.startRace(
             course: course, seed: UInt64.random(in: 0..<UInt64.max),
-            laps: CouchGame.networkedLaps, delayTicks: CouchGame.networkedDelayTicks,
+            laps: CouchGame.networkedLaps,
             // The host's physics go on the wire; guests race the host's car, not
             // whatever their own tuning panel happens to say.
             tuning: game.settings.carTuning, carContact: game.carContact)

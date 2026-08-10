@@ -4,14 +4,12 @@ import SwiftUI
 
 /// **The lobby and the networked race, as one observable thing the UI can watch.**
 ///
-/// Owns the transport, the roster, and the `NetworkedRace` coordinator; drives the
-/// send/receive loop each frame. Everything that decides *whether the sim may step*
-/// lives in `SkidCore` and is already tested — this is the part that needs a radio
-/// and a screen, and it is kept as thin as that allows.
+/// Owns the transport, the roster, and the host-authoritative sync (`HostRelay`
+/// on the host, `ClientView` on a guest). Everything that decides what a frame
+/// shows lives in `SkidCore` and is tested under latency and loss — this is the
+/// part that needs a radio and a screen, and it is kept as thin as that allows.
 @MainActor
-public final class NetworkedGame:
-    ObservableObject, RaceTransportDelegate, GameSession.LockstepDriver
-{
+public final class NetworkedGame: ObservableObject, RaceTransportDelegate, NetworkedRaceDriver {
     /// Where in the flow we are. The UI switches on this and nothing else.
     public enum Phase: Equatable {
         case idle
@@ -31,23 +29,10 @@ public final class NetworkedGame:
     @Published public private(set) var peers: [RaceRoster.PeerName] = []
     @Published public private(set) var roster = RaceRoster()
     /// What to show when the race is not moving, or nil when it is. Read per
-    /// frame by the overlay; NOT published, for the reason on `bufferedTicks`.
+    /// frame by the overlay and deliberately NOT `@Published`: it changes per
+    /// frame, `RaceScreen` observes this object, and publishing per-frame state
+    /// from inside the render pass froze the app solid once already.
     public private(set) var stallNote: String?
-    /// Set once if the peers ever disagree. Sticky, and worth surfacing loudly:
-    /// it is the one outcome that means the whole design does not work.
-    ///
-    /// Not published either — it is set from the tick loop. The overlay reads it
-    /// every frame anyway, since `RaceScreen` redraws continuously.
-    public private(set) var divergenceNote: String?
-    /// Buffered input ticks — the health readout. Growing means falling behind.
-    ///
-    /// **Not `@Published`, and that is load-bearing.** This is updated on every
-    /// simulated tick, and `RaceScreen` observes this object — so publishing it
-    /// mutated observable state from inside the render pass, which invalidated the
-    /// view, which re-entered the tick loop. The lobby reached `.racing` and the
-    /// app then froze solid. `GameSession` already documents the same trap and
-    /// deliberately publishes nothing per-frame; this reintroduced it.
-    public private(set) var bufferedTicks = 0
     /// Why a device could not be seated, for the host's lobby. A join that fails
     /// silently is indistinguishable from one that never arrived.
     @Published public private(set) var joinNote: String?
@@ -66,7 +51,10 @@ public final class NetworkedGame:
     public var localSeats: Int = 1
 
     private let transport: MultipeerTransport
-    private var net: NetworkedRace?
+    /// The host's half of the sync, or nil on a client.
+    private var relay: HostRelay?
+    /// The client's half, or nil on the host.
+    private var clientView: ClientView?
     private var start: RaceStart?
     /// Set by the host so a guest can be told what to race on.
     private var pendingStart: ((RaceStart) -> Void)?
@@ -104,7 +92,8 @@ public final class NetworkedGame:
 
     public func leave() {
         transport.disconnect()
-        net = nil
+        relay = nil
+        clientView = nil
         start = nil
         roster = RaceRoster()
         peers = []
@@ -118,7 +107,7 @@ public final class NetworkedGame:
     /// the two diverge the moment the two code paths disagree about anything — so
     /// the host applies its own message, exactly as a guest does.
     public func startRace(
-        course: RaceStart.Course, seed: UInt64, laps: Int?, delayTicks: Int = 2,
+        course: RaceStart.Course, seed: UInt64, laps: Int?,
         tuning: CarTuning = CarTuning(), carContact: Bool = true
     ) {
         // Traced BEFORE the guard: "the note that did not print" has been the only
@@ -129,7 +118,7 @@ public final class NetworkedGame:
             return
         }
         let message = RaceStart(
-            course: course, seed: seed, roster: roster, laps: laps, delayTicks: delayTicks,
+            course: course, seed: seed, roster: roster, laps: laps,
             tuning: tuning, carContact: carContact)
         note("sending start: seed \(seed), \(roster.seatCount) cars")
         transport.send(message.encoded, reliable: true)
@@ -147,10 +136,12 @@ public final class NetworkedGame:
         note("starting \(message.roster.seatCount) cars, my seats \(mine)")
         start = message
         roster = message.roster
-        net = NetworkedRace(
-            roster: message.roster, me: transport.me, delayTicks: message.delayTicks)
+        if message.roster.host == transport.me {
+            relay = HostRelay(roster: message.roster, me: transport.me)
+        } else {
+            clientView = ClientView(roster: message.roster, me: transport.me)
+        }
         stallNote = nil
-        divergenceNote = nil
         phase = .racing
         pendingStart?(message)
     }
@@ -165,81 +156,50 @@ public final class NetworkedGame:
     // MARK: - Driving the race
 
     /// Seats this device reads thumbs for.
-    public var mySeats: [PlayerID] { net?.localSeats ?? [] }
+    public var mySeats: [PlayerID] { start?.roster.seats(for: transport.me) ?? [] }
 
-    /// The buffer the HOST chose, carried in `RaceStart` — so every peer publishes
-    /// the same number of ticks ahead and cannot disagree about which tick an input
-    /// belongs to.
-    public var delayTicks: Int { net?.clock.delayTicks ?? 0 }
+    public var isRaceHost: Bool { relay != nil }
 
-    /// Record input for a tick without sending — it rides in the next packet's
-    /// history. See `GameSession.LockstepDriver.record`.
-    public func record(_ inputs: [PlayerID: CarInput], at tick: Tick) {
-        guard var net else { return }
-        net.record(inputs, at: tick)
-        self.net = net
+    /// Host: the freshest thumb a remote seat has sent — held between packets,
+    /// which is safe here and nowhere else, because the host's sim IS the race.
+    public func remoteInput(for seat: PlayerID) -> CarInput {
+        relay?.input(for: seat) ?? .coast
     }
 
-    /// Publish this device's input for `tick` and take in whatever has arrived.
-    /// Call once per frame, before asking for ticks.
-    public func publish(_ inputs: [PlayerID: CarInput], at tick: Tick) {
-        guard var net else { return }
-        let bytes = net.send(inputs, at: tick)
-        self.net = net
-        // **Input goes UNRELIABLY, as the plan originally argued.**
-        //
-        // I switched this to reliable while hunting a desync that turned out to be
-        // mismatched car tuning, not packet loss at all. Reliable delivery then caused
-        // its own problem, reported from device: a constant ~2 Hz stutter with the
-        // "waiting" banner pulsing in time with it. MC's reliable channel coalesces
-        // like TCP, so sixty tiny packets a second arrive in clumps — each clump
-        // releasing a burst of ticks, then starvation until the next. Head-of-line
-        // delivery is exactly wrong for a 60 Hz stream where a late packet is useless.
-        //
-        // Unreliable sends go out immediately, and loss is repaired by the redundancy
-        // each packet carries. That was always the right shape; the desync just made
-        // it look otherwise.
+    /// Host: called after every simulated tick; sends a snapshot on the cadence
+    /// ticks. Unreliable on purpose — a lost snapshot is superseded by the next
+    /// one 50 ms later, and the reliable channel's coalescing turned a 60 Hz
+    /// stream into 2 Hz clumps once already.
+    public func broadcast(_ race: Race) {
+        guard let relay, relay.shouldBroadcast(after: race.tick) else { return }
+        let bytes = HostRelay.snapshotMessage(for: race)
         if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: false) }
     }
 
-    /// The next tick's inputs, or nil if the race must wait. **Nil means do not
-    /// step the sim** — not "everybody coasts".
-    public func nextTick() -> [PlayerID: CarInput]? {
-        guard var net else { return nil }
-        let inputs = net.nextTick()
-        self.net = net
-        refreshDiagnostics()
-        return inputs
-    }
-
-    /// Report the state we reached, so peers can compare. Call after every tick.
-    public func report(hash: UInt64, at tick: Tick) {
-        guard var net else { return }
-        let bytes = net.report(hash: hash, at: tick)
-        self.net = net
-        // Hashes stay UNRELIABLE: a lost one costs a comparison, not correctness, and
-        // putting diagnostics on the reliable channel would delay the input behind them.
+    /// Client: this frame's thumbs, off to the host. `ClientView` decides which
+    /// frames actually send — the spike's measured lesson is that MC congests
+    /// above ~100 small messages a second.
+    public func publish(_ inputs: [PlayerID: CarInput]) {
+        guard var view = clientView else { return }
+        let bytes = view.publish(inputs)
+        clientView = view
+        guard let bytes else { return }
         if captureSends { outbox.append(bytes) } else { transport.send(bytes, reliable: false) }
-        refreshDiagnostics()
     }
 
-    private func refreshDiagnostics() {
-        guard let net else { return }
-        bufferedTicks = net.clock.bufferedTicks
-        // A named departure outranks a generic "waiting": a peer that MC has told
-        // us is gone will never send the input the clock is waiting for, and saying
-        // "waiting for iPhone" forever reads as a hang rather than a disconnection.
-        if !net.stalledOn.isEmpty {
-            let names = Set(net.stalledOn.compactMap { net.roster.peer(driving: $0) })
-                .map(DeviceName.display).sorted()
-            stallNote = "Lost \(names.joined(separator: ", "))"
-            return
+    /// Client: the smoothed state to draw. Also where the one remaining stall
+    /// note comes from — a host gone quiet is the only thing left that can
+    /// freeze a client, and it should say so rather than look like a crash.
+    public func view(advancedBy dt: TimeInterval) -> RaceSnapshot? {
+        guard var view = clientView else { return nil }
+        let shown = view.view(advancedBy: dt)
+        clientView = view
+        if stallNote == nil, view.isStarved {
+            stallNote = "Waiting for \(DeviceName.display(roster.host ?? "the host"))"
+        } else if stallNote != nil, !view.isStarved {
+            stallNote = nil
         }
-        stallNote = Self.describe(net.stall, roster: net.roster)
-        if let divergence = net.divergence, divergenceNote == nil {
-            divergenceNote =
-                "Desync at tick \(divergence.tick) vs \(DeviceName.display(divergence.peer))"
-        }
+        return shown
     }
 
     private static func describe(_ error: Error, peer: RaceRoster.PeerName) -> String {
@@ -255,22 +215,6 @@ public final class NetworkedGame:
             return "\(name) asked for \(requested) seats; \(max) is the most per device"
         case nil:
             return "\(name) could not join"
-        }
-    }
-
-    /// A stall needs a cause on screen. A frozen race with no explanation is
-    /// indistinguishable from a crash, and this is the whole point of `Stall`
-    /// naming what it is waiting for.
-    private static func describe(_ stall: LockstepClock.Stall?, roster: RaceRoster) -> String? {
-        switch stall {
-        case .waitingForInput(_, let missing):
-            let names = Set(
-                missing.compactMap { roster.peer(driving: $0) }.map(DeviceName.display)
-            ).sorted()
-            return names.isEmpty ? "Waiting…" : "Waiting for \(names.joined(separator: ", "))"
-        case .buffering, nil:
-            // Buffering is the normal state between ticks, not something to report.
-            return nil
         }
     }
 
@@ -295,10 +239,16 @@ public final class NetworkedGame:
             apply(message)
             return
         }
-        guard var net else { return }
-        net.receive(bytes, from: peer)
-        self.net = net
-        refreshDiagnostics()
+        // Per-tick traffic: inputs to the host's relay, snapshots to the client's
+        // view. Anything unrecognised — including the retired lockstep hash tag —
+        // is dropped, never believed.
+        if var relay {
+            relay.receive(bytes, from: peer)
+            self.relay = relay
+        } else if var view = clientView {
+            view.receive(bytes, from: peer)
+            clientView = view
+        }
     }
 
     public func transport(peerJoined peer: RaceRoster.PeerName) {
@@ -322,12 +272,16 @@ public final class NetworkedGame:
         peers = transport.connectedPeers
         note("lost: \(DeviceName.display(peer))")
         if case .racing = phase {
-            // **The race stalls rather than ending.** Its cars still have to be
-            // simulated by everyone else, and quietly dropping them would fork the
-            // race. Whether to abandon it is the player's call.
-            net?.peerLeft(peer)
-            refreshDiagnostics()
-            stallNote = "Lost \(DeviceName.display(peer))"
+            // The race carries on — that is the model's point. On the host a
+            // departed player's cars coast; on a client, only the HOST leaving
+            // matters, and it should read as a disconnection, not a hang.
+            if var relay {
+                relay.peerLeft(peer)
+                self.relay = relay
+                stallNote = "Lost \(DeviceName.display(peer))"
+            } else if peer == roster.host {
+                stallNote = "Lost \(DeviceName.display(peer)) — the race is over"
+            }
             return
         }
         // Once the start message has gone out the roster is FROZEN: the race is

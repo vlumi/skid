@@ -15,18 +15,12 @@ struct NetworkStatusOverlay: View {
     /// tick, so observing them would publish from inside the render pass — which
     /// froze the app solid. `RaceScreen` redraws every frame via `TimelineView`
     /// anyway, so reading them as values is both correct and sufficient.
-    let divergenceNote: String?
     let stallNote: String?
     /// The real top safe-area inset, from the layout that still knows it.
     let topInset: CGFloat
 
     var body: some View {
         VStack(spacing: 8) {
-            // A desync means the whole design does not work. Loud, and sticky:
-            // it does not clear, because everything after it is fiction.
-            if let note = divergenceNote {
-                banner(note, tint: .red)
-            }
             // A stall names who it is waiting for, so "frozen" becomes "Ville's
             // phone went away" — actionable rather than mysterious.
             if let note = stallNote {
