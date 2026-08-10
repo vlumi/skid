@@ -73,18 +73,29 @@ In practice:
 
 - **arm64 iPhone ↔ arm64 iPad ↔ Apple-silicon Mac** all use the same Apple libm
   on the same architecture, so this is very likely fine
-- **an Intel Mac** is the case that could genuinely differ
+- **Intel is out of scope, decided rather than assumed.** It was the one case that
+  could genuinely differ — and there is no Intel Mac available to test on, so it
+  cannot be supported whatever the OS allows. An untestable platform is not a
+  supported one. (macOS 14 does still *run* on some 2018-and-later Intel models,
+  so the deployment target alone does not exclude them; this is a support
+  decision, not a build one.)
 - a Swift or OS version difference across peers is a smaller but real version of
-  the same risk
+  the same risk, and the one that stays live: iOS and macOS ship separate copies
+  of libm even on identical silicon
 
 So: **add a cross-device determinism check to the spike itself** — run a fixed
 input script on both peers and compare the per-tick hash from §1. If it holds on
-the hardware that matters, the assumption is validated rather than assumed. If it
-does not, the fallback is known and unglamorous: replace the transcendentals on
-the sim path with table/polynomial versions the project owns, so every peer
-computes bit-identical values by construction. That is a contained change —
-roughly the ten call sites above — but it is worth knowing *before* building a
-lobby on top.
+the hardware that matters, the assumption is validated rather than assumed.
+
+If it does not, the fallback is known and unglamorous: replace the transcendentals
+on the sim path with table/polynomial versions the project owns, so every peer
+computes bit-identical values by construction. Roughly the ten call sites above.
+
+**But do not reach for that pre-emptively.** With Intel out of scope every
+supported peer is arm64 running Apple's libm, so this is a fallback for a problem
+no supported configuration currently has — and owning the transcendentals costs
+accuracy, speed and a permanent maintenance burden. The golden hash is the guard;
+build the replacement only if it actually goes red.
 
 ## Which transport, and what "local network" means
 

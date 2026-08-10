@@ -84,6 +84,12 @@ struct SetupView: View {
             }
 
             Button {
+                game.openNetworking()
+            } label: {
+                Text("Play together", bundle: .module).pillStyle()
+            }
+
+            Button {
                 game.openEditor()
             } label: {
                 Text("Track editor", bundle: .module).pillStyle()

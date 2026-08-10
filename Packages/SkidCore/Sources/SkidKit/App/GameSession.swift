@@ -34,6 +34,12 @@ public final class GameSession: ObservableObject {
     /// in place) and only begins once a player taps to start. Freezing before
     /// the countdown reuses the exact `paused` mechanism (clock stays
     /// anchored), so the countdown then runs cleanly from tick 0.
+    ///
+    /// **A networked race starts itself** — see `lockstep`. The gate is per-device,
+    /// so waiting for a tap on each screen deadlocks: a device that has not started
+    /// publishes no input, so no peer's clock can release a tick, so nobody's
+    /// countdown moves. It stuck at "3" on two phones. The host's "Start race" in
+    /// the lobby IS the shared ready gate, and it is the only one there can be.
     @Published public var started = false
     /// Called after every sim tick with the fresh race — the event stream
     /// consumer seam (sound, haptics). Events from intermediate ticks in a
@@ -44,6 +50,36 @@ public final class GameSession: ObservableObject {
     /// hop off the render pass, never mid-view-update.
     @Published public private(set) var raceOver = false
     private let inputFor: (PlayerID, Race) -> CarInput
+
+    /// **The networking seam, host-authoritative.**
+    ///
+    /// Three roles, one class. Local play: `isNetworked` false, nothing here in
+    /// use — the loop below is the code that has always shipped. Hosting: the
+    /// host IS local play, which is the model's whole point — remote seats'
+    /// inputs arrive through the ordinary `inputFor` closure and every tick is
+    /// broadcast from `onTick`; nothing in this file knows it is hosting.
+    /// Client: `snapshotClient` set, and the sim never runs — the race value
+    /// becomes a display buffer for the host's snapshots.
+    public var snapshotClient: SnapshotClientDriver?
+
+    /// True for any networked role. The pause guard keys off this (a per-device
+    /// pause would freeze one screen of a shared race), as does seat-coloured
+    /// rendering.
+    public var isNetworked = false
+
+    /// What a client session needs from the network. `NetworkedGame` conforms.
+    @MainActor
+    public protocol SnapshotClientDriver: AnyObject {
+        /// Seats this device reads thumbs for.
+        var mySeats: [PlayerID] { get }
+        /// This frame's thumbs, off to the host. Rate limiting lives behind the
+        /// seam — the spike's measured lesson is that MC congests above ~100
+        /// small messages a second, so the driver decides which frames send.
+        func publish(_ inputs: [PlayerID: CarInput])
+        /// The smoothed state to draw, `dt` seconds after the previous frame.
+        /// Nil until the first snapshot lands.
+        func view(advancedBy dt: TimeInterval) -> RaceSnapshot?
+    }
 
     private var lastTime: TimeInterval?
     private var accumulator: TimeInterval = 0
@@ -82,32 +118,76 @@ public final class GameSession: ObservableObject {
             return
         }
         lastTime = time
-        accumulator += max(0, time - last)
+        let elapsed = max(0, time - last)
+        if let client = snapshotClient {
+            advanceClient(by: elapsed, client: client)
+            return
+        }
+        accumulator += elapsed
 
         var ticks = 0
         while accumulator >= Race.dt, ticks < Self.maxTicksPerFrame {
-            var inputs: [PlayerID: CarInput] = [:]
-            for player in players {
-                inputs[player] = inputFor(player, race)
-            }
-            recording.append(inputs)
-            race.advance(inputs: inputs)
-            ghost?.advanceTick()
-            for car in race.cars {
-                marks.record(car: car, on: race.track, tick: race.tick)
-            }
-            onTick?(race)
+            step(with: localInputs())
             accumulator -= Race.dt
             ticks += 1
         }
         if ticks == Self.maxTicksPerFrame {
             accumulator = 0
         }
+        noteRaceOverIfFinished()
+    }
+
+    /// A client frame: thumbs out, the host's state in. No simulation happens
+    /// here at all — the race value is a display buffer, `apply` refuses
+    /// anything that does not fit it, and there is deliberately no fallback to
+    /// simulating locally, because a client treating its own sim as truth is
+    /// this model's one unforgivable bug.
+    private func advanceClient(by dt: TimeInterval, client: SnapshotClientDriver) {
+        var mine: [PlayerID: CarInput] = [:]
+        for seat in client.mySeats {
+            mine[seat] = inputFor(seat, race)
+        }
+        client.publish(mine)
+        if let shown = client.view(advancedBy: dt) {
+            race.apply(shown)
+            // Skid marks come off the applied states — 60 rendered frames of a
+            // 20 Hz stream, so they draw as they do locally. The recording does
+            // NOT run on a client: the host records the true race, and a stream
+            // of snapshots is not an input recording.
+            for car in race.cars {
+                marks.record(car: car, on: race.track, tick: race.tick)
+            }
+            onTick?(race)
+        }
+        noteRaceOverIfFinished()
+    }
+
+    private func localInputs() -> [PlayerID: CarInput] {
+        var inputs: [PlayerID: CarInput] = [:]
+        for player in players {
+            inputs[player] = inputFor(player, race)
+        }
+        return inputs
+    }
+
+    private func noteRaceOverIfFinished() {
         if !raceOver, race.phase == .finished {
             Task { @MainActor [weak self] in
                 self?.raceOver = true
             }
         }
+    }
+
+    /// One tick, identical for local play and for a host — a hosted race IS a
+    /// local race whose remote seats read from the network.
+    private func step(with inputs: [PlayerID: CarInput]) {
+        recording.append(inputs)
+        race.advance(inputs: inputs)
+        ghost?.advanceTick()
+        for car in race.cars {
+            marks.record(car: car, on: race.track, tick: race.tick)
+        }
+        onTick?(race)
     }
 }
 

@@ -78,7 +78,11 @@ public struct Race: Equatable, Sendable {
     public let track: Track
     public let config: RaceConfig
     public var tuning: CarTuning
-    public private(set) var tick: Tick
+    /// Setter internal for exactly one caller: `apply(_ snapshot:)`, which is how a
+    /// client of a host-authoritative race adopts the host's state. Nothing else may
+    /// write it — the sim advances it, a snapshot overwrites it, and those two never
+    /// happen to the same instance.
+    public internal(set) var tick: Tick
     /// Setter internal so tests can stage scenarios (@testable).
     public internal(set) var cars: [Car]
     /// Seeded, injected randomness — unused by the core physics, but any

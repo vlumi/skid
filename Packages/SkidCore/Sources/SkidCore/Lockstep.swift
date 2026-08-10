@@ -69,10 +69,20 @@ public struct LockstepClock: Sendable {
         /// covering ticks 9, 8 and 7 has three entries.
         public var inputs: [[PlayerID: CarInputWire]]
 
-        /// How many ticks of redundancy to carry. Three costs 12 bytes per player
-        /// and survives two consecutive losses, which on a couch Wi-Fi network is
-        /// more than enough.
-        public static let history = 3
+        /// How many ticks of redundancy to carry.
+        ///
+        /// **Redundancy is the only repair**, so this is the loss budget. Input goes
+        /// on the unreliable channel — the reliable one coalesces like TCP and turned
+        /// a 60 Hz stream into ~2 Hz clumps on device — which means nothing
+        /// retransmits and a lost packet is repaired only by the next one carrying the
+        /// same tick again.
+        ///
+        /// Three ticks (33 ms) was the original guess and far too thin for a phone's
+        /// Wi-Fi. Sixteen is 266 ms of cover at 4 bytes per seat per tick: 64 bytes
+        /// per seat, ~133 for a two-seat device, comfortably one datagram. Sizing this
+        /// to the worst burst worth surviving is the whole trade — the packets are
+        /// tiny and the alternative is a stall.
+        public static let history = 16
 
         public init(tick: Tick, inputs: [[PlayerID: CarInputWire]]) {
             self.tick = tick

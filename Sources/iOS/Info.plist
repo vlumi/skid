@@ -24,6 +24,13 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.racing</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_skid-race._tcp</string>
+		<string>_skid-race._udp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Skid Jam finds other players' devices nearby so you can race together. Nothing leaves your local network.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

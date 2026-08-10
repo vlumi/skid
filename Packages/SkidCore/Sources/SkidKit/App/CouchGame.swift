@@ -7,6 +7,8 @@ public final class CouchGame: ObservableObject {
         case setup
         case racing
         case editing
+        /// Host/join lobby for a networked race.
+        case networking
     }
 
     /// The track being built in the editor. A piece list, live-previewed and
@@ -68,7 +70,7 @@ public final class CouchGame: ObservableObject {
 
     static let palette: [Color] = TrackRenderer.carPalette
 
-    @Published public private(set) var phase: Phase = .setup
+    @Published public internal(set) var phase: Phase = .setup
     @Published public var mode: Mode = .race
     /// **What a race is allowed to hold today: four cars.**
     ///
@@ -138,13 +140,18 @@ public final class CouchGame: ObservableObject {
     @Published public var carContact = true
     /// The chosen circuit (a `Track.id` from `TrackLibrary.all`).
     @Published public var trackID = TrackLibrary.builtins[0].id
-    /// 2P seating: side-by-side vs face-to-face.
-    @Published public var faceToFace = false
+    /// 2P seating: face-to-face (default) vs side-by-side.
+    ///
+    /// Face-to-face is what two people do with a phone flat on a table — full-width
+    /// band each. Side-by-side halves that and is cramped on an iPhone; it exists
+    /// because cramming 3–4 players onto one screen needs it, not because two
+    /// players want it. Eventually a per-device choice, once devices differ.
+    @Published public var faceToFace = true
     /// 3P seating: which quadrant stays open.
     @Published public var openCorner: ZoneCorner = .topLeft
 
-    @Published public private(set) var session: GameSession?
-    public private(set) var rig: CouchRig?
+    @Published public internal(set) var session: GameSession?
+    public internal(set) var rig: CouchRig?
     public private(set) var hiscores: HiscoreBook
     public let settings = GameSettings()
 
@@ -164,10 +171,10 @@ public final class CouchGame: ObservableObject {
     let signingKeys: SigningKeyStore
     /// What the last pasted code claimed — computed on paste, never on render.
     @Published var pastedAttributionRaw: TrackAttribution = .unsigned
-    private let aiFleet = AIFleet()
+    let aiFleet = AIFleet()
     private let sound = SoundEngine()
     private let haptics = Haptics()
-    private var aiColorIndices: [Int] = []
+    var aiColorIndices: [Int] = []
     /// Race seed, bumped before every race and recorded with each replay so
     /// runs stay reproducible. Seeded from the clock ONCE at launch (view
     /// layer only — the sim itself never touches wall-clock time) so grids
@@ -433,11 +440,5 @@ public final class CouchGame: ObservableObject {
         if improved {
             hiscoreFile.save(hiscores)
         }
-    }
-
-    /// Car colors in car order (humans first, then AI), for renderer + HUD.
-    public var carColors: [Color] {
-        let humanColors = rig?.players.map(\.colorIndex) ?? Array(colorIndices.prefix(playerCount))
-        return (humanColors + aiColorIndices).map { Self.palette[$0] }
     }
 }
