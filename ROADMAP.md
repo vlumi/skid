@@ -286,20 +286,31 @@ untestable at any length — so it comes before anything that adds to it.
       agreed — a new race is a fresh `RaceStart` from the host over the same
       session. Cheap, and it is what a couch actually does: five short races in a
       row, not one.
-- [ ] **Rejoin after a drop.** A peer that loses the link mid-race cannot join
-      *that* race (the host's sim is already elsewhere), so the honest behaviour
-      is: return to the lobby, be seated again, race the next one. Worth
-      confirming rather than assuming that mid-race rejoin is impossible — with a
-      host authority a late client CAN in principle adopt a snapshot and start
-      rendering, which lockstep could never have done.
+- [ ] **After a drop, you are out — but only after a grace period.** Decided:
+      **no mid-race rejoin.** A host authority makes it technically possible (a
+      late client could adopt a snapshot and start rendering, which lockstep never
+      could) and it is still not worth it — after a few seconds away, rejoining a
+      short race is meaningless. So a dropped peer returns to the lobby and races
+      the next one.
+      The care goes into the other half: **a brief hiccup must not eject anyone.**
+      MC reports a peer lost on short interruptions, so a drop is only final after
+      the link stays down for a few seconds; before that the car holds its last
+      input and the screen says so.
 - [ ] **Sound and haptics in a networked race.** A pre-existing gap, not a
       regression: the host's `onTick` now carries the broadcast, and the audio hook
       wants wiring alongside it. Silence reads as broken.
 
-### Joining on purpose — *the lobby people actually use*
+### Joining on purpose — *same pipeline as the session loop*
 
 Automatic connection was right for a spike and wrong for a product: two phones
-in a room join whatever they find.
+in a room join whatever they find. This is lobby mechanics, so it ships with the
+session loop rather than after it.
+
+**Deliberately minimal, on the maintainer's call.** The menus get a complete
+redesign later — a proper new-game flow with real thought about what is
+selectable where (see the Real Game milestone) — and that redesign will replace
+whatever lobby chrome exists. So this round buys *mechanics*, not layout: the
+smallest UI that makes each choice possible, and no more.
 
 - [ ] **Pick which race to join.** The client lists what it can see and chooses,
       instead of taking the first advertiser.
