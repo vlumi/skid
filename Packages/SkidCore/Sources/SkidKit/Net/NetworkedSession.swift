@@ -23,7 +23,7 @@ extension NetworkedGame {
     /// channel it would travel on.
     public func leave() {
         if start != nil || phase == .lobby || phase == .hosting {
-            transport.send(LeaveNotice(byHost: isHost).encoded, reliable: true)
+            transmit(LeaveNotice(byHost: isHost).encoded, reliable: true)
         }
         transport.disconnect()
         resetSession()
@@ -44,14 +44,12 @@ extension NetworkedGame {
         stallNote = nil
         linkNote = nil
         presence.reset()
-        // The host resumes advertising: it stopped implicitly when the race began,
-        // and a lobby nobody can find is not a lobby.
-        if isHost {
-            phase = .hosting
-            transport.startHosting()
-        } else {
-            phase = .lobby
-        }
+        // **Advertising was never stopped**, so there is nothing to resume: the
+        // spike tore the advertiser down when a race began and that dropped the MC
+        // session mid-handshake, so it stays up for the whole session. Restarting it
+        // here would be the same mistake on a slower fuse. Latecomers are refused by
+        // `seat` while a race is running, which is the real gate.
+        phase = isHost ? .hosting : .lobby
     }
 
     /// Everything that belongs to one session rather than to the app.
@@ -77,7 +75,7 @@ extension NetworkedGame {
         chosenHost = host
         phase = .awaitingApproval
         note("asking \(DeviceName.display(host)) to join")
-        transport.send(JoinRequest(seats: localSeats).encoded, reliable: true)
+        transmit(JoinRequest(seats: localSeats).encoded, reliable: true)
     }
 
     /// Host: yes. The roster is the gate that can still refuse (a full field), and
@@ -95,8 +93,7 @@ extension NetworkedGame {
         guard isHost else { return }
         pendingJoins.removeAll { $0.peer == peer }
         note("declined \(DeviceName.display(peer))")
-        transport.send(
-            JoinVerdict(accepted: false, reason: "The host declined").encoded, reliable: true)
+        transmit(JoinVerdict(accepted: false, reason: "The host declined").encoded, reliable: true)
     }
 
     /// The lobby half of the receive path — join requests and verdicts, the roster,
@@ -139,5 +136,27 @@ extension NetworkedGame {
             return true
         }
         return false
+    }
+
+    /// **Race again with the same field.** The roster and the connection are
+    /// already agreed, so a rematch is one fresh `RaceStart` — a new seed, the same
+    /// everything else. Host only, and only from the lobby: mid-race it would yank
+    /// the field out from under a race in progress.
+    public func rematch(seed: UInt64) {
+        // `canRematch` gates the button, so this repeats it — deliberately, because
+        // a guest's `RaceStart` would start a race its host is not running, and a
+        // future caller that skips the button must still be refused. Sabotaging
+        // either guard alone leaves the other holding.
+        guard isHost, start == nil, let course = lastCourse else { return }
+        note("rematch: seed \(seed)")
+        startRace(
+            course: course, seed: seed, laps: CouchGame.networkedLaps,
+            tuning: lastTuning, carContact: lastCarContact)
+    }
+
+    /// Whether Rematch is available: the host, out of a race, with a course to
+    /// repeat and somebody to race against.
+    public var canRematch: Bool {
+        isHost && start == nil && lastCourse != nil && roster.entries.count > 1
     }
 }
