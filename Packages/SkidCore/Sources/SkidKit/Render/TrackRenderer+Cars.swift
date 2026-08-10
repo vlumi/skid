@@ -89,10 +89,25 @@ extension TrackRenderer {
             // footprint reaches it, covers it — and each such segment's own storey
             // is the layer its window belongs in, so a car under two stacked decks
             // still shows through both.
+            //
+            // **The gap must be a whole level, not half a storey.** This used
+            // `levelSeparation`, which is 0.5 and documented for solidity-interval
+            // gaps — a different question. Half a level is less than a curved ramp
+            // climbs while it bends back over its own footprint, so a car mid-climb
+            // was "covered" by the stretch it was about to drive onto. Reported from
+            // device on the clover at h 0.41, and absent on the eight, whose ramps
+            // are straight and never pass over themselves.
+            //
+            // Measured on the built-ins: a ramp's self-overlap never exceeds a 0.565
+            // height gap (0.299 on the eight), while every genuine deck clears
+            // exactly 1.0 or more — decks sit on whole levels by construction. A full
+            // `levelHeight` therefore separates the two cases with room on both
+            // sides, which is why this needs no tuning.
+            let deckClearance = Track.levelHeight - 0.001  // float-sum tolerance
             var coveringStoreys: Set<Int> = []
             for index in track.centerline.indices {
                 let roadHeight = track.height(ofSegment: index)
-                guard roadHeight > state.height + Track.levelSeparation else { continue }
+                guard roadHeight > state.height + deckClearance else { continue }
                 let reach = track.footprintHalfWidth(atHeight: roadHeight) + holeRadius
                 let a = track.centerline[index]
                 let b = track.centerline[(index + 1) % track.centerline.count]
