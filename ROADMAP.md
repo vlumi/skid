@@ -323,6 +323,16 @@ smallest UI that makes each choice possible, and no more.
       is done, the picker is not). Under networking a colour must be agreed
       centrally, since "local" is a per-screen property.
 
+### Known bugs
+
+- [ ] **A car on top of a ramp gets the tunnel window.** Reported from device: the
+      round "you are underneath something" cutout appears while driving the ramp's
+      lower half, when the car is on the ramp rather than under anything. The
+      overlap test is presumably comparing the car's height against the ramp's
+      *span* instead of the deck above it — the height model already distinguishes
+      those (see the crossings work), so this is a renderer question rather than a
+      model one.
+
 ### Feel and scale — *measure before building*
 
 - [ ] **Judge the client's input latency on a real link.** Your thumb reaches the

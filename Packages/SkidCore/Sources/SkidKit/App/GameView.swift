@@ -18,6 +18,15 @@ public struct GameView: View {
             case .racing:
                 if let session = game.session, let rig = game.rig {
                     RaceScreen(game: game, session: session, rig: rig, net: net)
+                        // **Identity, or a rematch keeps the old race's wiring.** A
+                        // networked rematch replaces the session and the rig while the
+                        // phase stays `.racing`, so SwiftUI reuses this view and its
+                        // `@ObservedObject`s keep their ORIGINAL references — the pad
+                        // on screen then drives a session nobody advances, which is
+                        // exactly "the client's controls do nothing". Reported from
+                        // device. A local race gets a new session too (`raceAgain`),
+                        // so this is not networking-specific.
+                        .id(ObjectIdentifier(session))
                 }
             case .editing:
                 EditorView(game: game)
