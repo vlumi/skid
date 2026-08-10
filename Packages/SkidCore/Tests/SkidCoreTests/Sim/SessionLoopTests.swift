@@ -325,4 +325,54 @@ final class SessionLoopTests: XCTestCase {
         XCTAssertEqual(game.rig?.players.map(\.player), pair.guest.mySeats)
         XCTAssertEqual(game.phase, .racing)
     }
+
+    func testEveryRaceGetsADistinctViewIdentityEvenWhenSessionsAreFreed() {
+        // **Reported from device: the first rematch worked, the second did not.**
+        // That alternation is the signature of address reuse. The view identity was
+        // `ObjectIdentifier(session)` — an address — and the old session is freed
+        // before the new one is allocated, so the allocator can hand back the same
+        // address, the id compares equal, and SwiftUI reuses the view with the
+        // previous race's wiring after all.
+        //
+        // This test holds NO reference to the old sessions, so they are freed exactly
+        // as in the app; only the keys are kept.
+        let pair = lobbyPair()
+        pair.guest.askToJoin(hostKey)
+        pair.settle()
+        pair.host.approve(guestKey)
+        pair.settle()
+        let game = CouchGame()
+        pair.guest.onStart { start in game.startNetworkedRace(start, driver: pair.guest) }
+
+        var keys: [String] = []
+        for race in 1...5 {
+            if race == 1 {
+                pair.host.startRace(course: .builtin("small"), seed: UInt64(race), laps: 3)
+            } else {
+                pair.host.returnToLobby()
+                pair.host.rematch(seed: UInt64(race))
+            }
+            pair.settle()
+            guard let key = game.session?.raceKey else {
+                return XCTFail("race \(race) built no session")
+            }
+            keys.append(key)
+        }
+        XCTAssertEqual(keys.count, 5)
+        XCTAssertEqual(
+            Set(keys).count, 5,
+            "two races shared a view identity, so one kept the other's controls: \(keys)")
+    }
+
+    func testARaceKeyChangesForALocalRaceToo() {
+        // A local `raceAgain` builds a fresh session as well, and `generation` is only
+        // set by networking — so the key must not rely on it alone.
+        let first = GameSession(
+            track: TrackLibrary.testRing(), players: [PlayerID(0)], config: RaceConfig(),
+            seed: 1, inputFor: { _, _ in .coast })
+        let second = GameSession(
+            track: TrackLibrary.testRing(), players: [PlayerID(0)], config: RaceConfig(),
+            seed: 2, inputFor: { _, _ in .coast })
+        XCTAssertNotEqual(first.raceKey, second.raceKey, "two local races shared an identity")
+    }
 }
