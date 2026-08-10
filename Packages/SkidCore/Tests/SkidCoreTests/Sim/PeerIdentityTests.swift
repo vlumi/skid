@@ -21,11 +21,21 @@ final class PeerIdentityTests: XCTestCase {
 
     func testTheFriendlyNameSurvivesForDisplay() {
         // A bare UUID would be unreadable in a lobby, so the key has to carry the
-        // human part — and `display` has to recover exactly it.
+        // human part — and `display` has to recover it. Recover, not equal: CI
+        // failed this on a runner whose HOSTNAME is 62 characters, where the
+        // length clamp correctly truncates the friendly part. The displayed name
+        // is a prefix of the friendly one, and the whole of it when it fits.
         let key = DeviceName.uniqueKey()
-        XCTAssertEqual(DeviceName.display(key), DeviceName.friendly)
+        let shown = DeviceName.display(key)
+        XCTAssertFalse(shown.isEmpty)
+        XCTAssertTrue(DeviceName.friendly.hasPrefix(shown), "display is not the friendly name")
         XCTAssertNotEqual(key, DeviceName.friendly, "the key is not unique at all")
-        XCTAssertTrue(key.hasPrefix(DeviceName.friendly.prefix(4)))
+        // Deterministically, with names of both sizes:
+        XCTAssertEqual(DeviceName.display(DeviceName.key(for: "Ville's iPhone")), "Ville's iPhone")
+        let long = String(repeating: "long-hostname-", count: 8)
+        let shownLong = DeviceName.display(DeviceName.key(for: long))
+        XCTAssertTrue(long.hasPrefix(shownLong))
+        XCTAssertFalse(shownLong.isEmpty)
     }
 
     func testDisplayFallsBackForAKeyWithoutASuffix() {
