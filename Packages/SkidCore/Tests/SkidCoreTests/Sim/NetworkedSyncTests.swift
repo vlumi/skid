@@ -220,4 +220,50 @@ final class NetworkedSyncTests: XCTestCase {
         }
         return nil
     }
+
+    func testBurstyDeliveryCostsLatencyNotRhythm() {
+        // **The 2 Hz stutter, reported from device THREE times — and it survived
+        // the model change, because it was never the model.** The transport
+        // delivers in ~500 ms bursts (the peer-to-peer radio duty-cycles), so a
+        // fixed 75 ms buffer starved between bursts and the client pulsed at the
+        // burst rate. The lag must adapt to the observed arrival rhythm: a bursty
+        // link costs latency, never rhythm.
+        var relay = HostRelay(roster: roster, me: "host#aaaa")
+        var view = ClientView(roster: roster, me: "guest#bbbb")
+        var race = Race(track: TrackLibrary.testRing(), players: roster.seats, seed: 3)
+        _ = relay
+
+        var pending: [[UInt8]] = []
+        var pauses = 0
+        var frames = 0
+        var lastRendered = -1.0
+        for frame in 0..<900 {
+            race.advance(inputs: [PlayerID(0): thumb(PlayerID(0), race.tick)])
+            if race.tick % 3 == 0 {
+                pending.append(HostRelay.snapshotMessage(for: race))
+            }
+            // The burst: nothing for half a second, then everything at once.
+            if frame % 30 == 29 {
+                for bytes in pending { view.receive(bytes, from: "host#aaaa") }
+                pending.removeAll()
+            }
+            guard let shown = view.view(advancedBy: Race.dt) else { continue }
+            // Skip the warm-up: the first burst is what teaches the lag its size.
+            if frame > 120 {
+                frames += 1
+                if Double(shown.tick) <= lastRendered { pauses += 1 }
+            }
+            lastRendered = Double(shown.tick)
+        }
+
+        XCTAssertGreaterThan(frames, 700, "the view barely rendered")
+        // A fixed 75 ms lag pauses on roughly half of all frames here. Adapted,
+        // the view must advance on nearly every frame — the burst becomes delay.
+        XCTAssertLessThan(
+            pauses, frames / 10,
+            "the view paused on \(pauses) of \(frames) frames — the burst became rhythm")
+        // And the price is visible and bounded: the lag grew to cover the burst.
+        XCTAssertGreaterThan(view.lagTicks, 25, "the lag never adapted to the burst")
+        XCTAssertLessThanOrEqual(view.lagTicks, 45, "the lag must stay bounded")
+    }
 }

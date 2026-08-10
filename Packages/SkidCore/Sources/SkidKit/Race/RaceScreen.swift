@@ -84,7 +84,9 @@ struct RaceScreen: View {
                     // a stall that names who it waits for, or a desync. Both are
                     // otherwise silent, and a frozen screen with no explanation
                     // reads as a crash.
-                    NetworkStatusOverlay(stallNote: net.stallNote, topInset: insets.top)
+                    NetworkStatusOverlay(
+                        stallNote: net.stallNote, linkNote: net.linkNote,
+                        topInset: insets.top)
 
                     // The map center is meta-control space (no car races there,
                     // and map-area touches are otherwise inert). A tap on it

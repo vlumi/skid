@@ -16,6 +16,9 @@ struct NetworkStatusOverlay: View {
     /// froze the app solid. `RaceScreen` redraws every frame via `TimelineView`
     /// anyway, so reading them as values is both correct and sufficient.
     let stallNote: String?
+    /// The client's measured link quality, small and dim — spike instrumentation,
+    /// not product chrome.
+    let linkNote: String?
     /// The real top safe-area inset, from the layout that still knows it.
     let topInset: CGFloat
 
@@ -25,6 +28,11 @@ struct NetworkStatusOverlay: View {
             // phone went away" — actionable rather than mysterious.
             if let note = stallNote {
                 banner(note, tint: .orange)
+            }
+            if let note = linkNote {
+                Text(note)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.5))
             }
         }
         // **Below the notch.** `RaceScreen` works in full-screen coordinates and

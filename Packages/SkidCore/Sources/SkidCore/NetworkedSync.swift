@@ -92,12 +92,13 @@ public struct ClientView: Sendable {
     public let me: RaceRoster.PeerName
     public let localSeats: [PlayerID]
 
-    /// How far behind the newest snapshot the view renders, in ticks. One and a
-    /// half snapshot intervals: enough that the next snapshot usually lands
-    /// before the view needs it, small enough to stay under a tenth of a second.
-    static let viewLag = 4.5
-    /// The view never falls further behind than this — beyond it, snap forward.
-    static let maxLag = 12.0
+    /// The floor for how far behind the newest snapshot the view renders, in
+    /// ticks. One and a half snapshot intervals: enough that the next snapshot
+    /// usually lands before the view needs it on a healthy link.
+    static let minLag = 4.5
+    /// The ceiling: three quarters of a second. A link whose bursts exceed this
+    /// is a link to report, not to smooth over.
+    static let maxLag = 45.0
     /// Send thumbs every Nth frame. 30 a second is plenty for a held analog
     /// value the host holds between packets, and half the message rate.
     static let inputEveryNthFrame = 2
@@ -107,6 +108,8 @@ public struct ClientView: Sendable {
     private var frame = 0
     private var inputTick: Tick = 0
     private var sinceLastSnapshot: TimeInterval = 0
+    /// Peak-held arrival gap, decaying slowly — the jitter the lag must cover.
+    private var worstGap: TimeInterval = 0
 
     public init(roster: RaceRoster, me: RaceRoster.PeerName) {
         self.roster = roster
@@ -138,7 +141,10 @@ public struct ClientView: Sendable {
         // rendered — the view must never move backwards.
         guard snapshot.tick > (snapshots.last?.tick ?? -1) else { return false }
         snapshots.append(snapshot)
-        if snapshots.count > 8 { snapshots.removeFirst(snapshots.count - 8) }
+        if snapshots.count > 32 { snapshots.removeFirst(snapshots.count - 32) }
+        // Peak-hold the arrival gap with a slow decay: the lag rises to a burst
+        // immediately (one pause) and relaxes over ~10 s once the link calms.
+        worstGap = max(sinceLastSnapshot, worstGap * 0.995)
         sinceLastSnapshot = 0
         return true
     }
@@ -148,18 +154,41 @@ public struct ClientView: Sendable {
     public mutating func view(advancedBy dt: TimeInterval) -> RaceSnapshot? {
         sinceLastSnapshot += dt
         guard let newest = snapshots.last else { return nil }
-        let target = Double(newest.tick) - Self.viewLag
-        if renderTick < 0 || renderTick < Double(newest.tick) - Self.maxLag {
+        let target = Double(newest.tick) - lagTicks
+        if renderTick < 0 || renderTick < Double(newest.tick) - 2 * lagTicks - 6 {
             renderTick = target  // first frame, or hopelessly behind: snap
         } else {
-            // Advance at real time, then lean gently toward the target so the
-            // view neither drifts away from the stream nor visibly jumps.
-            renderTick += dt * Double(Race.tickRate)
-            renderTick += (target - renderTick) * 0.1
+            // **Play out at a steady 1×, with only a small rate skew toward the
+            // target.** The first version leaned proportionally (10% of the
+            // error per frame), which turned a bursty arrival STAIR into rate
+            // modulation — sprint after each burst, crawl before the next — and
+            // the crawl rendered as the very pulse the buffer exists to remove.
+            // A jitter buffer's job is a constant playout rate; the skew only
+            // trims drift, slowly enough to be invisible.
+            let skew = min(0.08, max(-0.08, (target - renderTick) * 0.01))
+            renderTick += dt * Double(Race.tickRate) * (1 + skew)
             renderTick = min(renderTick, Double(newest.tick))
         }
         return interpolatedSnapshot(at: renderTick)
     }
+
+    /// **How far behind the newest snapshot to render, adapted to the link.**
+    ///
+    /// A fixed small lag assumes snapshots arrive steadily, and on device they
+    /// did not: the transport delivered in ~500 ms bursts (the peer-to-peer
+    /// radio duty-cycles), so a 75 ms buffer starved between bursts and the
+    /// client pulsed at the burst rate — the 2 Hz stutter that survived the
+    /// model change, because it was never the model. The lag now covers the
+    /// worst recent arrival gap plus one snapshot interval, so a bursty link
+    /// costs latency instead of rhythm. Smooth-but-later is the snapshot
+    /// model's trade to make; lockstep never had the option.
+    public var lagTicks: Double {
+        min(Self.maxLag, max(Self.minLag, worstGap * Double(Race.tickRate) + 3))
+    }
+
+    /// The worst recent arrival gap, for the on-screen link readout — the next
+    /// device session should measure the link, not describe it.
+    public var worstGapMs: Int { Int(worstGap * 1000) }
 
     /// True when the host has gone quiet long enough that the view is a freeze
     /// frame — what the "waiting" chrome keys off.

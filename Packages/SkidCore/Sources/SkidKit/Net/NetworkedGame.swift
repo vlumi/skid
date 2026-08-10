@@ -33,6 +33,12 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     /// frame, `RaceScreen` observes this object, and publishing per-frame state
     /// from inside the render pass froze the app solid once already.
     public private(set) var stallNote: String?
+    /// The client's link, measured: worst recent arrival gap and the latency the
+    /// jitter buffer is paying to absorb it. Plain (not `@Published`) and updated
+    /// about once a second — the instrument the next device session reads, so a
+    /// bad link is a number rather than an adjective.
+    public private(set) var linkNote: String?
+    private var linkNoteAge: TimeInterval = 0
     /// Why a device could not be seated, for the host's lobby. A join that fails
     /// silently is indistinguishable from one that never arrived.
     @Published public private(set) var joinNote: String?
@@ -194,6 +200,12 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         guard var view = clientView else { return nil }
         let shown = view.view(advancedBy: dt)
         clientView = view
+        linkNoteAge += dt
+        if linkNoteAge > 1 {
+            linkNoteAge = 0
+            let lagMs = Int(view.lagTicks * 1000 / Double(Race.tickRate))
+            linkNote = "gap \(view.worstGapMs) ms · lag \(lagMs) ms"
+        }
         if stallNote == nil, view.isStarved {
             stallNote = "Waiting for \(DeviceName.display(roster.host ?? "the host"))"
         } else if stallNote != nil, !view.isStarved {
