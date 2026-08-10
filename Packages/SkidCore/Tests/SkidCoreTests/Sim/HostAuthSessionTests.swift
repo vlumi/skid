@@ -304,4 +304,5 @@ final class HostAuthSessionTests: XCTestCase {
             for bytes in fromB { a.deliverForTesting(bytes, from: b.me) }
         }
     }
+
 }

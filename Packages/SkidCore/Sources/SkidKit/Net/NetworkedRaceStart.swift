@@ -42,6 +42,14 @@ extension CouchGame {
     /// Either way the `rig` lays out only the seats THIS device drives, and no AI
     /// joins — a networked field is people.
     public func startNetworkedRace(_ start: RaceStart, driver: NetworkedRaceDriver) {
+        // **Release every held touch before the rig is replaced.** A client is not
+        // asked whether it wants the next race — it simply receives a `RaceStart`,
+        // possibly with a thumb still down from the last one. The old rig's controls
+        // keep that touch, and the new rig never sees the finger lift, so the visible
+        // pad drives nothing. Local `raceAgain` has always done this; the networked
+        // path did not, and the client's controls went dead after a rematch.
+        // Reported from device.
+        rig?.players.forEach { $0.releaseAll() }
         let track: Track
         switch start.course {
         case .builtin(let id):

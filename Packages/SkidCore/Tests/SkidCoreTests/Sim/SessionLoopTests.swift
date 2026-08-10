@@ -288,4 +288,41 @@ final class SessionLoopTests: XCTestCase {
         XCTAssertEqual(pair.host.roster.seatCount, 1, "a lobby drop waited out the grace")
         XCTAssertFalse(pair.host.canRematch)
     }
+
+    func testARematchGivesTheClientAFreshRigAndSession() {
+        // **Reported from device: after a rematch the client's controls did nothing.**
+        // A client is never asked about the next race — it receives a `RaceStart` —
+        // so its rig and session are replaced underneath a screen that never left
+        // `.racing`. Anything the view still holds from the previous race is dead
+        // wiring: the pad the player can see drives a session nobody advances.
+        let pair = lobbyPair()
+        pair.guest.askToJoin(hostKey)
+        pair.settle()
+        pair.host.approve(guestKey)
+        pair.settle()
+
+        let game = CouchGame()
+        pair.guest.onStart { start in game.startNetworkedRace(start, driver: pair.guest) }
+
+        pair.host.startRace(course: .builtin("small"), seed: 1, laps: 3)
+        pair.settle()
+        let firstRig = game.rig
+        let firstSession = game.session
+        XCTAssertNotNil(firstRig)
+        XCTAssertEqual(firstSession?.generation, 1)
+
+        // The host races again; the client only learns via the message.
+        pair.host.returnToLobby()
+        pair.host.rematch(seed: 2)
+        pair.settle()
+
+        // Both must be new, and the SESSION must be the one the view will drive.
+        XCTAssertFalse(firstSession === game.session, "the client reused the old session")
+        XCTAssertFalse(firstRig === game.rig, "the client reused the old rig")
+        XCTAssertEqual(game.session?.generation, 2, "the new session is stamped for the old race")
+        XCTAssertEqual(game.session?.generation, pair.guest.generation)
+        // And the new rig drives this device's seat, not the host's.
+        XCTAssertEqual(game.rig?.players.map(\.player), pair.guest.mySeats)
+        XCTAssertEqual(game.phase, .racing)
+    }
 }
