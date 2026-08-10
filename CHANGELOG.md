@@ -72,6 +72,11 @@ ships (see [AGENTS.md](AGENTS.md)).
   construction stripes on an unfinished end, and the dashed checkpoint markers all
   stopped short of the edges of a road that sits high up, where the road is drawn wider.
 
+- **No more phantom cutout on a curving ramp.** A car climbing one of the clover's
+  curved ramps was drawn with the round "you are underneath something" window, as
+  though the road it was about to drive onto were overhead. Straight ramps were
+  never affected.
+
 - **Tapping a raised piece works across its whole width.** A high bridge is drawn
   wider than the ground, but taps were still measured against the ground's width, so
   the edges of a raised road did not respond. Where pieces stack, a tap now takes the
