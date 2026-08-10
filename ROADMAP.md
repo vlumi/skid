@@ -291,10 +291,12 @@ host's state and has no local events to feel).
       feasible (0.37 ms/tick for 4 cars, so a 20-tick re-simulation is
       single-digit milliseconds) and explicitly NOT worth building until the feel
       demands it.
-- [ ] **Three or more devices.** The protocol caps at 9 seats and the model scales
-      the right way (the host absorbs N−1 tiny input streams; a late peer costs one
-      car, not the field), but "should scale" is not "does" — the packet budget and
-      MC's ceiling want measuring with a third phone in the room.
+- [ ] **Three or more devices, on hardware.** The logic is proven: a test drives
+      three devices and four seats through the real relay and client views under 20%
+      loss, and each seat responds to its own device's thumbs. What that cannot
+      measure is the radio — MultipeerConnectivity's practical ceiling is around
+      eight peers, and the packet budget grows with the field — so this wants a third
+      phone in the room, not more tests.
 - [ ] **Host pause.** Deliberately unresolved: a per-device pause would freeze one
       screen of a shared race, so today the map tap does nothing when networked.
       Host-only, a vote, or no pause at all is a design question, not a bug.

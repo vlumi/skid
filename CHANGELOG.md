@@ -21,9 +21,11 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
-- **Race together on two devices.** "Play together" in the setup screen hosts or
+- **Race together across devices.** "Play together" in the setup screen hosts or
   joins a race over the local network — same Wi-Fi, or nothing but proximity — with
-  up to four players per device sharing each screen as usual. The host's device runs
+  up to four players per device sharing each screen as usual, and up to nine cars in
+  a race. Two phones is what has been played; more should work and has only been
+  proven in tests. The host's device runs
   the race; everyone else's shows it live, riding out rough Wi-Fi by trading a little
   delay for smoothness. Pick which race to join, and the host lets you in.
 
