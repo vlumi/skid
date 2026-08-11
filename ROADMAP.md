@@ -31,74 +31,48 @@ only on hardware, most invisible to a passing test suite, because a harness that
 delivers packets instantly cannot fail the way a network does. Validation on
 device was the right call and was not the cheap one.
 
-What stays late is the game *around* the race, and the app around that. Today a
-result evaporates the moment it ends, and the UI is a harness built to reach the
-technology rather than a design. **The Real Game milestone is both** — the front
-end plus profiles, records and tournaments — deliberately after the technical
-foundation, since a menu redesign wants to know what it is presenting and shared
-times lean on identity and transport decisions the earlier work settles.
+**Milestones are small; releases group them.** Each heading below is one
+player-visible theme, sized so it could ship alone — and several will travel
+together in one version, because a release wants enough in it to be worth a Beta
+App Review. The grouping is in *Release grouping* below rather than in the
+headings, so reordering a milestone does not mean renumbering anything.
+
+What stays late is the game *around* the race, and the app around that: today a
+result evaporates the moment it ends. That is deliberate — and there is one
+sequencing fact worth naming, because it is easy to miss when items are scattered:
+**the front end blocks more than it looks like.** Colour picking, profiles,
+records and a track browser all need surfaces that do not exist yet, so they queue
+behind one redesign rather than being four independent tasks.
 
 ---
 
-Shipped milestones (v0.1–v0.5) are summarized in the
+Shipped milestones (v0.1–v0.7) are summarized in the
 [README version history](README.md#version-history); full detail is in
 [CHANGELOG.md](CHANGELOG.md). This file keeps only open work.
 
-## Track editor & shareable tracks — *shipped as v0.6.0; the rest is open*
+## Release grouping
 
-> **Shipped as v0.6.0** — the editor, bridges and ramps, share codes, the track
-> library and track signing are all in players' hands. What remains below is the
-> tail of the milestone, kept because it is still wanted rather than because it
-> blocks anything: it can be cut in any later build.
->
-> **What is left divides into two kinds, and they are worth telling apart.**
->
-> *Changes how the game plays* — **hazards** are the big one, and closer than they
-> look: `Surface` already carries mud, water and oil with tuned grip, so the sim
-> side is done and only *placement* is missing. Narrower road (a bottleneck) is the
-> other, planned in
-> [docs/narrow-road-plan.md](docs/narrow-road-plan.md).
->
-> **Surfaces are the biggest single item left**, and they are one change wearing
-> two hats. `Track.surface(at:)` has a single line that returns `.asphalt` on the
-> ribbon and `.grass` beside it, and every track's feel derives from those two
-> constants. Make the first **per-piece** (a snow section, a gravel shortcut — pitch
-> and rails are already per-piece) and the second **whole-map** (sand beside one
-> corner and snow beside the next is nonsense). What was filed as "map themes" is
-> really the second one: the ground outside the track, which happens to carry the
-> palette with it.
->
-> *Changes how the game looks* — **decorations** (the roadmap's own words: "never
-> touches the sim"). The largest purely *visible* change left, and the one most
-> likely to make the game feel finished rather than prototyped — and because it
-> cannot break a race, it is safe to defer and safe to ship in pieces.
->
-> All three matter. The distinction is what each one needs before it can ship: a
-> hazard and a theme need testing against the driving, a tree needs looking at.
+Rough, and expected to churn — the point is which themes are worth shipping
+*together*, not what they will be numbered.
 
-Hand-authoring track geometry hit its quality ceiling; a **phone-first**
-editor with a small piece catalog is the answer, and its data becomes the
-sharing format. Design settled — see [docs/track-pieces.md](docs/track-pieces.md).
+| next | then | later | 1.0 |
+|:--|:--|:--|:--|
+| Surfaces & hazards | The front end | Platforms & input | Polish & submission |
+| Networked play: the tail | Identity & records | More to build with | |
+| First ten seconds | | Tournaments & sharing | |
 
-Most of this milestone has landed: the piece model, the editor, share codes,
-continuous-height bridges, the built-ins rebuilt from pieces (the old free-form
-`TrackDesign` path is gone, so there is now exactly one track engine), flexible
-tracks (start line as a piece, canonical codes, the fitting piece), at-grade
-crossings, decals on laid pieces, and the editor overhaul bar its chrome pass.
-What's left:
+**Why that order.** Surfaces are the biggest remaining change to *how it drives*,
+and the sim half is already done. The networking tail is small and finishes work
+players are using now. The first-ten-seconds items are cheap and fix a reported
+problem. Everything in *The front end* waits on one redesign, so it is one release
+whether it is one milestone or four.
 
-- [ ] **Catalog beyond road pieces.** More road pieces (the palette is still
-      small), plus **decorations**: on-road arrows, trees, buildings, walls
-      (scenery + directional markers, not just track segments), and **spectator
-      dressing** — stands, trackside props, crowd texture, which is the same
-      feature: placeable scenery that never touches the sim. Placed in the
-      editor. Fold in the **ramp-wall vs deck-rail visual distinction** — a ramp
-      wall reaches the ground, a deck rail only exists up top, and today they
-      look identical, so where a car can pass underneath isn't readable — that
-      one is a pure rendering fix, since the compiler already knows which is
-      which, and can ship on its own. Split into tiers, by what each actually
-      costs to encode, in
-      [docs/hazards-and-scenery-plan.md](docs/hazards-and-scenery-plan.md).
+## Surfaces & hazards — *how it drives*
+
+The last big change to the driving itself, and the cheapest of its kind left:
+`Surface` already carries the grip and drag model, so the sim work is largely
+done and what is missing is **placement and the look of a boundary**.
+
 - [ ] **Road surface as a per-piece attribute** (snow, gravel, dirt) — *the
       gameplay half, and the bigger of the two*.
       Better decomposed as an attribute than as a map theme: pitch and rails are
@@ -136,6 +110,67 @@ What's left:
       than anchored to a piece, since an oil slick's whole point is sitting at a
       chosen spot on the racing line. Design in
       [docs/hazards-and-scenery-plan.md](docs/hazards-and-scenery-plan.md).
+
+## Networked play: the tail — *finishing what players are using*
+
+Host-authoritative snapshots shipped as v0.7.0 and work; these are the
+leftovers, all small. Two of them are *measurements* rather than features, and
+should not be built before they are taken.
+
+- [ ] **Choose your colour in the lobby**, from the measured accessible nine,
+      with the default assignment being the accessible set (see
+      [docs/first-glance-plan.md](docs/first-glance-plan.md) — the palette work is
+      done, the picker is not). Under networking a colour must be agreed centrally,
+      since "local" is a per-screen property.
+- [ ] **Judge the client's input latency on a real link.** Your thumb reaches the
+      host and the result comes back a snapshot later; the on-screen
+      `gap · lag` readout is the number. If it feels bad, the fix is
+      **client-side prediction of the own car with reconciliation** — measured
+      feasible (0.37 ms/tick for 4 cars, so a 20-tick re-simulation is
+      single-digit milliseconds) and explicitly NOT worth building until the feel
+      demands it.
+- [ ] **Three or more devices, on hardware.** The logic is proven: a test drives
+      three devices and four seats through the real relay and client views under 20%
+      loss, and each seat responds to its own device's thumbs. What that cannot
+      measure is the radio — MultipeerConnectivity's practical ceiling is around
+      eight peers, and the packet budget grows with the field — so this wants a third
+      phone in the room, not more tests.
+- [ ] **Host pause.** Deliberately unresolved: a per-device pause would freeze one
+      screen of a shared race, so today the map tap does nothing when networked.
+      Host-only, a vote, or no pause at all is a design question, not a bug.
+
+## The first ten seconds — *what a new player sees*
+
+Reported as three problems and it is one: nothing on screen explains itself when
+it matters. Cheap, and each one fixes something a real player hit. Measured and
+planned in [docs/first-glance-plan.md](docs/first-glance-plan.md).
+
+The *palette* half already **shipped** with the nine-car grid — the measured
+accessible nine, guarded by a minimum-ΔE test. What that plan also found is still
+open, and it is first below because it undoes the shipped work.
+
+- [ ] **The sheen eats the palette.** Every car is drawn with a white wash across
+      its front half at opacity 0.55, which collapses the palette's worst pair from
+      ΔE 24.7 to **9.1** — the same colour once a 20-unit sprite is moving. So the
+      drawing gives back what the colours bought. Measured at 0.40 → 12.9 and
+      0.25 → 17.0, so toning it down may be the whole fix; tinting the wash with
+      the car's own colour is the alternative. Judge it on device, but the ΔE floor
+      belongs in a test the way the palette's does.
+
+- [ ] **Two more, both small.**
+      - **Which car is mine, on the grid.** A number bubble and a ring during the
+        countdown, the number **rotated to face its own player** — the rig already
+        knows that vector (`ZoneChrome.up`), and `Race.Phase.countdown` already
+        exists to hang it on.
+      - **The control pad should be visible before it is touched.** `origin` is nil
+        until touch-down today, so the control appears only once you already know
+        where to press. Give it a dimmed resting position at the centre of its own
+        zone. Note the default scheme is *casual*, so this is the aim stick first.
+
+## More to build with — *the editor's tail*
+
+The editor shipped as v0.6.0. What is left divides cleanly: the first two change
+what a track can *be*, the rest are editor conveniences that can ride any build.
 
 - [ ] **Jumps in the compiler** (crossings are DONE). Crossings shipped as
       IMPLICIT — nothing declared, flagged or encoded. A segment pair may share
@@ -197,17 +232,21 @@ What's left:
       ranked the cases wrongly). Needs its own decisions — what the road looks
       like where two lanes are briefly one, and how the resolver picks a road
       where both agree about direction.
+- [ ] **Catalog beyond road pieces.** More road pieces (the palette is still
+      small), plus **decorations**: on-road arrows, trees, buildings, walls
+      (scenery + directional markers, not just track segments), and **spectator
+      dressing** — stands, trackside props, crowd texture, which is the same
+      feature: placeable scenery that never touches the sim. Placed in the
+      editor. Fold in the **ramp-wall vs deck-rail visual distinction** — a ramp
+      wall reaches the ground, a deck rail only exists up top, and today they
+      look identical, so where a car can pass underneath isn't readable — that
+      one is a pure rendering fix, since the compiler already knows which is
+      which, and can ship on its own. Split into tiers, by what each actually
+      costs to encode, in
+      [docs/hazards-and-scenery-plan.md](docs/hazards-and-scenery-plan.md).
 - [ ] **Track size classes.** Bigger canvases for bigger screens: a track
       declares its size, and the oversized ones are iPad/Mac-only. Lets much
       more elaborate courses exist without making them unplayable on a phone.
-- [ ] **Track signing, then a real track library.** Signing comes first, to see
-      its real impact on the sharing flow: Ed25519 attribution, `PUBKEY = 254`
-      and `SIG = 255` at the top of the tag range, keypair in the iCloud-synced
-      Keychain. Attribution, not integrity — anyone can strip a signature and
-      re-sign as themselves. Then the library: many named tracks with UUID
-      identity, replacing the one "My track" slot, with names kept local rather
-      than in the code. Import by link/QR after that; clipboard works today.
-      See docs/track-pieces.md for the settled decisions.
 - [ ] **The editor overhaul — step 7 only** (chrome relocations). Steps 1–6 have
       shipped; the plan and every settled decision are in
       [docs/editor-overhaul-plan.md](docs/editor-overhaul-plan.md).
@@ -228,94 +267,79 @@ What's left:
       and reassigning the start line. Reversing the driving direction shipped
       without it (#108) — as a whole-track transform on the LAYOUT, not the
       compiler flag this plan sketched.
-
-- [ ] **First-glance usability — the first ten seconds.** Three reported problems
-      that are one bug from the player's side: nothing on screen explains itself
-      when it matters. Measured and planned in
-      [docs/first-glance-plan.md](docs/first-glance-plan.md).
-      - **Car colours too close together.** Red vs pink is ΔE 21 in CIELAB — the
-        same colour once a 20-unit sprite is moving. Swap pink for magenta and
-        keep the palette honest with a minimum-distance TEST, since it is
-        arithmetic rather than taste.
-      - **Which car is mine, on the grid.** A number bubble and a ring during the
-        countdown, the number **rotated to face its own player** — the rig already
-        knows that vector (`ZoneChrome.up`), and `Race.Phase.countdown` already
-        exists to hang it on.
-      - **The control pad should be visible before it is touched.** `origin` is nil
-        until touch-down today, so the control appears only once you already know
-        where to press. Give it a dimmed resting position at the centre of its own
-        zone. Note the default scheme is *casual*, so this is the aim stick first.
 - [ ] **Height readout on the map.** A tiny label on each piece showing its
       height, behind a show/hide toggle — building in three dimensions from a
       top-down view means the numbers are otherwise only inferable from shading.
+- [ ] **Import a track by link or QR.** Signing and the library both **shipped**
+      in v0.6.0 — Ed25519 attribution with the keypair in the iCloud-synced
+      Keychain, and many named tracks replacing the one "My track" slot. What is
+      left of that plan is getting a track in from *outside* the app: the clipboard
+      works today, and a tapped link or a scanned code is the version a player
+      would use. Measured then: a signed code is 120–140 bytes, which fits QR V8/V9
+      comfortably. The settled encoding decisions are in
+      [docs/track-pieces.md](docs/track-pieces.md), including why a track's *name*
+      stays local — a signed name could not be renamed after import — and rides as
+      an unsigned URL parameter when this lands.
 
-## Networked play — *shipped as v0.7.0; polish and scale remain*
+## The front end — *the app around the race*
 
-**Two devices race, verified on phones as a smooth 2v2 with four consecutive
-races over one connection.** The spike asked "does inputs-only sync survive a
-real network" and answered **no**: lockstep held agreement (through 60% simulated
-loss) but its defining trade, stall rather than lie, compounds with every device
-and lost to the real link's burstiness. One device now simulates the race and the
-rest render its snapshots through an adaptive jitter buffer.
+**The current UI is a harness, not a design**, and it is the gate in front of
+several other features: a colour picker, a profile, a records screen and a track
+browser all need surfaces that do not exist. That is why they are one milestone
+rather than four.
 
-Decision and grounds: [docs/networking-model-analysis.md](docs/networking-model-analysis.md).
-The eleven device-found bugs and the transport lessons:
-[docs/networking-spike-log.md](docs/networking-spike-log.md). **The Mac-peer
-question got easier** — a rendering client needs no float determinism at all — so
-the platform milestone below is on rather than re-argued.
+- [ ] **UI and menu redesign — the whole surface.** The current UI is a harness,
+      not a design: the app is three phases (setup → racing → editing) with a
+      single flat setup screen, no results screen, no menu hierarchy, no track
+      browser, and settings scattered between setup and a pause-menu Tuning panel
+      that was only ever meant for on-device A/B tests. It shows: `SetupView`
+      still switches on the names of tracks that no longer exist. Redesign it as
+      a product — a real front end, a track browser (needs the library from the editor milestone),
+      results and records screens, a settings home, and the editor reachable as a
+      first-class destination rather than a button on the setup sheet. **This is
+      the bulk of the milestone**, and it's the natural home for the deferred
+      **pause-menu cleanup** (including per-player scheme changes mid-race) and
+      for splitting the dev-only Tuning dials out of the player-facing settings.
 
-**What shipped:** host/join over MultipeerConnectivity (not LAN-only — it falls
-back to peer-to-peer Wi-Fi/Bluetooth, so two phones with no router still find each
-other), a global seat roster (a device is a screen with up to 4 players at it, not
-a player), the host's physics and track on the wire, snapshots at 20 Hz with
-client input at 30 Hz, and a link readout on the client. Plus the session loop
-that made it usable: leave from either side, race again over the same connection,
-deliberate joining with host approval, a three-second grace so a Wi-Fi wobble does
-not eject anyone, and engine sound (haptics stay host-only — a client renders the
-host's state and has no local events to feel).
+## Identity & records — *the race outlives itself*
 
-### Lobby colour picking
+Needs the front end above to have somewhere to put it. The data is closer than it
+looks: per-track bests and full ghost recordings already persist, keyed by track
+id — what is missing is tying a result to a *person*.
 
-- [ ] **Choose your colour in the lobby**, from the measured accessible nine,
-      with the default assignment being the accessible set (see
-      [docs/first-glance-plan.md](docs/first-glance-plan.md) — the palette work is
-      done, the picker is not). Under networking a colour must be agreed centrally,
-      since "local" is a per-screen property.
+- [ ] **Local player profiles.** A chosen name at minimum, on-device only (no
+      accounts, no server — see "out of scope"). Everything below hangs off
+      this, which is why it's first. Open question: allow ad-hoc anonymous
+      players, or make everyone pick a name up front?
+- [ ] **Records that stick, and are worth looking at.** Best lap and best race
+      already persist per track; make them visible and per-profile — a results
+      screen worth reading, "you beat your best" in the moment, and a per-track
+      board of who on this device holds what.
 
-### Feel and scale — *measure before building*
+## Tournaments & sharing — *a reason to keep playing*
 
-- [ ] **Judge the client's input latency on a real link.** Your thumb reaches the
-      host and the result comes back a snapshot later; the on-screen
-      `gap · lag` readout is the number. If it feels bad, the fix is
-      **client-side prediction of the own car with reconciliation** — measured
-      feasible (0.37 ms/tick for 4 cars, so a 20-tick re-simulation is
-      single-digit milliseconds) and explicitly NOT worth building until the feel
-      demands it.
-- [ ] **Three or more devices, on hardware.** The logic is proven: a test drives
-      three devices and four seats through the real relay and client views under 20%
-      loss, and each seat responds to its own device's thumbs. What that cannot
-      measure is the radio — MultipeerConnectivity's practical ceiling is around
-      eight peers, and the packet budget grows with the field — so this wants a third
-      phone in the room, not more tests.
-- [ ] **Host pause.** Deliberately unresolved: a per-device pause would freeze one
-      screen of a shared race, so today the map tap does nothing when networked.
-      Host-only, a vote, or no pause at all is a design question, not a bug.
+- [ ] **Tournaments.** A series of races across one or more couch sessions, with
+      standings per profile. Also *unlocks* the **reverse-standings grid** (race
+      N starts in reverse order of the standings after N−1, worst on pole; ties
+      broken by the seeded RNG), which is blocked today purely for lack of a
+      cross-race standings layer. Decide: fixed cups, or pick-your-own series?
+- [ ] **Send a time to a friend.** A ghost is a seed plus an input stream, so
+      it's small — the same trick as a track code. Share a time as a link/QR,
+      import it, and race against their ghost on your device. Needs the track
+      identity from the library work, so the two ends agree on which course a
+      time belongs to. **This is the closest thing to online play that stays
+      within "no server":** asynchronous, peer-shared, no accounts. Landing after
+      the networking work means the track-identity and transport questions are already answered.
+- [ ] **Career ladder** with cosmetic-only unlocks (liveries, effects) to show
+      off when racing others — never performance. Wants profiles and tournaments
+      under it first.
 
-## Platforms & input — *on: the spike said yes to networked play*
+## Platforms & input — *the other ways in*
 
-The game only runs one way on one kind of device: portrait, on a phone, driven
-by thumbs on glass. This milestone is about the OTHER ways in.
-
-**No longer conditional.** A Mac target was partly a means to an end — a keyboard
-player joining a couch race — and cross-device play works, so that purpose stands.
-It also got *cheaper*: a Mac joining as a rendering client needs no float
-determinism from its libm, which was the one real risk in a cross-platform race.
-
-This used to sit *before* networking, on the reasoning that a Mac joining a race
-needs a keyboard scheme to exist and a locked orientation is one less thing to
-synchronise. Both still true — but they are reasons the *full* networking milestone
-wants this first, not the spike, which needs two phones and no new input scheme at
-all.
+The game runs one way on one kind of device: portrait, on a phone, driven by
+thumbs on glass. Cross-device play works, so a Mac target has its purpose — and
+it got *cheaper* than planned, since a Mac joining as a rendering client needs no
+float determinism from its libm, which was the one real cross-platform risk.
 
 - [ ] macOS target (Universal Purchase, same bundle id), sim untouched —
       only render/input capture differ
@@ -335,57 +359,7 @@ all.
       left/right** of the map (free space is on the sides), which needs
       `CouchRig` side-band support (today it only does top/bottom).
 
-## The real game — UI redesign, profiles, records, tournaments
-
-**The gap this fills.** Everything so far has been built to answer technical
-questions — is the drift fun, can a phone build a track, does a bridge work — and
-the surface around it is scaffolding put there to reach those answers. Two things
-are missing, and they're the same thing from different ends: the game keeps no
-record of what you did, and the app has no shape beyond "start a race".
-
-- [ ] **UI and menu redesign — the whole surface.** The current UI is a harness,
-      not a design: the app is three phases (setup → racing → editing) with a
-      single flat setup screen, no results screen, no menu hierarchy, no track
-      browser, and settings scattered between setup and a pause-menu Tuning panel
-      that was only ever meant for on-device A/B tests. It shows: `SetupView`
-      still switches on the names of tracks that no longer exist. Redesign it as
-      a product — a real front end, a track browser (needs the library from the editor milestone),
-      results and records screens, a settings home, and the editor reachable as a
-      first-class destination rather than a button on the setup sheet. **This is
-      the bulk of the milestone**, and it's the natural home for the deferred
-      **pause-menu cleanup** (including per-player scheme changes mid-race) and
-      for splitting the dev-only Tuning dials out of the player-facing settings.
-
-Then the game layer proper. The pieces are closer than they look — per-track
-personal bests and full ghost recordings already persist, keyed by track id — but
-nothing above them ties results to *people* or to a series. Ordered so each step
-is useful on its own:
-
-- [ ] **Local player profiles.** A chosen name at minimum, on-device only (no
-      accounts, no server — see "out of scope"). Everything below hangs off
-      this, which is why it's first. Open question: allow ad-hoc anonymous
-      players, or make everyone pick a name up front?
-- [ ] **Records that stick, and are worth looking at.** Best lap and best race
-      already persist per track; make them visible and per-profile — a results
-      screen worth reading, "you beat your best" in the moment, and a per-track
-      board of who on this device holds what.
-- [ ] **Tournaments.** A series of races across one or more couch sessions, with
-      standings per profile. Also *unlocks* the **reverse-standings grid** (race
-      N starts in reverse order of the standings after N−1, worst on pole; ties
-      broken by the seeded RNG), which is blocked today purely for lack of a
-      cross-race standings layer. Decide: fixed cups, or pick-your-own series?
-- [ ] **Send a time to a friend.** A ghost is a seed plus an input stream, so
-      it's small — the same trick as a track code. Share a time as a link/QR,
-      import it, and race against their ghost on your device. Needs the track
-      identity from the library work, so the two ends agree on which course a
-      time belongs to. **This is the closest thing to online play that stays
-      within "no server":** asynchronous, peer-shared, no accounts. Landing after
-      the networking work means the track-identity and transport questions are already answered.
-- [ ] **Career ladder** with cosmetic-only unlocks (liveries, effects) to show
-      off when racing others — never performance. Wants profiles and tournaments
-      under it first.
-
-## The store release — *this one is 1.0 by definition*
+## Polish & submission — *this one is 1.0 by definition*
 
 - [ ] **Raise the field cap, or keep it.** `CouchGame.maxCars` is a **soft cap of
       4** while the engine seats 9: the grid, the palette and the sim all handle a
@@ -419,11 +393,11 @@ is useful on its own:
         deciding**: the pieces work and race fine, so this is a question about
         the editor rather than about the feature.
 - [ ] Icon polish pass (light/dark/tinted variants — the base icon ships with
-      v0.5). App name is settled: **Skid Jam**.
+      every build already)
 - [ ] One ASC record (Universal Purchase), listing text + screenshots,
-      privacy questionnaire (nothing collected)
+      privacy/age answers
 - [ ] Submit, await review, release (release lane already live since
-      v0.5)
+      v0.5.0 — see [RELEASING.md](RELEASING.md))
 
 ## Backlog (unversioned)
 
