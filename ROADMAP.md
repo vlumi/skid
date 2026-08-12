@@ -145,15 +145,22 @@ Reported as three problems and it is one: nothing on screen explains itself when
 it matters. Cheap, and each one fixes something a real player hit. Measured and
 planned in [docs/first-glance-plan.md](docs/first-glance-plan.md).
 
-The *palette* half **shipped** with the nine-car grid, and the **white sheen** that
-was quietly undoing it is now gone too — cars wear two tones derived from their own
-paint (`CarLivery`), and a reversing mark says when one is travelling backwards
-rather than merely pointing that way. What remains:
+The *palette* half **shipped** with the nine-car grid, the **white sheen** that was
+quietly undoing it is now gone, and a **reversing mark** says when a car is
+travelling backwards rather than merely pointing that way. What remains:
 
 - [ ] **Bring back the headlight cone — as an occlusion query, not a decal.**
       Wanted back: it made facing unmistakable, and a **night track** with brighter
-      cones is a look worth building toward. Parked until the design is right, and
-      two attempts are already spent, so start from these:
+      cones is a look worth building toward.
+
+      **Now the main facing cue, not a nicety.** With the sheen gone and two-tone
+      ruled out at nine cars, facing rests on the nose lamps and the tucked-back
+      cockpit — deliberately weak marks. The cone is also the *only* facing cue that
+      costs nothing from the colour budget, because a thrown beam adds no colour to
+      the car's body; every on-body cue competes with telling the cars apart.
+
+      Parked until the design is right, and two attempts are already spent, so start
+      from these:
       - **Clipping the cone to its own storey's road was tried and rejected** — the
         clipping itself is distracting. Do not re-propose it.
       - It must **not shine through walls**, and must **cross storeys** without
@@ -165,15 +172,24 @@ rather than merely pointing that way. What remains:
       reaches — the same shape as the covering-deck scan that already drives the
       under-deck window in `TrackRenderer+Cars`.
 
-- [ ] **Pick your own colour, in two tones.** A livery is one palette index and the
-      accent is derived from it, so a picker is one choice and one byte on the wire.
-      Decided: pairs are **fixed, not two free picks** (a dark nose would invert the
-      facing cue every other cue depends on), duplicates are prevented by
-      **first-come claiming** in the lobby rather than a rule about taste, and
-      local-vs-remote is marked with a **ring or seat number** — not desaturation,
-      which is measured to wreck the palette (worst pair 24.7 → 6.5 at 55%). Wants a
-      generous set (16–24) that all clear the ΔE floor, so any subset a lobby picks
-      is legible by construction. The picker itself waits on the front end.
+- [ ] **Pick your own colour.** Decided: duplicates prevented by **first-come
+      claiming** in the lobby rather than a rule about taste, and local-vs-remote
+      marked with a **ring or seat number** — not desaturation, which is measured to
+      wreck the palette (worst pair 24.7 → 6.5 at 55%). Waits on the front end.
+
+      **Two-tone belongs here, and its cost is now measured.** A second body colour
+      only works if it is a genuinely distinct hue — a light/dark shade of the base
+      was tried and reverted, because the comparison that matters is *any patch of
+      one car against any patch of another*, and that fell to ΔE 4.6 (against 24.7
+      for one tone, and the old sheen's 3.7).
+
+      The budget is **tones, not cars**. Two hues per car needs 2N mutually-distinct
+      tones, and nine is already the edge of what colour-blind-safe lightness spread
+      allows — so measured from the current palette: **4 cars two-toned is fine
+      (26.3), 9 is impossible.** That makes it a picker feature, where the field size
+      can bound which pairs stay selectable, rather than arithmetic in the renderer.
+      `CarLiveryRenderTests.testCarsStayDistinctAcrossEveryToneTheyWear` has the
+      one-line hook to extend and will hold whatever lands to the same floor.
 
 - [ ] **Two more, both small.**
       - **Which car is mine, on the grid.** A number bubble and a ring during the

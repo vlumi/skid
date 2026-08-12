@@ -4,54 +4,88 @@ import XCTest
 @testable import SkidCore
 @testable import SkidKit
 
-/// **What the renderer actually decides about a car's two tones.**
+/// **How many colours a car may wear, and what the reverse mark means.**
 ///
-/// `GraphicsContext` cannot be inspected — a `Canvas` closure paints, it does not
-/// report — so these test the *decisions* feeding the draw rather than pixels: which
-/// tone each seat gets, and when the reverse cue turns on. That boundary is chosen
-/// deliberately: the palette arithmetic is covered in `CarLiveryTests`, and asserting
-/// on fills would need a rendering harness this repo does not have.
-///
-/// What that leaves unverified is the *drawing*: that the nose rect really is the
-/// front half, and that the lamps sit at the tail. Those are visual, and go on device.
+/// The first half of this is the test that should have been written before any accent
+/// was added, and its absence is why a derived second tone shipped in a PR and had to
+/// come out again: the tests measured base-against-base and nose-against-nose, but
+/// never one car's base against *another car's* nose — which is the comparison a
+/// player's eye actually makes.
 @MainActor
 final class CarLiveryRenderTests: XCTestCase {
-    /// Every seat in a full field gets a nose tone, and it is not the base tone.
+    /// **A car wears ONE colour, and that is a measured constraint.**
     ///
-    /// Guards the plumbing rather than the colours: the derivation could be perfect
-    /// and the renderer could still pass `nil` for every car, which would silently
-    /// ship single-tone cars with the sheen already deleted — a regression no
-    /// `CarLivery` test can see.
-    func testEverySeatGetsATwoToneBody() {
-        for seat in 0..<CarPalette.count {
-            let base = TrackRenderer.carPalette[seat]
-            let nose = TrackRenderer.carNosePalette[seat]
-            XCTAssertNotEqual(
-                base, nose,
-                "seat \(seat + 1) draws one tone; the facing cue is gone")
+    /// Judged by the question that matters — can car A be told from car B — a car with
+    /// two tones presents two patches, and confusion is any patch of one resembling
+    /// any patch of another. Measured across all four vision types:
+    ///
+    /// | livery | worst cross-car distance |
+    /// |---|---|
+    /// | single tone | **ΔE 24.7** |
+    /// | derived second tone | ΔE 4.6 |
+    /// | the old white sheen | ΔE 3.7 |
+    ///
+    /// The budget is *tones*, not cars: nine mutually-distinct tones is already the
+    /// edge of what colour-blind-safe lightness spread allows, so eighteen do not
+    /// exist. Two genuinely distinct hues per car measures fine at **four** cars
+    /// (26.3) and cannot work at nine — so it belongs to a colour picker that can
+    /// bound choices by field size, not to arithmetic in the renderer.
+    ///
+    /// This measures the real rule, over whatever tones each car wears — so adding an
+    /// accent later does not quietly bypass it. `tones(forSeat:)` is the single place
+    /// to extend when a car gains a second colour; the assertion then holds it to the
+    /// same floor the palette was searched for.
+    ///
+    /// Sabotage: return `[paint, CarLivery-style lightened paint]` from `tones` and the
+    /// worst case drops to ΔE 4.6, failing exactly as the reverted livery did.
+    func testCarsStayDistinctAcrossEveryToneTheyWear() {
+        /// Every colour patch a player sees on this car. One entry today.
+        func tones(forSeat seat: Int) -> [CarPalette.Paint] {
+            [CarPalette.paints[seat]]
         }
+        var worst = Double.infinity
+        var offender = ""
+        for vision in CarPalette.Paint.Vision.allCases {
+            for i in CarPalette.paints.indices {
+                for j in (i + 1)..<CarPalette.paints.count {
+                    // Worst case over every pairing of one car's tones against the
+                    // other's — a glance compares patches, not labelled regions.
+                    for a in tones(forSeat: i) {
+                        for b in tones(forSeat: j) {
+                            let distance = a.seen(with: vision).distance(to: b.seen(with: vision))
+                            if distance < worst {
+                                worst = distance
+                                offender = "seats \(i + 1)/\(j + 1) under \(vision)"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        XCTAssertGreaterThanOrEqual(
+            worst, 24.7,
+            "cars are only ΔE \(Int(worst)) apart at worst (\(offender))")
     }
 
-    /// The nose palette must line up with the base palette seat for seat — an
-    /// off-by-one here would give every car a neighbour's accent, which reads as a
-    /// colour bug rather than a livery.
-    func testTheNosePaletteIsSeatAlignedWithTheBasePalette() {
-        XCTAssertEqual(TrackRenderer.carNosePalette.count, TrackRenderer.carPalette.count)
+    /// The renderer draws from the measured palette, seat for seat — so a car's colour
+    /// is the one that was measured, not a nearby guess.
+    func testTheDrawnPaletteIsTheMeasuredPalette() {
+        XCTAssertEqual(TrackRenderer.carPalette.count, CarPalette.count)
         for seat in 0..<CarPalette.count {
-            let expected = CarLivery.nose(of: CarPalette.paints[seat])
-            let asDrawn = Color(red: expected.red, green: expected.green, blue: expected.blue)
+            let paint = CarPalette.paints[seat]
+            let expected = Color(red: paint.red, green: paint.green, blue: paint.blue)
             XCTAssertEqual(
-                TrackRenderer.carNosePalette[seat], asDrawn,
-                "seat \(seat + 1)'s nose is not its own paint's derived tone")
+                TrackRenderer.carPalette[seat], expected,
+                "seat \(seat + 1) is not drawn in its measured paint")
         }
     }
 
     /// **The reverse cue answers "am I moving backwards", not "am I pointing there".**
     ///
-    /// The distinction is the whole point of the mark, so it is tested with a car
-    /// whose heading and velocity disagree — the drift case, where a facing cue says
-    /// nothing useful. A car sliding sideways or backwards while pointed forwards is
-    /// ordinary in this game.
+    /// The distinction is the whole point of the mark, so it is tested with a car whose
+    /// heading and velocity disagree — the drift case, where a facing cue says nothing
+    /// useful. A car sliding sideways or backwards while pointed forwards is ordinary
+    /// in this game.
     func testTheReverseCueFollowsMotionNotHeading() {
         var state = CarState(position: Vec2(0, 0), heading: 0)
 
