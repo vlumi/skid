@@ -18,7 +18,6 @@ extension TrackRenderer {
     /// lookup of stored piece data, not a guess from nearby slopes.
     static func addCars(
         scene: WorldScene, gateChrome: GateChrome, colorAt: @escaping (Int) -> Color,
-        noseAt: @escaping (Int) -> Color? = { _ in nil },
         to order: inout RenderOrder.Builder
     ) {
         let race = scene.race
@@ -42,8 +41,7 @@ extension TrackRenderer {
                 // Elevation.scale the road width uses), so a car grows as it
                 // climbs — no discrete pop at a level boundary.
                 draw(
-                    car: state, color: colorAt(index), nose: noseAt(index),
-                    opacity: opacity,
+                    car: state, color: colorAt(index), opacity: opacity,
                     scale: Elevation.scale(atHeight: state.height), into: &context)
             }
             // Never-invisible rule: a car with road a full level above it is
@@ -131,8 +129,7 @@ extension TrackRenderer {
             let state = car.state
             order.add(storey: Track.highestLevel + 1, kind: .airborne) { context in
                 draw(
-                    car: state, color: colorAt(index), nose: noseAt(index), scale: 1.22,
-                    shadow: true,
+                    car: state, color: colorAt(index), scale: 1.22, shadow: true,
                     into: &context)
             }
         }
@@ -254,8 +251,8 @@ extension TrackRenderer {
     }
 
     private static func draw(
-        car: CarState, color: Color, nose: Color? = nil, opacity: Double = 1,
-        scale: Double = 1, shadow: Bool = false, into context: inout GraphicsContext
+        car: CarState, color: Color, opacity: Double = 1, scale: Double = 1,
+        shadow: Bool = false, into context: inout GraphicsContext
     ) {
         if shadow {
             // A soft blob on the ground below a flying car.
@@ -295,28 +292,35 @@ extension TrackRenderer {
             glow.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
         }
         car2D.fill(bodyPath, with: .color(color))
-        // FACING is told by the body's own TWO TONES, not a thrown headlight beam
-        // and no longer by a white wash.
+        // **One tone per car, and that is a measured constraint rather than a
+        // preference.**
         //
-        // The wash was measured and it was expensive: a white gradient to opacity
-        // 0.55 over the front half collapsed the palette's worst pair from ΔE 24.7
-        // to **9.1** across the four vision types — the drawing handing back exactly
-        // what the searched nine-colour palette bought. Every car washing toward the
-        // same white is the mechanism: it is a shared destination.
+        // A white sheen over the front half used to carry facing, and it was
+        // expensive: a gradient to opacity 0.55 collapsed the palette's worst pair
+        // from ΔE 24.7 to **9.1** across the four vision types, because every car
+        // washing toward the same white is a shared destination.
         //
-        // A derived accent replaces it. `CarLivery` shifts the nose in LIGHTNESS
-        // (away from the base, direction chosen per paint), so the contrast is
-        // between the car's own two tones instead of between the car and white. The
-        // field's separation is then untouched by construction, which is what
-        // `CarLiveryTests.theBaseSeparationSurvivesTheLivery` pins.
+        // Replacing it with a *derived* second tone (a lightness shift per car) was
+        // tried and is worse than it looks. Judged by the question a player actually
+        // asks — can I tell car A from car B — a two-tone car presents two patches,
+        // and confusion is any patch of one resembling any patch of another. Measured
+        // that way: single-tone **24.7**, two-tone **4.6**, the old sheen 3.7. So the
+        // derived livery fixed the sheen's mechanism and kept its effect.
         //
-        // The projected cone remains parked, and the reason is unchanged: an
-        // extended beam binned at its origin's storey gets sliced at ramp feet, and
-        // it must not shine through walls. That wants an occlusion query, not a
-        // clipped decal — see the roadmap entry.
+        // The budget is TONES, not cars: nine mutually-distinct tones is already the
+        // edge of what colour-blind-safe lightness spread allows, so eighteen do not
+        // exist. Two distinct hues per car measures fine at **four** cars (26.3) and
+        // is impossible at nine — which makes it a job for the colour picker, where
+        // the field size can bound the choices, not for arithmetic here.
+        //
+        // So facing rests on the nose lamps and the tucked-back cockpit until the
+        // projected cone returns — and the cone is the *right* answer precisely
+        // because a beam adds no colour to the body, spending nothing from the
+        // palette's budget. It stays parked pending an occlusion query: an extended
+        // beam binned at its origin's storey gets sliced at ramp feet, and it must
+        // not shine through walls.
         var livery = car2D
         livery.clip(to: bodyPath)
-        paintLivery(base: color, nose: nose, length: length, width: width, into: &livery)
         paintLamps(length: length, into: &livery)
         paintReverseLamps(car: car, length: length, into: &livery)
         car2D.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)

@@ -104,12 +104,6 @@ enum TrackRenderer {
             index < colors.count ? colors[index] : carPalette[index % carPalette.count]
         }
 
-        // The nose tone for a seat lives in `TrackRenderer+Livery`, keyed by seat
-        // rather than by the resolved colour — see `nose(forSeat:base:)`.
-        func noseColor(_ index: Int) -> Color? {
-            nose(forSeat: index, base: index < colors.count ? colors[index] : nil)
-        }
-
         // **The track is drawn by the EDITOR's renderer**, off the same placed
         // pieces the editor draws, so what you build is exactly what you drive.
         // Two separate renderers drifted apart in kerbs, rails and ramp
@@ -162,9 +156,7 @@ enum TrackRenderer {
             drawPatches(track: track, into: &context)
         }
 
-        addCars(
-            scene: scene, gateChrome: gateChrome, colorAt: color, noseAt: noseColor,
-            to: &order)
+        addCars(scene: scene, gateChrome: gateChrome, colorAt: color, to: &order)
         order.paint(into: &context)
 
         // Last, so it sits over everything it's describing.

@@ -21,15 +21,15 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
-- **Cars wear two tones, and say when they are reversing.** Each car's nose is a
-  shade of its own colour, so which way it points reads at a glance without the
-  white shine that used to do that job — and the shine was costing more than it
-  gave: it washed every car toward the same white, cutting the worst pair of car
+- **Cars say when they are reversing**, with white lamps at the tail. Which way a
+  car *faces* and which way it is *travelling* are different questions, and in a
+  drift game they come apart constantly — this is the second one, and the one that
+  was easy to get wrong by accident.
+- **Cars are easier to tell apart.** The white shine across each car's nose is gone.
+  It was washing every car toward the same white, cutting the worst pair of car
   colours from ΔE 24.7 to 9.1 (measured under normal vision and all three kinds of
-  colour blindness), which is the difference between "two colours" and "the same
-  colour" on a moving car. White lamps at the tail now show when a car is actually
-  travelling backwards, which is a different question from which way it faces — and
-  the one that was easy to get wrong by accident.
+  colour blindness) — the difference between "two colours" and "the same colour" on
+  a moving car. Cars now keep the full separation the palette was chosen for.
 
 ### build 12 — 2026-08-10
 
