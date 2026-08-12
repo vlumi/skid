@@ -18,6 +18,7 @@ extension TrackRenderer {
     /// lookup of stored piece data, not a guess from nearby slopes.
     static func addCars(
         scene: WorldScene, gateChrome: GateChrome, colorAt: @escaping (Int) -> Color,
+        noseAt: @escaping (Int) -> Color? = { _ in nil },
         to order: inout RenderOrder.Builder
     ) {
         let race = scene.race
@@ -41,7 +42,8 @@ extension TrackRenderer {
                 // Elevation.scale the road width uses), so a car grows as it
                 // climbs — no discrete pop at a level boundary.
                 draw(
-                    car: state, color: colorAt(index), opacity: opacity,
+                    car: state, color: colorAt(index), nose: noseAt(index),
+                    opacity: opacity,
                     scale: Elevation.scale(atHeight: state.height), into: &context)
             }
             // Never-invisible rule: a car with road a full level above it is
@@ -129,7 +131,8 @@ extension TrackRenderer {
             let state = car.state
             order.add(storey: Track.highestLevel + 1, kind: .airborne) { context in
                 draw(
-                    car: state, color: colorAt(index), scale: 1.22, shadow: true,
+                    car: state, color: colorAt(index), nose: noseAt(index), scale: 1.22,
+                    shadow: true,
                     into: &context)
             }
         }
@@ -251,8 +254,8 @@ extension TrackRenderer {
     }
 
     private static func draw(
-        car: CarState, color: Color, opacity: Double = 1, scale: Double = 1,
-        shadow: Bool = false, into context: inout GraphicsContext
+        car: CarState, color: Color, nose: Color? = nil, opacity: Double = 1,
+        scale: Double = 1, shadow: Bool = false, into context: inout GraphicsContext
     ) {
         if shadow {
             // A soft blob on the ground below a flying car.
@@ -292,31 +295,30 @@ extension TrackRenderer {
             glow.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
         }
         car2D.fill(bodyPath, with: .color(color))
-        // FACING is told by the body itself, not a thrown headlight beam — a
-        // projected cone fought the storey binning (sliced off at ramp feet
-        // by the higher-binned ribbon, painted onto a deck from a descent
-        // that shares its storey), and no shape change fixes a decal that
-        // leaves the car. Classic single-seater proportions carry the cue
-        // instead: a LIT NOSE and the driver tucked back at the rear axle.
-        // Bright end = front, dark dot = back — silhouette-scale marks that
-        // survive the tiny on-SE car where any detail line vanishes.
-        var sheen = car2D
-        sheen.clip(to: bodyPath)
-        sheen.fill(
-            Path(CGRect(x: 0, y: -width / 4, width: length / 2, height: width / 2)),
-            with: .linearGradient(
-                Gradient(colors: [.white.opacity(0), .white.opacity(0.55)]),
-                startPoint: .zero, endPoint: CGPoint(x: length / 2, y: 0)))
-        // Lamp dots hugging the nose tip (the body clip rounds them into the
-        // corners): flavor at editor zoom, they melt into the sheen at race
-        // scale.
-        for side in [-1.0, 1.0] {
-            let lamp = CGRect(
-                x: length / 2 - 6, y: side * 3.4 - 1.9, width: 3.8, height: 3.8)
-            sheen.fill(
-                Path(ellipseIn: lamp),
-                with: .color(Color(red: 1, green: 0.98, blue: 0.82)))
-        }
+        // FACING is told by the body's own TWO TONES, not a thrown headlight beam
+        // and no longer by a white wash.
+        //
+        // The wash was measured and it was expensive: a white gradient to opacity
+        // 0.55 over the front half collapsed the palette's worst pair from ΔE 24.7
+        // to **9.1** across the four vision types — the drawing handing back exactly
+        // what the searched nine-colour palette bought. Every car washing toward the
+        // same white is the mechanism: it is a shared destination.
+        //
+        // A derived accent replaces it. `CarLivery` shifts the nose in LIGHTNESS
+        // (away from the base, direction chosen per paint), so the contrast is
+        // between the car's own two tones instead of between the car and white. The
+        // field's separation is then untouched by construction, which is what
+        // `CarLiveryTests.theBaseSeparationSurvivesTheLivery` pins.
+        //
+        // The projected cone remains parked, and the reason is unchanged: an
+        // extended beam binned at its origin's storey gets sliced at ramp feet, and
+        // it must not shine through walls. That wants an occlusion query, not a
+        // clipped decal — see the roadmap entry.
+        var livery = car2D
+        livery.clip(to: bodyPath)
+        paintLivery(base: color, nose: nose, length: length, width: width, into: &livery)
+        paintLamps(length: length, into: &livery)
+        paintReverseLamps(car: car, length: length, into: &livery)
         car2D.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
         // The driver sits near the back, like the classic single-seaters.
         let cockpit = CGRect(x: -9.5, y: -3.2, width: 6.4, height: 6.4)
