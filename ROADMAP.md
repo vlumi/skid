@@ -145,17 +145,51 @@ Reported as three problems and it is one: nothing on screen explains itself when
 it matters. Cheap, and each one fixes something a real player hit. Measured and
 planned in [docs/first-glance-plan.md](docs/first-glance-plan.md).
 
-The *palette* half already **shipped** with the nine-car grid — the measured
-accessible nine, guarded by a minimum-ΔE test. What that plan also found is still
-open, and it is first below because it undoes the shipped work.
+The *palette* half **shipped** with the nine-car grid, the **white sheen** that was
+quietly undoing it is now gone, and a **reversing mark** says when a car is
+travelling backwards rather than merely pointing that way. What remains:
 
-- [ ] **The sheen eats the palette.** Every car is drawn with a white wash across
-      its front half at opacity 0.55, which collapses the palette's worst pair from
-      ΔE 24.7 to **9.1** — the same colour once a 20-unit sprite is moving. So the
-      drawing gives back what the colours bought. Measured at 0.40 → 12.9 and
-      0.25 → 17.0, so toning it down may be the whole fix; tinting the wash with
-      the car's own colour is the alternative. Judge it on device, but the ΔE floor
-      belongs in a test the way the palette's does.
+- [ ] **Bring back the headlight cone — as an occlusion query, not a decal.**
+      Wanted back: it made facing unmistakable, and a **night track** with brighter
+      cones is a look worth building toward.
+
+      **Now the main facing cue, not a nicety.** With the sheen gone and two-tone
+      ruled out at nine cars, facing rests on the nose lamps and the tucked-back
+      cockpit — deliberately weak marks. The cone is also the *only* facing cue that
+      costs nothing from the colour budget, because a thrown beam adds no colour to
+      the car's body; every on-body cue competes with telling the cars apart.
+
+      Parked until the design is right, and two attempts are already spent, so start
+      from these:
+      - **Clipping the cone to its own storey's road was tried and rejected** — the
+        clipping itself is distracting. Do not re-propose it.
+      - It must **not shine through walls**, and must **cross storeys** without
+        being sliced at a ramp foot.
+
+      The root bug is layering an *extended* thing by its origin's storey: a car is
+      a point so single-storey binning is fine, a 60-unit beam is not. So the cone
+      wants a lit-surface query — which road and wall geometry the beam actually
+      reaches — the same shape as the covering-deck scan that already drives the
+      under-deck window in `TrackRenderer+Cars`.
+
+- [ ] **Pick your own colour.** Decided: duplicates prevented by **first-come
+      claiming** in the lobby rather than a rule about taste, and local-vs-remote
+      marked with a **ring or seat number** — not desaturation, which is measured to
+      wreck the palette (worst pair 24.7 → 6.5 at 55%). Waits on the front end.
+
+      **Two-tone belongs here, and its cost is now measured.** A second body colour
+      only works if it is a genuinely distinct hue — a light/dark shade of the base
+      was tried and reverted, because the comparison that matters is *any patch of
+      one car against any patch of another*, and that fell to ΔE 4.6 (against 24.7
+      for one tone, and the old sheen's 3.7).
+
+      The budget is **tones, not cars**. Two hues per car needs 2N mutually-distinct
+      tones, and nine is already the edge of what colour-blind-safe lightness spread
+      allows — so measured from the current palette: **4 cars two-toned is fine
+      (26.3), 9 is impossible.** That makes it a picker feature, where the field size
+      can bound which pairs stay selectable, rather than arithmetic in the renderer.
+      `CarLiveryRenderTests.testCarsStayDistinctAcrossEveryToneTheyWear` has the
+      one-line hook to extend and will hold whatever lands to the same floor.
 
 - [ ] **Two more, both small.**
       - **Which car is mine, on the grid.** A number bubble and a ring during the
@@ -373,6 +407,14 @@ float determinism from its libm, which was the one real cross-platform risk.
       four seats and one driver, three cars barely move.
       Note `GameSession.maxTicksPerFrame` is 12, so one late frame costs up to 12
       ticks and stutter compounds — worth looking at first if choppiness returns.
+
+      **Past nine is a per-track question, and the code is nearly ready for it.**
+      `StartGrid.rows(for:)` and `positions(count:)` already lay out any count, so
+      `Grid.slots = 9` and the start piece's depth are what actually bind — a bigger
+      grid means a longer start piece, which makes capacity a property of the track
+      rather than the app. Deliberately not ruled out; the rules for choosing a track
+      and a field size belong with the later game-building work, and the palette
+      would need extending past nine to match.
 - [ ] **Final polish & balancing pass.** With all content and controls
       settled, do the tuning that only makes sense at the end: **bake the
       final control-feel dials** (the aim-drift model + defaults shipped in

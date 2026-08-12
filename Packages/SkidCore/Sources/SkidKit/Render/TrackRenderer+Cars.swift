@@ -292,31 +292,37 @@ extension TrackRenderer {
             glow.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
         }
         car2D.fill(bodyPath, with: .color(color))
-        // FACING is told by the body itself, not a thrown headlight beam — a
-        // projected cone fought the storey binning (sliced off at ramp feet
-        // by the higher-binned ribbon, painted onto a deck from a descent
-        // that shares its storey), and no shape change fixes a decal that
-        // leaves the car. Classic single-seater proportions carry the cue
-        // instead: a LIT NOSE and the driver tucked back at the rear axle.
-        // Bright end = front, dark dot = back — silhouette-scale marks that
-        // survive the tiny on-SE car where any detail line vanishes.
-        var sheen = car2D
-        sheen.clip(to: bodyPath)
-        sheen.fill(
-            Path(CGRect(x: 0, y: -width / 4, width: length / 2, height: width / 2)),
-            with: .linearGradient(
-                Gradient(colors: [.white.opacity(0), .white.opacity(0.55)]),
-                startPoint: .zero, endPoint: CGPoint(x: length / 2, y: 0)))
-        // Lamp dots hugging the nose tip (the body clip rounds them into the
-        // corners): flavor at editor zoom, they melt into the sheen at race
-        // scale.
-        for side in [-1.0, 1.0] {
-            let lamp = CGRect(
-                x: length / 2 - 6, y: side * 3.4 - 1.9, width: 3.8, height: 3.8)
-            sheen.fill(
-                Path(ellipseIn: lamp),
-                with: .color(Color(red: 1, green: 0.98, blue: 0.82)))
-        }
+        // **One tone per car, and that is a measured constraint rather than a
+        // preference.**
+        //
+        // A white sheen over the front half used to carry facing, and it was
+        // expensive: a gradient to opacity 0.55 collapsed the palette's worst pair
+        // from ΔE 24.7 to **9.1** across the four vision types, because every car
+        // washing toward the same white is a shared destination.
+        //
+        // Replacing it with a *derived* second tone (a lightness shift per car) was
+        // tried and is worse than it looks. Judged by the question a player actually
+        // asks — can I tell car A from car B — a two-tone car presents two patches,
+        // and confusion is any patch of one resembling any patch of another. Measured
+        // that way: single-tone **24.7**, two-tone **4.6**, the old sheen 3.7. So the
+        // derived livery fixed the sheen's mechanism and kept its effect.
+        //
+        // The budget is TONES, not cars: nine mutually-distinct tones is already the
+        // edge of what colour-blind-safe lightness spread allows, so eighteen do not
+        // exist. Two distinct hues per car measures fine at **four** cars (26.3) and
+        // is impossible at nine — which makes it a job for the colour picker, where
+        // the field size can bound the choices, not for arithmetic here.
+        //
+        // So facing rests on the nose lamps and the tucked-back cockpit until the
+        // projected cone returns — and the cone is the *right* answer precisely
+        // because a beam adds no colour to the body, spending nothing from the
+        // palette's budget. It stays parked pending an occlusion query: an extended
+        // beam binned at its origin's storey gets sliced at ramp feet, and it must
+        // not shine through walls.
+        var livery = car2D
+        livery.clip(to: bodyPath)
+        paintLamps(length: length, into: &livery)
+        paintReverseLamps(car: car, length: length, into: &livery)
         car2D.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
         // The driver sits near the back, like the classic single-seaters.
         let cockpit = CGRect(x: -9.5, y: -3.2, width: 6.4, height: 6.4)
