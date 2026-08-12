@@ -21,6 +21,16 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Cars wear two tones, and say when they are reversing.** Each car's nose is a
+  shade of its own colour, so which way it points reads at a glance without the
+  white shine that used to do that job — and the shine was costing more than it
+  gave: it washed every car toward the same white, cutting the worst pair of car
+  colours from ΔE 24.7 to 9.1 (measured under normal vision and all three kinds of
+  colour blindness), which is the difference between "two colours" and "the same
+  colour" on a moving car. White lamps at the tail now show when a car is actually
+  travelling backwards, which is a different question from which way it faces — and
+  the one that was easy to get wrong by accident.
+
 ### build 12 — 2026-08-10
 
 - **Race together across devices.** "Play together" in the setup screen hosts or
