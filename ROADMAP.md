@@ -147,7 +147,17 @@ planned in [docs/first-glance-plan.md](docs/first-glance-plan.md).
 
 The *palette* half **shipped** with the nine-car grid, the **white sheen** that was
 quietly undoing it is now gone, and a **reversing mark** says when a car is
-travelling backwards rather than merely pointing that way. What remains:
+travelling backwards rather than merely pointing that way.
+
+**Car colour is parked here on purpose.** The round that removed the sheen also tried
+a second body tone and reverted it, and the measuring cost more than the outcome was
+worth: what shipped is one deletion and one small mark. The findings are written down
+below and in `CarLiveryRenderTests` so they are not re-derived — but the next facing
+or colour work should be the **cone**, which is a rendering problem, or the
+**picker**, which is a UI one. Neither is more palette arithmetic. Two rounds of that
+found real things and moved the game very little.
+
+What remains:
 
 - [ ] **Bring back the headlight cone — as an occlusion query, not a decal.**
       Wanted back: it made facing unmistakable, and a **night track** with brighter
