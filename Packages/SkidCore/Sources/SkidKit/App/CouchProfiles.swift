@@ -118,3 +118,144 @@ extension CouchGame {
         profileFile.save(profiles)
     }
 }
+
+// MARK: - The field as a list
+
+/// **Who is racing, as one list rather than two counts.**
+///
+/// `playerCount` and `aiCount` survive as *derived* properties so the rest of the app
+/// keeps working unchanged, but nothing stores them any more: the list is the field.
+extension CouchGame {
+    /// How many people are playing on this device, 1…`maxLocalPlayers`.
+    public var playerCount: Int {
+        get { max(1, RaceField.humanCount(entrants)) }
+        set { setHumanCount(newValue) }
+    }
+
+    /// How many AI cars fill the rest of the field, 0…(`maxCars` − players).
+    public var aiCount: Int {
+        get { entrants.filter { !$0.isHuman }.count }
+        set { setAICount(newValue) }
+    }
+
+    /// Add or remove human rows to reach `count`. Growing adds guests, since a new row
+    /// belongs to whoever just sat down and they have not said who they are yet;
+    /// shrinking drops the last ones, so the person who left stops racing.
+    func setHumanCount(_ count: Int) {
+        let target = max(1, min(Self.maxLocalPlayers, count))
+        var humans = entrants.filter(\.isHuman)
+        let ai = entrants.filter { !$0.isHuman }
+        while humans.count < target { humans.append(.guest) }
+        if humans.count > target { humans.removeLast(humans.count - target) }
+        // Taking a seat evicts an AI rather than overfilling the grid.
+        entrants = humans + ai.prefix(max(0, Self.maxCars - humans.count))
+        syncSeatIdentities()
+    }
+
+    /// Replace the AI rows so there are `count` of them, at the current difficulty.
+    func setAICount(_ count: Int) {
+        let humans = entrants.filter(\.isHuman)
+        let target = max(0, min(Self.maxCars - humans.count, count))
+        entrants = humans + Array(repeating: .ai(aiDifficulty), count: target)
+        syncSeatIdentities()
+    }
+
+    /// What a row shows next to its toggle.
+    public func entrantDetail(_ index: Int) -> String {
+        guard entrants.indices.contains(index) else { return "" }
+        switch entrants[index] {
+        case .guest:
+            return "P\(index + 1)"
+        case .profile(let id):
+            return profiles.profile(id: id)?.name ?? "P\(index + 1)"
+        case .ai(let level):
+            return String(describing: level).capitalized
+        }
+    }
+
+    /// **Switch a row between guest, a named player, and AI — one tap.**
+    ///
+    /// The player case is *sticky*: each row remembers the profile it last held, so
+    /// cycling away to AI and back returns the same person rather than asking again.
+    /// Returns false when a row wants a player and has none to return to — the caller
+    /// then shows the picker, which is the only case that needs a modal.
+    @discardableResult
+    public func setKind(_ kind: DriverKind, at index: Int) -> Bool {
+        guard entrants.indices.contains(index) else { return true }
+        switch kind {
+        case .guest:
+            setEntrant(.guest, at: index)
+        case .ai:
+            setEntrant(.ai(aiDifficulty), at: index)
+        case .player:
+            // Only if that profile still exists and is not already driving.
+            guard let id = rememberedProfiles[index], profiles.profile(id: id) != nil,
+                !entrants.enumerated().contains(where: {
+                    $0.offset != index && $0.element.profileID == id
+                })
+            else {
+                return false
+            }
+            setEntrant(.profile(id), at: index)
+        }
+        return true
+    }
+
+    /// Change one row, keeping humans ahead of AI so the control bands still line up
+    /// with the people expecting them.
+    public func setEntrant(_ entrant: RaceEntrant, at index: Int) {
+        guard entrants.indices.contains(index) else { return }
+        var next = entrants
+        next[index] = entrant
+        // A profile may only drive one car, exactly as with seats.
+        if let id = entrant.profileID {
+            for other in next.indices where other != index && next[other].profileID == id {
+                next[other] = .guest
+            }
+            rememberedProfiles[index] = id
+        }
+        entrants = RaceField.nonEmpty(RaceField.capped(next, to: Self.maxCars))
+        syncSeatIdentities()
+    }
+
+    /// Whether another row of this kind would be accepted, so a view can disable a
+    /// button rather than offer a tap that does nothing.
+    public func canAdd(_ kind: DriverKind) -> Bool {
+        guard entrants.count < Self.maxCars else { return false }
+        guard kind != .ai else { return true }
+        return RaceField.humanCount(entrants) < Self.maxLocalPlayers
+    }
+
+    @discardableResult
+    public func addEntrant(_ entrant: RaceEntrant) -> Bool {
+        guard canAdd(entrant.kind) else { return false }
+        entrants = RaceField.ordered(entrants + [entrant])
+        if let id = entrant.profileID, let row = entrants.lastIndex(of: entrant) {
+            rememberedProfiles[row] = id
+        }
+        syncSeatIdentities()
+        return true
+    }
+
+    /// Remove a row. Never leaves the list without a person in it.
+    public func removeEntrant(at index: Int) {
+        guard entrants.indices.contains(index), entrants.count > 1 else { return }
+        var next = entrants
+        next.remove(at: index)
+        rememberedProfiles.removeValue(forKey: index)
+        entrants = RaceField.nonEmpty(next)
+        syncSeatIdentities()
+    }
+
+    /// Mirror the list's human rows onto `seatIdentities`, which the records layer and
+    /// the race chrome read. Kept in step here rather than derived on demand so the
+    /// existing seat API keeps working unchanged.
+    func syncSeatIdentities() {
+        var identities = Array(repeating: SeatIdentity.guest, count: Self.maxLocalPlayers)
+        for (seat, entrant) in entrants.filter(\.isHuman).enumerated()
+        where seat < identities.count {
+            identities[seat] = entrant.seatIdentity ?? .guest
+        }
+        seatIdentities = identities
+    }
+}
