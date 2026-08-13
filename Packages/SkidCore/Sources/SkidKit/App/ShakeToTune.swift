@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 #endif
 
-/// **Shake the device to open the tuning panel — in development builds only.**
+/// **Shake the device to open the tuning panel.**
 ///
 /// The tuning dials are a developer tool: 25 of the app's 28 persisted settings are
 /// `skid.sim.*`, `skid.aim.*` and friends, and they exist for on-device A/B tests
@@ -16,10 +16,16 @@ import UIKit
 /// A shake fixes both. It is reachable from anywhere, and it occupies no pixels, so
 /// the menus can be designed as if the panel did not exist.
 ///
-/// **And in a production build it does not exist.** Everything here is behind
-/// `SKID_EXPERIMENTAL`, so the release binary contains no gesture hook, no panel
-/// presentation and no way in — which is stronger than hiding a button, and is the
-/// point: a hidden control still ships. See `docs/experimental-features.md`.
+/// **Behind `SKID_TUNING`, which is opt-OUT — on unless explicitly removed.**
+/// Deliberately the opposite default from `SKID_EXPERIMENTAL`, and a separate flag
+/// from it, because the two are wanted in different places: **TestFlight builds are
+/// release builds**, and tuning on a real device is what they are for, so gating
+/// these as "experimental" would remove them from exactly the builds that need them.
+/// One flag per feature, rather than one flag meaning "unfinished".
+///
+/// Building with `SKID_NO_TUNING=1` removes it: no gesture hook, no panel
+/// presentation, no way in. That is stronger than hiding a button, which is the
+/// point — a hidden control still ships. See `docs/experimental-features.md`.
 enum ShakeToTune {
     /// Posted when the device is shaken. Named rather than a closure so the detector
     /// (a `UIWindow` subclass, which SwiftUI does not own) can reach the view layer
@@ -27,7 +33,7 @@ enum ShakeToTune {
     static let shaken = Notification.Name("fi.misaki.skid.deviceShaken")
 }
 
-#if SKID_EXPERIMENTAL && canImport(UIKit)
+#if SKID_TUNING && canImport(UIKit)
 
 /// Turns the system's built-in shake detection into a notification.
 ///
@@ -49,10 +55,10 @@ extension View {
     /// Present the tuning panel on a shake, over whatever is on screen.
     ///
     /// Applied once at the app's root, so every screen inherits it — the race, the
-    /// menus, the editor, the lobby. In a production build this is the identity
-    /// function: no listener, no sheet, nothing retained.
+    /// menus, the editor, the lobby. Built with `SKID_NO_TUNING=1` this is the
+    /// identity function: no listener, no sheet, nothing retained.
     func tuningOnShake(settings: GameSettings) -> some View {
-        #if SKID_EXPERIMENTAL && canImport(UIKit)
+        #if SKID_TUNING && canImport(UIKit)
         return modifier(ShakeTuningModifier(settings: settings))
         #else
         return self
@@ -60,7 +66,7 @@ extension View {
     }
 }
 
-#if SKID_EXPERIMENTAL && canImport(UIKit)
+#if SKID_TUNING && canImport(UIKit)
 
 private struct ShakeTuningModifier: ViewModifier {
     @ObservedObject var settings: GameSettings

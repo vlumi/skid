@@ -1,4 +1,21 @@
-# Experimental features
+# Build flags
+
+**One flag per feature**, because they are wanted in different builds. Lumping them
+together meant a build could not have the tuning dials without also getting
+half-finished editor chrome.
+
+| flag | default | what it gates |
+|:--|:--|:--|
+| `SKID_EXPERIMENTAL` | **off** — opt in | Unfinished authoring chrome (gaps, warps) |
+| `SKID_TUNING` | **on** — opt out | The tuning dials, opened by shaking the device |
+
+The polarities are opposite on purpose, and the reason is TestFlight: **a TestFlight
+build is a release build**. An opt-in flag is absent from it, which is right for
+unfinished chrome and wrong for the dials — on-device tuning is what those builds are
+*for*. So the dials are present unless a build explicitly removes them, which is what
+the eventual production release does.
+
+## `SKID_EXPERIMENTAL` — unfinished chrome
 
 Work that is finished enough to keep and unfinished enough to hide.
 
@@ -90,15 +107,25 @@ finished, and they apply to tracks that contain no gaps at all.
 
 See `docs/jump-pieces-plan.md` for how the design got here.
 
-### The tuning panel, opened by shaking the device
+## `SKID_TUNING` — the tuning dials
 
 Twenty-five of the app's twenty-eight persisted settings are `skid.sim.*`,
-`skid.aim.*` and friends: dials for on-device A/B tests, not player settings. They
-are **not shipping**, so the flag here is doing something different from the piece
-work above — that hides authoring for a format that ships anyway, while this removes
-a developer tool from the product entirely.
+`skid.aim.*` and friends: dials for on-device A/B tests, not player settings.
 
-Two things follow from that difference:
+```sh
+make build-ios NO_TUNING=1         # a build without them (the production release)
+make test      NO_TUNING=1         # tests, with the identity path compiled in
+
+SKID_NO_TUNING=1 swift build       # the package directly
+```
+
+**On by default**, because the builds that need the dials most are the ones
+`SKID_EXPERIMENTAL` excludes: TestFlight builds RELEASE, and tuning on a real device
+is the point of them. Verified rather than assumed — the Release configuration
+compiles with `SKID_TUNING` present, and the release lane passes no build settings of
+its own, so an archive inherits it.
+
+Two things follow from the difference in kind:
 
 - **A shake, not a button.** The dials used to be a `Tuning` button in the pause
   menu, which put a developer control in a player's way *and* made the panel
@@ -106,10 +133,13 @@ Two things follow from that difference:
   or the lobby meant starting a race first. A shake is reachable everywhere and
   occupies no pixels, so the menus can be designed as if the panel did not exist.
 - **Compiled out, not hidden.** A hidden control still ships. `tuningOnShake` is the
-  identity function without the flag, and `TuningPanel` is referenced from exactly
-  one place — inside the guard — so a production binary has no route to it.
-  `ShakeToTuneTests` asserts the wiring *with* the flag and the identity *without*
-  it, so a regression fails whichever way the suite runs.
+  identity function without the flag, and `TuningPanel` is referenced from exactly one
+  place — inside the guard — so a `NO_TUNING` binary has no route to it. Note this is
+  a stronger guarantee than `SKID_EXPERIMENTAL` gives (see *How much is actually
+  removed* above): the gate is `#if` at the call site, not a constant tested with an
+  ordinary `if`, so the code is genuinely absent rather than merely unreachable.
+  `ShakeToTuneTests` asserts the wiring *with* the flag and the identity *without* it,
+  so a regression fails whichever way the suite runs.
 
 The gesture itself is UIKit's own `motionEnded` shake — the same recognizer behind
 shake-to-undo — so there is no accelerometer polling, no threshold to tune, and it
