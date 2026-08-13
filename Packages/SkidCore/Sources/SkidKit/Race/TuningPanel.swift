@@ -12,6 +12,18 @@ struct TuningPanel: View {
         VStack(spacing: 12) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
+                    // **First, because it is the one thing here reached mid-diagnosis.**
+                    // The overlay is what you turn on to SEE a bug, and it used to sit
+                    // below twenty sliders — a scroll every time, on a panel opened
+                    // precisely because something looked wrong.
+                    section(Text("Debug", bundle: .module))
+                    Toggle(isOn: $settings.debugOverlay) {
+                        Text("Show sim overlay", bundle: .module)
+                            .font(.footnote).foregroundColor(.white)
+                    }
+                    .tint(.orange)
+                    .padding(.horizontal, 4)
+
                     section(Text("Casual", bundle: .module))
                     slider(
                         Text("Flip rate", bundle: .module), value: $settings.aimTurnRate,
@@ -81,14 +93,6 @@ struct TuningPanel: View {
                     slider(
                         Text("Pace", bundle: .module), value: $settings.pace,
                         range: 0.6...1.0, step: 0.05, format: "%.2f")
-
-                    section(Text("Debug", bundle: .module))
-                    Toggle(isOn: $settings.debugOverlay) {
-                        Text("Show sim overlay", bundle: .module)
-                            .font(.footnote).foregroundColor(.white)
-                    }
-                    .tint(.orange)
-                    .padding(.horizontal, 4)
 
                     section(Text("Elevation", bundle: .module))
                     slider(

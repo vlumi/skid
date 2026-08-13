@@ -16,7 +16,7 @@ extension EditorView {
                 // made it worse — seven words never fit one row. Icons do, and the
                 // accessibility label carries the meaning.
                 iconButton("checkmark", "Done") {
-                    game.backToSetup()
+                    game.backToMenu()
                 }
                 Spacer()
                 iconButton("doc.badge.plus", "New track") {

@@ -21,6 +21,18 @@ extension View {
         #endif
     }
 
+    /// Name-entry keyboard hints, which are iOS-only API — SkidKit also builds for
+    /// macOS, where the platform handles all three itself.
+    func nameFieldStyle() -> some View {
+        #if os(iOS)
+        return textInputAutocapitalization(.words)
+            .autocorrectionDisabled()
+            .submitLabel(.done)
+        #else
+        return self
+        #endif
+    }
+
     func pillStyle() -> some View {
         font(.callout.bold())
             .padding(.horizontal, 14)
