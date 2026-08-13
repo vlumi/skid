@@ -210,16 +210,13 @@ struct PauseMenu: View {
     let session: GameSession
     @ObservedObject var rig: CouchRig
     @ObservedObject var settings: GameSettings
-    @State private var showTuning = false
 
+    /// **No Tuning button here any more.** The dials moved to a shake gesture
+    /// (`ShakeToTune`) for two reasons: they are a developer tool and do not belong
+    /// in a player's pause menu, and reaching them only from inside a race meant
+    /// tuning the menus or the editor required starting one first.
     var body: some View {
-        if showTuning {
-            TuningPanel(settings: settings) {
-                showTuning = false
-            }
-        } else {
-            menu
-        }
+        menu
     }
 
     private var menu: some View {
@@ -242,11 +239,6 @@ struct PauseMenu: View {
                     Text("Haptics", bundle: .module).pillStyle()
                         .opacity(settings.hapticsOn ? 1 : 0.45)
                 }
-            }
-            Button {
-                showTuning = true
-            } label: {
-                Text("Tuning", bundle: .module).pillStyle()
             }
             Button {
                 game.raceAgain()

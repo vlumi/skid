@@ -90,6 +90,32 @@ finished, and they apply to tracks that contain no gaps at all.
 
 See `docs/jump-pieces-plan.md` for how the design got here.
 
+### The tuning panel, opened by shaking the device
+
+Twenty-five of the app's twenty-eight persisted settings are `skid.sim.*`,
+`skid.aim.*` and friends: dials for on-device A/B tests, not player settings. They
+are **not shipping**, so the flag here is doing something different from the piece
+work above — that hides authoring for a format that ships anyway, while this removes
+a developer tool from the product entirely.
+
+Two things follow from that difference:
+
+- **A shake, not a button.** The dials used to be a `Tuning` button in the pause
+  menu, which put a developer control in a player's way *and* made the panel
+  reachable only from inside a race — so tuning anything about the menus, the editor
+  or the lobby meant starting a race first. A shake is reachable everywhere and
+  occupies no pixels, so the menus can be designed as if the panel did not exist.
+- **Compiled out, not hidden.** A hidden control still ships. `tuningOnShake` is the
+  identity function without the flag, and `TuningPanel` is referenced from exactly
+  one place — inside the guard — so a production binary has no route to it.
+  `ShakeToTuneTests` asserts the wiring *with* the flag and the identity *without*
+  it, so a regression fails whichever way the suite runs.
+
+The gesture itself is UIKit's own `motionEnded` shake — the same recognizer behind
+shake-to-undo — so there is no accelerometer polling, no threshold to tune, and it
+feels like every other iOS shake because it is that gesture. It cannot be exercised
+in a unit test, since the event is delivered to a real window.
+
 ## Retiring a flag
 
 Two honest endings, and it is worth deciding which one you are heading for:
