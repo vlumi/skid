@@ -12,6 +12,7 @@ import SwiftUI
 ///     -skid-track ID         pick a track
 ///     -skid-setup            open the race options
 ///     -skid-shelf            open the editor's track list
+///     -skid-edit             open the editor canvas
 ///     -skid-autostart        start the race, past the ready gate
 extension CouchGame {
     func applyLaunchArguments() {
@@ -39,6 +40,11 @@ extension CouchGame {
         }
         // Straight into the editor's track shelf, for the same reason `-skid-setup`
         // exists: it is several taps in and `simctl` cannot tap.
+        // The editor canvas itself, past the shelf.
+        if arguments.contains("-skid-edit") {
+            phase = .editing
+            showingTrackShelf = false
+        }
         if arguments.contains("-skid-shelf") {
             phase = .editing
             showingTrackShelf = true

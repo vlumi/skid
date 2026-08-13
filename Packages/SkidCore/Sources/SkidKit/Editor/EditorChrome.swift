@@ -51,7 +51,40 @@ extension EditorView {
                 attributionChip
             }
             .padding()
+            // **The track's name, where you are looking at the track.**
+            //
+            // Renaming lived only behind a long press on a shelf tile, which is both
+            // hidden and the wrong place: you name a track when you have just finished
+            // building it, not when picking one to open. Tapping this renames.
+            nameChip
             Spacer()
+        }
+    }
+
+    /// The edited track's name, or a prompt when it has none yet.
+    ///
+    /// A brand-new canvas has no library row — nothing is written until there is more than
+    /// a start piece — so there is genuinely nothing to name yet. `renameEditedTrack`
+    /// remembers a name given now and applies it when the row appears, so this is tappable
+    /// either way rather than being disabled until the track is worth saving.
+    private var nameChip: some View {
+        Button {
+            renamingTrack = true
+            trackNameField = game.editedTrackName ?? ""
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "pencil.line").font(.caption2)
+                if let name = game.editedTrackName {
+                    Text(verbatim: name)
+                } else {
+                    Text("Name this track", bundle: .module)
+                }
+            }
+            .font(.footnote.bold())
+            .foregroundStyle(.white.opacity(0.9))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(.black.opacity(0.3), in: Capsule())
         }
     }
 
@@ -101,6 +134,32 @@ extension EditorView {
                 }
             }
             .padding(.bottom, 24)
+        }
+    }
+}
+
+/// The rename prompt behind the editor's name chip.
+///
+/// A modifier rather than an inline `.alert` so `EditorView` stays inside its length
+/// budget, and it sits beside `nameChip` — the control it belongs to.
+struct TrackNameAlert: ViewModifier {
+    @ObservedObject var game: CouchGame
+    @Binding var showing: Bool
+    @Binding var name: String
+
+    func body(content: Content) -> some View {
+        content.alert(Text("Track name", bundle: .module), isPresented: $showing) {
+            TextField(String(localized: "Name", bundle: .module), text: $name)
+                .nameFieldStyle()
+            Button {
+                game.renameEditedTrack(to: name)
+            } label: {
+                Text("Save", bundle: .module)
+            }
+            Button(role: .cancel) {
+            } label: {
+                Text("Cancel", bundle: .module)
+            }
         }
     }
 }
