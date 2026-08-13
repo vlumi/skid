@@ -142,10 +142,17 @@ extension CouchGame {
         set { setHumanCount(newValue) }
     }
 
-    /// How many AI cars fill the rest of the field, 0…(`maxCars` − players).
+    /// **How many AI cars join, which is all of the empty grid or none of it.**
+    ///
+    /// Derived from `fillWithAI` rather than chosen: a count was a question nobody had a
+    /// basis to answer ("how many opponents would I like?" before ever driving), and it
+    /// meant a third number that could disagree with the list and the grid.
+    ///
+    /// Zero for a nearby race regardless of the toggle — the protocol has no AI seat, and
+    /// a shared field is built by whoever hosts it.
     public var aiCount: Int {
-        get { entrants.filter { !$0.isHuman }.count }
-        set { setAICount(newValue) }
+        guard fillWithAI, phase != .networking else { return 0 }
+        return max(0, Self.maxCars - playerCount)
     }
 
     /// Add or remove human rows to reach `count`. Growing adds guests, since a new row
@@ -153,20 +160,10 @@ extension CouchGame {
     /// shrinking drops the last ones, so the person who left stops racing.
     func setHumanCount(_ count: Int) {
         let target = max(1, min(Self.maxLocalPlayers, count))
-        var humans = entrants.filter(\.isHuman)
-        let ai = entrants.filter { !$0.isHuman }
-        while humans.count < target { humans.append(.guest) }
-        if humans.count > target { humans.removeLast(humans.count - target) }
-        // Taking a seat evicts an AI rather than overfilling the grid.
-        entrants = humans + ai.prefix(max(0, Self.maxCars - humans.count))
-        syncSeatIdentities()
-    }
-
-    /// Replace the AI rows so there are `count` of them, at the current difficulty.
-    func setAICount(_ count: Int) {
-        let humans = entrants.filter(\.isHuman)
-        let target = max(0, min(Self.maxCars - humans.count, count))
-        entrants = humans + Array(repeating: .ai(aiDifficulty), count: target)
+        var rows = entrants
+        while rows.count < target { rows.append(.guest) }
+        if rows.count > target { rows.removeLast(rows.count - target) }
+        entrants = rows
         syncSeatIdentities()
     }
 
@@ -178,8 +175,6 @@ extension CouchGame {
             return "P\(index + 1)"
         case .profile(let id):
             return profiles.profile(id: id)?.name ?? "P\(index + 1)"
-        case .ai(let level):
-            return String(describing: level).capitalized
         }
     }
 
@@ -192,16 +187,9 @@ extension CouchGame {
     @discardableResult
     public func setKind(_ kind: DriverKind, at index: Int) -> Bool {
         guard entrants.indices.contains(index) else { return true }
-        // **Row 0 is always a person.** An AI-only field is a race you watch rather than
-        // one you drive, and `RaceField.nonEmpty` would have inserted a guest anyway —
-        // which read as "tapping AI on the first row adds a row". Refusing is clearer
-        // than silently doing something else.
-        guard !(index == 0 && kind == .ai) else { return true }
         switch kind {
         case .guest:
             setEntrant(.guest, at: index)
-        case .ai:
-            setEntrant(.ai(aiDifficulty), at: index)
         case .player:
             // Only if that profile still exists and is not already driving.
             guard let id = rememberedProfiles[index], profiles.profile(id: id) != nil,
@@ -233,12 +221,10 @@ extension CouchGame {
         syncSeatIdentities()
     }
 
-    /// Whether another row of this kind would be accepted, so a view can disable a
-    /// button rather than offer a tap that does nothing.
-    public func canAdd(_ kind: DriverKind) -> Bool {
-        guard entrants.count < Self.maxCars else { return false }
-        guard kind != .ai else { return true }
-        return RaceField.humanCount(entrants) < Self.maxLocalPlayers
+    /// Whether another person would be accepted, so a view can disable a button rather
+    /// than offer a tap that does nothing.
+    public func canAdd(_ kind: DriverKind = .guest) -> Bool {
+        entrants.count < Self.maxLocalPlayers
     }
 
     @discardableResult

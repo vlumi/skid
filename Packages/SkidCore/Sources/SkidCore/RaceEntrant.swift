@@ -10,11 +10,18 @@ import Foundation
 /// As a list, the counts are *derived*. There is no way to ask for five humans and four
 /// AI on a four-car grid, because the list is the field: its length is the field size,
 /// and what each row says is what that car is.
-/// **What kind of driver a row is** — the three-way choice on every row.
+/// **What kind of driver a row is** — the two-way choice on every row.
+///
+/// AI used to be a third case, and taking it out removed four special rules that existed
+/// only because computers shared a list with people: row 0 could not be AI, humans had to
+/// sort ahead of AI, AI could not travel to a nearby race, and hosting with AI was never
+/// plumbed. The list's whole appeal was having no special cases.
+///
+/// AI is now a property of the RACE — fill the grid, or do not — which is where it always
+/// belonged: it is not "who is here".
 public enum DriverKind: String, Equatable, Sendable, Codable, CaseIterable {
     case guest
     case player
-    case ai
 }
 
 public enum RaceEntrant: Equatable, Sendable, Codable, Identifiable {
@@ -22,8 +29,6 @@ public enum RaceEntrant: Equatable, Sendable, Codable, Identifiable {
     case guest
     /// A person at this device with a profile.
     case profile(UUID)
-    /// A computer driver at the given skill.
-    case ai(AIDriver.Difficulty)
 
     /// Stable enough for a `ForEach` over a list that is edited in place.
     ///
@@ -35,7 +40,6 @@ public enum RaceEntrant: Equatable, Sendable, Codable, Identifiable {
         switch self {
         case .guest: return .guest
         case .profile: return .player
-        case .ai: return .ai
         }
     }
 
@@ -43,34 +47,27 @@ public enum RaceEntrant: Equatable, Sendable, Codable, Identifiable {
         switch self {
         case .guest: return "guest"
         case .profile(let uuid): return "profile-\(uuid)"
-        case .ai(let level): return "ai-\(level)"
         }
     }
 
-    /// Whether a person at this device drives this car — the thing that decides how
-    /// many control bands the screen is divided into.
-    public var isHuman: Bool {
-        switch self {
-        case .guest, .profile: return true
-        case .ai: return false
-        }
-    }
+    /// Every row is a person now, so this is always true — kept because it reads at the
+    /// call sites and because `RaceField` still speaks in terms of humans.
+    public var isHuman: Bool { true }
 
     /// The profile driving, if any. Nil for a guest *and* for AI, which is correct at
     /// every call site: both are "nobody to record against".
     public var profileID: UUID? {
         switch self {
         case .profile(let id): return id
-        case .guest, .ai: return nil
+        case .guest: return nil
         }
     }
 
-    /// The seat identity this entrant presents, for the records layer. AI has none.
-    public var seatIdentity: SeatIdentity? {
+    /// The seat identity this entrant presents, for the records layer.
+    public var seatIdentity: SeatIdentity {
         switch self {
         case .guest: return .guest
         case .profile(let id): return .profile(id)
-        case .ai: return nil
         }
     }
 }
@@ -80,13 +77,9 @@ public enum RaceEntrant: Equatable, Sendable, Codable, Identifiable {
 /// A free function rather than a type, because the list itself is the model — wrapping
 /// it would add a layer whose only job is to forward `count`.
 public enum RaceField {
-    /// **Humans first, then AI**, because control bands are assigned to the first N cars
-    /// in order — a human sitting behind an AI would be handed no band and no way to
-    /// drive. Sorting maintains that invariant rather than merely asserting it, and is
-    /// stable within each group so it never shuffles who is who.
-    public static func ordered(_ entrants: [RaceEntrant]) -> [RaceEntrant] {
-        entrants.filter(\.isHuman) + entrants.filter { !$0.isHuman }
-    }
+    /// Nothing to reorder now that every row is a person — kept as the one place that
+    /// would change if rows ever needed sorting again.
+    public static func ordered(_ entrants: [RaceEntrant]) -> [RaceEntrant] { entrants }
 
     /// How many people at this device are racing.
     public static func humanCount(_ entrants: [RaceEntrant]) -> Int {

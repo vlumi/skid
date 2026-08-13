@@ -13,11 +13,15 @@ import SwiftUI
 ///   the list could immediately contradict was a distinction without a difference.
 /// - **No seating-layout picker.** Two players are face-to-face; three get a fixed
 ///   corner. Both were questions a player had no basis to answer before driving.
+/// - **No AI rows.** AI was briefly a third kind of row, and it brought four special
+///   rules with it that existed for no other reason: row 0 could not be AI, humans had to
+///   sort ahead of AI, AI could not travel to a nearby race, and hosting with AI was
+///   never plumbed. It is a property of the race now — fill the grid or do not — which is
+///   where it belonged, since a computer is not "who is here".
 ///
-/// **Switching a row is one tap**, because filling a grid should not need a dropdown per
-/// car. Choosing *which* named player is the exception and opens a picker — and each row
-/// remembers the profile it last held, so switching away to AI and back does not ask
-/// again.
+/// **A row is one tap**, opening a picker whose first entry is Guest — so both answers
+/// live in one place. Each row remembers the profile it last held, so a row that goes
+/// back to Guest and then to a player again does not have to be told twice.
 struct PlayerListView: View {
     @ObservedObject var game: CouchGame
     /// Which row's player picker is open.
@@ -39,29 +43,41 @@ struct PlayerListView: View {
         }
     }
 
+    /// **The whole row is one button, and it opens the picker.**
+    ///
+    /// There was briefly a segmented Guest/Player toggle here. With AI gone from the list
+    /// that leaves a two-way switch, and a segmented control for a binary choice is more
+    /// chrome than the choice deserves — especially since the picker's first row IS
+    /// "Guest", so it already covers both answers. One tap, one surface.
     private func row(index: Int, entrant: RaceEntrant) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             // The car's color, so the list reads as the grid rather than as settings.
             Circle()
                 .fill(CouchGame.palette[game.colorIndices[index % game.colorIndices.count]])
                 .frame(width: 26, height: 26)
                 .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 2))
 
-            kindToggle(index: index, entrant: entrant)
-
-            // Tapping the detail opens the picker for a player row, and is where the
-            // AI's level will go when it becomes per-row.
             Button {
-                if entrant.kind == .player { pickingFor = index }
+                pickingFor = index
             } label: {
-                Text(verbatim: game.entrantDetail(index))
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 8) {
+                    Text(verbatim: game.entrantDetail(index))
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    // Says which of the two this is without a control to read it off.
+                    if entrant.kind == .guest {
+                        Text("Guest", bundle: .module)
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white.opacity(0.5))
+                }
             }
-            .disabled(entrant.kind != .player)
 
             // Never below one row, so this is absent rather than disabled on the last
             // one — a control that cannot work should not be there to press.
@@ -76,60 +92,19 @@ struct PlayerListView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
     }
 
-    /// Guest / Player / AI, as three segments rather than a cycle — a cycle makes you
-    /// tap through states you do not want to reach the one you do.
-    private func kindToggle(index: Int, entrant: RaceEntrant) -> some View {
-        HStack(spacing: 0) {
-            ForEach(DriverKind.allCases, id: \.self) { kind in
-                let selected = entrant.kind == kind
-                // The first row is always a person — see `setKind`. Dimmed rather than
-                // hidden, so the toggle keeps the same shape on every row.
-                let allowed = !(index == 0 && kind == .ai)
-                Button {
-                    // A player row with nobody remembered needs the picker; every other
-                    // switch is immediate.
-                    if !game.setKind(kind, at: index) { pickingFor = index }
-                } label: {
-                    label(for: kind)
-                        .font(.caption2.bold())
-                        .frame(width: 46, height: 28)
-                        .background(selected ? .white.opacity(0.9) : .clear)
-                        .foregroundStyle(selected ? .black : .white.opacity(allowed ? 0.75 : 0.3))
-                }
-                .disabled(!allowed)
-            }
-        }
-        .background(.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 8))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func label(for kind: DriverKind) -> Text {
-        switch kind {
-        case .guest: return Text("Guest", bundle: .module)
-        case .player: return Text("Player", bundle: .module)
-        case .ai: return Text("AI", bundle: .module)
-        }
-    }
-
-    /// **Three add buttons, not one.** Adding is where speed matters — filling a grid
-    /// should be one tap per car — so the kind is chosen as you add rather than by
-    /// adding a row and then changing it.
+    /// Two ways to add a person: anonymously, or by name. Both add a row — the second
+    /// then opens the picker, since a row has to exist before somebody can be put in it.
     private var addButtons: some View {
         HStack(spacing: 8) {
             add(Text("+ Guest", bundle: .module), kind: .guest) {
                 game.addEntrant(.guest)
             }
             add(Text("+ Player", bundle: .module), kind: .player) {
-                // Adds a guest row and opens the picker on it: the row has to exist
-                // before somebody can be put in it.
                 if game.addEntrant(.guest) { pickingFor = game.entrants.count - 1 }
-            }
-            add(Text("+ AI", bundle: .module), kind: .ai) {
-                game.addEntrant(.ai(game.aiDifficulty))
             }
         }
     }

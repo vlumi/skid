@@ -17,15 +17,18 @@ struct FullFieldTests {
         // `fieldCapacity` (9) and races it correctly; `maxCars` is the smaller
         // number the product currently offers — see `CouchGame.maxCars`.
         let cap = CouchGame.maxCars
-        for (humans, ai) in [(1, cap - 1), (2, cap - 2), (cap, 0), (1, 0), (2, 2)] {
+        // AI is a toggle now, not a count: filling means "the rest of the grid", so the
+        // expected field is the cap when filling and the human count when not.
+        for (humans, fill) in [(1, true), (2, true), (cap, true), (1, false), (2, false)] {
             let game = CouchGame()
             game.playerCount = humans
-            game.aiCount = ai
+            game.fillWithAI = fill
             game.startRace()
             let started = game.session?.race.cars.count ?? -1
+            let expected = fill ? cap : humans
             #expect(
-                started == humans + ai,
-                "\(humans) human + \(ai) AI produced \(started) cars")
+                started == expected,
+                "\(humans) human, fill=\(fill) produced \(started) cars, wanted \(expected)")
         }
     }
 
@@ -33,7 +36,7 @@ struct FullFieldTests {
     @Test func oneHumanCanFillTheFieldWithAI() {
         let game = CouchGame()
         game.playerCount = 1
-        game.aiCount = CouchGame.maxCars - 1
+        game.fillWithAI = true
         game.startRace()
         #expect(game.session?.race.cars.count == CouchGame.maxCars)
     }
@@ -42,7 +45,7 @@ struct FullFieldTests {
     @Test func aFullFieldHasNoRepeatedColors() {
         let game = CouchGame()
         game.playerCount = 1
-        game.aiCount = CouchGame.maxCars - 1
+        game.fillWithAI = true
         game.startRace()
         let colors = game.carColors
         #expect(colors.count == CouchGame.maxCars)
@@ -84,16 +87,22 @@ struct FullFieldTests {
             "a full nine-car field must still complete a lap")
     }
 
-    /// The setup screen must not offer a number the race then refuses — that is the
-    /// shape of the reported bug, in the other direction.
-    @Test func theOfferedAICountIsTheRaceableOne() {
+    /// **The AI count can no longer be wrong, and this is why.**
+    ///
+    /// It used to be a number the setup screen offered and the race could refuse — the
+    /// reported bug, in the other direction. Now it is derived from a toggle: filling
+    /// means exactly the seats the people leave, whatever the player count is, so there
+    /// is no value to clamp and nothing to disagree about.
+    @Test func fillingTakesExactlyTheFreeSeats() {
         for humans in 1...CouchGame.maxLocalPlayers {
             let game = CouchGame()
             game.playerCount = humans
-            game.aiCount = CouchGame.maxCars  // deliberately over the top
+            game.fillWithAI = true
             #expect(
                 game.aiCount == CouchGame.maxCars - humans,
-                "with \(humans) humans the AI count should clamp to the free seats")
+                "with \(humans) humans, filling should take the \(CouchGame.maxCars - humans) free seats"
+            )
+            #expect(game.playerCount + game.aiCount == CouchGame.maxCars)
         }
     }
 }

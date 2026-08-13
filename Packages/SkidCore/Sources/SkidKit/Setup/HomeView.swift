@@ -12,11 +12,12 @@ import SwiftUI
 /// So: the list, then three actions. The actions differ in one respect only — whose
 /// device the other cars are on:
 ///
-/// - **Start** — race here, now. AI rows are cars in it.
-/// - **Host** — other devices join this field. The host's sim owns it, so AI rows still
-///   mean something.
-/// - **Join** — somebody else's field, so only the people at this device travel. AI rows
-///   stay behind, and the button says so rather than dropping them silently.
+/// - **Start** — race here, now, with AI filling the empty grid unless told otherwise.
+/// - **Host** — other devices join this field.
+/// - **Join** — somebody else's field, so only the people at this device travel.
+///
+/// AI is a race setting rather than a list row, so nearby needs no caveat about it: the
+/// protocol has no AI seat, and `aiCount` reports zero for a networked race.
 struct HomeView: View {
     @ObservedObject var game: CouchGame
     let net: NetworkedGame
@@ -86,14 +87,6 @@ struct HomeView: View {
                 }
             }
 
-            // Said here rather than enforced by reshaping the list: a nearby field is
-            // built by whoever hosts it, and the protocol has no AI seat at all.
-            if game.aiCount > 0 {
-                Text("Joining a race leaves the AI cars behind.", bundle: .module)
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .multilineTextAlignment(.center)
-            }
         }
     }
 }

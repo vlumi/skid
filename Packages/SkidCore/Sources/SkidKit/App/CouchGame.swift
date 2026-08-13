@@ -117,14 +117,19 @@ public final class CouchGame: ObservableObject {
     /// again with its own literal. Three places, and the one that mattered was wrong:
     /// a solo player's field was silently cut to three AI while the grid showed nine
     /// slots. Clamping at the property makes the invariant impossible to route around.
-    /// The level new AI rows get. One skill for the whole field today; per-row levels
-    /// are already expressible in `RaceEntrant` for when that is wanted.
-    @Published public var aiDifficulty: AIDriver.Difficulty = .medium {
-        didSet {
-            guard aiDifficulty != oldValue else { return }
-            entrants = entrants.map { $0.isHuman ? $0 : .ai(aiDifficulty) }
-        }
-    }
+    /// **Fill the empty grid with AI, or race whoever is here alone.**
+    ///
+    /// A toggle rather than a count: "how many opponents?" is a question nobody has a
+    /// basis to answer before driving, and a third number could disagree with the list
+    /// and the grid. On by default, because one person plus an empty track is a time
+    /// trial rather than a race.
+    ///
+    /// Local only — a nearby field is built by whoever hosts it, and the protocol has no
+    /// AI seat at all. `aiCount` enforces that rather than this flag being reset.
+    @Published public var fillWithAI = true
+
+    /// How well the AI drives.
+    @Published public var aiDifficulty: AIDriver.Difficulty = .medium
     /// Default color per seat, in palette order — which is separation order, so a
     /// 1–4 player game gets the four furthest-apart colors. Sized to the whole
     /// field rather than to four seats, since the AI fills the rest.
@@ -243,7 +248,9 @@ public final class CouchGame: ObservableObject {
         if let index = arguments.firstIndex(of: "-skid-ai"),
             index + 1 < arguments.count, let count = Int(arguments[index + 1])
         {
-            aiCount = max(0, min(Self.maxCars - playerCount, count))
+            // Kept for the screenshot/test launch arguments: any positive count means
+            // "fill the grid", which is the only AI choice there is now.
+            fillWithAI = count > 0
         }
         if let index = arguments.firstIndex(of: "-skid-track"), index + 1 < arguments.count {
             trackID = TrackLibrary.track(id: arguments[index + 1]).id

@@ -139,6 +139,17 @@ struct SetupView: View {
     /// the seating-layout pickers are all gone from here.
     @ViewBuilder private var raceOptions: some View {
         VStack(spacing: 14) {
+            // **AI is a property of the race, not of the player list.** Fill the empty
+            // grid or race whoever is here alone — a count was a question nobody could
+            // answer before driving.
+            HStack(spacing: 10) {
+                choice(Text("With AI", bundle: .module), selected: game.fillWithAI) {
+                    game.fillWithAI = true
+                }
+                choice(Text("People only", bundle: .module), selected: !game.fillWithAI) {
+                    game.fillWithAI = false
+                }
+            }
             if game.aiCount > 0 {
                 labeledRow(Text("AI skill", bundle: .module)) {
                     ForEach(AIDriver.Difficulty.allCases, id: \.self) { level in
