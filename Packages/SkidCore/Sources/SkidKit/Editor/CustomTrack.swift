@@ -305,3 +305,80 @@ extension CouchGame {
         if trackID == id { trackID = TrackLibrary.builtins[0].id }
     }
 }
+
+extension CouchGame {
+    /// **Rename one of your tracks.**
+    ///
+    /// A name is the only part of an entry that is *yours* rather than derived: the id is a
+    /// hash of the track's content, the dates are events, and the code is the road. So this
+    /// is the one edit that changes a row without changing the track — `put` replaces by
+    /// id, and the id does not move.
+    ///
+    /// Returns false when the name is unusable, leaving the old one: a track called "" is
+    /// worse than a track called "My track".
+    @discardableResult
+    public func renameTrack(id: String, to name: String) -> Bool {
+        guard var entry = library.entry(id: id),
+            let cleaned = TrackName.cleaned(name)
+        else { return false }
+        guard cleaned != entry.name else { return true }
+        entry.name = cleaned
+        // `updatedAt` deliberately untouched: it means "last edited here" and orders the
+        // shelf, so renaming would push a track you have not touched to the front.
+        var book = library
+        book.put(entry)
+        library = book
+        saveLibrary()
+        return true
+    }
+}
+
+/// Cleaning a track name, kept beside the operation that needs it.
+///
+/// Deliberately its own type rather than a method on the book: the same rule applies to a
+/// name typed in the shelf and a name arriving with an imported track, and neither of those
+/// is a library concern.
+public enum TrackName {
+    /// Longest name worth storing — generous for a real one, short enough that a shelf tile
+    /// can show it without the layout fighting back.
+    public static let maxLength = 24
+
+    /// Trimmed and capped, or nil when nothing usable is left. Nil rather than a
+    /// placeholder for the same reason `PlayerProfile.cleaned` does it: "  " is not a name,
+    /// and the caller's answer is to keep what it had.
+    public static func cleaned(_ name: String) -> String? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return String(trimmed.prefix(maxLength))
+    }
+}
+
+extension CouchGame {
+    /// **The name of the track being edited**, or nil when it has none yet.
+    ///
+    /// Nil is the honest answer for a canvas that has not been saved: nothing is written to
+    /// the library until there is more than a start piece on it (see
+    /// `syncEditedTrackToLibrary`), so until then there is no row to name. The editor shows
+    /// a placeholder rather than inventing one.
+    public var editedTrackName: String? {
+        editedEntryID.flatMap { library.entry(id: $0)?.name } ?? pendingTrackName
+    }
+
+    /// Rename the track currently being edited. Convenience over `renameTrack(id:to:)` for
+    /// the editor, which knows *what* it is editing but should not have to know how rows
+    /// are keyed.
+    ///
+    /// **Works before the first save too**: with no row yet, the name is remembered and
+    /// applied when one is written, which is what `pendingTrackName` already does for a
+    /// track started from a copy. So naming a brand-new track works the moment you think
+    /// of the name, rather than only after it has been saved.
+    @discardableResult
+    public func renameEditedTrack(to name: String) -> Bool {
+        guard let cleaned = TrackName.cleaned(name) else { return false }
+        if let id = editedEntryID, library.entry(id: id) != nil {
+            return renameTrack(id: id, to: cleaned)
+        }
+        pendingTrackName = cleaned
+        return true
+    }
+}

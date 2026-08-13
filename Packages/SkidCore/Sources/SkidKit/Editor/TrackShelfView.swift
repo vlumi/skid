@@ -24,6 +24,11 @@ struct TrackShelfView: View {
     @ObservedObject var game: CouchGame
     let dismiss: () -> Void
 
+    /// The track being renamed, and the name being typed. Held together so the field cannot
+    /// outlive the row it belongs to.
+    @State private var renaming: TrackLibraryBook.Entry?
+    @State private var newName = ""
+
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
     var body: some View {
@@ -49,6 +54,28 @@ struct TrackShelfView: View {
                     }
                 }
                 .padding(16)
+            }
+        }
+        // An alert rather than a sheet: one field and two buttons, and a sheet would cover
+        // the tile whose name is being changed.
+        .alert(
+            Text("Rename track", bundle: .module),
+            isPresented: Binding(
+                get: { renaming != nil },
+                set: { if !$0 { renaming = nil } })
+        ) {
+            TextField(String(localized: "Name", bundle: .module), text: $newName)
+                .nameFieldStyle()
+            Button {
+                if let entry = renaming { game.renameTrack(id: entry.id, to: newName) }
+                renaming = nil
+            } label: {
+                Text("Rename", bundle: .module)
+            }
+            Button(role: .cancel) {
+                renaming = nil
+            } label: {
+                Text("Cancel", bundle: .module)
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -94,44 +121,71 @@ struct TrackShelfView: View {
         }
     }
 
+    /// **A tap opens the track; the rest is a long press.**
+    ///
+    /// The tile was a `Menu`, so choosing your track cost two taps and the primary action —
+    /// edit this one — was buried among three others. Worse, a tile that only opens a menu
+    /// reads as unresponsive: the obvious gesture appears to do nothing.
+    ///
+    /// A plain button with a `contextMenu` puts the common case on the tap and keeps copy,
+    /// rename and delete one press away.
     private func tile(entry: TrackLibraryBook.Entry) -> some View {
-        let layout = try? TrackCode.decode(entry.code)
-        return Menu {
-            Button {
-                game.openForEditing(entryID: entry.id)
-                dismiss()
-            } label: {
-                Label {
-                    Text("Edit", bundle: .module)
-                } icon: {
-                    Image(systemName: "pencil")
-                }
-            }
-            Button {
-                game.startFrom(code: entry.code, name: entry.name)
-                dismiss()
-            } label: {
-                Label {
-                    Text("Start a copy", bundle: .module)
-                } icon: {
-                    Image(systemName: "plus.square.on.square")
-                }
-            }
-            Button(role: .destructive) {
-                game.deleteTrack(id: entry.id)
-            } label: {
-                Label {
-                    Text("Delete", bundle: .module)
-                } icon: {
-                    Image(systemName: "trash")
-                }
-            }
+        Button {
+            game.openForEditing(entryID: entry.id)
+            dismiss()
         } label: {
             card(
-                layout: layout, name: entry.name,
+                layout: try? TrackCode.decode(entry.code), name: entry.name,
                 // The one thing a picture cannot say: whether this ring closes. An
                 // unfinished track is not a fault, it is where you left off.
                 note: entry.isRaceable ? nil : Text("Unfinished", bundle: .module))
+        }
+        // **Both**, deliberately. A long press is the iOS idiom and stays; a visible
+        // kebab is how somebody finds out it exists — "ah, long tap" is not a discovery a
+        // player should have to make. Same menu behind each, defined once.
+        .overlay(alignment: .topTrailing) {
+            Menu {
+                actions(for: entry)
+            } label: {
+                Image(systemName: "ellipsis.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(6)
+            }
+        }
+        .contextMenu { actions(for: entry) }
+    }
+
+    /// Copy, rename, delete — the things that are not "open this".
+    @ViewBuilder private func actions(for entry: TrackLibraryBook.Entry) -> some View {
+        Button {
+            game.startFrom(code: entry.code, name: entry.name)
+            dismiss()
+        } label: {
+            Label {
+                Text("Start a copy", bundle: .module)
+            } icon: {
+                Image(systemName: "plus.square.on.square")
+            }
+        }
+        Button {
+            newName = entry.name
+            renaming = entry
+        } label: {
+            Label {
+                Text("Rename", bundle: .module)
+            } icon: {
+                Image(systemName: "pencil.line")
+            }
+        }
+        Button(role: .destructive) {
+            game.deleteTrack(id: entry.id)
+        } label: {
+            Label {
+                Text("Delete", bundle: .module)
+            } icon: {
+                Image(systemName: "trash")
+            }
         }
     }
 
