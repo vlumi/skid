@@ -21,7 +21,7 @@ extension TrackLayout {
     /// gate seams, fitters, decals, rails and warp drops alike — one place later.
     ///
     /// Geometry is not preserved: inserting mid-ring re-walks everything after
-    /// the cut, which is exactly the "slides the whole tail" behaviour the editor
+    /// the cut, which is exactly the "slides the whole tail" behavior the editor
     /// does not offer mid-chain. It is the primitive that append and prepend are
     /// built from.
     public mutating func insert(_ id: PieceID, pitch: Pitch = .flat, at index: Int) {
@@ -43,7 +43,7 @@ extension TrackLayout {
     ///
     /// Whatever was keyed to the victim goes with it: its gate seam, fitter,
     /// decal and railing are dropped rather than silently re-pointed at the
-    /// neighbour that takes its index.
+    /// neighbor that takes its index.
     public mutating func remove(at index: Int) {
         precondition(pieces.indices.contains(index), "remove index \(index) out of range")
         pieces.remove(at: index)

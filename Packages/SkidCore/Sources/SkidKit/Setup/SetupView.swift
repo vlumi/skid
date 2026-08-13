@@ -11,9 +11,9 @@ struct SetupView: View {
         ZStack {
             Color(red: 0.28, green: 0.55, blue: 0.23).ignoresSafeArea()
             // Scrollable, because the lobby has outgrown the smallest screens
-            // (an SE can't show mode + track + race options + colours + both
+            // (an SE can't show mode + track + race options + colors + both
             // buttons at once). `minHeight` at the viewport height keeps the
-            // content CENTRED wherever it does fit, so roomy screens look
+            // content CENTERED wherever it does fit, so roomy screens look
             // exactly as before and only a cramped one scrolls. A proper
             // redesign comes when the game is closer to feature-complete.
             GeometryReader { proxy in
@@ -278,7 +278,7 @@ struct SetupView: View {
         }
     }
 
-    /// A labelled row of choices that **wraps** rather than running off the screen.
+    /// A labeled row of choices that **wraps** rather than running off the screen.
     ///
     /// The AI row reaches nine buttons now that a solo player can face a full field,
     /// which does not fit an SE's width — reported from device, with 0 clipped off the

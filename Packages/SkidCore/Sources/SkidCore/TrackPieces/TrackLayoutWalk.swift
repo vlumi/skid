@@ -93,10 +93,10 @@ extension TrackLayout {
 
     /// **Where a climb eases, and where it stays a wedge.**
     ///
-    /// A climb runs straight THROUGH into a neighbour climbing the same way, so a
+    /// A climb runs straight THROUGH into a neighbor climbing the same way, so a
     /// full climb split into halves is one S-curve rather than a terrace with a shelf
     /// at the apex. (Sequence order is placement order — forks are Phase B, so
-    /// neighbours are i±1.)
+    /// neighbors are i±1.)
     ///
     /// And **a climb with nothing above it is a launch lip**, which keeps its full
     /// slope. The eased top exists because a bridge ramp must arrive LEVEL: it used

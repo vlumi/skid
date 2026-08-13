@@ -38,17 +38,17 @@ struct FullFieldTests {
         #expect(game.session?.race.cars.count == CouchGame.maxCars)
     }
 
-    /// Every car gets its own colour, so the field is legible at the flag.
-    @Test func aFullFieldHasNoRepeatedColours() {
+    /// Every car gets its own color, so the field is legible at the flag.
+    @Test func aFullFieldHasNoRepeatedColors() {
         let game = CouchGame()
         game.playerCount = 1
         game.aiCount = CouchGame.maxCars - 1
         game.startRace()
-        let colours = game.carColors
-        #expect(colours.count == CouchGame.maxCars)
+        let colors = game.carColors
+        #expect(colors.count == CouchGame.maxCars)
         #expect(
-            Set(colours.map { String(describing: $0) }).count == colours.count,
-            "two cars share a colour")
+            Set(colors.map { String(describing: $0) }).count == colors.count,
+            "two cars share a color")
     }
 
     /// **The soft cap is a product choice, not an engine limit.**
@@ -58,7 +58,7 @@ struct FullFieldTests {
     /// so raising the cap stays a one-number change rather than a project.
     @Test func theEngineStillSeatsAFullNineCars() throws {
         #expect(CouchGame.fieldCapacity == PieceCompiler.Grid.slots)
-        #expect(CarPalette.count >= CouchGame.fieldCapacity, "a colour per slot")
+        #expect(CarPalette.count >= CouchGame.fieldCapacity, "a color per slot")
         #expect(
             CouchGame.maxCars <= CouchGame.fieldCapacity,
             "the soft cap must not exceed what the grid can seat")

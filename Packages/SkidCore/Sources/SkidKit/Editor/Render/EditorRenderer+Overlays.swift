@@ -117,7 +117,7 @@ extension EditorRenderer {
         let pose = start.exits[0]
         let fwd = Vec2(angle: pose.heading.radians)
         let side = fwd.perpendicular * (width / 2 * Elevation.scale(atHeight: start.exitHeight))
-        // A black-and-white checkerboard, two rows deep — both colours painted,
+        // A black-and-white checkerboard, two rows deep — both colors painted,
         // so it reads as a start line rather than as holes in the asphalt (the
         // race view used to fill only the dark squares over bare road, which
         // looked black-on-transparent, and stacked that on a dashed line drawn
@@ -171,7 +171,7 @@ extension EditorRenderer {
         let samples = placed.centerlineSamples()
         guard samples.count > 1 else { return }
         let length = polylineLength(samples)
-        // About a road width and a half of arrow, centred, but never more than 70%
+        // About a road width and a half of arrow, centered, but never more than 70%
         // of the piece so consecutive arrows stay separate marks.
         let span = min(width * 1.5, length * 0.7)
         guard span > width * 0.45 else { return }  // too short to read as an arrow

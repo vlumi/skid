@@ -253,7 +253,7 @@ public enum PieceCompiler {
             // height without occupying ground, so its samples are all the same point
             // — and emitting them stamped a pile of duplicate centerline points,
             // each casting its own half-width end cap. That paved right over the
-            // neighbouring gap: the car stayed "on road" across the hole and never
+            // neighboring gap: the car stayed "on road" across the hole and never
             // took off, which is a launch that silently does nothing.
             //
             // The height still lands, because the walk carries it in `exitHeight`

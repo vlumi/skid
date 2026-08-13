@@ -4,7 +4,7 @@ import XCTest
 
 /// The aim knobs are FEEL knobs, and feel cannot be settled by arithmetic — so
 /// every one of them has to be reachable from the tuning panel and take effect
-/// live. These tests pin the behaviour each slider buys, so a knob that stops
+/// live. These tests pin the behavior each slider buys, so a knob that stops
 /// being wired (or gets wired in the wrong unit) fails here.
 ///
 /// The panel stores both angles in DEGREES because that is what the player is
@@ -124,7 +124,7 @@ final class AimTuningTests: XCTestCase {
         XCTAssertEqual(releaseAngle(forwardArc: 150), 120, accuracy: 6)
     }
 
-    /// The stock values are the ones the behaviour tests assume, so a default
+    /// The stock values are the ones the behavior tests assume, so a default
     /// change can't silently invalidate them.
     func testStockDefaults() {
         let source = AimControlSource()

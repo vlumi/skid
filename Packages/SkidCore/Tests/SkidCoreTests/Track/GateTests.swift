@@ -109,7 +109,7 @@ final class GateTests: XCTestCase {
     /// ...but never more than halfway to another lane, or a gate could be
     /// satisfied from the neighboring road. A hairpin puts its legs 2r apart,
     /// which is exactly where that cap has to bite.
-    func testGatesAreCappedHalfwayToANeighbouringLane() throws {
+    func testGatesAreCappedHalfwayToANeighboringLane() throws {
         let hairpin: [PieceID] = [
             Pieces.startGrid, Pieces.hairpinTightLeft, Pieces.straight,
             Pieces.hairpinTightLeft, Pieces.straight,

@@ -75,7 +75,7 @@ public final class CouchGame: ObservableObject {
     /// **What a race is allowed to hold today: four cars.**
     ///
     /// A **soft cap**, not a limit of the game. The grid seats nine
-    /// (`PieceCompiler.Grid.slots`), the palette carries nine measured colours, and
+    /// (`PieceCompiler.Grid.slots`), the palette carries nine measured colors, and
     /// nine race correctly — that support is built, tested and staying. What is not
     /// yet known is how nine behave on a real phone, and finding out belongs in the
     /// device optimisation pass rather than now.
@@ -130,8 +130,8 @@ public final class CouchGame: ObservableObject {
         set { aiSeats = max(0, min(Self.maxCars - humanSeats, newValue)) }
     }
     @Published public var aiDifficulty: AIDriver.Difficulty = .medium
-    /// Default colour per seat, in palette order — which is separation order, so a
-    /// 1–4 player game gets the four furthest-apart colours. Sized to the whole
+    /// Default color per seat, in palette order — which is separation order, so a
+    /// 1–4 player game gets the four furthest-apart colors. Sized to the whole
     /// field rather than to four seats, since the AI fills the rest.
     @Published public private(set) var colorIndices = Array(0..<PieceCompiler.Grid.slots)
     /// Each human player's control scheme, chosen in setup (Casual/Pro). One

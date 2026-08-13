@@ -272,7 +272,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         // traffic is the hot path and falls through.
         if receiveLobbyMessage(bytes, from: peer) { return }
         // Per-tick traffic: inputs to the host's relay, snapshots to the client's
-        // view. Anything unrecognised — including the retired lockstep hash tag —
+        // view. Anything unrecognized — including the retired lockstep hash tag —
         // is dropped, never believed.
         if var relay {
             relay.receive(bytes, from: peer)

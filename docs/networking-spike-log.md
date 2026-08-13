@@ -12,7 +12,7 @@ and stalls compound with every device added (waiting on the slowest of N−1
 peers). The runtime moved to **host-authoritative snapshots**; see
 [networking-model-analysis.md](networking-model-analysis.md) for the decision
 and its grounds. Everything below stays as the record of what the spike found —
-the transport lessons and the bug catalogue carry over unchanged.
+the transport lessons and the bug catalog carry over unchanged.
 
 A fresh-eyes read during the analysis also found the likely cause of the final
 symptom (symmetric ~2 Hz pauses): hash reports still went out one packet per
@@ -44,7 +44,7 @@ so it measured ticks rather than packets and missed a 4× packet flood.
 | Lobby jams on Start, Back unresponsive | Every MultipeerConnectivity call was on the main thread; `send` and `disconnect` block |
 | App freezes the moment the race starts | Per-tick diagnostics were `@Published` and `RaceScreen` observes them — a render loop |
 | Both phones show blue and orange; guest steers nothing; "waiting" forever | `CouchRig` hardcoded `PlayerID(index)`, so every device built players 0 and 1 |
-| HUD chip blue on both screens | `playerChip` indexed cars and colours by BAND index, not by seat |
+| HUD chip blue on both screens | `playerChip` indexed cars and colors by BAND index, not by seat |
 | Cars drift apart, desync at a **repeatable** tick (182) | Each device used its own persisted car tuning and `carContact` |
 | Constant 2 Hz stutter, banner in time with it | Reliable channel coalesces like TCP: a 60 Hz stream arrives in clumps |
 | Steady stutter across *both* channel modes | Publishing keyed off `race.tick`, which needs the peer's input — mutual starvation |

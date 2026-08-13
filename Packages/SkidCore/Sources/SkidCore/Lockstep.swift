@@ -103,7 +103,7 @@ public struct LockstepClock: Sendable {
         /// A seat missing from `inputs` is sent as coast. That is safe here and
         /// nowhere else: a *sender* always has its own seats' input, so a hole
         /// means "this peer does not own that seat", and the roster passed in is
-        /// the sender's own. It is emphatically not the receiver's licence to
+        /// the sender's own. It is emphatically not the receiver's license to
         /// invent a coast for a late packet — see `advance()`.
         public func encoded(roster: [PlayerID]) -> [UInt8] {
             var out: [UInt8] = []

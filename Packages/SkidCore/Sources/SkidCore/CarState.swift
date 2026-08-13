@@ -69,7 +69,7 @@ public struct CarState: Equatable, Sendable, Codable {
     /// Wall feel could not be diagnosed from tests: every probe either missed
     /// contact or measured its own harness, while the device reported the car
     /// gluing to walls. So the sim records what it actually did and the overlay
-    /// shows it. Not part of the sim's behaviour — nothing reads these but the
+    /// shows it. Not part of the sim's behavior — nothing reads these but the
     /// overlay — but it IS part of the state, so lockstep replays carry it.
     public struct WallContact: Equatable, Sendable, Codable {
         /// How many wall segments were responded to in the tick.

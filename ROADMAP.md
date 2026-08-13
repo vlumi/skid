@@ -40,7 +40,7 @@ headings, so reordering a milestone does not mean renumbering anything.
 What stays late is the game *around* the race, and the app around that: today a
 result evaporates the moment it ends. That is deliberate — and there is one
 sequencing fact worth naming, because it is easy to miss when items are scattered:
-**the front end blocks more than it looks like.** Colour picking, profiles,
+**the front end blocks more than it looks like.** Color picking, profiles,
 records and a track browser all need surfaces that do not exist yet, so they queue
 behind one redesign rather than being four independent tasks.
 
@@ -119,7 +119,7 @@ What is missing, if it is built: **placement and the look of a boundary**.
       Whole-map rather than per-piece, unlike the road: sand beside one corner and
       snow beside the next is nonsense, and a single value is what makes "a snow
       rally track" or "a desert circuit" a thing you pick once. It carries the look
-      with it (ground colour, grass texture), so it ships alongside decorations —
+      with it (ground color, grass texture), so it ships alongside decorations —
       the props you place and the ground they stand on are the same feature seen
       from two distances.
 - [ ] **Hazards as placeable pieces.** Water/oil/mud left with the old
@@ -137,10 +137,10 @@ Host-authoritative snapshots shipped as v0.7.0 and work; these are the
 leftovers, all small. Two of them are *measurements* rather than features, and
 should not be built before they are taken.
 
-- [ ] **Choose your colour in the lobby**, from the measured accessible nine,
+- [ ] **Choose your color in the lobby**, from the measured accessible nine,
       with the default assignment being the accessible set (see
       [docs/first-glance-plan.md](docs/first-glance-plan.md) — the palette work is
-      done, the picker is not). Under networking a colour must be agreed centrally,
+      done, the picker is not). Under networking a color must be agreed centrally,
       since "local" is a per-screen property.
 - [ ] **Judge the client's input latency on a real link.** Your thumb reaches the
       host and the result comes back a snapshot later; the on-screen
@@ -167,7 +167,7 @@ planned in [docs/first-glance-plan.md](docs/first-glance-plan.md).
 
 The *palette* half **shipped** with the nine-car grid, the **white sheen** that was
 quietly undoing it is now gone, and a **reversing mark** says when a car is
-travelling backwards rather than merely pointing that way. What remains:
+traveling backwards rather than merely pointing that way. What remains:
 
 - [ ] **Bring back the headlight cone — as an occlusion query, not a decal.**
       Wanted back: it made facing unmistakable, and a **night track** with brighter
@@ -176,7 +176,7 @@ travelling backwards rather than merely pointing that way. What remains:
       **Now the main facing cue, not a nicety.** With the sheen gone and two-tone
       ruled out at nine cars, facing rests on the nose lamps and the tucked-back
       cockpit — deliberately weak marks. The cone is also the *only* facing cue that
-      costs nothing from the colour budget, because a thrown beam adds no colour to
+      costs nothing from the color budget, because a thrown beam adds no color to
       the car's body; every on-body cue competes with telling the cars apart.
 
       Parked until the design is right, and two attempts are already spent, so start
@@ -192,19 +192,19 @@ travelling backwards rather than merely pointing that way. What remains:
       reaches — the same shape as the covering-deck scan that already drives the
       under-deck window in `TrackRenderer+Cars`.
 
-- [ ] **Pick your own colour.** Decided: duplicates prevented by **first-come
+- [ ] **Pick your own color.** Decided: duplicates prevented by **first-come
       claiming** in the lobby rather than a rule about taste, and local-vs-remote
       marked with a **ring or seat number** — not desaturation, which is measured to
       wreck the palette (worst pair 24.7 → 6.5 at 55%). Waits on the front end.
 
-      **Two-tone belongs here, and its cost is now measured.** A second body colour
+      **Two-tone belongs here, and its cost is now measured.** A second body color
       only works if it is a genuinely distinct hue — a light/dark shade of the base
       was tried and reverted, because the comparison that matters is *any patch of
       one car against any patch of another*, and that fell to ΔE 4.6 (against 24.7
       for one tone, and the old sheen's 3.7).
 
       The budget is **tones, not cars**. Two hues per car needs 2N mutually-distinct
-      tones, and nine is already the edge of what colour-blind-safe lightness spread
+      tones, and nine is already the edge of what color-blind-safe lightness spread
       allows — so measured from the current palette: **4 cars two-toned is fine
       (26.3), 9 is impossible.** That makes it a picker feature, where the field size
       can bound which pairs stay selectable, rather than arithmetic in the renderer.
@@ -218,7 +218,7 @@ travelling backwards rather than merely pointing that way. What remains:
         exists to hang it on.
       - **The control pad should be visible before it is touched.** `origin` is nil
         until touch-down today, so the control appears only once you already know
-        where to press. Give it a dimmed resting position at the centre of its own
+        where to press. Give it a dimmed resting position at the center of its own
         zone. Note the default scheme is *casual*, so this is the aim stick first.
 
 ## More to build with — *the editor's tail*
@@ -254,7 +254,7 @@ what a track can *be*, the rest are editor conveniences that can ride any build.
       all — a fall snaps height to 0 and glides. **Ballistics first**, because
       falls off a deck, off a railless ramp flank, off a banked curve's high side
       and off a jump lip are all one event, and each would otherwise invent its
-      own behaviour.
+      own behavior.
 
       FORKS AND JOINS ARE PARKED, and not for want of geometry (the catalog has
       the pieces, ids 34–36, and `PieceCompiler` throws
@@ -338,7 +338,7 @@ what a track can *be*, the rest are editor conveniences that can ride any build.
 ## The front end — *the app around the race*
 
 **The current UI is a harness, not a design**, and it is the gate in front of
-several other features: a colour picker, a profile, a records screen and a track
+several other features: a color picker, a profile, a records screen and a track
 browser all need surfaces that do not exist. That is why they are one milestone
 rather than four.
 

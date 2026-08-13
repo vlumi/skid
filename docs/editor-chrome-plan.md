@@ -6,7 +6,7 @@ Reported from device, three symptoms of one cause:
 
 - **Accidental deletes.** The piece actions (bin, markings) float 34 pt above the
   selected piece — over the road you tap next. `.position(x: anchor.x, y: anchor.y - 34)`.
-- **Buttons and labels no longer fit.** `Rails` and `Levels` are labelled pills in a
+- **Buttons and labels no longer fit.** `Rails` and `Levels` are labeled pills in a
   row that also holds the transform pad and `Gates`; `Levels` now shows a number, so
   its width changes as it cycles.
 - **Two identical ticks.** `Done` is `checkmark`; `Copy code` flips to
@@ -48,7 +48,7 @@ codebase designs for:
 | | width |
 |---|---:|
 | transform pad (7 buttons) | 280 pt |
-| Rails + Levels + Gates (labelled pills) | ~198 pt |
+| Rails + Levels + Gates (labeled pills) | ~198 pt |
 | **total** | **478 pt on a 320 pt screen — overflows by 158** |
 
 That overflow is the reported "buttons and their labels don't fit at all anymore".

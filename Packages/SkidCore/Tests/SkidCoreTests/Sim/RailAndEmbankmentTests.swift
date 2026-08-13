@@ -8,7 +8,7 @@ import XCTest
 /// - With rails reaching the floor, one bridge edge was solid in places and
 ///   see-through in others (24 of 32 near-deck rails fenced the ground, 8 did
 ///   not) because `trunc` split 0.999 from 1.0 into different storeys. That
-///   also let a car be shoved *through* a railing where neighbours disagreed.
+///   also let a car be shoved *through* a railing where neighbors disagreed.
 /// - Rounding them to their own level fixed that and removed the ramp's side
 ///   barrier — 64 of 136 walls stopped fencing the ground, so you could drive
 ///   under a ramp from the side.
@@ -187,7 +187,7 @@ final class RailAndEmbankmentTests: XCTestCase {
         for from in [Vec2(50, 40), Vec2(50, -40)] {
             XCTAssertTrue(
                 race.blocks(wall(.embankment, 1), car: car(atHeight: 0), movedFrom: from),
-                "no outward recorded means no side to favour")
+                "no outward recorded means no side to favor")
         }
     }
 
@@ -272,7 +272,7 @@ final class RailAndEmbankmentTests: XCTestCase {
             let start = race.cars[0].state.position
             for _ in 0..<40 { race.advance(inputs: [PlayerID(0): .coast]) }
             let car = race.cars[0].state
-            // Either it travelled clear of the flank, or it left and fell — a car
+            // Either it traveled clear of the flank, or it left and fell — a car
             // that fell to the ground has certainly left the ramp.
             if (car.position - start).dot(flank.outward) > 20 || car.height < flank.height - 0.1 {
                 escaped += 1

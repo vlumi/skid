@@ -42,7 +42,7 @@ extension EditorRenderer {
     ) -> Ribbon? {
         guard samples.count >= 2 else { return nil }
         // The port headings belong to the piece's OWN ends — the seams it shares
-        // with a neighbour. A gap's cut faces are interior, so they take the
+        // with a neighbor. A gap's cut faces are interior, so they take the
         // interpolated direction like any other sample; using a port heading there
         // would skew the lip's cut to the wrong angle.
         let all = placed.heightedSamples(degreesPerSample: 2)

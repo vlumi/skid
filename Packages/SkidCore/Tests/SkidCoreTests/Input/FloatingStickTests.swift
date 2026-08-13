@@ -68,7 +68,7 @@ final class FloatingStickTests: XCTestCase {
     }
 
     /// Aiming applies only when the clamp actually bites: a finger inside the
-    /// zone still drags the origin, so the rim behaviour the scheme is built on
+    /// zone still drags the origin, so the rim behavior the scheme is built on
     /// is unchanged.
     func testAFingerInsideTheZoneStillDragsTheOrigin() {
         let zone = Rect(x: 0, y: 0, width: 390, height: 600)

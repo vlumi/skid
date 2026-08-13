@@ -84,7 +84,7 @@ families every displacement is a whole number of units — so every piece
 boundary *and* every centerline sits at whole-unit coordinates. A 90°
 crossing's shared zone spans half a road width either side of the crossed
 centerline, so it is always **centered on a piece boundary**, covering exactly
-half of each neighbouring piece. The maintainer's formulation is the working
+half of each neighboring piece. The maintainer's formulation is the working
 one — the first piece reaches at least the crossed centerline, the next clears
 the road — and the per-sample rule makes it automatic: the zone is covered by
 whatever pieces happen to be there, jointly. No containment requirement, no

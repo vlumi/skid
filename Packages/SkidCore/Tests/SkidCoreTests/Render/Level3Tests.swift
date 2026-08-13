@@ -170,7 +170,7 @@ final class Level3Tests: XCTestCase {
     /// raised gate was NARROWER than the asphalt it crosses. Running wide up there
     /// missed the checkpoint — a correctness bug, not just a thin-looking bar.
     ///
-    /// Uses the REPORTED track, because the bug only shows where the neighbour-lane
+    /// Uses the REPORTED track, because the bug only shows where the neighbor-lane
     /// cap bites: on a wide-open ring the grass margin swamps the difference and the
     /// gate covers ~3x its road either way. On this one, a level-3 gate covered 63%
     /// of its road against 248% on the ground.

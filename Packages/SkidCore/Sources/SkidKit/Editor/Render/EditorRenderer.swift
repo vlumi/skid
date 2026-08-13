@@ -305,10 +305,10 @@ enum EditorRenderer {
     /// A full point, not the 0.6 this started at: hairlines were still visible
     /// on a 13 mini, worst at the two-piece ramp's mid-climb seam, where both
     /// halves are height-shaded so the gap reads against a gradient rather than
-    /// flat grey. A device pixel is 0.33pt at 3× and 0.5pt at 2×, but
+    /// flat gray. A device pixel is 0.33pt at 3× and 0.5pt at 2×, but
     /// antialiasing spreads a diagonal seam over about a point either side, so
     /// the overlap has to clear that — not just one pixel. It costs nothing
-    /// visually: the overlap is inside the neighbouring piece's own fill.
+    /// visually: the overlap is inside the neighboring piece's own fill.
     ///
     /// This is in screen points: `edges` returns `Transform.screen` output
     /// (so editor zoom doesn't shrink it), and use sites divide by

@@ -63,7 +63,7 @@ final class RenderOrderTests: XCTestCase {
     /// driving on — reported on the eight, car swallowed by the lower ramp.
     /// At every point of every built-in, the car's storey is at least its
     /// supporting piece's (it may exceed it where the body straddles a seam
-    /// onto a higher-binned neighbour — that is the point of the body rule).
+    /// onto a higher-binned neighbor — that is the point of the body rule).
     func testACarOnARampPaintsWithItsRoad() throws {
         for id in TrackLibrary.all.map(\.id) {
             let track = try XCTUnwrap(TrackLibrary.track(id: id))
@@ -186,7 +186,7 @@ final class RenderOrderTests: XCTestCase {
 
         // And the trigger reaches exactly as far as the hole's disc can still
         // touch that footprint — no further (wasted layers), no nearer (windows
-        // cut off while still visible). The disc is centred on the car, so the
+        // cut off while still visible). The disc is centered on the car, so the
         // margin past the footprint is its RADIUS: both are measured as
         // perpendicular distance from the same centerline.
         let footprint = track.footprintHalfWidth(atHeight: deckHeight)
@@ -203,8 +203,8 @@ final class RenderOrderTests: XCTestCase {
             "well clear of the bridge, no part of the hole can overlap it")
     }
 
-    /// Whether a window disc centred at `point` overlaps `region` — sampled on
-    /// its rim, which is where a centred disc first touches.
+    /// Whether a window disc centered at `point` overlaps `region` — sampled on
+    /// its rim, which is where a centered disc first touches.
     private func discTouches(_ region: Path, at point: Vec2) -> Bool {
         for degrees in stride(from: 0.0, to: 360.0, by: 15.0) {
             let radians = degrees * .pi / 180
@@ -265,7 +265,7 @@ final class RenderOrderTests: XCTestCase {
     /// **The whole paint order for a bridged track**, pinned as a list. This is
     /// the sequence the two-pass code produced by hand — ground road, its
     /// marks, its gates, its cars, then the same for the deck, airborne last —
-    /// so the rewrite is behaviour-preserving where behaviour was already right.
+    /// so the rewrite is behavior-preserving where behavior was already right.
     func testThePaintOrderForABridgedTrack() {
         let track = TrackLibrary.track(id: "eight")
         var order = RenderOrder.Builder()

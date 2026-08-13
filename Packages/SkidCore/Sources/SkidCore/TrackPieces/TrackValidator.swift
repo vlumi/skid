@@ -133,7 +133,7 @@ public enum TrackValidator {
 
         // 4b. Every fitter is solved, and its shape really spans its gap. A
         // fitter's geometry is not in the catalog — it is stored per placement —
-        // so an unsolved one has no road at all, and a stale one (its neighbours
+        // so an unsolved one has no road at all, and a stale one (its neighbors
         // edited after it was solved) would leave a visible kink at the seam.
         let brokenFitters = unsolvedFitters(layout, walk: walk)
         if brokenFitters > 0 {
@@ -191,7 +191,7 @@ public enum TrackValidator {
     /// spans the gap it has to bridge.
     ///
     /// The second half is what keeps a fitter honest under editing: its shape is
-    /// stored, not derived, so moving or deleting a neighbour changes the gap
+    /// stored, not derived, so moving or deleting a neighbor changes the gap
     /// without changing the stored answer. Checking that the shape still lands on
     /// the piece's own exit catches that, and it is the same comparison the seam
     /// test makes.
@@ -235,7 +235,7 @@ public enum TrackValidator {
     /// Sample-level overlap under the one proximity rule (`RoadProximity`):
     /// near in space is illegal only when far along the road, with the join gap
     /// counted as road-to-be. Same-height layers and legal crossings are the
-    /// only piece-level exemptions left; everything positional — neighbours
+    /// only piece-level exemptions left; everything positional — neighbors
     /// touching at ports, a tight curve crowding itself, the closing corner
     /// hugging the start on its way home — falls out of the arc metric.
     private static func hasIllegalOverlap(_ walk: WalkResult) -> Bool {
