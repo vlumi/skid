@@ -382,3 +382,69 @@ final class ShelfDismissTests: XCTestCase {
         XCTAssertNotNil(game.editorLayout)
     }
 }
+
+/// **Naming the track you are editing**, from the editor rather than the shelf.
+@MainActor
+final class EditedTrackNameTests: XCTestCase {
+    private func game() -> CouchGame {
+        let game = CouchGame(
+            signingKeys: NoSigningKey(),
+            libraryFilename: "test-name-\(UUID().uuidString).json",
+            profileFilename: "test-name-\(UUID().uuidString).json")
+        game.library = TrackLibraryBook()
+        game.editedEntryID = nil
+        game.pendingTrackName = nil
+        return game
+    }
+
+    /// **A brand-new canvas has no name, and that is not a bug.** Nothing is written to the
+    /// library until there is more than a start piece, so there is genuinely no row to name
+    /// — the editor shows a prompt rather than inventing "My track" early.
+    func testANewTrackHasNoNameYet() {
+        let game = self.game()
+        game.newTrackForEditing()
+        XCTAssertNil(game.editedTrackName)
+    }
+
+    /// **Naming works before the first save.** The name is remembered and applied when the
+    /// row appears, so you can name a track the moment you think of it.
+    func testNamingBeforeTheFirstSaveSticks() throws {
+        let game = self.game()
+        game.newTrackForEditing()
+        XCTAssertTrue(game.renameEditedTrack(to: "Hairpin Hell"))
+        XCTAssertEqual(game.editedTrackName, "Hairpin Hell")
+        XCTAssertTrue(game.library.tracks.isEmpty, "naming alone saved a track")
+
+        // The first real edit writes the row, under the name given earlier.
+        var layout = try XCTUnwrap(game.editorLayout)
+        layout.pieces.append(PieceCatalog.ID.straight)
+        game.editorLayout = layout
+        XCTAssertEqual(game.library.tracks.count, 1)
+        XCTAssertEqual(game.library.tracks.first?.name, "Hairpin Hell")
+    }
+
+    /// Renaming a saved track goes through the library, and the editor sees it.
+    func testRenamingASavedTrackShowsInTheEditor() throws {
+        let game = self.game()
+        var book = game.library
+        let entry = TrackLibraryBook.Entry(
+            name: "Before", code: TrackLibrary.builtins[0].code, isRaceable: true,
+            createdAt: Date(), updatedAt: Date())
+        book.put(entry)
+        game.library = book
+        XCTAssertTrue(game.openForEditing(entryID: entry.id))
+        XCTAssertEqual(game.editedTrackName, "Before")
+
+        XCTAssertTrue(game.renameEditedTrack(to: "After"))
+        XCTAssertEqual(game.editedTrackName, "After")
+        XCTAssertEqual(game.library.entry(id: entry.id)?.name, "After")
+    }
+
+    /// An unusable name is refused and changes nothing, in both states.
+    func testAnUnusableNameIsRefused() {
+        let game = self.game()
+        game.newTrackForEditing()
+        XCTAssertFalse(game.renameEditedTrack(to: "  "))
+        XCTAssertNil(game.editedTrackName)
+    }
+}

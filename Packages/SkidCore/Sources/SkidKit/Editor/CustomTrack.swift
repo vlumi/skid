@@ -352,3 +352,33 @@ public enum TrackName {
         return String(trimmed.prefix(maxLength))
     }
 }
+
+extension CouchGame {
+    /// **The name of the track being edited**, or nil when it has none yet.
+    ///
+    /// Nil is the honest answer for a canvas that has not been saved: nothing is written to
+    /// the library until there is more than a start piece on it (see
+    /// `syncEditedTrackToLibrary`), so until then there is no row to name. The editor shows
+    /// a placeholder rather than inventing one.
+    public var editedTrackName: String? {
+        editedEntryID.flatMap { library.entry(id: $0)?.name } ?? pendingTrackName
+    }
+
+    /// Rename the track currently being edited. Convenience over `renameTrack(id:to:)` for
+    /// the editor, which knows *what* it is editing but should not have to know how rows
+    /// are keyed.
+    ///
+    /// **Works before the first save too**: with no row yet, the name is remembered and
+    /// applied when one is written, which is what `pendingTrackName` already does for a
+    /// track started from a copy. So naming a brand-new track works the moment you think
+    /// of the name, rather than only after it has been saved.
+    @discardableResult
+    public func renameEditedTrack(to name: String) -> Bool {
+        guard let cleaned = TrackName.cleaned(name) else { return false }
+        if let id = editedEntryID, library.entry(id: id) != nil {
+            return renameTrack(id: id, to: cleaned)
+        }
+        pendingTrackName = cleaned
+        return true
+    }
+}
