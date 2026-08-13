@@ -6,8 +6,13 @@ import SwiftUI
 /// only what a couch session needs.
 struct SetupView: View {
     @ObservedObject var game: CouchGame
-    /// Which seat's profile picker is open, if any.
-    @State private var namingSeat: Int?
+    /// Whether the track browser is showing.
+    ///
+    /// Opens immediately under `-skid-tracks`, which exists for the same reason
+    /// `-skid-setup` does: the browser is two taps in, and `simctl` cannot tap, so a
+    /// screenshot of it is otherwise unreachable.
+    @State private var browsingTracks = ProcessInfo.processInfo.arguments
+        .contains("-skid-tracks")
 
     var body: some View {
         ZStack {
@@ -26,16 +31,52 @@ struct SetupView: View {
                 }
             }
         }
-        // `Int` is not `Identifiable`, so this is the boolean form with the seat read
-        // alongside — rather than a wrapper type that exists only to satisfy a sheet.
-        .sheet(
-            isPresented: Binding(
-                get: { namingSeat != nil },
-                set: { if !$0 { namingSeat = nil } }
-            )
-        ) {
-            SeatProfileSheet(game: game, seat: namingSeat ?? 0) { namingSeat = nil }
+        .sheet(isPresented: $browsingTracks) {
+            TrackBrowserView(game: game) { browsingTracks = false }
         }
+    }
+
+    /// The current track: its preview, its name, and the way to change it.
+    private var trackRow: some View {
+        Button {
+            browsingTracks = true
+        } label: {
+            HStack(spacing: 12) {
+                if let layout = TrackThumbnail.layout(
+                    forTrackID: game.trackID, library: game.library)
+                {
+                    TrackThumbnail(layout: layout)
+                        .frame(width: 84, height: 60)
+                } else {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(.black.opacity(0.25))
+                        .frame(width: 84, height: 60)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: trackDisplayName)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text("Change track", bundle: .module)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            .padding(10)
+            .background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
+        }
+        .padding(.horizontal, 16)
+    }
+
+    /// The chosen track's name, from wherever it lives.
+    private var trackDisplayName: String {
+        if let entry = game.library.entry(id: game.trackID) { return entry.name }
+        return TrackLibrary.displayName(id: game.trackID)
     }
 
     private var lobby: some View {
@@ -61,22 +102,10 @@ struct SetupView: View {
                 }
             }
 
-            // Wraps, because the built-ins outgrew one row on a small phone
-            // (four tracks plus the custom slot). Fixed-width columns so the
-            // chips line up rather than staggering by name length.
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 96), spacing: 10)], spacing: 10
-            ) {
-                ForEach(TrackLibrary.all, id: \.id) { track in
-                    choice(trackName(track.id), selected: game.trackID == track.id) {
-                        game.trackID = track.id
-                    }
-                }
-                // The custom slot: one permanent place for your own design,
-                // raced with the full setup (players, AI, laps) like any
-                // built-in. Only selectable once it compiles to a real track.
-                customTrackChoices
-            }
+            // **The chosen track, as a picture.** A row of name chips worked for four
+            // built-ins and stopped working the moment a player had tracks of their own —
+            // "My track 3" says nothing about what it is. Tapping opens the browser.
+            trackRow
 
             if game.mode == .race {
                 raceOptions
@@ -106,18 +135,6 @@ struct SetupView: View {
         // Room to breathe at both ends when the content does scroll, so the
         // title and the editor button don't sit flush against the edges.
         .padding(.vertical, 20)
-    }
-
-    /// Display name for a built-in track id.
-    /// A built-in's display name, from the library rather than a switch here.
-    ///
-    /// This used to hardcode the names of the four hand-authored circuits, so once
-    /// they were replaced by piece-built tracks every one of them fell through to
-    /// the default and the picker showed "Practice" three times over. Names belong
-    /// with the tracks. (The custom slot is drawn by `customTrackChoice`, not
-    /// through here.)
-    private func trackName(_ id: String) -> Text {
-        Text(verbatim: TrackLibrary.displayName(id: id))
     }
 
     @ViewBuilder private var hiscoreLine: some View {
@@ -186,22 +203,16 @@ struct SetupView: View {
                             .frame(width: 46, height: 46)
                             .overlay(Circle().stroke(.white.opacity(0.9), lineWidth: 2))
                     }
-                    // **The seat's name, and the way into a profile.** A guest reads
-                    // "P1" — not a placeholder, just what a guest is called — and
-                    // tapping it is how somebody claims the seat. Put on the label
-                    // rather than behind a separate button because the label is
-                    // already the thing that says who this is.
-                    Button {
-                        namingSeat = slot
-                    } label: {
-                        Text(verbatim: game.displayName(forSeat: slot))
-                            .font(.caption.bold())
-                            .foregroundStyle(.white.opacity(0.85))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .frame(width: 64)
-                            .underline(game.profile(inSeat: slot) == nil)
-                    }
+                    // **Read-only here.** Who is in a seat is chosen on the front screen
+                    // now; showing a second way in would be two controls for one
+                    // decision, and the underline promised an edit this screen no
+                    // longer owns.
+                    Text(verbatim: game.displayName(forSeat: slot))
+                        .font(.caption.bold())
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(width: 64)
                     // Each player picks their own scheme — one couch can mix
                     // aim and d-pad drivers.
                     Button {
@@ -233,47 +244,32 @@ struct SetupView: View {
             label
                 .font(.footnote.bold())
                 .foregroundStyle(.white.opacity(0.85))
+            // 88, not 58: the 58 was sized for the single-digit player/AI steppers, and
+            // once those went the only callers were WORD labels — which wrapped
+            // mid-word into "Me/diu/m". A pill should never break a word.
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 58), spacing: 10)], spacing: 10,
+                columns: [GridItem(.adaptive(minimum: 88), spacing: 10)], spacing: 10,
                 content: content)
         }
     }
 
-    /// Your own tracks, newest first.
+    /// A pill that is either chosen or not — the screen's one selection primitive.
     ///
-    /// Only the raceable ones appear — an unfinished ring in the editor is not
-    /// a choice, and greying out every draft would be noise. Raceability is read
-    /// from the entry, never recompiled: this used to ask `customTrack() != nil`
-    /// per render, which compiled the layout every frame.
-    @ViewBuilder private var customTrackChoices: some View {
-        ForEach(game.library.raceable) { entry in
-            choice(
-                Text(entry.name), selected: game.trackID == entry.trackID,
-                badge: entry.signatureIsValid ? "seal" : nil
-            ) {
-                game.trackID = entry.trackID
-            }
-        }
-    }
-
-    /// `badge` marks a track that arrived signed — the verdict is read from the
-    /// entry, computed once at import.
+    /// It used to take a `badge` for the signed-track seal; that moved to the browser's
+    /// tiles along with the track list itself, which is the only place a seal ever
+    /// appeared.
     private func choice(
-        _ label: Text, selected: Bool, badge: String? = nil,
-        action: @escaping () -> Void
+        _ label: Text, selected: Bool, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 5) {
-                label
-                if let badge { Image(systemName: badge).font(.caption2) }
-            }
-            .font(.callout.bold())
-            .padding(.horizontal, 18)
-            .padding(.vertical, 9)
-            .background(
-                selected ? Color.white.opacity(0.9) : .black.opacity(0.25), in: Capsule()
-            )
-            .foregroundStyle(selected ? .black : .white)
+            label
+                .font(.callout.bold())
+                .padding(.horizontal, 18)
+                .padding(.vertical, 9)
+                .background(
+                    selected ? Color.white.opacity(0.9) : .black.opacity(0.25), in: Capsule()
+                )
+                .foregroundStyle(selected ? .black : .white)
         }
     }
 
