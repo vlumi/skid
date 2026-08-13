@@ -1,17 +1,22 @@
 import SkidCore
 import SwiftUI
 
-/// **Claiming a seat: pick a name, make one, or stay a guest.**
+/// **Claiming a row: pick a name, make one, or stay a guest.**
 ///
-/// Reached by tapping a seat's label in the setup screen. Deliberately reachable
+/// Reached from a row's Player segment in `PlayerListView`. Deliberately reachable
 /// rather than compulsory — every path out of here is valid, including the one that
 /// changes nothing, because a guest is a complete answer.
+///
+/// **Writes to `entrants`, not to `seatIdentities`.** Those were briefly two parallel
+/// models: the picker set the seat while the list read the row, so choosing a player
+/// left the row showing Guest. The list is the single truth and seats derive from it.
 ///
 /// The ordering is the argument: **Guest first**, then the people who use this phone
 /// (most recently played first), then making a new one. A picker that led with a text
 /// field would be asking everyone to register.
 struct SeatProfileSheet: View {
     @ObservedObject var game: CouchGame
+    /// The row being edited — an index into `game.entrants`.
     let seat: Int
     let dismiss: () -> Void
 
@@ -24,9 +29,10 @@ struct SeatProfileSheet: View {
                     row(
                         title: Text("Guest", bundle: .module),
                         subtitle: Text("Race without keeping results", bundle: .module),
-                        selected: game.profile(inSeat: seat) == nil
+                        selected: game.entrants.indices.contains(seat)
+                            && game.entrants[seat].kind != .player
                     ) {
-                        game.assign(.guest, toSeat: seat)
+                        game.setEntrant(.guest, at: seat)
                         dismiss()
                     }
                 }
@@ -39,11 +45,12 @@ struct SeatProfileSheet: View {
                             row(
                                 title: Text(verbatim: profile.name),
                                 subtitle: nil,
-                                selected: game.profile(inSeat: seat)?.id == profile.id,
+                                selected: game.entrants.indices.contains(seat)
+                                    && game.entrants[seat].profileID == profile.id,
                                 color: CouchGame.palette[
                                     profile.colorIndex % CouchGame.palette.count]
                             ) {
-                                game.assign(.profile(profile.id), toSeat: seat)
+                                game.setEntrant(.profile(profile.id), at: seat)
                                 dismiss()
                             }
                         }
