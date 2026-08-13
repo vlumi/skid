@@ -153,21 +153,155 @@ extension CouchGame {
     /// follows the track being worked on.
     func syncEditedTrackToLibrary() {
         guard let layout = editorLayout else { return }
+        // **An untouched canvas is not a track.** Opening the editor assigns a layout of
+        // one start piece, which fires this observer — so a player who opened the editor
+        // and left got a saved "My track" they never made, and every `newTrackForEditing`
+        // added another. Nothing is written until there is something on the canvas.
+        guard layout.pieces.count > 1 else { return }
         let code = TrackCode.encode(layout)
         guard !library.contains(code: code) else { return }
+        // **Nor is a track you have only LOOKED at.** `startFrom` loads a track with no row
+        // claimed, and this observer fires on that assignment too — so merely opening a
+        // built-in to see how it was made filed a copy under your own tracks. `startedFrom`
+        // holds the code it arrived as; while the canvas still matches, there is nothing to
+        // save. That is what makes "start a copy" leave no trace until there is something
+        // to distinguish the copy from its source.
+        guard code != startedFrom else { return }
         var book = library
         let previous = editedEntryID.flatMap { book.entry(id: $0) }
         if let previous { book.remove(id: previous.id) }
         book.put(
             TrackLibraryBook.Entry(
-                name: previous?.name ?? String(localized: "My track", bundle: .module),
+                // A name chosen before the first edit — "Eight 2" when starting from a
+                // built-in — outranks the default, and is consumed once used.
+                name: previous?.name ?? pendingTrackName
+                    ?? String(localized: "My track", bundle: .module),
                 code: code,
                 isRaceable: (try? PieceCompiler.compile(layout)) != nil,
                 createdAt: previous?.createdAt ?? Date(),
                 importedAt: previous?.importedAt,
                 updatedAt: Date()))
         editedEntryID = TrackCode.contentCode(of: code)
+        pendingTrackName = nil
+        startedFrom = nil
         library = book
         saveLibrary()
+    }
+}
+
+// MARK: - Opening a track to edit
+
+/// **Which of your tracks the editor is working on.**
+///
+/// The editor had exactly one buffer restored from one slot, so a library that stored many
+/// tracks could race all of them and edit only the newest. Edits flowed *to* the library;
+/// nothing flowed back.
+extension CouchGame {
+    /// **Load an entry into the editor, and keep editing THAT entry.**
+    ///
+    /// Safe to do in place, and the reason is worth stating because it looks unsafe: an
+    /// entry's id is a hash of its own content (`TrackCode.contentCode`), so an edit
+    /// necessarily produces a *different* id. `syncEditedTrackToLibrary` then drops the
+    /// row this edit came from and writes the new one, carrying the name and dates over —
+    /// so one row follows the track being worked on rather than a trail accumulating.
+    ///
+    /// Editing therefore *moves* a track rather than overwriting a stranger's. What it
+    /// cannot do is leave the original behind; that is `duplicate(entryID:)`.
+    @discardableResult
+    public func openForEditing(entryID: String) -> Bool {
+        guard let entry = library.entry(id: entryID),
+            let layout = try? TrackCode.decode(entry.code)
+        else { return false }
+        // Set before the layout, since assigning `editorLayout` fires the sync observer.
+        // Not load-bearing here, and worth saying so rather than implying a hazard: the
+        // code being loaded is already in the book, so the observer's own
+        // `contains(code:)` guard returns before it can do anything either way. Verified
+        // by swapping the two lines — nothing changes.
+        editedEntryID = entry.id
+        startedFrom = nil
+        editorLayout = layout
+        clearUndoHistory()
+        editorMode = .build
+        editorSelect(layout.pieces.count - 1)
+        return true
+    }
+
+    /// **Start from an existing track, without claiming its row.**
+    ///
+    /// What "copy this and edit the copy" means here — and it needs no stored copy, which
+    /// is worth explaining because the obvious implementation is impossible:
+    ///
+    /// **A library entry's id IS its content** (`TrackCode.contentCode`), so two rows
+    /// holding the same track cannot coexist — `put` would replace the original rather
+    /// than add a sibling. A "duplicate" written to the book therefore *is* the original.
+    ///
+    /// So this loads the layout and tracks **no row at all**. The first edit then writes a
+    /// fresh entry (the content differs by then, so it gets its own id) and the original is
+    /// untouched, because nothing pointed at it. The copy exists exactly when there is
+    /// something to distinguish it — which is also why an unedited "copy" leaves no trace,
+    /// and that is the honest outcome rather than a missing feature.
+    ///
+    /// The only way to open a **built-in**, since those ship in the binary under a slug and
+    /// have no library row to claim.
+    @discardableResult
+    public func startFrom(code: String, name: String) -> Bool {
+        guard let layout = try? TrackCode.decode(code) else { return false }
+        editedEntryID = nil
+        pendingTrackName = duplicateName(of: name)
+        startedFrom = code
+        editorLayout = layout
+        clearUndoHistory()
+        editorMode = .build
+        editorSelect(layout.pieces.count - 1)
+        return true
+    }
+
+    /// Start from nothing: one start-grid piece, built outward from its loose end.
+    public func newTrackForEditing() {
+        editedEntryID = nil
+        pendingTrackName = nil
+        startedFrom = nil
+        editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID], gateSeams: [0])
+        clearUndoHistory()
+        editorMode = .build
+        editorSelect(0)
+    }
+
+    /// `Name` → `Name 2`, `Name 2` → `Name 3`. Numbered rather than "copy of" so a third
+    /// copy does not become "copy of copy of Name".
+    func duplicateName(of name: String) -> String {
+        let taken = Set(library.tracks.map(\.name))
+        // A trailing number is a count to continue, not part of the name.
+        let base: String
+        var next = 2
+        if let space = name.lastIndex(of: " "), let number = Int(name[name.index(after: space)...])
+        {
+            base = String(name[name.startIndex..<space])
+            next = number + 1
+        } else {
+            base = name
+        }
+        while taken.contains("\(base) \(next)") { next += 1 }
+        return "\(base) \(next)"
+    }
+}
+
+extension CouchGame {
+    /// Delete one of your tracks.
+    ///
+    /// **Two things follow it out.** If the deleted row is the one the editor is working
+    /// on, `editedEntryID` is cleared — otherwise the next edit would try to "replace" a
+    /// row that no longer exists and quietly resurrect it. And if it was the selected
+    /// race track, the selection falls back to a built-in, since `selectedTrack()` would
+    /// otherwise silently substitute one anyway and the picker would keep showing a name
+    /// that is gone.
+    public func deleteTrack(id: String) {
+        guard library.entry(id: id) != nil else { return }
+        var book = library
+        book.remove(id: id)
+        library = book
+        saveLibrary()
+        if editedEntryID == id { editedEntryID = nil }
+        if trackID == id { trackID = TrackLibrary.builtins[0].id }
     }
 }

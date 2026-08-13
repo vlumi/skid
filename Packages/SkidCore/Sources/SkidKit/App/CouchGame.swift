@@ -171,15 +171,9 @@ public final class CouchGame: ObservableObject {
     @Published public internal(set) var seatIdentities: [SeatIdentity] =
         Array(repeating: .guest, count: CouchGame.maxLocalPlayers)
 
-    /// **The field as one list** — every car, and who drives it.
-    ///
-    /// The single source of truth for how many humans and how many AI are racing: both
-    /// counts are *derived* from it. They used to be independent steppers that had to
-    /// agree with each other and with the grid, and three numbers meant three chances to
-    /// disagree — which they once did, silently cutting a solo field to three AI.
-    ///
-    /// Starts as one guest, because the app opens for somebody who wants to drive, and
-    /// one row is a legitimate race: solo against the AI.
+    /// **The field as one list** — every car, and who drives it. The single source of
+    /// truth: `playerCount` and `aiCount` are both derived from it, where they used to be
+    /// independent steppers that could disagree with each other and with the grid.
     @Published public internal(set) var entrants: [RaceEntrant] = [.guest]
 
     /// **Which profile each row last held**, so the three-way toggle is sticky: switch a
@@ -193,6 +187,10 @@ public final class CouchGame: ObservableObject {
     /// Which library row the editor is currently updating, so an edit replaces
     /// it rather than piling up a row per keystroke.
     var editedEntryID: String?
+    /// The name the next new row should take, and the code the canvas was loaded from
+    /// without claiming a row — both consumed on the first edit. See `startFrom`.
+    var pendingTrackName: String?
+    var startedFrom: String?
 
     func saveLibrary() { libraryFile.save(library) }
     /// Where the author identity comes from. Injectable so tests can supply a
@@ -260,6 +258,12 @@ public final class CouchGame: ObservableObject {
         // launch argument.
         if arguments.contains("-skid-setup") {
             phase = .setup
+        }
+        // Straight into the editor's track shelf, for the same reason `-skid-setup`
+        // exists: it is several taps in and `simctl` cannot tap.
+        if arguments.contains("-skid-shelf") {
+            phase = .editing
+            showingTrackShelf = true
         }
         if arguments.contains("-skid-autostart") {
             startRace()
@@ -342,7 +346,14 @@ public final class CouchGame: ObservableObject {
         editorSelect((editorLayout?.pieces.count ?? 1) - 1)
         sound.stop()
         phase = .editing
+        // **The shelf first, unless there is nothing on it.** A player with tracks
+        // expects to choose which one; a player with none would be asked to choose
+        // from an empty list, so they go straight to building. See `TrackShelfView`.
+        showingTrackShelf = !library.tracks.isEmpty
     }
+
+    /// Whether the editor is showing its track list rather than the canvas.
+    @Published public var showingTrackShelf = false
 
     /// Compile the current editor layout to a runtime `Track` for preview.
     /// Nil if it isn't saveable yet. (Test-driving it in a real race arrives
