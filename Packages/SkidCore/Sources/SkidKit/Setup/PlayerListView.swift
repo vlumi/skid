@@ -86,6 +86,9 @@ struct PlayerListView: View {
         HStack(spacing: 0) {
             ForEach(DriverKind.allCases, id: \.self) { kind in
                 let selected = entrant.kind == kind
+                // The first row is always a person — see `setKind`. Dimmed rather than
+                // hidden, so the toggle keeps the same shape on every row.
+                let allowed = !(index == 0 && kind == .ai)
                 Button {
                     // A player row with nobody remembered needs the picker; every other
                     // switch is immediate.
@@ -95,8 +98,9 @@ struct PlayerListView: View {
                         .font(.caption2.bold())
                         .frame(width: 46, height: 28)
                         .background(selected ? .white.opacity(0.9) : .clear)
-                        .foregroundStyle(selected ? .black : .white.opacity(0.75))
+                        .foregroundStyle(selected ? .black : .white.opacity(allowed ? 0.75 : 0.3))
                 }
+                .disabled(!allowed)
             }
         }
         .background(.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 8))

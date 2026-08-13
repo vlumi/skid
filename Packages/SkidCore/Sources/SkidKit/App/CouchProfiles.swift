@@ -50,10 +50,15 @@ extension CouchGame {
         seatIdentities[seat] = identity
     }
 
-    /// Create a profile and put it straight into `seat`, since that is invariably why
+    /// Create a profile and put it straight into row `seat`, since that is invariably why
     /// somebody is typing a name. Returns nil when the name is unusable or the book is
-    /// full — in both cases the seat is untouched and stays a guest, which is a working
+    /// full — in both cases the row is untouched and stays a guest, which is a working
     /// outcome rather than an error state.
+    ///
+    /// **Grows the list if that row does not exist yet.** Row and seat indices are only
+    /// interchangeable when the list is long enough, and asking for row N plainly means
+    /// wanting a field with N+1 cars in it; writing to a missing row was silently doing
+    /// nothing. Capped by what one device can seat, so this cannot overfill the grid.
     @discardableResult
     public func createProfile(named name: String, colorIndex: Int, forSeat seat: Int)
         -> PlayerProfile?
@@ -64,7 +69,12 @@ extension CouchGame {
         guard book.put(profile) else { return nil }
         profiles = book
         saveProfiles()
-        assign(.profile(profile.id), toSeat: seat)
+        while !entrants.indices.contains(seat), canAdd(.guest) {
+            _ = addEntrant(.guest)
+        }
+        // Into the LIST row, which is the single source of truth; `seatIdentities`
+        // derives from it. Writing the seat directly left the row showing Guest.
+        setEntrant(.profile(profile.id), at: seat)
         return profile
     }
 
@@ -182,6 +192,11 @@ extension CouchGame {
     @discardableResult
     public func setKind(_ kind: DriverKind, at index: Int) -> Bool {
         guard entrants.indices.contains(index) else { return true }
+        // **Row 0 is always a person.** An AI-only field is a race you watch rather than
+        // one you drive, and `RaceField.nonEmpty` would have inserted a guest anyway —
+        // which read as "tapping AI on the first row adds a row". Refusing is clearer
+        // than silently doing something else.
+        guard !(index == 0 && kind == .ai) else { return true }
         switch kind {
         case .guest:
             setEntrant(.guest, at: index)
