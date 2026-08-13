@@ -6,6 +6,8 @@ import SwiftUI
 /// only what a couch session needs.
 struct SetupView: View {
     @ObservedObject var game: CouchGame
+    /// Which seat's profile picker is open, if any.
+    @State private var namingSeat: Int?
 
     var body: some View {
         ZStack {
@@ -23,6 +25,16 @@ struct SetupView: View {
                         .frame(minHeight: proxy.size.height)
                 }
             }
+        }
+        // `Int` is not `Identifiable`, so this is the boolean form with the seat read
+        // alongside — rather than a wrapper type that exists only to satisfy a sheet.
+        .sheet(
+            isPresented: Binding(
+                get: { namingSeat != nil },
+                set: { if !$0 { namingSeat = nil } }
+            )
+        ) {
+            SeatProfileSheet(game: game, seat: namingSeat ?? 0) { namingSeat = nil }
         }
     }
 
@@ -261,9 +273,22 @@ struct SetupView: View {
                             .frame(width: 46, height: 46)
                             .overlay(Circle().stroke(.white.opacity(0.9), lineWidth: 2))
                     }
-                    Text("P\(slot + 1)", bundle: .module)
-                        .font(.caption.bold())
-                        .foregroundStyle(.white.opacity(0.85))
+                    // **The seat's name, and the way into a profile.** A guest reads
+                    // "P1" — not a placeholder, just what a guest is called — and
+                    // tapping it is how somebody claims the seat. Put on the label
+                    // rather than behind a separate button because the label is
+                    // already the thing that says who this is.
+                    Button {
+                        namingSeat = slot
+                    } label: {
+                        Text(verbatim: game.displayName(forSeat: slot))
+                            .font(.caption.bold())
+                            .foregroundStyle(.white.opacity(0.85))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .frame(width: 64)
+                            .underline(game.profile(inSeat: slot) == nil)
+                    }
                     // Each player picks their own scheme — one couch can mix
                     // aim and d-pad drivers.
                     Button {

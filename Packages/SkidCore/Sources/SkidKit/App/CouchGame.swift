@@ -243,6 +243,12 @@ public final class CouchGame: ObservableObject {
         if let index = arguments.firstIndex(of: "-skid-track"), index + 1 < arguments.count {
             trackID = TrackLibrary.track(id: arguments[index + 1]).id
         }
+        // Straight to the race options, skipping the front door — for screenshots of
+        // the setup screen, which is otherwise two taps in and unreachable from a
+        // launch argument.
+        if arguments.contains("-skid-setup") {
+            phase = .setup
+        }
         if arguments.contains("-skid-autostart") {
             startRace()
             // Screenshots/tests want a running race, not the ready gate.
