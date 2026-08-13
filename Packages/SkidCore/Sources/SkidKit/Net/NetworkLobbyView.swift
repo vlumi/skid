@@ -46,7 +46,7 @@ struct NetworkLobbyView: View {
 
                 Button {
                     net.leave()
-                    game.backToSetup()
+                    game.backToMenu()
                 } label: {
                     Text("Back", bundle: .module)
                         .font(.headline)
@@ -226,7 +226,7 @@ struct NetworkLobbyView: View {
                 .multilineTextAlignment(.center)
             Button {
                 net.leave()
-                game.backToSetup()
+                game.backToMenu()
             } label: {
                 label(Text("Done", bundle: .module), filled: true)
             }
