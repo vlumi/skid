@@ -30,25 +30,30 @@ final class PlayerListTests: XCTestCase {
         XCTAssertEqual(game.identity(inSeat: 0), .profile(sam.id))
     }
 
-    /// **The first row cannot be AI.** An AI-only field is a race you watch rather than
-    /// one you drive — and the list would have inserted a guest to fix it, which read as
-    /// "tapping AI on the first row adds a row".
-    func testTheFirstRowRefusesAI() {
+    /// **AI is a race setting, not a list row.** Filling turns the empty grid into
+    /// opponents; the list stays people-only. Sabotage: make `aiCount` read the list
+    /// again and this stops responding to the toggle.
+    func testFillingTheGridDerivesTheAICount() {
         let game = self.game()
-        XCTAssertEqual(game.entrants.count, 1)
-        game.setKind(.ai, at: 0)
-        XCTAssertEqual(game.entrants[0].kind, .guest, "the first row became AI")
-        XCTAssertEqual(game.entrants.count, 1, "refusing AI added a row instead")
+        game.fillWithAI = true
+        XCTAssertEqual(game.playerCount, 1)
+        XCTAssertEqual(game.aiCount, CouchGame.maxCars - 1)
+
+        XCTAssertTrue(game.addEntrant(.guest))
+        XCTAssertEqual(game.aiCount, CouchGame.maxCars - 2, "a person did not take an AI's place")
+
+        game.fillWithAI = false
+        XCTAssertEqual(game.aiCount, 0)
     }
 
-    /// A later row may be AI, which is the whole point of the option.
-    func testALaterRowMayBeAI() {
+    /// **A nearby race never carries AI**, whatever the toggle says: the protocol has no
+    /// AI seat and a shared field belongs to whoever hosts it.
+    func testANearbyRaceCarriesNoAI() {
         let game = self.game()
-        XCTAssertTrue(game.addEntrant(.guest))
-        game.setKind(.ai, at: 1)
-        XCTAssertEqual(game.entrants[1].kind, .ai)
-        XCTAssertEqual(game.aiCount, 1)
-        XCTAssertEqual(game.playerCount, 1)
+        game.fillWithAI = true
+        XCTAssertGreaterThan(game.aiCount, 0)
+        game.openNetworking()
+        XCTAssertEqual(game.aiCount, 0, "AI leaked into a networked field")
     }
 
     /// The toggle is sticky: away to AI and back returns the same person.
@@ -56,8 +61,8 @@ final class PlayerListTests: XCTestCase {
         let game = self.game()
         _ = try XCTUnwrap(game.addEntrant(.guest) ? true : nil)
         let sam = try XCTUnwrap(game.createProfile(named: "Sam", colorIndex: 0, forSeat: 1))
-        game.setKind(.ai, at: 1)
-        XCTAssertEqual(game.entrants[1].kind, .ai)
+        game.setKind(.guest, at: 1)
+        XCTAssertEqual(game.entrants[1].kind, .guest)
         let returned = game.setKind(.player, at: 1)
         XCTAssertTrue(returned, "the row had to ask again for a player it already knew")
         XCTAssertEqual(game.entrants[1], .profile(sam.id))
@@ -71,37 +76,16 @@ final class PlayerListTests: XCTestCase {
         XCTAssertEqual(game.entrants[0].kind, .guest)
     }
 
-    /// Counts are derived, so they cannot contradict the list.
-    func testCountsFollowTheList() {
+    /// The player count follows the list, so it cannot contradict it.
+    func testTheCountFollowsTheList() {
         let game = self.game()
         XCTAssertEqual(game.playerCount, 1)
-        XCTAssertEqual(game.aiCount, 0)
         XCTAssertTrue(game.addEntrant(.guest))
-        XCTAssertTrue(game.addEntrant(.ai(.medium)))
         XCTAssertEqual(game.playerCount, 2)
-        XCTAssertEqual(game.aiCount, 1)
-        XCTAssertEqual(game.entrants.count, 3)
+        XCTAssertEqual(game.entrants.count, 2)
     }
 
-    /// Humans stay ahead of AI, or somebody gets no control band.
-    func testHumansStayAheadOfAI() {
-        let game = self.game()
-        XCTAssertTrue(game.addEntrant(.ai(.medium)))
-        XCTAssertTrue(game.addEntrant(.guest))
-        XCTAssertTrue(game.entrants[0].isHuman)
-        XCTAssertTrue(game.entrants[1].isHuman)
-        XCTAssertFalse(game.entrants[2].isHuman, "an AI is sitting where a person should be")
-    }
-
-    /// The field cannot exceed what the grid holds.
-    func testTheFieldIsCapped() {
-        let game = self.game()
-        for _ in 0..<10 { _ = game.addEntrant(.ai(.medium)) }
-        XCTAssertEqual(game.entrants.count, CouchGame.maxCars)
-        XCTAssertFalse(game.canAdd(.ai))
-    }
-
-    /// …and no more people than one device can seat.
+    /// No more people than one device can seat.
     func testHumansAreCappedPerDevice() {
         let game = self.game()
         for _ in 0..<10 { _ = game.addEntrant(.guest) }
