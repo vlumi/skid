@@ -220,7 +220,7 @@ extension CouchGame {
         }
         // **The end keeps the selection.** Showing the build arrow and being able
         // to carry on building are properties of a SELECTED end, so deleting the
-        // piece at an end hands the selection to its neighbour — which is the new
+        // piece at an end hands the selection to its neighbor — which is the new
         // end. Otherwise trimming a few pieces means re-selecting between every
         // tap, which is what made it tedious.
         //
@@ -239,7 +239,7 @@ extension CouchGame {
             && layout.pieces.last == PieceCatalog.ID.warp
         if warpToo, !editorRemove(at: layout.pieces.count - 1) { return false }
         guard editorRemove(at: index) else { return false }
-        editorSelect(neighbourAfterDelete(wasHead: wasHead))
+        editorSelect(neighborAfterDelete(wasHead: wasHead))
         return true
     }
 
@@ -262,7 +262,7 @@ extension CouchGame {
     /// The start piece inherits it like any other — it is a perfectly good end to
     /// build from, it just cannot itself be deleted, and the delete button already
     /// hides itself for that.
-    private func neighbourAfterDelete(wasHead: Bool) -> Int? {
+    private func neighborAfterDelete(wasHead: Bool) -> Int? {
         guard let layout = editorLayout, !layout.pieces.isEmpty else { return nil }
         return wasHead ? 0 : layout.pieces.count - 1
     }

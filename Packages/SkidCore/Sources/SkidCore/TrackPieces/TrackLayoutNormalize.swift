@@ -44,7 +44,7 @@ extension TrackLayout {
     ///
     /// There was a button for this. It could not work: whole-lattice shifts leave a
     /// residual of up to half a piece that no press can improve, so on a nearly
-    /// centred track it correctly did nothing and looked broken. Doing it as part of
+    /// centered track it correctly did nothing and looked broken. Doing it as part of
     /// normalizing removes the question.
     ///
     /// Shifts by whole pieces, because `origin` is an exact `Coord` and must stay one.

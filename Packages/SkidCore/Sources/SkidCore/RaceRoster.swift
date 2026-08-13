@@ -10,7 +10,7 @@ import Foundation
 /// the host at join time: two phones each thinking they own seats 0–1 is the first
 /// bug this design would hit, and every car would then be driven by two thumbs.
 /// Seats are handed out in join order and never renumbered, because a seat number
-/// is also a colour, a HUD chip and a grid slot.
+/// is also a color, a HUD chip and a grid slot.
 ///
 /// It is deliberately transport-free — a peer is a `String`, so the same roster
 /// works over MultipeerConnectivity or the UDP escape hatch, and it is testable
@@ -101,7 +101,7 @@ public struct RaceRoster: Equatable, Sendable, Codable {
     /// Drop a device — it walked out of range, or backed out of the lobby.
     ///
     /// **Remaining seats keep their numbers.** Compacting them would renumber
-    /// somebody else's car mid-lobby, changing their colour and their grid slot;
+    /// somebody else's car mid-lobby, changing their color and their grid slot;
     /// and if this ever runs mid-race it would be a different race on every peer.
     /// So the seat list can have holes, which is why `seats` is derived from the
     /// entries rather than assumed to be `0..<count`.

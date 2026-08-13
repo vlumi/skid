@@ -54,7 +54,7 @@ final class WallTests: XCTestCase {
     ///
     /// A rail is a segment in the model but a band on screen, `kerbBand` of it
     /// outboard of the asphalt. Coming from the grass the car used to halt with
-    /// its centre a car-radius from that inner line, which left it stopped in
+    /// its center a car-radius from that inner line, which left it stopped in
     /// mid-air short of the barrier — measured at a clover ramp root, a 4.9-unit
     /// gap. From INSIDE nothing changes: the band's inner half hides under the
     /// asphalt, so the segment already is the face there.

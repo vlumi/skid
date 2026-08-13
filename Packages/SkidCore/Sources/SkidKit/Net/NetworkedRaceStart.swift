@@ -67,11 +67,11 @@ extension CouchGame {
         }
         let mySeats = driver.mySeats
         aiFleet.drivers = [:]
-        // **Colour by GLOBAL seat, so both devices agree.** Taking the first N of
-        // this device's own picks gave every device the same first two colours —
+        // **Color by GLOBAL seat, so both devices agree.** Taking the first N of
+        // this device's own picks gave every device the same first two colors —
         // both phones showed blue and orange, and no player could tell which car
         // was theirs. A seat number is the one thing every peer agrees on, so it is
-        // what the colour hangs off.
+        // what the color hangs off.
         let rig = CouchRig(
             colorIndices: mySeats.map { $0.rawValue % Self.palette.count },
             schemes: Array(schemes.prefix(mySeats.count)),
@@ -168,10 +168,10 @@ extension CouchGame {
 
     /// Car colors in car order (humans first, then AI), for renderer + HUD.
     ///
-    /// **Networked, colour comes from the seat.** This built the list from the LOCAL
+    /// **Networked, color comes from the seat.** This built the list from the LOCAL
     /// players, so on a guest driving seats 2–3 the array's first entry was seat 2's
-    /// colour and every car on screen was painted as somebody else. A seat number is
-    /// the one thing all peers agree on, so it is what the colour hangs off — and
+    /// color and every car on screen was painted as somebody else. A seat number is
+    /// the one thing all peers agree on, so it is what the color hangs off — and
     /// that also makes the two screens match, which is the point.
     public var carColors: [Color] {
         if let session, session.isNetworked {

@@ -91,14 +91,14 @@ final class PieceCompilerTests: XCTestCase {
         // Somewhere in between: the actual slope.
         XCTAssertTrue(
             track.heights.contains { $0 > 0.2 && $0 < 0.8 }, "the ramp is a gradual climb")
-        // No neighbouring pair jumps a whole level, so no point is a cliff.
+        // No neighboring pair jumps a whole level, so no point is a cliff.
         for index in track.centerline.indices {
             let next = (index + 1) % track.centerline.count
             XCTAssertLessThan(
                 abs(track.heights[next] - track.heights[index]), 0.6,
                 "height steps abruptly between points \(index) and \(next)")
         }
-        // The runtime recognises the slope as a ramp.
+        // The runtime recognizes the slope as a ramp.
         let sloped = track.centerline.indices.first { index in
             let next = (index + 1) % track.centerline.count
             return abs(track.heights[next] - track.heights[index]) > 0.05
@@ -219,15 +219,15 @@ final class PieceCompilerTests: XCTestCase {
     /// control band. Legacy `TrackDesign` tracks always had this fence.
     func testTheMapIsFenced() throws {
         for track in [try compiledSquare(), try compiledBridge()] {
-            let centre = track.size * 0.5
+            let center = track.size * 0.5
             for _ in [0] {
                 for degrees in stride(from: 0, to: 360, by: 15) {
                     let angle = Double(degrees) * .pi / 180
                     let outside =
-                        centre + Vec2(cos(angle), sin(angle)) * (track.size.x + track.size.y)
+                        center + Vec2(cos(angle), sin(angle)) * (track.size.x + track.size.y)
                     let enclosed = track.walls.contains { (wall: Wall) in
                         Gate(from: wall.a, to: wall.b)
-                            .isCrossed(movingFrom: centre, to: outside)
+                            .isCrossed(movingFrom: center, to: outside)
                     }
                     XCTAssertTrue(
                         enclosed, "track \(track.id) is open toward \(degrees)°")

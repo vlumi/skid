@@ -56,7 +56,7 @@ extension EditorView {
 
 extension Array where Element == Vec2 {
     /// The sample nearest the middle of the run — where chrome for a whole piece
-    /// belongs, rather than at an end it might share with a neighbour.
+    /// belongs, rather than at an end it might share with a neighbor.
     var midpointSample: Vec2 {
         isEmpty ? Vec2(0, 0) : self[count / 2]
     }

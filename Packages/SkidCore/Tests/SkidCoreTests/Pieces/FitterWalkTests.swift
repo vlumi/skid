@@ -200,7 +200,7 @@ final class FitterValidationTests: XCTestCase {
     }
 
     /// **A stale shape is refused too** — the case that only exists because the
-    /// shape is stored. Editing a neighbour changes the gap without changing the
+    /// shape is stored. Editing a neighbor changes the gap without changing the
     /// stored answer, which would leave a kink at the seam.
     func testAStaleFitterShapeIsRefused() throws {
         var layout = try fittedRing()

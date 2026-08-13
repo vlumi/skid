@@ -4,7 +4,7 @@
 
 The racing works. The *game* around it is undesigned, and the current front end
 says so plainly: one 351-line `SetupView` with every knob laid flat — mode,
-player count, seating, AI count, difficulty, contact, track, colours — plus two
+player count, seating, AI count, difficulty, contact, track, colors — plus two
 buttons that jump to the lobby and the editor. That is an engine control panel.
 A player opening it is being asked to configure a simulation, not to choose
 something to do.
@@ -56,13 +56,13 @@ Three questions, in the order a player answers them.
 
 ### 1. Who is playing?
 
-**Local profiles, on the device.** A name and a chosen car colour, one per
+**Local profiles, on the device.** A name and a chosen car color, one per
 person who plays on this phone. Not accounts, not sign-in, no server.
 
 This is the keystone, and it is worth doing first even though it is not the most
 visible: it is what makes every other item mean something. Records become *your*
 records. A couch race has names in the standings instead of "P1". A tournament
-has a leaderboard rather than four colours. Networked lobbies show who is there.
+has a leaderboard rather than four colors. Networked lobbies show who is there.
 
 The cost is real but bounded: a `PlayerProfile` book on disk (the
 `HiscoreBook`/`TrackLibraryBook` shape, already twice-proven), a picker at
@@ -128,7 +128,7 @@ decoration by this reading, and should move behind the items above.
   clover is 47 pieces, so per-piece surface is 47 decisions per track. Parked,
   not deleted: a *whole-track* surface as part of a theme may still be worth it
   as a look, which is a much smaller feature.
-- **Car colour.** Parked already, and doubly so now: colour becomes a *profile*
+- **Car color.** Parked already, and doubly so now: color becomes a *profile*
   property, so the picker is a consequence of identity rather than a feature of
   its own.
 
@@ -143,7 +143,7 @@ What stays regardless of this plan:
 Deliberately ordered so each step is usable on its own, and so the riskiest
 design question (tournament rules) comes after there is something to hang it on.
 
-1. **Profiles.** Name and colour, stored on device, chosen at launch. Records
+1. **Profiles.** Name and color, stored on device, chosen at launch. Records
    become per-player. Standings show names.
 2. **The menu.** Solo / Couch / Nearby, then mode, then track. The current setup
    panel's knobs split into *what this session is* (on the way in) and
@@ -159,7 +159,7 @@ is the new game.
 
 ## What this does not decide
 
-- **Visual design.** Layout, type, colour of the menus themselves. This document
+- **Visual design.** Layout, type, color of the menus themselves. This document
   is structure only.
 - **Career/unlocks.** The roadmap has a cosmetic-unlock ladder; it needs
   profiles and tournaments to exist first, and should be judged after.

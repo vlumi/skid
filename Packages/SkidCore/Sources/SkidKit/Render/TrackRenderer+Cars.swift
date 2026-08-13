@@ -52,9 +52,9 @@ extension TrackRenderer {
             // A bridge's footprint is its asphalt PLUS the rails standing on
             // its edges — that whole band hides what is under it, so that whole
             // band is where the hole may be cut. The TRIGGER then reaches one
-            // hole-radius further out, because the hole is centred on the car:
+            // hole-radius further out, because the hole is centered on the car:
             // stopping the trigger at the footprint edge made the window vanish
-            // the moment the car's centre cleared the bridge, cutting off a
+            // the moment the car's center cleared the bridge, cutting off a
             // window whose disc still overlapped it. Reaching further lets the
             // clip do the trimming, which is its job.
             //
@@ -139,7 +139,7 @@ extension TrackRenderer {
     /// touches at its own height**; on grass (touching none), its own level.
     ///
     /// Body, not center: ribbons paint whole, so where a descent hands over to
-    /// a flat run the neighbouring ribbon is binned a storey up, and a car
+    /// a flat run the neighboring ribbon is binned a storey up, and a car
     /// straddling that seam had its tail painted over by road at its own
     /// height. "At its own height" is the other half of the rule: without it,
     /// a car entering an underpass would inherit the BRIDGE's storey from the
@@ -227,8 +227,8 @@ extension TrackRenderer {
         return path
     }
 
-    /// Radius of the window's disc, centred on the car. Also how far past the
-    /// bridge's footprint the window keeps being drawn, since a disc centred
+    /// Radius of the window's disc, centered on the car. Also how far past the
+    /// bridge's footprint the window keeps being drawn, since a disc centered
     /// just outside the bridge still overlaps it.
     static let holeRadius: Double = 20
 
@@ -308,14 +308,14 @@ extension TrackRenderer {
         // derived livery fixed the sheen's mechanism and kept its effect.
         //
         // The budget is TONES, not cars: nine mutually-distinct tones is already the
-        // edge of what colour-blind-safe lightness spread allows, so eighteen do not
+        // edge of what color-blind-safe lightness spread allows, so eighteen do not
         // exist. Two distinct hues per car measures fine at **four** cars (26.3) and
-        // is impossible at nine — which makes it a job for the colour picker, where
+        // is impossible at nine — which makes it a job for the color picker, where
         // the field size can bound the choices, not for arithmetic here.
         //
         // So facing rests on the nose lamps and the tucked-back cockpit until the
         // projected cone returns — and the cone is the *right* answer precisely
-        // because a beam adds no colour to the body, spending nothing from the
+        // because a beam adds no color to the body, spending nothing from the
         // palette's budget. It stays parked pending an occlusion query: an extended
         // beam binned at its origin's storey gets sliced at ramp feet, and it must
         // not shine through walls.

@@ -197,7 +197,7 @@ public struct PlacedPiece: Equatable, Sendable {
     /// (half-level climbs on ordinary shapes) never coexist on one placement.
     public var pitch: Pitch
     /// Whether the climb eases to a standstill at each end, or runs straight
-    /// through into a neighbour that keeps climbing. The walk sets these from
+    /// through into a neighbor that keeps climbing. The walk sets these from
     /// the sequence: a climb eases only where it FACES something that doesn't
     /// continue it — so a full climb split into halves is still one S-curve,
     /// not a terrace with a shelf at the apex.
@@ -205,7 +205,7 @@ public struct PlacedPiece: Equatable, Sendable {
     public var easeOut: Bool
     /// **How far a warp drops the road**, in levels — always ≤ 0, and zero for
     /// every piece that is not a warp. Separate from `pitch` because it is not a
-    /// slope: no road is travelled, so nothing is climbed or descended. It only
+    /// slope: no road is traveled, so nothing is climbed or descended. It only
     /// says where the road resumes.
     public var warpDrop: Double
 
@@ -243,7 +243,7 @@ public struct PlacedPiece: Equatable, Sendable {
         let x = min(1, max(0, f))
         // Cubic Hermite from 0 to 1 with a chosen tangent at each end: 0 where
         // the climb eases against flat road, 1 (the run's own slope) where it
-        // continues into a neighbour. Both eased is exactly smoothstep; both
+        // continues into a neighbor. Both eased is exactly smoothstep; both
         // continuing is exactly linear — so a chain of same-pitch pieces forms
         // one S: eased at its outer ends, straight through interior seams.
         let m0 = easeIn ? 0.0 : 1.0

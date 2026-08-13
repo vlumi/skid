@@ -187,7 +187,7 @@ final class StateHashTests: XCTestCase {
         XCTAssertEqual(negative.stateHash, positive.stateHash)
     }
 
-    func testTheHashSeparatesNeighbouringBitPatterns() {
+    func testTheHashSeparatesNeighboringBitPatterns() {
         // The divergence this exists to catch is one ULP, not a visible jump.
         var nudged = Race(track: TrackLibrary.testRing(), players: [PlayerID(0)], seed: 5)
         let base = nudged.stateHash

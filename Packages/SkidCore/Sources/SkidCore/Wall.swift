@@ -158,7 +158,7 @@ public struct Wall: Equatable, Sendable, Codable {
             // the earth beneath a raised road is the embankment's job.
             //
             // The floor used to be `trunc(height)`, which split one bridge edge
-            // in two: a rail at 0.999 fenced the ground while its neighbour at
+            // in two: a rail at 0.999 fenced the ground while its neighbor at
             // 1.0 did not, so the fence had holes and a car pushed out by one
             // could be shoved through another. Rounding to the nearest level
             // fixed that, but broke the MIDDLE of a climb: a rail at 0.52–0.75

@@ -66,7 +66,7 @@ public final class GameSession: ObservableObject {
     public var snapshotClient: SnapshotClientDriver?
 
     /// True for any networked role. The pause guard keys off this (a per-device
-    /// pause would freeze one screen of a shared race), as does seat-coloured
+    /// pause would freeze one screen of a shared race), as does seat-colored
     /// rendering.
     public var isNetworked = false
 

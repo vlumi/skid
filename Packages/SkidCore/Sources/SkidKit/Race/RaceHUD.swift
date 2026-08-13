@@ -36,7 +36,7 @@ struct RaceHUD: View {
             ForEach(Array(rig.players.enumerated()), id: \.offset) { _, controls in
                 // **Keyed by the SEAT the band drives, not by band index.** On a
                 // networked guest, band 0 drives seat 1 — so indexing `race.cars` and
-                // `colors` by the band showed the guest the HOST's car and colour.
+                // `colors` by the band showed the guest the HOST's car and color.
                 // Reported from device: the chip was blue on both screens when the
                 // cars were blue and green.
                 playerChip(

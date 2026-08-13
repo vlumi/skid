@@ -2,13 +2,13 @@ import XCTest
 
 @testable import SkidCore
 
-/// Elevation behaviour: climbing, descending, jumping, and — above all — that a
+/// Elevation behavior: climbing, descending, jumping, and — above all — that a
 /// car on the road *under* a bridge stays under it.
 ///
 /// These were written against a discrete `layer: Int` that flipped when the car
 /// crossed a ramp line. That model is gone: a car now carries a continuous
 /// `height` and follows the height of the road beneath it. The assertions are the
-/// same behaviours, restated in height.
+/// same behaviors, restated in height.
 final class HeightTests: XCTestCase {
     /// A straight strip whose forward segment climbs to deck height in the
     /// middle, so a car driving along it goes up and comes back down. (The
