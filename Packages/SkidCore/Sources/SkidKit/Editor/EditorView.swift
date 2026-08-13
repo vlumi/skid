@@ -205,18 +205,9 @@ struct EditorView: View {
                 // because chrome over the road is what caused accidental deletes.
                 if game.editorMode == .build {
                     mapActions(walk: walk, transform: transform)
-                        .contentShape(Rectangle().path(in: .zero))
                 }
-                // **All three chrome layers cover the whole map and used to take its
-                // hits** — why the track was unresponsive far from any button. Each bar is a
-                // `VStack` with a `Spacer`, which expands to full height; `mapActions` uses
-                // `.position`, which expands its child before placing it. An EMPTY
-                // `contentShape` stops the container being a target while its children keep
-                // theirs — `allowsHitTesting(false)` would kill the buttons too.
                 topBar
-                    .contentShape(Rectangle().path(in: .zero))
                 paletteBar(walk: walk)
-                    .contentShape(Rectangle().path(in: .zero))
             }
             // Off the render path: the closing search costs tens of ms, so it
             // runs when the layout or selection changes, not per frame.
