@@ -55,11 +55,14 @@ Shipped milestones (v0.1–v0.7) are summarized in the
 Rough, and expected to churn — the point is which themes are worth shipping
 *together*, not what they will be numbered.
 
-| next | then | later | 1.0 |
-|:--|:--|:--|:--|
-| The front end | Tournaments & sharing | Surfaces & hazards | Polish & submission |
-| Identity & records | Networked play: the tail | More to build with | |
-| First ten seconds | | Platforms & input | |
+| next | then | later | 1.0 | parked |
+| --- | --- | --- | --- | --- |
+| The front end | Tournaments & sharing | More to build with | Polish & submission | Surfaces & hazards |
+| Identity & records | Networked play: the tail | Platforms & input | | Car color |
+| First ten seconds | | | | |
+
+The **track library** sits inside *Tournaments & sharing* but depends on nothing —
+it is design work, not code, and can start at any time. It gates tournaments.
 
 **Why that order — and it changed.** The racing works; the *game* around it is
 undesigned, and the front end is where that gets decided rather than merely drawn.
@@ -76,22 +79,28 @@ a change every second or so with nothing to learn about it; authoring is 47
 decisions on the clover. A whole-track surface as part of a *theme* may still earn
 its place as a look, which is a much smaller feature than the per-piece one.
 
-## Surfaces & hazards — *how it drives*
+## Surfaces & hazards — *PARKED*
 
-**Moved out of *next*, and the reason is worth keeping.** This sat first because
-`Surface` already carries the grip and drag model — the sim work is largely done.
-That is a statement about cost, not about value, and the value does not hold up: a
+**Parked until the game is more finished.** Everything in this section — hazards,
+per-piece road surface, off-road surface, themes — is on hold, and the roadmap says
+so rather than leaving it looking live.
+
+The pattern worth naming, because it caught the same feature twice: each of these
+is **cheap to build and unproven to matter**, and "the sim half is already done"
+kept being read as a reason to do it. That is a statement about cost. On value: a
 lap is 2741–5141 units, so **5–10 seconds**, on a track the player can see all of
-and will drive forty times. Surface variety at that scale is a change every second
-or so with nothing to learn about it — a gravel patch visible from the start line
-is a tax on a known line, not a decision. Authoring cost is real too: the clover is
-47 pieces, so per-piece surface is 47 decisions per track.
+and will drive forty times — surface variety at that scale is a change every second
+or so with nothing to learn about it, and the clover's 47 pieces make it 47
+authoring decisions per track.
 
-What may still earn its place is much smaller: a **whole-track** surface as part of
-a theme, for the look rather than the driving. The per-piece version wants a reason
-that has not been found yet.
+**One exception survives, and it belongs to the library rather than here:** *some*
+decoration before 1.0, so that a dozen tracks do not all read as the same asphalt
+ribbon on the same green. That is about tracks having character, not about how they
+drive — scope it that way, and it needs none of the parked work above. See
+[docs/game-shape-plan.md](docs/game-shape-plan.md).
 
-What is missing, if it is built: **placement and the look of a boundary**.
+What is missing, if any of this is ever built: **placement and the look of a
+boundary**.
 
 - [ ] **Road surface as a per-piece attribute** (snow, gravel, dirt) — *the
       gameplay half, and the bigger of the two*.
@@ -371,22 +380,48 @@ Needs the front end above to have somewhere to put it. The data is closer than i
 looks: per-track bests and full ghost recordings already persist, keyed by track
 id — what is missing is tying a result to a *person*.
 
-- [ ] **Local player profiles.** A chosen name at minimum, on-device only (no
-      accounts, no server — see "out of scope"). Everything below hangs off
-      this, which is why it's first. Open question: allow ad-hoc anonymous
-      players, or make everyone pick a name up front?
+- [ ] **Local player profiles — and guests, which are the default.** A profile is a
+      chosen name and color, on-device only (no accounts, no server — see "out of
+      scope"). Everything below hangs off this, which is why it's first.
+
+      **Decided: guests, not name-up-front.** A seat races immediately with no name
+      and no setup; making a profile is the *upgrade* that keeps your results. Asking
+      for a name first would put a text field in front of the thing people opened the
+      app for, and a couch guest who wants one turn should not have to register for
+      it. So a guest races normally and records nothing, mixed seats are ordinary
+      (one profile, one visiting friend), and today's device records become the first
+      profile's — they were made by whoever owns the phone.
 - [ ] **Records that stick, and are worth looking at.** Best lap and best race
       already persist per track; make them visible and per-profile — a results
       screen worth reading, "you beat your best" in the moment, and a per-track
-      board of who on this device holds what.
+      board of who on this device holds what. Guests do not appear: with nothing to
+      attach a time to, inventing a slot for "whoever sat in seat 2" is worse than
+      not keeping it.
 
 ## Tournaments & sharing — *a reason to keep playing*
 
+- [ ] **Grow the built-in track library to 8–12.** The dependency nobody
+      scheduled, and the one that decides whether tournaments feel good: **a series
+      is only as good as the tracks it draws from**, and four built-ins means every
+      five-race series repeats itself, which no scoring rule fixes.
+
+      **This is authorship, not engineering.** The catalog already offers three
+      straights, 45°/90° curves at three radii each, hairpins, fitters, elevation,
+      crossings and railings — four tracks have been designed with all of it. Each
+      new one is a session in the editor plus two lines in `TrackLibrary.builtins`,
+      so it needs nothing built first and can run in parallel with everything else.
+      Aim for a deliberate spread — short/technical through long/fast, a couple that
+      climb — rather than whatever gets made.
 - [ ] **Tournaments.** A series of races across one or more couch sessions, with
       standings per profile. Also *unlocks* the **reverse-standings grid** (race
       N starts in reverse order of the standings after N−1, worst on pole; ties
       broken by the seeded RNG), which is blocked today purely for lack of a
-      cross-race standings layer. Decide: fixed cups, or pick-your-own series?
+      cross-race standings layer.
+      Open, with a leaning each: length (3/5/7, tracks drawn from the library with a
+      re-draw before starting); **points rather than cumulative time**, so one bad
+      race does not end the series for a couch; and it **must survive quitting**, or
+      a five-race series on a phone is unfinishable. Needs the library item above
+      first. See [docs/game-shape-plan.md](docs/game-shape-plan.md).
 - [ ] **Send a time to a friend.** A ghost is a seed plus an input stream, so
       it's small — the same trick as a track code. Share a time as a link/QR,
       import it, and race against their ghost on your device. Needs the track

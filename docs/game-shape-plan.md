@@ -56,22 +56,29 @@ Three questions, in the order a player answers them.
 
 ### 1. Who is playing?
 
-**Local profiles, on the device.** A name and a chosen car color, one per
-person who plays on this phone. Not accounts, not sign-in, no server.
+**Guests by default; a profile is an upgrade.** Anyone can race immediately as
+"P2" with no name and no setup. Making a profile — a name and a chosen car color,
+stored on this device — is what buys you *kept* results.
 
-This is the keystone, and it is worth doing first even though it is not the most
-visible: it is what makes every other item mean something. Records become *your*
-records. A couch race has names in the standings instead of "P1". A tournament
-has a leaderboard rather than four colors. Networked lobbies show who is there.
+That order matters more than it looks. Profiles-first would put a text field in
+front of the thing people opened the app for, and a couch guest who just wants a
+turn should never have to register to take one. So:
 
-The cost is real but bounded: a `PlayerProfile` book on disk (the
-`HiscoreBook`/`TrackLibraryBook` shape, already twice-proven), a picker at
-launch, and threading an identity through the places that currently say `P1`.
+- **A guest races normally.** Same cars, same modes, same tournaments.
+- **A guest's times are not recorded.** Nothing to attach them to, and inventing
+  a slot for "whoever was in seat 2 that time" is worse than not keeping it.
+- **A profile keeps its records**, shows its name in standings, and carries its
+  color preference between sessions.
+- **Mixed seats are ordinary** — one person with a profile, a visiting friend as
+  a guest, in the same race.
 
-**Open question:** whether records migrate to the first profile created, or
-whether existing device records stay device-wide as "unclaimed". Migrating is
-friendlier; unclaimed is honest. Leaning migrate, with the caveat noted in the
-changelog.
+This also settles the migration question that was open here: existing device
+records become the **first profile's**, because today's records were made by
+whoever owns the phone. Guests never inherit them, and never write to them.
+
+Not accounts, not sign-in, no server. The cost is bounded: a `PlayerProfile` book
+on disk (the `HiscoreBook`/`TrackLibraryBook` shape, already twice-proven), a
+seat-to-identity mapping, and threading it through the places that say `P1`.
 
 ### 2. Who are you playing with?
 
@@ -116,21 +123,68 @@ do not exist:
 - **Grid order between races.** Reverse-standings grids need this and are
   recorded in the roadmap as wanting a tournament layer. This is that layer.
 
-## What this makes of the existing roadmap
+## The library is the dependency nobody scheduled
 
-Uncomfortable but worth saying: several things currently sitting in *next* are
-decoration by this reading, and should move behind the items above.
+**A tournament is a sequence of tracks, so it is only as good as the tracks it can
+draw from.** Five races on four built-ins means repeats in every series, and no
+scoring rule fixes that. This is the constraint that decides how good the mode
+feels, and it is not a coding problem.
 
-- **Surfaces & hazards.** A lap is 2741–5141 units, which is 5–10 seconds.
-  Surface variety on that is a change every second or so, on a track the player
-  can see all of and will drive forty times — there is nothing to learn about a
-  gravel patch visible from the start line. Authoring cost is real too: the
-  clover is 47 pieces, so per-piece surface is 47 decisions per track. Parked,
-  not deleted: a *whole-track* surface as part of a theme may still be worth it
-  as a look, which is a much smaller feature.
-- **Car color.** Parked already, and doubly so now: color becomes a *profile*
-  property, so the picker is a consequence of identity rather than a feature of
-  its own.
+The honest position: **the engine is not the limit — the designs are.** The
+catalog already offers three straights, 45° and 90° curves at tight/medium/sweep
+radii, hairpins in three radii, fitters for shapes the catalog cannot make, plus
+elevation, crossings and railings. Four tracks have been designed with all of
+that. So "build the best library" is mostly **sitting in the editor and designing
+tracks**, which is authorship rather than engineering.
+
+What engineering can do for it, in order of value:
+
+1. **Make the built-in set big enough to draw from.** A tournament wants enough
+   variety that a 5-race series rarely repeats — call it 8–12 tracks. They are
+   share codes in `TrackLibrary.builtins`, so each one costs a design session and
+   two lines of code. Nothing to build first.
+2. **Make them differ in the ways that matter.** Track *identity* comes from lap
+   length, corner mix, and whether it climbs — not from surface or decoration. A
+   good set spans short/technical to long/fast, with a couple of elevated ones.
+   Worth writing down as a target so the set is deliberate rather than whatever
+   got made.
+3. **Curation over quantity.** A tournament drawing from tracks the player half
+   finished in the editor would be a bad series. So the draw pool needs a notion
+   of *raceable and worth racing* — the library already knows raceable; "worth
+   racing" is what the built-in flag means.
+
+**Decoration earns its place here, and only here.** Bare tracks look unfinished,
+and a library of a dozen of them looks more unfinished still — the same asphalt
+ribbon on green, twelve times. So *some* scenery before 1.0 is justified, on the
+grounds of making a library look like a set of places rather than a set of
+diagrams. That is a much narrower claim than the parked content work: it is about
+the tracks having character, not about the driving changing.
+
+Deliberately still parked, per the decision recorded below: hazards, per-piece
+surfaces, themes, and further decals.
+
+## Parked until the game is more finished
+
+**Decision: all track-content work stops here.** Not deleted, not
+in-progress-and-deprioritized — parked, with one narrow exception. The pattern
+worth naming is that each of these is cheap to *build* and unproven to *matter*,
+and "the sim half is already done" kept being mistaken for a reason to do it.
+
+- **Hazards** (oil, water, mud as placeable things).
+- **Per-piece road surface** (gravel, snow, dirt). A lap is 2741–5141 units, so
+  5–10 seconds, on a track the player sees all of and drives forty times; surface
+  variety at that scale is a change every second with nothing to learn about it,
+  and 47 authoring decisions on the clover.
+- **Off-road surface and themes** (snow/sand/dirt ground).
+- **Further decals** beyond what exists.
+- **Car color as a feature.** Parked already, and now redundant: color becomes a
+  *profile* property, so a picker is a consequence of identity.
+
+**The one exception: some decoration before 1.0.** Justified by the library
+argument above rather than by gameplay — a dozen tracks that are all asphalt on
+green read as a set of diagrams, not places. Scope it as *making tracks look
+alive*, not as changing how they drive, and it does not need surfaces, themes or
+hazards to do that.
 
 What stays regardless of this plan:
 
@@ -143,24 +197,36 @@ What stays regardless of this plan:
 Deliberately ordered so each step is usable on its own, and so the riskiest
 design question (tournament rules) comes after there is something to hang it on.
 
-1. **Profiles.** Name and color, stored on device, chosen at launch. Records
-   become per-player. Standings show names.
+1. **Profiles, with guests as the default.** A seat is a guest unless a profile is
+   chosen; a profile is a name and a color, stored on device. Records become
+   per-player, and guests record nothing. Standings show names.
 2. **The menu.** Solo / Couch / Nearby, then mode, then track. The current setup
    panel's knobs split into *what this session is* (on the way in) and
    *settings* (their own screen). Developer tuning moves behind a debug section
    rather than sitting alongside player choices.
 3. **Time attack, surfaced.** Your best, the ghost, the gap, the track's record
    list. Almost entirely presentation of data that already exists.
-4. **Tournament.** The one new mode, with the rules decided above and persisted
+4. **Grow the built-in library** — 8–12 tracks spanning short/technical to
+   long/fast, some elevated. Authorship rather than engineering, and it can run in
+   parallel with any of the above: each track is a design session and two lines in
+   `TrackLibrary.builtins`. **Before tournaments**, since a series drawing from four
+   tracks repeats itself no matter how the scoring works.
+5. **Tournament.** The one new mode, with the rules decided above and persisted
    state so a series survives quitting.
 
-Steps 1–3 are largely plumbing and presentation over things that exist. Step 4
-is the new game.
+Steps 1–3 are largely plumbing and presentation over things that exist. Step 4 is
+authorship, needs no code, and can start today. Step 5 is the new game — and is the
+only one that should wait for the others.
 
 ## What this does not decide
 
 - **Visual design.** Layout, type, color of the menus themselves. This document
   is structure only.
+- **What "decoration" is**, concretely — which props, how they are placed, whether
+  they are anchored to pieces. Only that *some* is wanted before 1.0, for the
+  library's sake, and that it must not drag surfaces or themes in with it.
+- **The target track set**, track by track. The 8–12 count and the
+  short/technical-to-long/fast span are a target, not a list.
 - **Career/unlocks.** The roadmap has a cosmetic-unlock ladder; it needs
   profiles and tournaments to exist first, and should be judged after.
 - **Online anything** beyond the existing nearby play. No accounts, no server,
