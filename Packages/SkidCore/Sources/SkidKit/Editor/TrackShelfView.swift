@@ -24,6 +24,11 @@ struct TrackShelfView: View {
     @ObservedObject var game: CouchGame
     let dismiss: () -> Void
 
+    /// The track being renamed, and the name being typed. Held together so the field cannot
+    /// outlive the row it belongs to.
+    @State private var renaming: TrackLibraryBook.Entry?
+    @State private var newName = ""
+
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
     var body: some View {
@@ -49,6 +54,28 @@ struct TrackShelfView: View {
                     }
                 }
                 .padding(16)
+            }
+        }
+        // An alert rather than a sheet: one field and two buttons, and a sheet would cover
+        // the tile whose name is being changed.
+        .alert(
+            Text("Rename track", bundle: .module),
+            isPresented: Binding(
+                get: { renaming != nil },
+                set: { if !$0 { renaming = nil } })
+        ) {
+            TextField(String(localized: "Name", bundle: .module), text: $newName)
+                .nameFieldStyle()
+            Button {
+                if let entry = renaming { game.renameTrack(id: entry.id, to: newName) }
+                renaming = nil
+            } label: {
+                Text("Rename", bundle: .module)
+            }
+            Button(role: .cancel) {
+                renaming = nil
+            } label: {
+                Text("Cancel", bundle: .module)
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -115,6 +142,16 @@ struct TrackShelfView: View {
                     Text("Start a copy", bundle: .module)
                 } icon: {
                     Image(systemName: "plus.square.on.square")
+                }
+            }
+            Button {
+                newName = entry.name
+                renaming = entry
+            } label: {
+                Label {
+                    Text("Rename", bundle: .module)
+                } icon: {
+                    Image(systemName: "pencil.line")
                 }
             }
             Button(role: .destructive) {

@@ -305,3 +305,50 @@ extension CouchGame {
         if trackID == id { trackID = TrackLibrary.builtins[0].id }
     }
 }
+
+extension CouchGame {
+    /// **Rename one of your tracks.**
+    ///
+    /// A name is the only part of an entry that is *yours* rather than derived: the id is a
+    /// hash of the track's content, the dates are events, and the code is the road. So this
+    /// is the one edit that changes a row without changing the track — `put` replaces by
+    /// id, and the id does not move.
+    ///
+    /// Returns false when the name is unusable, leaving the old one: a track called "" is
+    /// worse than a track called "My track".
+    @discardableResult
+    public func renameTrack(id: String, to name: String) -> Bool {
+        guard var entry = library.entry(id: id),
+            let cleaned = TrackName.cleaned(name)
+        else { return false }
+        guard cleaned != entry.name else { return true }
+        entry.name = cleaned
+        // `updatedAt` deliberately untouched: it means "last edited here" and orders the
+        // shelf, so renaming would push a track you have not touched to the front.
+        var book = library
+        book.put(entry)
+        library = book
+        saveLibrary()
+        return true
+    }
+}
+
+/// Cleaning a track name, kept beside the operation that needs it.
+///
+/// Deliberately its own type rather than a method on the book: the same rule applies to a
+/// name typed in the shelf and a name arriving with an imported track, and neither of those
+/// is a library concern.
+public enum TrackName {
+    /// Longest name worth storing — generous for a real one, short enough that a shelf tile
+    /// can show it without the layout fighting back.
+    public static let maxLength = 24
+
+    /// Trimmed and capped, or nil when nothing usable is left. Nil rather than a
+    /// placeholder for the same reason `PlayerProfile.cleaned` does it: "  " is not a name,
+    /// and the caller's answer is to keep what it had.
+    public static func cleaned(_ name: String) -> String? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return String(trimmed.prefix(maxLength))
+    }
+}
