@@ -13,12 +13,12 @@ import Foundation
 /// centerline points under the overlap threshold are never more than ~119 units
 /// apart along the arc — chord geometry, not a tuning choice), and the closing
 /// corner legitimately hugs the start piece on its way home. A genuine
-/// pave-over is different in exactly one way: the road travelled far before
+/// pave-over is different in exactly one way: the road traveled far before
 /// coming back alongside itself. Arc distance is that difference, and the
 /// join-gap term extends it to the ring being formed, so no separate case is
 /// needed for "approaching the start" versus "closed".
 ///
-/// This replaced three stacked piece-level exemptions — immediate neighbours
+/// This replaced three stacked piece-level exemptions — immediate neighbors
 /// only, a fixed arc window wide enough to hide real pinches, and a "is the
 /// loose end pointing home?" heuristic — each of which had a measured failure
 /// on a real 41-piece design: the corner that closed the track was refused,
@@ -215,7 +215,7 @@ struct RoadProximity {
     ///
     /// **Only while there IS a join to protect.** On a closed ring the gap is
     /// already road, with its own segments, and the two stretches either side of
-    /// the seam are ordinary neighbours — a ramp meeting flat road, say. Which
+    /// the seam are ordinary neighbors — a ramp meeting flat road, say. Which
     /// pieces land there is pure spelling, so applying this to a closed ring made
     /// legality depend on where the piece list happened to start: the reported
     /// track was refused as built and accepted respelled, and the shipped clover
@@ -223,7 +223,7 @@ struct RoadProximity {
     private func coversJoinZone(_ a: RoadSegment, _ b: RoadSegment) -> Bool {
         guard !isClosed else { return false }  // closed: nothing left to defend
         let along = abs(a.arcMid - b.arcMid)
-        guard along > Self.allowance else { return false }  // plain neighbours
+        guard along > Self.allowance else { return false }  // plain neighbors
         let through = totalArc - along + joinGap
         guard through <= Self.allowance else { return false }  // not near the join
         let dh = abs(a.top - b.top)

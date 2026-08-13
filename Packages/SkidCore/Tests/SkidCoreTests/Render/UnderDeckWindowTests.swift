@@ -183,7 +183,7 @@ final class UnderDeckWindowTests: XCTestCase {
         }
         XCTAssertGreaterThan(checked, 20, "the fixture must have plenty of ramp")
         // NOTE: this passes even with the old exact-height keying, because the clip
-        // strokes each segment ~99 units wide and a neighbouring flat run's band
+        // strokes each segment ~99 units wide and a neighboring flat run's band
         // covers a mid-climb point anyway. The keying is still the honest rule —
         // measured 98 segments in storey 2 by level against 54 by exact height — but
         // point-containment cannot tell the two apart, so treat this as a guard on

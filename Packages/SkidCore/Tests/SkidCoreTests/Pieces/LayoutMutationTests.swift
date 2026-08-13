@@ -67,7 +67,7 @@ final class LayoutMutationTests: XCTestCase {
     // MARK: - remove
 
     /// Removing pulls later keyed data back — and drops what belonged to the
-    /// victim rather than silently re-pointing it at its neighbour.
+    /// victim rather than silently re-pointing it at its neighbor.
     func testRemoveDropsTheVictimsDataAndPullsTheRestBack() {
         var layout = ring()
         layout.fitters = [

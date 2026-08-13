@@ -237,7 +237,7 @@ extension Race {
     /// A rail is a segment in the model but a BAND on screen: the renderer
     /// strokes the ribbon's edge `kerbBand` either side, so the asphalt covers
     /// the inner half and `kerbBand` shows outboard. Approached from the grass
-    /// the car therefore stopped in mid-air, its centre `CarGeometry.radius`
+    /// the car therefore stopped in mid-air, its center `CarGeometry.radius`
     /// from a line sitting well inside the visible barrier — measured at a
     /// clover ramp root, a 4.9-unit gap between where the car halted and where
     /// the railing was drawn. From inside there is nothing to add: the band's

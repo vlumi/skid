@@ -98,7 +98,7 @@ enum DebugOverlay {
         }
     }
 
-    /// Walls, labelled by height. Rails are drawn in their height color; the map
+    /// Walls, labeled by height. Rails are drawn in their height color; the map
     /// boundary in gray, since it blocks everyone.
     private static func drawWalls(_ track: Track, into context: inout GraphicsContext) {
         for wall in track.walls {

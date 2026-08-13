@@ -259,14 +259,14 @@ extension CouchGame {
     /// `fitsCanvas` compares EXTENTS rather than position, so validation is
     /// position-invariant too. The only thing the position changed was the share code.
     ///
-    /// Kept internal because closure still re-centres, where it does real work: it
+    /// Kept internal because closure still re-centers, where it does real work: it
     /// keeps a growing track from drifting into a corner and failing the size check
     /// for room it is not using.
     ///
     /// Reported as "the aim button doesn't seem to do anything", and it was worse than
     /// that — `max(margin, shift)` floored the shift at 60 units and `round(60/120)` is
     /// 1, so every press moved the track 120 units down-right whether it needed to or
-    /// not: 40 units off-centre before the first press, 520 after the fourth.
+    /// not: 40 units off-center before the first press, 520 after the fourth.
     /// The centering itself, so the public entry point is only the undo wrapper.
     @discardableResult
     private func centerOnCanvas() -> Bool {
@@ -283,7 +283,7 @@ extension CouchGame {
         // **Signed, and never floored.** This was `max(margin, shift)`, which pinned
         // a track already near the middle to a 60-unit shift — and `round(60/120)` is
         // 1, so every press moved the track 120 units down-right whether it needed to
-        // or not. Measured on a three-storey track: 40 units off-centre before the
+        // or not. Measured on a three-storey track: 40 units off-center before the
         // first press, 520 after the fourth, monotonically worse. Reported as "the
         // aim button doesn't seem to do anything", because it moves the track on the
         // canvas rather than the camera, and zoomed in the canvas edges are off-screen.

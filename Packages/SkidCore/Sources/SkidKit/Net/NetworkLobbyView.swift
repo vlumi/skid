@@ -116,7 +116,7 @@ struct NetworkLobbyView: View {
                 .multilineTextAlignment(.center)
 
             // The roster as everyone will race it — seat numbers included, because
-            // a seat number is also a colour and a grid slot, and seeing them
+            // a seat number is also a color and a grid slot, and seeing them
             // agree across two screens is half the point of the lobby.
             VStack(spacing: 6) {
                 ForEach(net.roster.entries, id: \.peer) { entry in

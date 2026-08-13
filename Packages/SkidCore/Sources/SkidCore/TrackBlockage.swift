@@ -40,7 +40,7 @@ extension Track {
     /// reports 6, every one of them a wall lying perpendicular across the road.
     ///
     /// Sampling the road's WIDTH instead was the first attempt and was much worse:
-    /// the car's centre reaches to within one radius of the edge, which is exactly
+    /// the car's center reaches to within one radius of the edge, which is exactly
     /// where the railing is, so every railed piece flagged — 79 consecutive points on
     /// the bridge ring.
     ///
@@ -112,7 +112,7 @@ extension TrackLayout {
     /// through its exit. The run of points belonging to a piece is therefore known
     /// without storing a map — and the seed is why the running total starts at 1.
     ///
-    /// Not by matching coordinates: the compiler recentres the track, so a walk point
+    /// Not by matching coordinates: the compiler recenters the track, so a walk point
     /// is not a track point. Comparing the two is a mistake this codebase has made
     /// more than once.
     public func pieces(covering centerlineIndices: [Int]) -> Set<Int> {

@@ -25,7 +25,7 @@ import Foundation
 /// not required to be correctly rounded, so two devices re-solving the same
 /// fitter could differ by an ULP — and deterministic lockstep (see AGENTS.md) has
 /// no tolerance for that. Storing the answer also frees the piece from depending
-/// on its neighbours, which is what allows more than one per track and allows
+/// on its neighbors, which is what allows more than one per track and allows
 /// deleting other pieces while one exists.
 public struct Fitter: Equatable, Sendable, Codable {
     /// Arc radius in world units — one of the catalog's three, so a fitter still

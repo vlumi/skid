@@ -1,7 +1,7 @@
 import SkidCore
 import SwiftUI
 
-/// What the editor palette offers, and how it's organised.
+/// What the editor palette offers, and how it's organized.
 ///
 /// **The building vocabulary is the primitive set.** A layout holds primitives — a
 /// short straight and 45° corners at three radii — so that is what the main row

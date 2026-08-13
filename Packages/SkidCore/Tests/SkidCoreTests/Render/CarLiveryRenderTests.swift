@@ -4,7 +4,7 @@ import XCTest
 @testable import SkidCore
 @testable import SkidKit
 
-/// **How many colours a car may wear, and what the reverse mark means.**
+/// **How many colors a car may wear, and what the reverse mark means.**
 ///
 /// The first half of this is the test that should have been written before any accent
 /// was added, and its absence is why a derived second tone shipped in a PR and had to
@@ -13,7 +13,7 @@ import XCTest
 /// player's eye actually makes.
 @MainActor
 final class CarLiveryRenderTests: XCTestCase {
-    /// **A car wears ONE colour, and that is a measured constraint.**
+    /// **A car wears ONE color, and that is a measured constraint.**
     ///
     /// Judged by the question that matters — can car A be told from car B — a car with
     /// two tones presents two patches, and confusion is any patch of one resembling
@@ -26,20 +26,20 @@ final class CarLiveryRenderTests: XCTestCase {
     /// | the old white sheen | ΔE 3.7 |
     ///
     /// The budget is *tones*, not cars: nine mutually-distinct tones is already the
-    /// edge of what colour-blind-safe lightness spread allows, so eighteen do not
+    /// edge of what color-blind-safe lightness spread allows, so eighteen do not
     /// exist. Two genuinely distinct hues per car measures fine at **four** cars
-    /// (26.3) and cannot work at nine — so it belongs to a colour picker that can
+    /// (26.3) and cannot work at nine — so it belongs to a color picker that can
     /// bound choices by field size, not to arithmetic in the renderer.
     ///
     /// This measures the real rule, over whatever tones each car wears — so adding an
     /// accent later does not quietly bypass it. `tones(forSeat:)` is the single place
-    /// to extend when a car gains a second colour; the assertion then holds it to the
+    /// to extend when a car gains a second color; the assertion then holds it to the
     /// same floor the palette was searched for.
     ///
     /// Sabotage: return `[paint, CarLivery-style lightened paint]` from `tones` and the
     /// worst case drops to ΔE 4.6, failing exactly as the reverted livery did.
     func testCarsStayDistinctAcrossEveryToneTheyWear() {
-        /// Every colour patch a player sees on this car. One entry today.
+        /// Every color patch a player sees on this car. One entry today.
         func tones(forSeat seat: Int) -> [CarPalette.Paint] {
             [CarPalette.paints[seat]]
         }
@@ -49,7 +49,7 @@ final class CarLiveryRenderTests: XCTestCase {
             for i in CarPalette.paints.indices {
                 for j in (i + 1)..<CarPalette.paints.count {
                     // Worst case over every pairing of one car's tones against the
-                    // other's — a glance compares patches, not labelled regions.
+                    // other's — a glance compares patches, not labeled regions.
                     for a in tones(forSeat: i) {
                         for b in tones(forSeat: j) {
                             let distance = a.seen(with: vision).distance(to: b.seen(with: vision))
@@ -67,7 +67,7 @@ final class CarLiveryRenderTests: XCTestCase {
             "cars are only ΔE \(Int(worst)) apart at worst (\(offender))")
     }
 
-    /// The renderer draws from the measured palette, seat for seat — so a car's colour
+    /// The renderer draws from the measured palette, seat for seat — so a car's color
     /// is the one that was measured, not a nearby guess.
     func testTheDrawnPaletteIsTheMeasuredPalette() {
         XCTAssertEqual(TrackRenderer.carPalette.count, CarPalette.count)
@@ -89,13 +89,13 @@ final class CarLiveryRenderTests: XCTestCase {
     func testTheReverseCueFollowsMotionNotHeading() {
         var state = CarState(position: Vec2(0, 0), heading: 0)
 
-        // Pointed +x, travelling -x: reversing.
+        // Pointed +x, traveling -x: reversing.
         state.velocity = Vec2(-100, 0)
         XCTAssertLessThan(
             state.forwardSpeed, -TrackRenderer.reverseCueSpeed,
-            "a car travelling opposite its heading must read as reversing")
+            "a car traveling opposite its heading must read as reversing")
 
-        // Pointed +x, travelling +x: not reversing, however fast.
+        // Pointed +x, traveling +x: not reversing, however fast.
         state.velocity = Vec2(400, 0)
         XCTAssertGreaterThan(state.forwardSpeed, 0, "forward motion must not read as reverse")
 

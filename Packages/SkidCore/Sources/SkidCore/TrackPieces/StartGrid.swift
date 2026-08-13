@@ -19,7 +19,7 @@ extension PieceCompiler {
         /// Half-span of a **two**-car row: the classic staggered pair.
         public static let lateral = 28.0
         /// Half-span of a **three**-car row. The outer car's edge then sits at
-        /// 54 of the road's 60 half-width, leaving 24 units between neighbours —
+        /// 54 of the road's 60 half-width, leaving 24 units between neighbors —
         /// more than a car's collision diameter.
         public static let wideLateral = 44.0
 
@@ -27,7 +27,7 @@ extension PieceCompiler {
         ///
         /// Nine, and neither the grid nor the palette is the binding constraint:
         /// 3 abreast × 3 rows needs 170 of the start piece's 240 units, and the
-        /// palette carries nine accessible colours. Four abreast is where geometry
+        /// palette carries nine accessible colors. Four abreast is where geometry
         /// does bite — 9 units of side clearance is under a car's collision
         /// radius, so cars would start the race already touching.
         public static let slots = 9
@@ -76,8 +76,8 @@ extension PieceCompiler {
         /// direction; rows run back from the line.
         ///
         /// Within a row cars are spread evenly about the centerline — a 3-row is
-        /// left/centre/right, a 2-row straddles it — and each is set back slightly
-        /// from its neighbour (`echelon`) so no two cars share an arc position.
+        /// left/center/right, a 2-row straddles it — and each is set back slightly
+        /// from its neighbor (`echelon`) so no two cars share an arc position.
         public static func positions(line: Vec2, dir: Vec2, count: Int = slots) -> [Vec2] {
             let inward = dir.perpendicular
             var out: [Vec2] = []

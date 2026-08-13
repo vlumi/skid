@@ -16,7 +16,7 @@ extension EditorRenderer {
     /// piece would paint out that piece's badge — the same fault the decals and the
     /// start line both had.
     ///
-    /// Only off-ground pieces are badged. Labelling every piece "0" on a flat track
+    /// Only off-ground pieces are badged. Labeling every piece "0" on a flat track
     /// is noise, and the ground is the case you can already see.
     static func drawLevelBadges(
         walk: WalkResult, blockedPieces: Set<Int>, transform t: Transform,
@@ -36,7 +36,7 @@ extension EditorRenderer {
     }
 
     /// The middle of the piece's own road, in screen space — so a badge sits on the
-    /// piece it describes rather than at a seam it shares with a neighbour.
+    /// piece it describes rather than at a seam it shares with a neighbor.
     private static func badgeAnchor(_ placed: PlacedPiece, t: Transform) -> CGPoint? {
         let samples = placed.centerlineSamples(degreesPerSample: 20)
         guard !samples.isEmpty else { return nil }
@@ -59,7 +59,7 @@ extension EditorRenderer {
             at: at, anchor: .center)
     }
 
-    /// A blocked piece gets the same badge in warning colours, with its level still
+    /// A blocked piece gets the same badge in warning colors, with its level still
     /// legible — the level is usually *why* it is blocked.
     private static func drawBlockedBadge(
         at: CGPoint, level: Int, t: Transform, into context: inout GraphicsContext

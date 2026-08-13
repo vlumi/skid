@@ -53,7 +53,7 @@ Two consequences worth deciding early:
 - **Seat numbering must be global**, not per-device. Two phones each thinking
   they own seats 0–1 is the first bug this design would hit. The host assigns
   seat ranges at join time.
-- **The colour palette is global too**, so seat 3 is the same colour on both
+- **The color palette is global too**, so seat 3 is the same color on both
   screens — which the first-glance work (see
   [first-glance-plan.md](first-glance-plan.md)) makes more visible, not less.
 
@@ -72,7 +72,7 @@ Wrong question. The two cars sit at ±28 with **36 units of air between them** a
 Measured against the real geometry (2U = 240-unit start piece, 120-wide road,
 34 × 20 car with a 12 collision radius):
 
-| row width | centre pitch | clearance between cars |
+| row width | center pitch | clearance between cars |
 |--:|--:|--:|
 | 2 abreast | 88 | 68 |
 | **3 abreast** | **44** | **24** — more than a car's collision diameter |
@@ -81,7 +81,7 @@ Measured against the real geometry (2U = 240-unit start piece, 120-wide road,
 So **3 is the widest usable row**, and 3 × 3 = 9 slots needs only **170 of the 240
 units** at the existing `gap` of 50. Nothing about the start piece changes.
 
-*Nor is the palette* — nine distinguishable colours are easy once the hue circle
+*Nor is the palette* — nine distinguishable colors are easy once the hue circle
 is used properly rather than reaching for `.pink` and `.white`:
 
 ```
@@ -89,7 +89,7 @@ red · orange · yellow · green · teal · cyan · blue · purple · magenta
 ```
 
 Worst pair **ΔE 32.8** (blue vs purple), against the current palette's **21.0**
-(red vs pink). So nine colours are *more* distinguishable than today's eight — the
+(red vs pink). So nine colors are *more* distinguishable than today's eight — the
 cap rises and legibility improves at the same time. Keep the minimum-ΔE test from
 [first-glance-plan.md](first-glance-plan.md) as the guard.
 
@@ -343,7 +343,7 @@ Honest list, in rough order of likelihood:
    is arm64 running Apple's libm — leaving only the iOS-vs-macOS libm difference
    on identical silicon, which the golden hash catches if it ever bites. What is
    left of this risk the spike measures for free, by trading hashes.
-3. **MC's transport behaviour** — send latency or reliability semantics that do
+3. **MC's transport behavior** — send latency or reliability semantics that do
    not suit 60 Hz. The escape hatch is UDP via Network.framework, which is why
    the protocol must not name its transport.
 4. **The sim drifting out of lockstep shape** as features land. A gap or a warp

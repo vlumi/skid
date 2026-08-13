@@ -197,7 +197,7 @@ one-piece answer where `ClosureSearch` returns a multi-piece run.
   constraint — but because that is what a one-way editor can place and what is
   needed to verify the geometry on a device.
 - **No special deletion rule.** Because the fitter stores its own solved shape it
-  does not depend on its neighbours, so removing another piece cannot invalidate
+  does not depend on its neighbors, so removing another piece cannot invalidate
   it: the loop simply stops being closed, which is ordinary mid-build state the
   editor already handles. (An earlier draft of this plan forbade deleting any ring
   piece while a fitter existed, and made "at most one" a hard rule. Storing the
@@ -258,7 +258,7 @@ exactly, since that is the determinism claim.
 - **Two custom straights, one per lobe** (axis `2.0U`, diagonal `−0.83U` for the
   measured case). Honest to the geometry and needs no new piece — but one length
   comes out negative, meaning "shorten that lobe", and it drops the single-fitter
-  invariant in favour of two special pieces per track.
+  invariant in favor of two special pieces per track.
 - **`arc + L1 + arc + L2` with quantized 45° arcs.** Reaches an area, but forces
   corners the author did not ask for and has a wider dead zone than the smooth
   jog.

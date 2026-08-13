@@ -66,7 +66,7 @@ extension EditorView {
 
     /// The five whole-track transforms, as icon buttons beside the pad.
     ///
-    /// Icons, not labels: labelling them is what made the original row too wide, and a
+    /// Icons, not labels: labeling them is what made the original row too wide, and a
     /// row that stays on screen beside the map is worth more than the words. The
     /// accessibility label carries the meaning, as everywhere else in this bar.
     @ViewBuilder

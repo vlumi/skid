@@ -65,7 +65,7 @@ hit their own exit cap.
   (`rampArcLength / (maxSpeed · dt) · maxHeightChangePerTick`, capped at 1)
   must exceed `underDeckCapHeight` with margin. This is the tripwire that
   fires when someone adds a too-steep ramp or retunes the climb.
-- Add a behavioural test that actually drives a car at full throttle up each
+- Add a behavioral test that actually drives a car at full throttle up each
   ramp onto the deck and asserts no `wallImpact` (an AI-driver-style input, not
   a coasting car — a coasting car never gets there; this trap has been hit
   before).
@@ -76,7 +76,7 @@ hit their own exit cap.
 
 `Track.level(of:)`, `isOffGround(_:)`, `withinLevels(_:)`, `lowestLevel` /
 `highestLevel`, `levelSeparation` (TrackLevel.swift); eleven sites converted
-across SkidCore and SkidKit, zero behaviour change (suite untouched). Tunnels
+across SkidCore and SkidKit, zero behavior change (suite untouched). Tunnels
 start by lowering `lowestLevel`. `Race.blocks`' rail trunc stays, commented as
 embankment-only per step 4. Original notes:
 
@@ -89,7 +89,7 @@ comparisons. A tunnel level (−1) would be misclassified by every one of them �
 e.g. tunnel pieces would get NO rails at all, and the search could never
 suggest climbing out of a tunnel.
 
-**Fix.** Purely mechanical, **zero behaviour change** (tests must pass
+**Fix.** Purely mechanical, **zero behavior change** (tests must pass
 untouched — do not "improve" anything in this step):
 
 - Add named helpers on `Track` (or a small `HeightLevel` enum): `level(of:)`,
