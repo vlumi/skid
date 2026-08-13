@@ -19,8 +19,13 @@ extension EditorView {
                     game.backToMenu()
                 }
                 Spacer()
-                iconButton("doc.badge.plus", "New track") {
-                    game.editorReset()
+                // **Opens the shelf, rather than clearing the canvas.** It used to call
+                // `editorReset`, which wiped the current track as an undoable edit — the
+                // only "new" available when there was one slot. Now that the library can
+                // hold many, the honest action is to go and pick one (or start a new one
+                // there), leaving this track saved.
+                iconButton("square.grid.2x2", "My tracks") {
+                    game.showingTrackShelf = true
                 }
                 iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
                     resetView()
