@@ -416,30 +416,9 @@ struct EditorView: View {
 
     /// Build a world→screen transform that frames the layout's footprint in the
     /// view, then applies the user's zoom/pan.
+    /// The editor's view of the shared fit: the same framing a thumbnail gets, plus this
+    /// screen's zoom and pan. See `EditorRenderer.fit`.
     private func fitTransform(walk: WalkResult, in view: CGSize) -> EditorRenderer.Transform {
-        let pts = walk.placed.flatMap { placed in
-            placed.piece.paths.indices.flatMap { placed.centerlineSamples(path: $0) }
-        }
-        let half = Double(PieceCatalog.width) / 2
-        let xs = pts.map(\.x)
-        let ys = pts.map(\.y)
-        let minX = (xs.min() ?? 0) - half
-        let maxX = (xs.max() ?? 100) + half
-        let minY = (ys.min() ?? 0) - half
-        let maxY = (ys.max() ?? 100) + half
-        let w = max(1, maxX - minX)
-        let h = max(1, maxY - minY)
-        let margin: CGFloat = 40
-        let box = CGSize(
-            width: max(1, view.width - 2 * margin), height: max(1, view.height - 2 * margin))
-        let baseScale = min(box.width / w, box.height / h)
-        let scale = baseScale * zoom
-        // Center the footprint, then apply pan.
-        let cx = (minX + maxX) / 2
-        let cy = (minY + maxY) / 2
-        let offset = CGSize(
-            width: view.width / 2 - cx * scale + pan.width,
-            height: view.height / 2 - cy * scale + pan.height)
-        return EditorRenderer.Transform(scale: scale, offset: offset)
+        EditorRenderer.fit(walk: walk, in: view, zoom: zoom, pan: pan)
     }
 }
