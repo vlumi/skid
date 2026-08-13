@@ -178,21 +178,6 @@ struct EditorView: View {
                         dimmedExcept: levelFilter.storeyOnly,
                         transform: transform, into: &context)
                 }
-                // **The gestures belong to the MAP, not to the whole screen.**
-                //
-                // They used to hang off the enclosing `ZStack`, which is built *after* the
-                // bars are added — so the chrome sat above the gesture target and every tap
-                // landing on it, or anywhere the bars overlap the road, was swallowed.
-                // Reported as "the track in the editor is unresponsive": the selection row
-                // and undo/redo are drawn over the bottom-left of the map, which is exactly
-                // where a tap did nothing.
-                //
-                // Attached here, the buttons take their own taps and the map takes the
-                // rest. `contentShape` makes the whole canvas hittable, including the grass
-                // — a tap on nothing has a meaning (clear the selection).
-                .contentShape(Rectangle())
-                .gesture(tapToSelect(walk: walk, transform: transform))
-                .gesture(panZoom)
                 // **No `.ignoresSafeArea()` here.** `transform` comes from
                 // `geo.size`, which EXCLUDES the safe area, and taps arrive in that
                 // same space — as does the map chrome. Letting the canvas expand
@@ -209,6 +194,9 @@ struct EditorView: View {
                 topBar
                 paletteBar(walk: walk)
             }
+            .contentShape(Rectangle())
+            .gesture(tapToSelect(walk: walk, transform: transform))
+            .gesture(panZoom)
             // Off the render path: the closing search costs tens of ms, so it
             // runs when the layout or selection changes, not per frame.
             .task(id: ClosingKey(pieces: layout.pieces, end: nil)) {
