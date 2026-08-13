@@ -412,19 +412,13 @@ id — what is missing is tying a result to a *person*.
       player, with no app update. Plan:
       [docs/track-sharing-plan.md](docs/track-sharing-plan.md).
 
-      Self-contained links (`skid.misaki.fi/t/#<code>` — the trailing slash matches
-      the AASA already deployed), so nothing needs a server and a link cannot rot,
-      and the payload rides in the fragment, which never reaches the host. A curated
-      collection on the site is static content: one data file, build-time QR codes, a
-      preview per track. **Anyone else may host their own collection**; the design
-      privileges no domain.
-
-      **A track is not a tuning, and it changes the site side.** A tuning's data file
-      is human-readable numbers; a track code is opaque base64. So the *preview* is
-      the only view of a track's content rather than a convenience beside readable
-      text — and Hugo cannot validate a code, because deciding whether one is valid
-      means compiling it. Both put the preview generator in **this** repo, where it
-      validates as a side effect of rendering.
+      The whole track rides in the link (`skid.misaki.fi/t/<code>`), so nothing needs
+      a server and a link cannot rot; the path form matches the AASA already
+      deployed. Previews are needed in the app anyway — the library list wants
+      thumbnails, the share screen wants a picture — and `EditorRenderer.drawTrack`
+      already draws a layout at any scale. A curated collection on the site is static
+      content, with images produced by running that renderer. **Anyone else may host
+      their own collection**; the design privileges no domain.
 
       The hand-authored floor is still authorship, not engineering: the catalog
       already offers three straights, 45°/90° curves at three radii each, hairpins,
