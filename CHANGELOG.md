@@ -21,6 +21,27 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **A new opening screen: say who is playing, then what to do.** The app used to
+  open on one screen with every setting laid flat — mode, players, seating, AI
+  count, difficulty, contact, track — and a player count that hid the difference
+  between racing alone and racing three friends. Now the first thing you see is a
+  list of who is here, and three plain choices under it: race here, host a race
+  for nearby devices, or join one.
+
+  Add a driver with **+ Guest** or **+ Player**, and tap any row to change who is
+  in it. Two things went away because they were questions nobody could answer
+  before driving: the seating layout (two players are face-to-face, three get a
+  fixed corner) and the number of AI cars — now simply **With AI** or **People
+  only**, filling whatever the grid has room for.
+- **Players can have names.** Make a profile — a name and a color, kept on this
+  device — and your best times are yours rather than the phone's. Nobody has to:
+  **guests race exactly the same**, and a visitor taking one turn never has to
+  register for it. A profile is remembered per seat, so swapping a row back and
+  forth does not ask twice.
+- **The tuning dials moved to a shake.** They are a developer tool and were sitting
+  in the pause menu, reachable only from inside a race — so tuning anything about
+  the menus or the editor meant starting one first. Shake the device instead, from
+  anywhere. They will not be in the finished game at all.
 - **Cars say when they are reversing**, with white lamps at the tail. Which way a
   car *faces* and which way it is *traveling* are different questions, and in a
   drift game they come apart constantly — this is the second one, and the one that

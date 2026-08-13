@@ -137,3 +137,55 @@ struct PlayerProfileTests {
         #expect(book.byRecency.first?.name == "second")
     }
 }
+
+/// **The field list's own invariants**, separately from the game object that uses it.
+///
+/// Added because coverage found four untested paths in `RaceEntrant` — including
+/// `nonEmpty`'s guard, which is the one that keeps a race from having nobody in it.
+struct RaceFieldTests {
+    /// A row identifies itself, and two guests deliberately collide: they are the same
+    /// thing, so the list is enumerated by index as well.
+    @Test func rowIdsDistinguishPlayersButNotGuests() {
+        let sam = UUID()
+        #expect(RaceEntrant.guest.id == RaceEntrant.guest.id)
+        #expect(RaceEntrant.profile(sam).id != RaceEntrant.guest.id)
+        #expect(RaceEntrant.profile(sam).id != RaceEntrant.profile(UUID()).id)
+    }
+
+    /// The seat view of a row, which is what the records layer reads.
+    @Test func everyRowPresentsASeatIdentity() {
+        let sam = UUID()
+        #expect(RaceEntrant.guest.seatIdentity == .guest)
+        #expect(RaceEntrant.profile(sam).seatIdentity == .profile(sam))
+        #expect(RaceEntrant.guest.kind == .guest)
+        #expect(RaceEntrant.profile(sam).kind == .player)
+        #expect(RaceEntrant.guest.profileID == nil)
+        #expect(RaceEntrant.profile(sam).profileID == sam)
+    }
+
+    /// **A race must have somebody in it.** The guard is the whole point: an empty list
+    /// would be a field of no cars, which is not a state worth being able to reach.
+    @Test func anEmptyListGetsAPersonBack() {
+        #expect(RaceField.nonEmpty([]).count == 1)
+        #expect(RaceField.nonEmpty([]) == [.guest])
+        // …and a list that already has somebody is left exactly as it was.
+        let sam = RaceEntrant.profile(UUID())
+        #expect(RaceField.nonEmpty([sam]) == [sam])
+        #expect(RaceField.nonEmpty([.guest, sam]) == [.guest, sam])
+    }
+
+    /// Capping trims to the capacity, and never below one — a zero would empty a list
+    /// whose floor is one person.
+    @Test func cappingNeverEmptiesTheList() {
+        let rows: [RaceEntrant] = [.guest, .guest, .guest, .guest]
+        #expect(RaceField.capped(rows, to: 2).count == 2)
+        #expect(RaceField.capped(rows, to: 9).count == 4, "capping invented rows")
+        #expect(RaceField.capped(rows, to: 0).count == 1)
+        #expect(RaceField.capped(rows, to: -5).count == 1)
+    }
+
+    @Test func humansAreCounted() {
+        #expect(RaceField.humanCount([]) == 0)
+        #expect(RaceField.humanCount([.guest, .profile(UUID())]) == 2)
+    }
+}

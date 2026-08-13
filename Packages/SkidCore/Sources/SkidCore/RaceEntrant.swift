@@ -30,12 +30,7 @@ public enum RaceEntrant: Equatable, Sendable, Codable, Identifiable {
     /// A person at this device with a profile.
     case profile(UUID)
 
-    /// Stable enough for a `ForEach` over a list that is edited in place.
-    ///
-    /// Deliberately NOT unique per row: two guests are genuinely the same thing, so
-    /// their ids collide and `ForEach` needs the index as well. Named `id` only to
-    /// satisfy `Identifiable` where the collection is keyed by something else.
-    /// Which of the three segments this row shows as selected.
+    /// Whether this row is a guest or a named player.
     public var kind: DriverKind {
         switch self {
         case .guest: return .guest
@@ -43,6 +38,10 @@ public enum RaceEntrant: Equatable, Sendable, Codable, Identifiable {
         }
     }
 
+    /// Stable enough for a `ForEach` over a list that is edited in place.
+    ///
+    /// Deliberately NOT unique per row: two guests are genuinely the same thing, so their
+    /// ids collide and the list is enumerated by index as well.
     public var id: String {
         switch self {
         case .guest: return "guest"
@@ -54,8 +53,7 @@ public enum RaceEntrant: Equatable, Sendable, Codable, Identifiable {
     /// call sites and because `RaceField` still speaks in terms of humans.
     public var isHuman: Bool { true }
 
-    /// The profile driving, if any. Nil for a guest *and* for AI, which is correct at
-    /// every call site: both are "nobody to record against".
+    /// The profile driving, if any — nil for a guest, who has nothing to record against.
     public var profileID: UUID? {
         switch self {
         case .profile(let id): return id
@@ -95,8 +93,8 @@ public enum RaceField {
         return ordered
     }
 
-    /// Trim to what the field can hold, keeping humans in preference to AI — losing
-    /// somebody's seat to make room for a computer would be the wrong way round.
+    /// Trim to what the field can hold. Never to nothing: a zero capacity would empty a
+    /// list whose floor is one person, so the prefix keeps at least that.
     public static func capped(_ entrants: [RaceEntrant], to capacity: Int) -> [RaceEntrant] {
         Array(ordered(entrants).prefix(max(1, capacity)))
     }
