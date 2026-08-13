@@ -37,7 +37,13 @@ public struct GameView: View {
                         .id(session.raceKey)
                 }
             case .editing:
-                EditorView(game: game)
+                // The shelf is a full screen rather than a sheet: choosing which track to
+                // work on is the first step of editing, not an interruption of it.
+                if game.showingTrackShelf {
+                    TrackShelfView(game: game) { game.showingTrackShelf = false }
+                } else {
+                    EditorView(game: game)
+                }
             case .networking:
                 NetworkLobbyView(net: net, game: game)
             }
