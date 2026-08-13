@@ -3,17 +3,17 @@ import Testing
 
 @testable import SkidCore
 
-/// **The default car colours are arithmetic, so they get measured.**
+/// **The default car colors are arithmetic, so they get measured.**
 ///
 /// A palette tweak that quietly makes two cars look alike should fail a test rather
-/// than a race. These pin the DEFAULTS only: players choose their own colour in the
+/// than a race. These pin the DEFAULTS only: players choose their own color in the
 /// lobby and may deliberately pick something close to a rival, which is their call.
 struct CarPaletteTests {
-    /// Below roughly this, two cars read as the same colour once they are small,
+    /// Below roughly this, two cars read as the same color once they are small,
     /// moving and overlapping. The current shipped palette's worst pair is 21.
     private let readable = 24.0
 
-    @Test func thereIsAColourForEverySlotOnTheGrid() {
+    @Test func thereIsAColorForEverySlotOnTheGrid() {
         #expect(
             CarPalette.count == PieceCompiler.Grid.slots,
             "the palette and the grid must agree on how many cars a race holds")

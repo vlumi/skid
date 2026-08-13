@@ -6,7 +6,7 @@ import XCTest
 ///
 /// Centring used to be a button, and it could not work: `origin` is an exact `Coord`
 /// so shifts are whole pieces, which leaves a residual of up to half a piece that no
-/// press can improve — on a nearly centred track it correctly did nothing and looked
+/// press can improve — on a nearly centered track it correctly did nothing and looked
 /// broken ("the aim button doesn't seem to do anything"). It was worse than that:
 /// `max(margin, shift)` floored the shift at 60 units and `round(60/120)` is 1, so
 /// every press moved the track 120 units down-right whether it needed to or not.
@@ -14,7 +14,7 @@ import XCTest
 /// It belongs in `normalized()`, alongside the ring spelling and the gate-seam order —
 /// arbitrary differences that must not reach the share code.
 final class CenterOnCanvasTests: XCTestCase {
-    private func offCentre(_ layout: TrackLayout) throws -> Vec2 {
+    private func offCenter(_ layout: TrackLayout) throws -> Vec2 {
         let used = try XCTUnwrap(
             layout.walk().footprint(padding: Double(PieceCatalog.width) / 2))
         let canvas = TrackValidator.canvas
@@ -44,15 +44,15 @@ final class CenterOnCanvasTests: XCTestCase {
         }
     }
 
-    /// **Normalizing centres it**, to within the lattice it must stay on.
-    func testNormalizingCentres() throws {
+    /// **Normalizing centers it**, to within the lattice it must stay on.
+    func testNormalizingCenters() throws {
         let layout = try TrackCode.decode(TestTracks.Code.bridgeRing)
         let pushed = moved(layout, byPieces: 3, 2)
         XCTAssertGreaterThan(
-            max(abs(try offCentre(pushed).x), abs(try offCentre(pushed).y)),
-            Double(PieceCatalog.unit), "the fixture must start well off-centre")
+            max(abs(try offCenter(pushed).x), abs(try offCenter(pushed).y)),
+            Double(PieceCatalog.unit), "the fixture must start well off-center")
 
-        let after = try offCentre(pushed.normalized())
+        let after = try offCenter(pushed.normalized())
         let half = Double(PieceCatalog.unit) / 2
         XCTAssertLessThanOrEqual(abs(after.x), half + 1, "x within half a piece")
         XCTAssertLessThanOrEqual(abs(after.y), half + 1, "y within half a piece")

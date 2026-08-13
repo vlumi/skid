@@ -32,7 +32,7 @@ leaves the road.
 ramp flank, off a banked curve's high side, and off a jump lip are all the same
 event: the car left the road at some height and comes down. Build the curve
 first and each of those is free; build them first and each invents its own
-behaviour, which then disagree.
+behavior, which then disagree.
 
 Today flight is a horizontal glide: `airborneTicks` counts down, `height` is
 untouched, and a deck "fall" *snaps* height to 0 and then flies for 8 ticks — so
@@ -96,7 +96,7 @@ hardcoded a ground base. It does not:
   one storey — so an upper mouth lets the ground pass beneath it.
 
 Verified by probe and pinned by `RampBaseTests`, which fail if the floor is
-hardcoded to 0. The tests are the deliverable here: the behaviour is invisible
+hardcoded to 0. The tests are the deliverable here: the behavior is invisible
 until ramps above the ground are buildable, so it needs guarding before then
 rather than fixing.
 
@@ -143,7 +143,7 @@ free. Pitch tilts along travel, bank tilts across it; they never interact
 geometrically.
 
 **Chaining copies pitch exactly.** `height(atFraction:)` eases within a piece, so
-consecutive ramps blend into an S without either knowing about its neighbour.
+consecutive ramps blend into an S without either knowing about its neighbor.
 `bank(atFraction:)` on the same shape: a piece's entry bank is its predecessor's
 exit, so three banked curves stay banked and a following flat piece flattens
 across its own length. No seam special-casing.
@@ -298,7 +298,7 @@ to sit further inside their own bounding box.
 And the eight is fenced at 654 wide inside a **1600-wide canvas**, throwing away
 946 units of space that is already paid for.
 
-**Fence the canvas, centre the track in it** — the fence becomes "the edge of
+**Fence the canvas, center the track in it** — the fence becomes "the edge of
 what you can see", which explains itself to a player. Going wide then costs time
 on grass instead of bouncing you back onto the racing line.
 
@@ -314,7 +314,7 @@ sticking out past the canvas, and a naive canvas fence would put walls *inside*
 what is drawn. `oval` is exactly this case. So:
 
 ```text
-fence = max(canvas, footprint + 2·MIN),  centred on the footprint
+fence = max(canvas, footprint + 2·MIN),  centered on the footprint
 ```
 
 with `MIN` around 60 (2.5 car widths) — **provisional**. The canvas itself is

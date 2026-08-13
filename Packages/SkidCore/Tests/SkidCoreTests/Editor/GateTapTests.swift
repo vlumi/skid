@@ -15,9 +15,9 @@ final class GateTapTests: XCTestCase {
     private let hitRadius: CGFloat = 26
 
     /// **A tap on a gate's bar removes THAT gate.** The bar is what's drawn and
-    /// what the author aims at; measuring to the seam's centre point instead
+    /// what the author aims at; measuring to the seam's center point instead
     /// left a 26-point circle among seams only 56 points apart at this scale —
-    /// narrower than a fingertip — so taps landed on a neighbour.
+    /// narrower than a fingertip — so taps landed on a neighbor.
     func testATapAnywhereOnAGateBarPicksThatGate() throws {
         let layout = try TrackCode.decode(code)
         let placed = layout.walk().placed

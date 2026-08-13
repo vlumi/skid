@@ -57,7 +57,7 @@ public enum TrackLibrary {
 
     /// The built-in with this id, or nil. The fallback in `track(id:)` is a
     /// safety net for a picker aimed at a deleted track — it must not double as
-    /// a licence to ship a dangling id, so anything that should resolve is
+    /// a license to ship a dangling id, so anything that should resolve is
     /// asserted against this instead.
     public static func builtin(id: String) -> Track? {
         all.first { $0.id == id }

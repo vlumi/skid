@@ -77,7 +77,7 @@ final class RampGateTests: XCTestCase {
         }
     }
 
-    /// **Behavioural:** actually drive it. A car at full speed and full throttle
+    /// **Behavioral:** actually drive it. A car at full speed and full throttle
     /// runs straight over up-ramp, deck, and down-ramp; it must touch nothing,
     /// genuinely climb, and come back down. Full speed is the worst case (fewest
     /// ticks on the slope), and full throttle keeps it there — a coasting car

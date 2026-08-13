@@ -7,7 +7,7 @@ stops mattering.
 
 Ordered cheapest first; each ships on its own.
 
-## 1. Car colours that are actually distinguishable
+## 1. Car colors that are actually distinguishable
 
 **Measured, not eyeballed.** Perceptual distance (CIELAB ΔE) across the current
 palette `[.red, .yellow, .cyan, .purple, green, .orange, .pink, .white]`:
@@ -19,21 +19,21 @@ palette `[.red, .yellow, .cyan, .purple, green, .orange, .pink, .white]`:
 | cyan vs white | 45 | fine |
 | red vs orange | 48 | fine |
 
-Below about 25 two cars read as the same colour once they are small, moving, and
+Below about 25 two cars read as the same color once they are small, moving, and
 overlapping. Red/pink fails outright and both are in the first six seats.
 
 ### What actually matters: finding YOUR car
 
 Two clarifications that make this much more tractable than "nine mutually distinct
-colours":
+colors":
 
 - **A glow on every car** handles contrast against the background, which matters
   once road surfaces vary (snow, gravel — see the roadmap). So the palette does
   not have to survive every possible surface on its own.
-- **Recognising your own car is the goal**, not telling all nine apart. Nobody
+- **Recognizing your own car is the goal**, not telling all nine apart. Nobody
   needs to know which shade the AI in fourth place is.
 
-So the bar is: *your* colour must stand clear of the field, in any vision type.
+So the bar is: *your* color must stand clear of the field, in any vision type.
 
 ### The palette, chosen for accessibility
 
@@ -75,8 +75,8 @@ the current palette's 21.0 in *normal* vision alone. L* runs 25 → 93, which is
 property doing the work.
 
 Contrast with the track is fine — lowest is 27 (olive on grass, maroon on a red
-kerb), everything else 44+. Asphalt is `white: 0.62`, a *light* grey, so the dark
-colours contrast well rather than vanishing. The glow above is what generalises
+kerb), everything else 44+. Asphalt is `white: 0.62`, a *light* gray, so the dark
+colors contrast well rather than vanishing. The glow above is what generalises
 that to surfaces yet to exist.
 
 ### What must NOT be done: muting the AI cars
@@ -92,17 +92,17 @@ Local-vibrant / AI-recessive is a good instinct and the wrong lever, measurably:
 Desaturating collapses the palette, and HSV desaturation *raises* L\* (maroon
 33 → 43), flattening exactly the spread the accessibility rests on.
 
-Distinguish your own car by something that is **not the colour** — which is what
+Distinguish your own car by something that is **not the color** — which is what
 §2 below already proposes: a ring, and the seat number. There is a second reason
 too: **"local" is a per-screen property.** Under networking the same car is local
 on one device and remote on another, so it cannot live in a shared palette.
 
 ### A pool to pick from, in the lobby
 
-The better model, and it changes the requirement rather than the palette: colours
+The better model, and it changes the requirement rather than the palette: colors
 are **chosen in the lobby** once everyone is connected, not assigned by seat index.
 
-**But a 16-colour pool cannot be mutually distinct.** Measured — the best
+**But a 16-color pool cannot be mutually distinct.** Measured — the best
 achievable worst-pair ΔE across normal + all three CVD types:
 
 | pool size | best possible worst pair |
@@ -111,7 +111,7 @@ achievable worst-pair ΔE across normal + all three CVD types:
 | 12 | 15.0 |
 | 16 | **11.2** |
 
-So sixteen accessible-in-all-vision-types colours do not exist; at 16 the closest
+So sixteen accessible-in-all-vision-types colors do not exist; at 16 the closest
 pair is worse than today's problematic red/pink. That is a fact about human vision,
 not about effort.
 
@@ -129,10 +129,10 @@ extra pool entries are self-expression. That is also the only part worth testing
 which is a good sign it is the right split.
 
 Worth noting the ordering consequence: with a lobby, "seat order" stops being a
-colour question. The nine below stay the **defaults**, in separation order, for
+color question. The nine below stay the **defaults**, in separation order, for
 anyone who does not pick.
 
-### How many colours can we have? — and the sheen is the real limit
+### How many colors can we have? — and the sheen is the real limit
 
 **Nine is about the ceiling for mutually-distinct**, measured: the best achievable
 worst pair is 21.6 at nine, 15.0 at twelve, 11.2 at sixteen. That is a fact about
@@ -144,38 +144,38 @@ the facing cue — a lit nose. Measured against the palette:
 
 | what is compared | worst pair ΔE |
 |:--|--:|
-| body colour, as chosen | **24.7** |
+| body color, as chosen | **24.7** |
 | **front half, sheen 0.55** | **9.1** |
 | front half, sheen 0.40 | 12.9 |
 | front half, sheen 0.25 | 17.0 |
 
 **The nose of every car is more than half white**, so on the half a player looks at
-first, nine carefully-chosen colours collapse to worse than the palette this work
+first, nine carefully-chosen colors collapse to worse than the palette this work
 set out to replace. No palette can fix that; only the drawing can.
 
 Which answers the shapes question: **shape and shading are worth more than more
-colours.** Options, cheapest first:
+colors.** Options, cheapest first:
 
-- **Tone down the sheen** and let the *tail* carry the colour — or gradient the
+- **Tone down the sheen** and let the *tail* carry the color — or gradient the
   other way, so the identifying end is the saturated one.
-- **Keep the sheen but tint it** with the car's own colour rather than white, so a
+- **Keep the sheen but tint it** with the car's own color rather than white, so a
   lit nose stays a *blue* lit nose.
 - **Shape** — a different silhouette per car is the strongest cue of all and
   survives both CVD and small size, but it is real art work and it fights the
   "open-wheeler" look the renderer commits to today.
 - **A pattern** — stripe, roundel, number — which is what real racing uses
-  precisely because colour alone does not scale past a handful of cars.
+  precisely because color alone does not scale past a handful of cars.
 
-### Two-tone cars — the answer to "how many colours"
+### Two-tone cars — the answer to "how many colors"
 
-Making the nose a **second palette colour** instead of a white wash turns the
+Making the nose a **second palette color** instead of a white wash turns the
 facing cue into part of the identity, and the arithmetic is decisive:
 
-**9 bodies × 8 noses = 72 distinct liveries**, from the same nine measured colours.
+**9 bodies × 8 noses = 72 distinct liveries**, from the same nine measured colors.
 That is far past the sixteen options wanted from a picker, and every one is
-identifiable, because both halves are real palette colours rather than a wash.
+identifiable, because both halves are real palette colors rather than a wash.
 
-Note what does *not* work: simply lightening the car's own colour for the nose. It
+Note what does *not* work: simply lightening the car's own color for the nose. It
 keeps identity but the noses then differ by only ΔE 9–14 from each other, so it
 solves nothing that the white wash did not.
 
@@ -192,7 +192,7 @@ Consequences worth thinking about before building:
 
 Recommendation, in order: **fix the sheen** (measure on device — it may just want
 toning down), then **two-tone** for the picker, and treat shapes as separate. Nine
-colours plus an honest nose beats sixteen colours behind a white wash.
+colors plus an honest nose beats sixteen colors behind a white wash.
 
 ### Seat order (the defaults)
 
@@ -210,7 +210,7 @@ reads it (`RaceHUD` switches on it), so there is a clean hook and no new state.
 Proposed, per the report: during the countdown only, draw over each **human**
 car:
 
-- a **number bubble** in the player's colour — the seat number, so it matches
+- a **number bubble** in the player's color — the seat number, so it matches
   whatever the setup screen and HUD call them
 - an **arrow / ring** around the car so it is findable on a crowded grid
 - the number **rotated to face its own player**, which the rig already knows:
@@ -239,17 +239,17 @@ backwards for a first-time player, and it is the report's strongest point.
 Note the default scheme is **casual** (the aim stick), not the pro d-pad, so this
 has to fix the *aim* overlay first, or fix both.
 
-**The fix**: give each control a **resting origin at the centre of its own
+**The fix**: give each control a **resting origin at the center of its own
 zone**, drawn dimmed, and let touch-down move it as it does now. So the control
 is always visible, always in a predictable place, and the existing
-touch-anywhere-in-your-zone behaviour is unchanged.
+touch-anywhere-in-your-zone behavior is unchanged.
 
 Two things to get right:
 
 - **Dimmed, not solid.** It is a hint at rest and a control in use; the existing
   `opacity(0.12)` disc is already close to the right weight.
 - **It must not lie.** The resting position has to be somewhere touching would
-  actually work, or the hint teaches the wrong thing. The zone centre qualifies
+  actually work, or the hint teaches the wrong thing. The zone center qualifies
   (`ZoneChrome.rect.mid`), which is also what the report suggested.
 
 Worth considering: fade the resting hint out after the player's first few
@@ -259,7 +259,7 @@ is a nicety — the always-on version is the fix.
 ## Why these three together
 
 They are one bug from the player's side: *the first ten seconds don't explain
-themselves.* Colours make the cars distinct, markers say which one is yours, and
+themselves.* Colors make the cars distinct, markers say which one is yours, and
 a resting pad says what to do with your thumb. Any one alone leaves the other two
 gaps open, which is why they belong in one pass even though they ship separately.
 

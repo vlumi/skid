@@ -157,13 +157,13 @@ final class AimDriftTests: XCTestCase {
 
     func testAimBehindComesBackAround() {
         // Point straight behind at speed: the body flips, the slide carries,
-        // and the throttle pulls the car out travelling the way it faces.
+        // and the throttle pulls the car out traveling the way it faces.
         var r = race()
         advance(&r, ticks: 120, input: CarInput(throttle: 1))
         advance(&r, ticks: 240, input: CarInput(throttle: 1, aim: .pi))
         let car = r.cars[0].state
         XCTAssertEqual(abs(car.heading), .pi, accuracy: 0.05)
-        XCTAssertLessThan(car.velocity.x, -50)  // travelling the aimed way
+        XCTAssertLessThan(car.velocity.x, -50)  // traveling the aimed way
     }
 
     // MARK: - Grip (the inertia knob)

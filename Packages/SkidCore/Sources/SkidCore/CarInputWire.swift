@@ -33,7 +33,7 @@ public struct CarInputWire: Equatable, Sendable, Codable {
 
     /// The one pattern of 65 536 that means "no aim". Costs a hair of aim
     /// precision (the sim wraps, so the lost angle is indistinguishable from its
-    /// neighbour) and saves a whole byte on every packet of every tick.
+    /// neighbor) and saves a whole byte on every packet of every tick.
     private static let aimUnset = UInt16.max
     private static let aimSteps = Double(UInt16.max)  // 65 535 usable, 0 … max-1
 
@@ -53,8 +53,8 @@ public struct CarInputWire: Equatable, Sendable, Codable {
     // MARK: - The axes
 
     /// −1…1 across `Int8`, **symmetrically**: 127 steps each way, with −128
-    /// unused. The lopsided alternative (−128…127) cannot represent centre and
-    /// full-left with the same step size, so a stick held dead centre would
+    /// unused. The lopsided alternative (−128…127) cannot represent center and
+    /// full-left with the same step size, so a stick held dead center would
     /// quantise to a slight turn — the one value that must survive exactly.
     private static func encode(unit value: Double) -> Int8 {
         // **NaN has to be handled explicitly.** `max(-1, min(1, nan))` is `nan` in
@@ -101,7 +101,7 @@ extension CarInput {
     ///
     /// Apply this to local input as well as received input. Two peers stepping
     /// the same quantised numbers agree by construction; a peer stepping its own
-    /// raw thumb value against a neighbour's quantised one does not.
+    /// raw thumb value against a neighbor's quantised one does not.
     public var quantised: CarInput { CarInputWire(self).input }
 }
 

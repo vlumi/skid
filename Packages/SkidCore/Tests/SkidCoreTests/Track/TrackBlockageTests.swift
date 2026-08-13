@@ -86,7 +86,7 @@ final class TrackBlockageTests: XCTestCase {
     /// This is the property that makes centerline sampling right: a railing runs
     /// along the road's edge, so a car driving the road never meets it. Sampling the
     /// road's width instead flagged every railed piece — 79 consecutive points on the
-    /// bridge ring — because the car's centre reaches to within one radius of the
+    /// bridge ring — because the car's center reaches to within one radius of the
     /// edge, which is where the railing is.
     func testARailingAlongTheRoadIsNotABlockage() {
         var track = Track(

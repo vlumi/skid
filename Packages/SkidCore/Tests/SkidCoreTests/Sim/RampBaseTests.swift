@@ -9,7 +9,7 @@ import XCTest
 /// The plan expected this to need fixing — the wall emission looked like it
 /// assumed every ramp rises from 0. It does not: each rail takes its own
 /// sample's height, and `Race.blocks` derives the floor as `trunc(height)`. So
-/// the behaviour is already right, and these tests exist to keep it that way
+/// the behavior is already right, and these tests exist to keep it that way
 /// once ramps above the ground actually become buildable.
 final class RampBaseTests: XCTestCase {
     private func race() -> Race {

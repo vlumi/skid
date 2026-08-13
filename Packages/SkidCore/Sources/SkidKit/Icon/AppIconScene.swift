@@ -9,7 +9,7 @@ import SwiftUI
 /// `draw(car:…)`): same silhouette, same dark rim, the lit nose that tells
 /// facing, and the driver at the REAR axle like the classic single-seaters.
 /// It drifted out of date once already, when the headlight beam was replaced
-/// by the body-local facing cue and the icon kept a centred cockpit dot.
+/// by the body-local facing cue and the icon kept a centered cockpit dot.
 public struct AppIconScene: View {
     public init() {}
 
@@ -121,7 +121,7 @@ public struct AppIconScene: View {
             // the game's 2, because the icon draws the car ~10× larger: at game
             // scale that stroke is a hairline that sharpens the silhouette, but
             // scaled up verbatim it becomes a heavy black outline that swallows
-            // the body colour.
+            // the body color.
             car.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 0.8)
             // The driver sits at the rear axle, like the classic single-seaters.
             let cockpit = CGRect(x: -9.5, y: -3.2, width: 6.4, height: 6.4)

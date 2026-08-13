@@ -16,7 +16,7 @@ enum TestTracks {
         /// 17 pieces, closed, four gates, climbs to a deck and back. The
         /// general-purpose ring — selection, undo, gate mode, reversal.
         /// A user-built three-storey track: climbs to height 3, and its two loops
-        /// run close enough that the gate corridor's neighbour-lane cap bites —
+        /// run close enough that the gate corridor's neighbor-lane cap bites —
         /// which is what makes a mis-scaled gate span visible.
         static let threeStorey =
             "AVUBEB95BAQEBAQEAXoDAwMDAwMCAgAHAwUC0ALQAAgOAQIDBAUGBwgJCgsMDQ7-INRVqm6d8X"

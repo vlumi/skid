@@ -117,7 +117,7 @@ final class RaceRosterTests: XCTestCase {
     // MARK: - Leaving
 
     func testARemovedDeviceDoesNotRenumberTheOthers() {
-        // Compacting seats would change somebody else's colour and grid slot — and
+        // Compacting seats would change somebody else's color and grid slot — and
         // mid-race it would be a different race on every peer. So holes are legal.
         var roster = RaceRoster()
         try? roster.join("a", seats: 2)

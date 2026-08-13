@@ -98,7 +98,7 @@ isn't a gap in the catalog: integer lengths are exactly what make closure
 exact integer equality, and any √2-scaled length would trade that for
 epsilon-fuzz. Diagonal travel composes perfectly with *itself* (two 1U
 diagonal runs at right angles land on a pure axis offset, exactly), which is
-why the working rule is about cancelling, not converting.
+why the working rule is about canceling, not converting.
 
 The rules that keep a build solvent:
 
@@ -159,7 +159,7 @@ track feature, and the tightest fit the unit grid naturally produces (a
 hairpin's legs land exactly there). Requiring kerb clearance would outlaw
 those fits.
 
-That licence comes with two hard rules for the kerb pass, since paint is the
+That license comes with two hard rules for the kerb pass, since paint is the
 thing that has to give way:
 
 - **A kerb never covers another piece's asphalt.** Drivable surface has
@@ -291,7 +291,7 @@ Three things this cost, all found by driving it:
   cars being thrown at the top of every bridge — so the wedge applies only where
   the road does not continue at the climb's height.
 - **A zero-length piece must contribute no road.** A warp's samples are all one
-  point, and each cast its own half-width end cap, paving the neighbouring gap
+  point, and each cast its own half-width end cap, paving the neighboring gap
   completely: the car stayed "on road" across the hole and never took off.
 - **Asphalt must not overhang a gap.** Distance-to-segment clamps at the
   endpoints, so road reached a half-width past its last solid point. A segment
@@ -687,7 +687,7 @@ The catalog therefore stays at its ~10 shapes; pitch resolves to a per-piece
 height delta at walk time. `rampUp`/`rampDown` survive as compounds ("pitch
 up, two shorts, flat" in effect) so old intent maps cleanly.
 
-**Walls** default to today's behaviour — rails wherever road is off the
+**Walls** default to today's behavior — rails wherever road is off the
 ground. Explicit walls-on gives ground-level barriers; walls-OFF on elevated
 road is deferred until the fall mechanic exists (driving off an unwalled deck
 has to mean something before it can be legal). **Kerb style** as a mode
@@ -777,7 +777,7 @@ A cutting is **a hole in the ground you can always fall into**:
 ### The camera problem (prerequisite, not part of this round)
 
 An underground car is occluded by the ground above it. Driving the buried run
-needs the **travelling porthole** — a real clipped hole in the ground layer
+needs the **traveling porthole** — a real clipped hole in the ground layer
 above the car, redrawing the car and its surroundings through it. The cheap
 translucent-disc fake that suffices under bridge decks is not enough here:
 the revealed content is the whole point. Rendering order becomes

@@ -97,7 +97,7 @@ extension NetworkedGame {
     }
 
     /// The lobby half of the receive path — join requests and verdicts, the roster,
-    /// the start message, and a leaving peer. Returns whether it recognised the
+    /// the start message, and a leaving peer. Returns whether it recognized the
     /// bytes, so the caller can fall through to race traffic.
     func receiveLobbyMessage(_ bytes: [UInt8], from peer: RaceRoster.PeerName) -> Bool {
         if let request = JoinRequest(bytes: bytes) {

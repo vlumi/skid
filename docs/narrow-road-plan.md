@@ -61,7 +61,7 @@ Three candidates, all whole numbers of units so nothing lands off-lattice:
 **80 is the pick.** It is a visible step down from 120, still lets two cars
 through side by side (so a bottleneck is a squeeze rather than a wall), and
 leaves 30 units of clearance each side — more than a car's own collision radius,
-so a centred car is not scraping by construction.
+so a centered car is not scraping by construction.
 
 60 is tempting and wrong: it cannot hold the start grid, and at 20 units of
 clearance the twitchiness you already dislike would decide the race.
@@ -121,7 +121,7 @@ tag can carry a width byte later without moving.
   gone, so this should not resurrect them. Worth a test that pins it anyway.
 - **Overlap and proximity** (`RoadProximity`, `RibbonPenetration`) measure
   against a half-width constant today; a narrow road makes previously-illegal
-  neighbouring fits legal, which is a feature but needs its own tests.
+  neighboring fits legal, which is a feature but needs its own tests.
 - **The renderer** already draws from `halfWidth`, so a narrow road draws itself.
 
 ## Verification
@@ -131,7 +131,7 @@ every test sabotaged before it is believed.
 
 The specific traps, given this project's history:
 
-- **Test what is DRAWN**, not just what is modelled. A narrow road that the sim
+- **Test what is DRAWN**, not just what is modeled. A narrow road that the sim
   grips at 80 and the renderer paints at 120 is precisely the bug class that has
   cost the most here — assert the ribbon geometry, not only `halfWidth`.
 - **A seam between widths must not open a grip gap.** Drive a car along the

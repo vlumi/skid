@@ -333,7 +333,7 @@ final class NetworkedSyncTests: XCTestCase {
         assertEachSeatGotItsOwnInput(race)
     }
 
-    /// No device's input was dropped, and none was applied to a neighbour's seat.
+    /// No device's input was dropped, and none was applied to a neighbor's seat.
     private func assertEachSeatGotItsOwnInput(_ race: Race) {
         func car(_ seat: Int) -> Car { race.cars.first { $0.id == PlayerID(seat) }! }
         for seat in 0..<4 {

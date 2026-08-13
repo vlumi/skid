@@ -6,7 +6,7 @@ import SwiftUI
 /// decides which meaning applies, and the toggle says which one is live.
 extension EditorView {
     /// The mode switch. Gating is a MODE, not a tool, because it changes what a
-    /// map tap means — so it is labelled, not just an icon.
+    /// map tap means — so it is labeled, not just an icon.
     var modeToggle: some View {
         let gating = game.editorMode == .gate
         return Button {
@@ -47,14 +47,14 @@ extension EditorView {
 
     /// The seam a tap means, if any is close enough to count.
     ///
-    /// **Measured to the drawn gate LINE, not the seam's centre point.** A gate
+    /// **Measured to the drawn gate LINE, not the seam's center point.** A gate
     /// is a bar across the road, and that bar is what the author aims at — so a
     /// tap near either end of it counts, exactly as it looks. Measuring to the
-    /// centre point made gates on a zoomed-out track nearly untappable: the
+    /// center point made gates on a zoomed-out track nearly untappable: the
     /// canvas is 1600 units wide, so a whole track on a small phone draws at
     /// ~0.47 points per unit, putting adjacent seams 56 points apart with a
     /// 26-point hit circle each — narrower than a fingertip, and a tap that
-    /// looked spot-on landed in a neighbour's circle instead.
+    /// looked spot-on landed in a neighbor's circle instead.
     ///
     /// **Existing gates win ties**, because removing one is the harder gesture:
     /// a track carrying several gates has many seams to hit, and the one you
@@ -145,7 +145,7 @@ extension EditorView {
         }
     }
 
-    /// The colour a markings option is painted in, so the picker shows the paint
+    /// The color a markings option is painted in, so the picker shows the paint
     /// rather than naming it.
     static func decalTint(_ decal: Decal?) -> Color {
         switch decal {

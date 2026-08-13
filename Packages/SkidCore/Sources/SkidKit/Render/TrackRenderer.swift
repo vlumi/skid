@@ -76,11 +76,11 @@ enum TrackRenderer {
     static let rubber = Color(white: 0.15)
     private static let scuff = Color(red: 0.32, green: 0.26, blue: 0.16)
 
-    /// The car colours, from `SkidCore`'s measured palette.
+    /// The car colors, from `SkidCore`'s measured palette.
     ///
     /// The numbers live in `CarPalette` rather than here because they are
     /// *arithmetic* — perceptual separation, in normal vision and all three kinds of
-    /// colour blindness — and `CarPaletteTests` measures them. This is only the
+    /// color blindness — and `CarPaletteTests` measures them. This is only the
     /// SwiftUI translation.
     static let carPalette: [Color] = CarPalette.paints.map {
         Color(red: $0.red, green: $0.green, blue: $0.blue)
@@ -377,7 +377,7 @@ enum TrackRenderer {
         for (slot, color) in colors.enumerated() {
             let row = slot / perRow
             let seat = slot % perRow
-            // Rows centre themselves on the post, so a short last row is not
+            // Rows center themselves on the post, so a short last row is not
             // lopsided against the ones above it.
             let rowCount = min(perRow, colors.count - row * perRow)
             let offset = (Double(seat) - Double(rowCount - 1) / 2) * pitch

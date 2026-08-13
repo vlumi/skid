@@ -20,8 +20,8 @@ final class CarInputWireTests: XCTestCase {
 
     // MARK: - The values that must survive exactly
 
-    func testCentreAndFullLockAreExact() {
-        // A stick at rest must quantise to rest. If centre drifted, every car
+    func testCenterAndFullLockAreExact() {
+        // A stick at rest must quantise to rest. If center drifted, every car
         // would pull to one side for the whole race — the single worst failure
         // this encoding could have.
         XCTAssertEqual(roundTrip(CarInput(steer: 0, throttle: 0)).steer, 0)

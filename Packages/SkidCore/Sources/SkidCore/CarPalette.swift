@@ -1,13 +1,13 @@
 import Foundation
 
-/// **The car colours**, chosen so a player can find their own car — in any vision
+/// **The car colors**, chosen so a player can find their own car — in any vision
 /// type, on any surface.
 ///
 /// Lives in `SkidCore` rather than beside the renderer because it is *arithmetic*:
-/// perceptual separation is measurable, and `CarPaletteTests` measures it. A colour
+/// perceptual separation is measurable, and `CarPaletteTests` measures it. A color
 /// tweak that quietly makes two cars look alike should fail a test, not a race.
 public enum CarPalette {
-    /// One car colour as plain sRGB components, 0…1. Deliberately not `SwiftUI.Color`
+    /// One car color as plain sRGB components, 0…1. Deliberately not `SwiftUI.Color`
     /// — SkidCore has no UI dependency, and the numbers are the point.
     public struct Paint: Equatable, Sendable {
         public var red: Double
@@ -23,7 +23,7 @@ public enum CarPalette {
 
     /// Nine paints, in **seat order**.
     ///
-    /// **Chosen for colour-blind legibility, which rules out the obvious answer.** A
+    /// **Chosen for color-blind legibility, which rules out the obvious answer.** A
     /// hue-spread nine (red/orange/yellow/green/teal/cyan/blue/purple/magenta)
     /// measures a comfortable ΔE 33 in normal vision and then collapses to **8.7**
     /// under tritanopia — nine *hues* cannot stay distinct once hue discrimination
@@ -32,7 +32,7 @@ public enum CarPalette {
     ///
     /// **Seat order is by separation, not by hue.** The first four are the seats a
     /// 1–4 player game actually fills, so they are the four furthest apart; listing
-    /// by hue would have put three warm colours in the first three seats.
+    /// by hue would have put three warm colors in the first three seats.
     ///
     /// What this palette deliberately does NOT try to do:
     ///
@@ -46,7 +46,7 @@ public enum CarPalette {
     ///   flattening the very spread this rests on. A ring or the seat number does
     ///   that job. "Local" is also a per-screen property: under networking the same
     ///   car is local on one device and remote on another.
-    /// Order found by search, not by hand: seats 1–4 hold the four colours whose
+    /// Order found by search, not by hand: seats 1–4 hold the four colors whose
     /// worst pair is furthest apart (ΔE 49.9 across all vision types), then each
     /// next seat is the one that degrades the set least. Hand-ordering these by
     /// lightness gave the common 1–4 case only 30.
@@ -70,7 +70,7 @@ public enum CarPalette {
 // MARK: - Perceptual measurement
 
 extension CarPalette.Paint {
-    /// A colour in **CIELAB**: `l` is lightness, `a`/`b` the opponent axes.
+    /// A color in **CIELAB**: `l` is lightness, `a`/`b` the opponent axes.
     public struct Lab: Equatable, Sendable {
         public var l: Double
         public var a: Double
@@ -78,7 +78,7 @@ extension CarPalette.Paint {
     }
 
     /// This paint in **CIELAB**, where euclidean distance approximates how different
-    /// two colours *look* — which is the only useful way to ask "can a player tell
+    /// two colors *look* — which is the only useful way to ask "can a player tell
     /// these apart". RGB distance says red and brown are far apart; the eye disagrees.
     public var lab: Lab {
         func linear(_ c: Double) -> Double {
@@ -96,7 +96,7 @@ extension CarPalette.Paint {
     }
 
     /// Perceptual distance to another paint (CIELAB ΔE76). Below roughly 20 two cars
-    /// read as the same colour once they are small, moving and overlapping.
+    /// read as the same color once they are small, moving and overlapping.
     public func distance(to other: CarPalette.Paint) -> Double {
         let a = lab, b = other.lab
         return
@@ -104,7 +104,7 @@ extension CarPalette.Paint {
             + (a.b - b.b) * (a.b - b.b)).squareRoot()
     }
 
-    /// The three common kinds of colour-vision deficiency, for simulation.
+    /// The three common kinds of color-vision deficiency, for simulation.
     public enum Vision: CaseIterable, Sendable {
         case normal
         /// Red-blind (~1% of men).

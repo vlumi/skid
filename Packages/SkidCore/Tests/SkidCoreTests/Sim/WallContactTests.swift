@@ -26,7 +26,7 @@ final class WallContactTests: XCTestCase {
     private let wall = Wall(
         from: Vec2(-4000, 0), to: Vec2(4000, 0), height: 0, kind: .boundary)
 
-    /// One tick of contact: the car is already touching the wall and travelling
+    /// One tick of contact: the car is already touching the wall and traveling
     /// into it at `speed`, `degrees` off parallel.
     ///
     /// It has to START in contact. A tick at 400 units/s covers under seven units,
@@ -39,7 +39,7 @@ final class WallContactTests: XCTestCase {
         var car = race.cars[0].state
         car.height = 0
         let radians = degrees * .pi / 180
-        // Travelling +x and into the wall (−y).
+        // Traveling +x and into the wall (−y).
         car.velocity = Vec2(cos(radians), -sin(radians)) * speed
         car.heading = atan2(car.velocity.y, car.velocity.x)
         // Just inside the contact radius, having arrived from clear of it.
@@ -188,16 +188,16 @@ final class WallContactTests: XCTestCase {
         for _ in 0..<15 {
             race.advance(inputs: [PlayerID(0): CarInput(steer: -1, throttle: 1)])
             let state = race.cars[0].state
-            let travelled = state.position.distance(to: previous) / Race.dt
+            let traveled = state.position.distance(to: previous) / Race.dt
             previous = state.position
             // Within 2%: the push-out nudges the car clear of the overlap each tick,
             // so travel and reported speed agree closely but not to the unit. The
             // point of the test is that they TRACK — before the fix the car reported
             // 300+ while moving nothing at all.
             XCTAssertEqual(
-                travelled, state.velocity.length,
+                traveled, state.velocity.length,
                 accuracy: max(2, state.velocity.length * 0.02),
-                "the car reports \(Int(state.velocity.length)) but moved \(Int(travelled))")
+                "the car reports \(Int(state.velocity.length)) but moved \(Int(traveled))")
         }
         XCTAssertGreaterThan(
             previous.x, 250, "a car sliding along a wall should get somewhere")
