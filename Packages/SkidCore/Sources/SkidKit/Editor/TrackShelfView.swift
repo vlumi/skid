@@ -140,35 +140,51 @@ struct TrackShelfView: View {
                 // unfinished track is not a fault, it is where you left off.
                 note: entry.isRaceable ? nil : Text("Unfinished", bundle: .module))
         }
-        .contextMenu {
-            Button {
-                game.startFrom(code: entry.code, name: entry.name)
-                dismiss()
+        // **Both**, deliberately. A long press is the iOS idiom and stays; a visible
+        // kebab is how somebody finds out it exists — "ah, long tap" is not a discovery a
+        // player should have to make. Same menu behind each, defined once.
+        .overlay(alignment: .topTrailing) {
+            Menu {
+                actions(for: entry)
             } label: {
-                Label {
-                    Text("Start a copy", bundle: .module)
-                } icon: {
-                    Image(systemName: "plus.square.on.square")
-                }
+                Image(systemName: "ellipsis.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(6)
             }
-            Button {
-                newName = entry.name
-                renaming = entry
-            } label: {
-                Label {
-                    Text("Rename", bundle: .module)
-                } icon: {
-                    Image(systemName: "pencil.line")
-                }
+        }
+        .contextMenu { actions(for: entry) }
+    }
+
+    /// Copy, rename, delete — the things that are not "open this".
+    @ViewBuilder private func actions(for entry: TrackLibraryBook.Entry) -> some View {
+        Button {
+            game.startFrom(code: entry.code, name: entry.name)
+            dismiss()
+        } label: {
+            Label {
+                Text("Start a copy", bundle: .module)
+            } icon: {
+                Image(systemName: "plus.square.on.square")
             }
-            Button(role: .destructive) {
-                game.deleteTrack(id: entry.id)
-            } label: {
-                Label {
-                    Text("Delete", bundle: .module)
-                } icon: {
-                    Image(systemName: "trash")
-                }
+        }
+        Button {
+            newName = entry.name
+            renaming = entry
+        } label: {
+            Label {
+                Text("Rename", bundle: .module)
+            } icon: {
+                Image(systemName: "pencil.line")
+            }
+        }
+        Button(role: .destructive) {
+            game.deleteTrack(id: entry.id)
+        } label: {
+            Label {
+                Text("Delete", bundle: .module)
+            } icon: {
+                Image(systemName: "trash")
             }
         }
     }
