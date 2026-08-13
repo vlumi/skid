@@ -13,6 +13,8 @@ public struct GameView: View {
     public var body: some View {
         ZStack {
             switch game.phase {
+            case .menu:
+                HomeView(game: game)
             case .setup:
                 SetupView(game: game)
             case .racing:

@@ -28,9 +28,12 @@ struct SetupView: View {
 
     private var lobby: some View {
         VStack(spacing: 24) {
+            // The title says which door you came through, so the screen is
+            // self-explanatory rather than a wall of controls with a logo on top.
             VStack(spacing: 6) {
-                Text(verbatim: "SKID JAM")
-                    .font(.system(size: 52, weight: .black, design: .rounded))
+                (game.playerCount == 1
+                    ? Text("Solo", bundle: .module) : Text("Couch", bundle: .module))
+                    .font(.system(size: 40, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
@@ -83,16 +86,12 @@ struct SetupView: View {
                     .foregroundStyle(.black)
             }
 
+            // Nearby and the editor are destinations of their own now, reached from
+            // the front door rather than from the bottom of a race-setup screen.
             Button {
-                game.openNetworking()
+                game.backToMenu()
             } label: {
-                Text("Play together", bundle: .module).pillStyle()
-            }
-
-            Button {
-                game.openEditor()
-            } label: {
-                Text("Track editor", bundle: .module).pillStyle()
+                Text("Back", bundle: .module).pillStyle()
             }
         }
         // Room to breathe at both ends when the content does scroll, so the
@@ -128,10 +127,16 @@ struct SetupView: View {
 
     @ViewBuilder private var raceOptions: some View {
         VStack(spacing: 14) {
-            labeledRow(Text("Players", bundle: .module)) {
-                ForEach(1...4, id: \.self) { count in
-                    squareChoice(String(count), selected: game.playerCount == count) {
-                        game.playerCount = count
+            // **Only offered for a couch session.** Solo came in through its own
+            // door, so a "Players" row would immediately contradict the choice just
+            // made — and one-tap-to-2 would leave a screen titled Solo seating two.
+            // Changing your mind means going back, which is one tap and unambiguous.
+            if game.playerCount > 1 {
+                labeledRow(Text("Players", bundle: .module)) {
+                    ForEach(2...CouchGame.maxLocalPlayers, id: \.self) { count in
+                        squareChoice(String(count), selected: game.playerCount == count) {
+                            game.playerCount = count
+                        }
                     }
                 }
             }

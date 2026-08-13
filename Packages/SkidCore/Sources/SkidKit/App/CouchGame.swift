@@ -3,7 +3,13 @@ import SwiftUI
 
 @MainActor
 public final class CouchGame: ObservableObject {
-    public enum Phase {
+    public enum Phase: Equatable {
+        /// **The front door**: solo, couch, nearby, or the editor.
+        ///
+        /// Added ahead of `setup` rather than replacing it. The old flat screen was
+        /// doing two jobs — choosing who you play with, and configuring the race —
+        /// and only the second one belongs to a mode. See `HomeView`.
+        case menu
         case setup
         case racing
         case editing
@@ -70,7 +76,7 @@ public final class CouchGame: ObservableObject {
 
     static let palette: [Color] = TrackRenderer.carPalette
 
-    @Published public internal(set) var phase: Phase = .setup
+    @Published public internal(set) var phase: Phase = .menu
     @Published public var mode: Mode = .race
     /// **What a race is allowed to hold today: four cars.**
     ///
@@ -282,13 +288,6 @@ public final class CouchGame: ObservableObject {
         }
         seed += 1
         session = makeSession(humans: humans, totalCars: humans + aiFleet.drivers.count)
-    }
-
-    public func backToSetup() {
-        phase = .setup
-        session = nil
-        rig = nil
-        sound.stop()
     }
 
     /// Open the track editor. A new track starts with just the start-grid
