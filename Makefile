@@ -34,15 +34,21 @@ run-ipad: Skid.xcodeproj  ## Build + launch on an iPad simulator (DEVICE="Air" /
 # Off everywhere otherwise, debug included. See docs/experimental-features.md.
 EXPERIMENTAL_SETTING := $(if $(EXPERIMENTAL),SKID_EXPERIMENTAL_FLAG=SKID_EXPERIMENTAL,)
 
+# NO_TUNING=1 strips the tuning dials — the opposite polarity, because they are
+# ON by default and wanted on TestFlight, which builds RELEASE. This is for the
+# eventual production release, where a developer tool has no business shipping.
+NO_TUNING_SETTING := $(if $(NO_TUNING),SKID_TUNING_FLAG=,)
+
 .PHONY: build-ios
-build-ios: Skid.xcodeproj  ## Build the iOS app (simulator, unsigned; EXPERIMENTAL=1 for unfinished features)
+build-ios: Skid.xcodeproj  ## Build the iOS app (simulator, unsigned; EXPERIMENTAL=1, NO_TUNING=1)
 	@xcodebuild build -project Skid.xcodeproj -scheme Skid-iOS \
 		-destination 'generic/platform=iOS Simulator' -derivedDataPath .build-xcode \
-		CODE_SIGNING_ALLOWED=NO $(EXPERIMENTAL_SETTING) -quiet
+		CODE_SIGNING_ALLOWED=NO $(EXPERIMENTAL_SETTING) $(NO_TUNING_SETTING) -quiet
 
 .PHONY: test
-test:  ## Run the package logic tests (EXPERIMENTAL=1 to include gated code)
-	@SKID_EXPERIMENTAL=$(if $(EXPERIMENTAL),1,0) swift test --package-path Packages/SkidCore
+test:  ## Run the package logic tests (EXPERIMENTAL=1 to include gated code, NO_TUNING=1)
+	@SKID_EXPERIMENTAL=$(if $(EXPERIMENTAL),1,0) \
+		SKID_NO_TUNING=$(if $(NO_TUNING),1,0) swift test --package-path Packages/SkidCore
 
 .PHONY: lint
 lint:  ## SwiftLint + swift-format, both strict (as CI runs them)
