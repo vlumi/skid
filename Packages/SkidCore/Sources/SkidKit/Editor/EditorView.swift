@@ -181,15 +181,17 @@ struct EditorView: View {
                 // **The gestures belong to the MAP, not to the whole screen.**
                 //
                 // They used to hang off the enclosing `ZStack`, which is built *after* the
-                // bars are added — so the chrome sat above the gesture target and every tap
-                // landing on it, or anywhere the bars overlap the road, was swallowed.
-                // Reported as "the track in the editor is unresponsive": the selection row
-                // and undo/redo are drawn over the bottom-left of the map, which is exactly
-                // where a tap did nothing.
+                // bars are added — so a gesture on the container competed with the chrome
+                // in front of it. Attached here, the buttons take their own taps and the map
+                // takes the rest, which is the arrangement SwiftUI resolves predictably.
                 //
-                // Attached here, the buttons take their own taps and the map takes the
-                // rest. `contentShape` makes the whole canvas hittable, including the grass
-                // — a tap on nothing has a meaning (clear the selection).
+                // `contentShape` makes the whole canvas hittable, including the grass — a
+                // tap on nothing has a meaning here (clear the selection).
+                //
+                // Worth recording, since this was chased for a while: a report of a totally
+                // unresponsive editor turned out to be a **stuck simulator**, not layering.
+                // The same build was fine on another device. Do not infer a hit-testing bug
+                // from one simulator without checking a second one first.
                 .contentShape(Rectangle())
                 .gesture(tapToSelect(walk: walk, transform: transform))
                 .gesture(panZoom)
