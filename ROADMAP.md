@@ -57,21 +57,41 @@ Rough, and expected to churn — the point is which themes are worth shipping
 
 | next | then | later | 1.0 |
 |:--|:--|:--|:--|
-| Surfaces & hazards | The front end | Platforms & input | Polish & submission |
-| Networked play: the tail | Identity & records | More to build with | |
-| First ten seconds | | Tournaments & sharing | |
+| The front end | Tournaments & sharing | Surfaces & hazards | Polish & submission |
+| Identity & records | Networked play: the tail | More to build with | |
+| First ten seconds | | Platforms & input | |
 
-**Why that order.** Surfaces are the biggest remaining change to *how it drives*,
-and the sim half is already done. The networking tail is small and finishes work
-players are using now. The first-ten-seconds items are cheap and fix a reported
-problem. Everything in *The front end* waits on one redesign, so it is one release
-whether it is one milestone or four.
+**Why that order — and it changed.** The racing works; the *game* around it is
+undesigned, and the front end is where that gets decided rather than merely drawn.
+A menu cannot be built without answering what a player picks, in what order, and
+what survives between sessions — and those answers are the game. So identity and
+the menu come first, tournaments follow (the only genuinely new mode, and the one
+that gives a five-second lap a reason to be driven forty times), and the structure
+is set out in [docs/game-shape-plan.md](docs/game-shape-plan.md).
+
+**Surfaces moved back**, having been *next* on the strength of "the sim half is
+already done" — true, and not a reason to build it. A lap is 5–10 seconds on a
+track the player can see all of and will drive forty times, so surface variety is
+a change every second or so with nothing to learn about it; authoring is 47
+decisions on the clover. A whole-track surface as part of a *theme* may still earn
+its place as a look, which is a much smaller feature than the per-piece one.
 
 ## Surfaces & hazards — *how it drives*
 
-The last big change to the driving itself, and the cheapest of its kind left:
-`Surface` already carries the grip and drag model, so the sim work is largely
-done and what is missing is **placement and the look of a boundary**.
+**Moved out of *next*, and the reason is worth keeping.** This sat first because
+`Surface` already carries the grip and drag model — the sim work is largely done.
+That is a statement about cost, not about value, and the value does not hold up: a
+lap is 2741–5141 units, so **5–10 seconds**, on a track the player can see all of
+and will drive forty times. Surface variety at that scale is a change every second
+or so with nothing to learn about it — a gravel patch visible from the start line
+is a tax on a known line, not a decision. Authoring cost is real too: the clover is
+47 pieces, so per-piece surface is 47 decisions per track.
+
+What may still earn its place is much smaller: a **whole-track** surface as part of
+a theme, for the look rather than the driving. The per-piece version wants a reason
+that has not been found yet.
+
+What is missing, if it is built: **placement and the look of a boundary**.
 
 - [ ] **Road surface as a per-piece attribute** (snow, gravel, dirt) — *the
       gameplay half, and the bigger of the two*.
@@ -321,6 +341,16 @@ what a track can *be*, the rest are editor conveniences that can ride any build.
 several other features: a colour picker, a profile, a records screen and a track
 browser all need surfaces that do not exist. That is why they are one milestone
 rather than four.
+
+**And it is where the game gets designed, not just drawn.** A menu cannot be built
+without deciding what a player picks and in what order, so this milestone is
+carrying the questions the prototype never had to answer: solo vs couch vs nearby
+as a *choice* rather than a player-count stepper, which modes exist, and what
+survives between sessions. The structure — including the case for local profiles
+first and the open tournament rules — is in
+[docs/game-shape-plan.md](docs/game-shape-plan.md). Two facts from that survey,
+because they size the job: the setup screen is **351 lines with every knob flat on
+it**, and of 28 persisted settings **25 are developer tuning dials**.
 
 - [ ] **UI and menu redesign — the whole surface.** The current UI is a harness,
       not a design: the app is three phases (setup → racing → editing) with a
