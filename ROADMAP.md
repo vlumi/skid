@@ -400,18 +400,37 @@ id — what is missing is tying a result to a *person*.
 
 ## Tournaments & sharing — *a reason to keep playing*
 
-- [ ] **Grow the built-in track library to 8–12.** The dependency nobody
+- [ ] **Make the track library a channel, not a fixed set.** The dependency nobody
       scheduled, and the one that decides whether tournaments feel good: **a series
       is only as good as the tracks it draws from**, and four built-ins means every
       five-race series repeats itself, which no scoring rule fixes.
 
-      **This is authorship, not engineering.** The catalog already offers three
-      straights, 45°/90° curves at three radii each, hairpins, fitters, elevation,
-      crossings and railings — four tracks have been designed with all of it. Each
-      new one is a session in the editor plus two lines in `TrackLibrary.builtins`,
-      so it needs nothing built first and can run in parallel with everything else.
-      Aim for a deliberate spread — short/technical through long/fast, a couple that
-      climb — rather than whatever gets made.
+      **Sharing is the leverage.** Hand-authoring is the floor — six to eight
+      built-ins, because a tournament needs a pool present on first launch — but
+      every hand-made track costs a design session *and an app release*. A track
+      that travels as a link or a QR code can come from the site, a friend, or a
+      player, with no app update. Plan:
+      [docs/track-sharing-plan.md](docs/track-sharing-plan.md).
+
+      Self-contained links (`skid.misaki.fi/t/#<code>` — the trailing slash matches
+      the AASA already deployed), so nothing needs a server and a link cannot rot,
+      and the payload rides in the fragment, which never reaches the host. A curated
+      collection on the site is static content: one data file, build-time QR codes, a
+      preview per track. **Anyone else may host their own collection**; the design
+      privileges no domain.
+
+      **A track is not a tuning, and it changes the site side.** A tuning's data file
+      is human-readable numbers; a track code is opaque base64. So the *preview* is
+      the only view of a track's content rather than a convenience beside readable
+      text — and Hugo cannot validate a code, because deciding whether one is valid
+      means compiling it. Both put the preview generator in **this** repo, where it
+      validates as a side effect of rendering.
+
+      The hand-authored floor is still authorship, not engineering: the catalog
+      already offers three straights, 45°/90° curves at three radii each, hairpins,
+      fitters, elevation, crossings and railings, and four tracks have been designed
+      with all of it. Aim for a deliberate spread — short/technical through
+      long/fast, a couple that climb.
 - [ ] **Tournaments.** A series of races across one or more couch sessions, with
       standings per profile. Also *unlocks* the **reverse-standings grid** (race
       N starts in reverse order of the standings after N−1, worst on pole; ties
