@@ -325,6 +325,23 @@ what a track can *be*, the rest are editor conveniences that can ride any build.
       Left: **step 7**, the chrome — where the closure control lands, the "track
       complete" chip out of the button column. Explicitly a decide-on-device
       step, once everything above has been driven.
+- [ ] **The editor can only open ONE track.** The library already stores many —
+      `TrackLibraryBook` keeps names, dates, signatures and an `isRaceable` flag — but
+      `editorLayout` is a single buffer restored from a single slot, so every entry is
+      raceable and only one is ever editable. Edits already flow *to* the library;
+      nothing flows back.
+
+      **The hazard is in-place mutation.** `syncEditedTrackToLibrary` rewrites the
+      edited entry on every change, so "open track X" would silently overwrite X.
+      That makes two distinct acts, and both are wanted: **edit this track**
+      (continue my own work) and **start from this track** (a copy, so the original
+      survives — which is what opening a built-in must do).
+
+      *"Scratchpads" need no new storage:* an unfinished track is already an entry
+      with `isRaceable == false`, kept by the library and withheld from the picker.
+      What is missing is seeing and opening them — a list, plus new / duplicate /
+      rename / delete. This is the **track browser**, and where previews earn their
+      place: a list of names says nothing, a list of thumbnails is the feature.
 
       Also still open from step 6: a **long-press variant picker**, for deleting
       and reassigning the start line. Reversing the driving direction shipped

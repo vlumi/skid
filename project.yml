@@ -69,7 +69,17 @@ targets:
         # generated project is identical either way, and an unset value is simply
         # empty rather than a literal left in the build settings.
         SKID_EXPERIMENTAL_FLAG: ""
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) $(SKID_EXPERIMENTAL_FLAG)
+        # **The tuning dials are opt-OUT, so this defaults to ON** — the opposite of
+        # the flag above, and deliberately: TestFlight builds are RELEASE builds, and
+        # on-device tuning is what they are for. Gating the dials as "experimental"
+        # would remove them from exactly the builds that need them.
+        #
+        # Drop them for a production release:
+        #     xcodebuild ... SKID_TUNING_FLAG=
+        # or `make archive NO_TUNING=1`.
+        SKID_TUNING_FLAG: SKID_TUNING
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: >-
+            $(inherited) $(SKID_EXPERIMENTAL_FLAG) $(SKID_TUNING_FLAG)
         PRODUCT_BUNDLE_IDENTIFIER: fi.misaki.skid
         # User-visible app/bundle name; without this it'd be the target name
         # "Skid-iOS". The Xcode project + targets keep the short "Skid" name;

@@ -6,6 +6,8 @@ import SwiftUI
 /// only what a couch session needs.
 struct SetupView: View {
     @ObservedObject var game: CouchGame
+    /// Which seat's profile picker is open, if any.
+    @State private var namingSeat: Int?
 
     var body: some View {
         ZStack {
@@ -24,13 +26,23 @@ struct SetupView: View {
                 }
             }
         }
+        // `Int` is not `Identifiable`, so this is the boolean form with the seat read
+        // alongside — rather than a wrapper type that exists only to satisfy a sheet.
+        .sheet(
+            isPresented: Binding(
+                get: { namingSeat != nil },
+                set: { if !$0 { namingSeat = nil } }
+            )
+        ) {
+            SeatProfileSheet(game: game, seat: namingSeat ?? 0) { namingSeat = nil }
+        }
     }
 
     private var lobby: some View {
         VStack(spacing: 24) {
             VStack(spacing: 6) {
-                Text(verbatim: "SKID JAM")
-                    .font(.system(size: 52, weight: .black, design: .rounded))
+                Text("Race", bundle: .module)
+                    .font(.system(size: 40, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
@@ -83,16 +95,12 @@ struct SetupView: View {
                     .foregroundStyle(.black)
             }
 
+            // Nearby and the editor are destinations of their own now, reached from
+            // the front door rather than from the bottom of a race-setup screen.
             Button {
-                game.openNetworking()
+                game.backToMenu()
             } label: {
-                Text("Play together", bundle: .module).pillStyle()
-            }
-
-            Button {
-                game.openEditor()
-            } label: {
-                Text("Track editor", bundle: .module).pillStyle()
+                Text("Back", bundle: .module).pillStyle()
             }
         }
         // Room to breathe at both ends when the content does scroll, so the
@@ -126,61 +134,31 @@ struct SetupView: View {
         .foregroundStyle(.white.opacity(0.85))
     }
 
+    /// **Race options — what you are racing, not who.** Who is playing is chosen on the
+    /// front screen (`PlayerListView`), which is why the player count, the AI count and
+    /// the seating-layout pickers are all gone from here.
     @ViewBuilder private var raceOptions: some View {
         VStack(spacing: 14) {
-            labeledRow(Text("Players", bundle: .module)) {
-                ForEach(1...4, id: \.self) { count in
-                    squareChoice(String(count), selected: game.playerCount == count) {
-                        game.playerCount = count
-                    }
+            // **AI is a property of the race, not of the player list.** Fill the empty
+            // grid or race whoever is here alone — a count was a question nobody could
+            // answer before driving.
+            HStack(spacing: 10) {
+                choice(Text("With AI", bundle: .module), selected: game.fillWithAI) {
+                    game.fillWithAI = true
                 }
-            }
-            if game.playerCount == 2 {
-                HStack(spacing: 10) {
-                    choice(
-                        Text("Side-by-side", bundle: .module), selected: !game.faceToFace
-                    ) {
-                        game.faceToFace = false
-                    }
-                    choice(Text("Face-to-face", bundle: .module), selected: game.faceToFace) {
-                        game.faceToFace = true
-                    }
-                }
-            }
-            if game.playerCount == 3 {
-                openCornerPicker
-            }
-            // AI fills the rest of the FIELD, not just the four local seats — so a
-            // solo player can face eight of them. Nine is the grid's own limit
-            // (`CouchGame.maxCars`), which the palette matches.
-            if game.playerCount < CouchGame.maxCars {
-                labeledRow(Text("AI", bundle: .module)) {
-                    ForEach(0...(CouchGame.maxCars - game.playerCount), id: \.self) { count in
-                        squareChoice(String(count), selected: game.aiCount == count) {
-                            game.aiCount = count
-                        }
-                    }
+                choice(Text("People only", bundle: .module), selected: !game.fillWithAI) {
+                    game.fillWithAI = false
                 }
             }
             if game.aiCount > 0 {
-                HStack(spacing: 10) {
-                    choice(
-                        Text("Easy", bundle: .module),
-                        selected: game.aiDifficulty == .easy
-                    ) {
-                        game.aiDifficulty = .easy
-                    }
-                    choice(
-                        Text("Medium", bundle: .module),
-                        selected: game.aiDifficulty == .medium
-                    ) {
-                        game.aiDifficulty = .medium
-                    }
-                    choice(
-                        Text("Hard", bundle: .module),
-                        selected: game.aiDifficulty == .hard
-                    ) {
-                        game.aiDifficulty = .hard
+                labeledRow(Text("AI skill", bundle: .module)) {
+                    ForEach(AIDriver.Difficulty.allCases, id: \.self) { level in
+                        choice(
+                            Text(verbatim: String(describing: level).capitalized),
+                            selected: game.aiDifficulty == level
+                        ) {
+                            game.aiDifficulty = level
+                        }
                     }
                 }
             }
@@ -193,54 +171,6 @@ struct SetupView: View {
                 }
             }
         }
-    }
-
-    /// 3P seating: a 2×2 mini-map of the screen; tap the quadrant that
-    /// should stay open (marked ×), the rest get the players in order.
-    @ViewBuilder private var openCornerPicker: some View {
-        VStack(spacing: 6) {
-            Text("Open corner", bundle: .module)
-                .font(.footnote.bold())
-                .foregroundStyle(.white.opacity(0.85))
-            let grid: [[ZoneCorner]] = [[.topLeft, .topRight], [.bottomLeft, .bottomRight]]
-            VStack(spacing: 6) {
-                ForEach(0..<2, id: \.self) { row in
-                    HStack(spacing: 6) {
-                        ForEach(grid[row], id: \.self) { corner in
-                            let isOpen = game.openCorner == corner
-                            Button {
-                                game.openCorner = corner
-                            } label: {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(
-                                            isOpen
-                                                ? Color.black.opacity(0.4)
-                                                : .white.opacity(0.85))
-                                    if isOpen {
-                                        Text(verbatim: "×")
-                                            .font(.headline)
-                                            .foregroundStyle(.white.opacity(0.8))
-                                    } else if let slot = slotIndex(for: corner) {
-                                        Circle()
-                                            .fill(CouchGame.palette[game.colorIndices[slot]])
-                                            .frame(width: 16, height: 16)
-                                    }
-                                }
-                                .frame(width: 64, height: 40)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// Which player slot a corner gets in the 3P layout (zones fill in
-    /// bottom-left → bottom-right → top-left → top-right order, skipping
-    /// the open corner).
-    private func slotIndex(for corner: ZoneCorner) -> Int? {
-        ZoneCorner.allCases.filter { $0 != game.openCorner }.firstIndex(of: corner)
     }
 
     @ViewBuilder private var colorRow: some View {
@@ -256,9 +186,22 @@ struct SetupView: View {
                             .frame(width: 46, height: 46)
                             .overlay(Circle().stroke(.white.opacity(0.9), lineWidth: 2))
                     }
-                    Text("P\(slot + 1)", bundle: .module)
-                        .font(.caption.bold())
-                        .foregroundStyle(.white.opacity(0.85))
+                    // **The seat's name, and the way into a profile.** A guest reads
+                    // "P1" — not a placeholder, just what a guest is called — and
+                    // tapping it is how somebody claims the seat. Put on the label
+                    // rather than behind a separate button because the label is
+                    // already the thing that says who this is.
+                    Button {
+                        namingSeat = slot
+                    } label: {
+                        Text(verbatim: game.displayName(forSeat: slot))
+                            .font(.caption.bold())
+                            .foregroundStyle(.white.opacity(0.85))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .frame(width: 64)
+                            .underline(game.profile(inSeat: slot) == nil)
+                    }
                     // Each player picks their own scheme — one couch can mix
                     // aim and d-pad drivers.
                     Button {
@@ -334,18 +277,4 @@ struct SetupView: View {
         }
     }
 
-    private func squareChoice(
-        _ label: String, selected: Bool, action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Text(verbatim: label)
-                .font(.title3.bold())
-                .frame(width: 48, height: 40)
-                .background(
-                    selected ? Color.white.opacity(0.9) : .black.opacity(0.25),
-                    in: RoundedRectangle(cornerRadius: 10)
-                )
-                .foregroundStyle(selected ? .black : .white)
-        }
-    }
 }

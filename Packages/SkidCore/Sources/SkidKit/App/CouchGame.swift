@@ -3,7 +3,13 @@ import SwiftUI
 
 @MainActor
 public final class CouchGame: ObservableObject {
-    public enum Phase {
+    public enum Phase: Equatable {
+        /// **The front door**: solo, couch, nearby, or the editor.
+        ///
+        /// Added ahead of `setup` rather than replacing it. The old flat screen was
+        /// doing two jobs — choosing who you play with, and configuring the race —
+        /// and only the second one belongs to a mode. See `HomeView`.
+        case menu
         case setup
         case racing
         case editing
@@ -70,7 +76,7 @@ public final class CouchGame: ObservableObject {
 
     static let palette: [Color] = TrackRenderer.carPalette
 
-    @Published public internal(set) var phase: Phase = .setup
+    @Published public internal(set) var phase: Phase = .menu
     @Published public var mode: Mode = .race
     /// **What a race is allowed to hold today: four cars.**
     ///
@@ -111,24 +117,18 @@ public final class CouchGame: ObservableObject {
     /// again with its own literal. Three places, and the one that mattered was wrong:
     /// a solo player's field was silently cut to three AI while the grid showed nine
     /// slots. Clamping at the property makes the invariant impossible to route around.
-    @Published private var humanSeats = 1
-    @Published private var aiSeats = 0
+    /// **Fill the empty grid with AI, or race whoever is here alone.**
+    ///
+    /// A toggle rather than a count: "how many opponents?" is a question nobody has a
+    /// basis to answer before driving, and a third number could disagree with the list
+    /// and the grid. On by default, because one person plus an empty track is a time
+    /// trial rather than a race.
+    ///
+    /// Local only — a nearby field is built by whoever hosts it, and the protocol has no
+    /// AI seat at all. `aiCount` enforces that rather than this flag being reset.
+    @Published public var fillWithAI = true
 
-    /// How many people are playing on this device, 1…`maxLocalPlayers`.
-    public var playerCount: Int {
-        get { humanSeats }
-        set {
-            humanSeats = max(1, min(Self.maxLocalPlayers, newValue))
-            // Taking a seat evicts an AI rather than overfilling the grid.
-            aiSeats = min(aiSeats, Self.maxCars - humanSeats)
-        }
-    }
-
-    /// How many AI cars fill the rest of the field, 0…(`maxCars` − players).
-    public var aiCount: Int {
-        get { aiSeats }
-        set { aiSeats = max(0, min(Self.maxCars - humanSeats, newValue)) }
-    }
+    /// How well the AI drives.
     @Published public var aiDifficulty: AIDriver.Difficulty = .medium
     /// Default color per seat, in palette order — which is separation order, so a
     /// 1–4 player game gets the four furthest-apart colors. Sized to the whole
@@ -152,11 +152,40 @@ public final class CouchGame: ObservableObject {
 
     @Published public internal(set) var session: GameSession?
     public internal(set) var rig: CouchRig?
-    public private(set) var hiscores: HiscoreBook
+    public internal(set) var hiscores: HiscoreBook
     public let settings = GameSettings()
 
-    private let hiscoreFile = HiscoreFile()
+    let hiscoreFile = HiscoreFile()
+    let profileFile: ProfileFile
     private let libraryFile: TrackLibraryFile
+
+    /// **Everyone with a name on this device.** Empty is the normal starting state:
+    /// guests need no profile, so the app is fully usable before this holds anything.
+    @Published public internal(set) var profiles = ProfileBook()
+
+    /// **Who is in each seat**, parallel to the seats themselves.
+    ///
+    /// Sized to `maxLocalPlayers` and defaulting to guests, so a seat always has an
+    /// answer and no lookup can fail. A player who never opens the profile picker
+    /// races as a guest forever, which is the intended default rather than a fallback.
+    @Published public internal(set) var seatIdentities: [SeatIdentity] =
+        Array(repeating: .guest, count: CouchGame.maxLocalPlayers)
+
+    /// **The field as one list** — every car, and who drives it.
+    ///
+    /// The single source of truth for how many humans and how many AI are racing: both
+    /// counts are *derived* from it. They used to be independent steppers that had to
+    /// agree with each other and with the grid, and three numbers meant three chances to
+    /// disagree — which they once did, silently cutting a solo field to three AI.
+    ///
+    /// Starts as one guest, because the app opens for somebody who wants to drive, and
+    /// one row is a legitimate race: solo against the AI.
+    @Published public internal(set) var entrants: [RaceEntrant] = [.guest]
+
+    /// **Which profile each row last held**, so the three-way toggle is sticky: switch a
+    /// row to AI and back and the same person returns rather than being asked again.
+    /// Session-only — who is sitting where is not a property of the device.
+    var rememberedProfiles: [Int: UUID] = [:]
     /// Your saved tracks. Written on every editor change, but not yet READ by
     /// anything — the custom slot is still authoritative until the picker moves
     /// over, so a migration that gets this wrong cannot lose the slot.
@@ -180,8 +209,8 @@ public final class CouchGame: ObservableObject {
     /// layer only — the sim itself never touches wall-clock time) so grids
     /// differ across app runs instead of repeating from 1 each session.
     private var seed: UInt64 = UInt64(Date().timeIntervalSince1970.bitPattern)
-    private var notedLapCount = 0
-    private var notedFinish = false
+    var notedLapCount = 0
+    var notedFinish = false
 
     /// `signingKeys` is injectable so tests can run without a Keychain, which
     /// they must: `swift test` is headless and unentitled.
@@ -190,11 +219,14 @@ public final class CouchGame: ObservableObject {
     /// both are process-wide state that leaks between test methods otherwise.
     public init(
         signingKeys: SigningKeyStore = KeychainSigningKeyStore(),
-        libraryFilename: String = "tracks.json"
+        libraryFilename: String = "tracks.json",
+        profileFilename: String = "profiles.json"
     ) {
         self.signingKeys = signingKeys
         self.libraryFile = TrackLibraryFile(filename: libraryFilename)
+        self.profileFile = ProfileFile(filename: profileFilename)
         hiscores = hiscoreFile.load()
+        profiles = profileFile.load()
         // The custom track slot survives quitting: restore it before anything
         // reads it. (Set the stored value, not the property — the property's
         // observer would just re-save what we only read.)
@@ -216,10 +248,18 @@ public final class CouchGame: ObservableObject {
         if let index = arguments.firstIndex(of: "-skid-ai"),
             index + 1 < arguments.count, let count = Int(arguments[index + 1])
         {
-            aiCount = max(0, min(Self.maxCars - playerCount, count))
+            // Kept for the screenshot/test launch arguments: any positive count means
+            // "fill the grid", which is the only AI choice there is now.
+            fillWithAI = count > 0
         }
         if let index = arguments.firstIndex(of: "-skid-track"), index + 1 < arguments.count {
             trackID = TrackLibrary.track(id: arguments[index + 1]).id
+        }
+        // Straight to the race options, skipping the front door — for screenshots of
+        // the setup screen, which is otherwise two taps in and unreachable from a
+        // launch argument.
+        if arguments.contains("-skid-setup") {
+            phase = .setup
         }
         if arguments.contains("-skid-autostart") {
             startRace()
@@ -246,6 +286,9 @@ public final class CouchGame: ObservableObject {
     }
 
     public func startRace() {
+        // Recency, so this phone's regulars sort to the top of the picker. Guests are
+        // skipped — there is nothing to note against them.
+        markSeatedProfilesPlayed()
         let humans = mode == .timeTrial ? 1 : playerCount
         // Clamped against the FIELD, not the four local seats. This read
         // `4 - humans` and silently dropped a solo player's field to three AI —
@@ -282,13 +325,6 @@ public final class CouchGame: ObservableObject {
         }
         seed += 1
         session = makeSession(humans: humans, totalCars: humans + aiFleet.drivers.count)
-    }
-
-    public func backToSetup() {
-        phase = .setup
-        session = nil
-        rig = nil
-        sound.stop()
     }
 
     /// Open the track editor. A new track starts with just the start-grid
@@ -404,41 +440,6 @@ public final class CouchGame: ObservableObject {
             // Stored in degrees, used in radians.
             controls.casual.reverseThreshold = settings.aimForwardArcDegrees * .pi / 180
             controls.casual.fullSteerError = settings.aimTailSwingDegrees * .pi / 180
-        }
-    }
-
-    /// Called every frame by the race screen: fold the (single) human's
-    /// results into the hiscores as they happen. Multi-human races don't
-    /// record — hiscores are personal. Slowed-pace or dialed-physics runs
-    /// never record: bests are set on the stock machine only (recordings
-    /// replay with stock tuning, so anything else would lie).
-    public func noteProgress() {
-        guard let session, let rig, rig.players.count == 1, settings.pace > 0.999,
-            settings.isStockPhysics
-        else {
-            return
-        }
-        let trackID = session.race.track.id
-        guard let car = session.race.cars.first else { return }
-        var improved = false
-        if car.progress.lapTimes.count > notedLapCount {
-            for lap in car.progress.lapTimes[notedLapCount...] {
-                improved = hiscores.recordLap(lap, track: trackID) || improved
-            }
-            notedLapCount = car.progress.lapTimes.count
-        }
-        if !notedFinish, let finished = car.progress.finishedAt {
-            notedFinish = true
-            improved =
-                hiscores.recordRace(
-                    ticks: finished - session.race.config.countdownTicks,
-                    recording: session.recording,
-                    config: session.race.config,
-                    track: trackID
-                ) || improved
-        }
-        if improved {
-            hiscoreFile.save(hiscores)
         }
     }
 }
