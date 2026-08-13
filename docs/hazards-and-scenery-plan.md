@@ -1,8 +1,28 @@
 # Hazards and scenery: plan
 
-> **Not started.** Design for the two remaining v0.6 content items — hazards as
-> placeable pieces, and the catalog beyond road pieces. What the model does
-> *now* is [ARCHITECTURE.md](../ARCHITECTURE.md).
+> **Not started, and three decisions below are superseded.** Read this with the
+> corrections in mind:
+>
+> 1. **Tag 8 is taken.** Tags 1–9 are now all in use (`railed` took 8,
+>    `warpDrops` 9), so a hazards section would be **tag 10**.
+> 2. **Free position is out.** Circles read as odd and ellipses as too regular,
+>    and free placement drags in an editor mode, a validity question (oil half
+>    off a bridge, a slick across a gate seam) and coordinates of its own. The
+>    better shape is a hazard **anchored to a piece** with a small set of lane
+>    variants — left / centre / right — which makes it the same mechanism as a
+>    decal and gets mutation remapping for free.
+> 3. **Drawn shape need not be collision shape.** A rectangle in piece-local
+>    space collides fine while the *drawing* is an irregular blob derived
+>    deterministically from the piece index and kind — rough edges for zero bytes
+>    on the wire, since nobody perceives a hazard's exact boundary at race scale.
+>
+> Also **deprioritised**: see [game-shape-plan.md](game-shape-plan.md). The game
+> above the race is undesigned, and that outranks new track content. Hazards are
+> the more interesting half of this document regardless — three distinct
+> behaviours (oil slides you, water steers you, mud slows you) rather than the
+> per-piece surface variety the roadmap used to lead with.
+>
+> What the model does *now* is [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 The roadmap bundles "catalog beyond road pieces" into one item, but it is three
 problems with different costs. Splitting them is most of the design.
