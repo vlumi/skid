@@ -72,17 +72,22 @@ struct HomeView: View {
             }
             .padding(.horizontal, 28)
 
-            Spacer(minLength: 0)
-
             // The editor is a first-class destination rather than a button on the
             // race-setup sheet, which is where it used to live: building a track is
             // not a step on the way to starting a race.
+            //
+            // Kept close to the three doors rather than pushed to the bottom edge by a
+            // second `Spacer`: on an SE that left an obvious dead band between Nearby
+            // and this, which read as a missing fourth option rather than as breathing
+            // room. The remaining spacer below floats the whole group toward center.
             Button {
                 game.openEditor()
             } label: {
                 Text("Track editor", bundle: .module).pillStyle()
             }
-            .padding(.bottom, 8)
+            .padding(.top, 4)
+
+            Spacer(minLength: 0)
         }
         .padding(.vertical, 20)
     }
