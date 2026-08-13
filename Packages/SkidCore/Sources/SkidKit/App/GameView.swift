@@ -49,5 +49,10 @@ public struct GameView: View {
         }
         .statusBarHiddenIfAvailable()
         .persistentSystemOverlays(.hidden)
+        // **Shake for the tuning dials — development builds only.** Applied at the
+        // root so every phase inherits it, which is the point: the dials used to be
+        // a pause-menu button, reachable only from inside a race. In a production
+        // build this is the identity function.
+        .tuningOnShake(settings: game.settings)
     }
 }
