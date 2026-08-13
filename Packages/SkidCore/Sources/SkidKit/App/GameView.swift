@@ -14,7 +14,7 @@ public struct GameView: View {
         ZStack {
             switch game.phase {
             case .menu:
-                HomeView(game: game)
+                HomeView(game: game, net: net)
             case .setup:
                 SetupView(game: game)
             case .racing:

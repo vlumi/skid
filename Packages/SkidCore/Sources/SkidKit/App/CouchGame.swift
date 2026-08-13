@@ -117,25 +117,14 @@ public final class CouchGame: ObservableObject {
     /// again with its own literal. Three places, and the one that mattered was wrong:
     /// a solo player's field was silently cut to three AI while the grid showed nine
     /// slots. Clamping at the property makes the invariant impossible to route around.
-    @Published private var humanSeats = 1
-    @Published private var aiSeats = 0
-
-    /// How many people are playing on this device, 1…`maxLocalPlayers`.
-    public var playerCount: Int {
-        get { humanSeats }
-        set {
-            humanSeats = max(1, min(Self.maxLocalPlayers, newValue))
-            // Taking a seat evicts an AI rather than overfilling the grid.
-            aiSeats = min(aiSeats, Self.maxCars - humanSeats)
+    /// The level new AI rows get. One skill for the whole field today; per-row levels
+    /// are already expressible in `RaceEntrant` for when that is wanted.
+    @Published public var aiDifficulty: AIDriver.Difficulty = .medium {
+        didSet {
+            guard aiDifficulty != oldValue else { return }
+            entrants = entrants.map { $0.isHuman ? $0 : .ai(aiDifficulty) }
         }
     }
-
-    /// How many AI cars fill the rest of the field, 0…(`maxCars` − players).
-    public var aiCount: Int {
-        get { aiSeats }
-        set { aiSeats = max(0, min(Self.maxCars - humanSeats, newValue)) }
-    }
-    @Published public var aiDifficulty: AIDriver.Difficulty = .medium
     /// Default color per seat, in palette order — which is separation order, so a
     /// 1–4 player game gets the four furthest-apart colors. Sized to the whole
     /// field rather than to four seats, since the AI fills the rest.
@@ -176,6 +165,22 @@ public final class CouchGame: ObservableObject {
     /// races as a guest forever, which is the intended default rather than a fallback.
     @Published public internal(set) var seatIdentities: [SeatIdentity] =
         Array(repeating: .guest, count: CouchGame.maxLocalPlayers)
+
+    /// **The field as one list** — every car, and who drives it.
+    ///
+    /// The single source of truth for how many humans and how many AI are racing: both
+    /// counts are *derived* from it. They used to be independent steppers that had to
+    /// agree with each other and with the grid, and three numbers meant three chances to
+    /// disagree — which they once did, silently cutting a solo field to three AI.
+    ///
+    /// Starts as one guest, because the app opens for somebody who wants to drive, and
+    /// one row is a legitimate race: solo against the AI.
+    @Published public internal(set) var entrants: [RaceEntrant] = [.guest]
+
+    /// **Which profile each row last held**, so the three-way toggle is sticky: switch a
+    /// row to AI and back and the same person returns rather than being asked again.
+    /// Session-only — who is sitting where is not a property of the device.
+    var rememberedProfiles: [Int: UUID] = [:]
     /// Your saved tracks. Written on every editor change, but not yet READ by
     /// anything — the custom slot is still authoritative until the picker moves
     /// over, so a migration that gets this wrong cannot lose the slot.

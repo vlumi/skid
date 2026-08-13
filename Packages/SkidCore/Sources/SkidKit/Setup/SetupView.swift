@@ -40,11 +40,8 @@ struct SetupView: View {
 
     private var lobby: some View {
         VStack(spacing: 24) {
-            // The title says which door you came through, so the screen is
-            // self-explanatory rather than a wall of controls with a logo on top.
             VStack(spacing: 6) {
-                (game.playerCount == 1
-                    ? Text("Solo", bundle: .module) : Text("Couch", bundle: .module))
+                Text("Race", bundle: .module)
                     .font(.system(size: 40, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                     .minimumScaleFactor(0.7)
@@ -137,67 +134,20 @@ struct SetupView: View {
         .foregroundStyle(.white.opacity(0.85))
     }
 
+    /// **Race options — what you are racing, not who.** Who is playing is chosen on the
+    /// front screen (`PlayerListView`), which is why the player count, the AI count and
+    /// the seating-layout pickers are all gone from here.
     @ViewBuilder private var raceOptions: some View {
         VStack(spacing: 14) {
-            // **Only offered for a couch session.** Solo came in through its own
-            // door, so a "Players" row would immediately contradict the choice just
-            // made — and one-tap-to-2 would leave a screen titled Solo seating two.
-            // Changing your mind means going back, which is one tap and unambiguous.
-            if game.playerCount > 1 {
-                labeledRow(Text("Players", bundle: .module)) {
-                    ForEach(2...CouchGame.maxLocalPlayers, id: \.self) { count in
-                        squareChoice(String(count), selected: game.playerCount == count) {
-                            game.playerCount = count
-                        }
-                    }
-                }
-            }
-            if game.playerCount == 2 {
-                HStack(spacing: 10) {
-                    choice(
-                        Text("Side-by-side", bundle: .module), selected: !game.faceToFace
-                    ) {
-                        game.faceToFace = false
-                    }
-                    choice(Text("Face-to-face", bundle: .module), selected: game.faceToFace) {
-                        game.faceToFace = true
-                    }
-                }
-            }
-            if game.playerCount == 3 {
-                openCornerPicker
-            }
-            // AI fills the rest of the FIELD, not just the four local seats — so a
-            // solo player can face eight of them. Nine is the grid's own limit
-            // (`CouchGame.maxCars`), which the palette matches.
-            if game.playerCount < CouchGame.maxCars {
-                labeledRow(Text("AI", bundle: .module)) {
-                    ForEach(0...(CouchGame.maxCars - game.playerCount), id: \.self) { count in
-                        squareChoice(String(count), selected: game.aiCount == count) {
-                            game.aiCount = count
-                        }
-                    }
-                }
-            }
             if game.aiCount > 0 {
-                HStack(spacing: 10) {
-                    choice(
-                        Text("Easy", bundle: .module),
-                        selected: game.aiDifficulty == .easy
-                    ) {
-                        game.aiDifficulty = .easy
-                    }
-                    choice(
-                        Text("Medium", bundle: .module),
-                        selected: game.aiDifficulty == .medium
-                    ) {
-                        game.aiDifficulty = .medium
-                    }
-                    choice(
-                        Text("Hard", bundle: .module),
-                        selected: game.aiDifficulty == .hard
-                    ) {
-                        game.aiDifficulty = .hard
+                labeledRow(Text("AI skill", bundle: .module)) {
+                    ForEach(AIDriver.Difficulty.allCases, id: \.self) { level in
+                        choice(
+                            Text(verbatim: String(describing: level).capitalized),
+                            selected: game.aiDifficulty == level
+                        ) {
+                            game.aiDifficulty = level
+                        }
                     }
                 }
             }
@@ -210,54 +160,6 @@ struct SetupView: View {
                 }
             }
         }
-    }
-
-    /// 3P seating: a 2×2 mini-map of the screen; tap the quadrant that
-    /// should stay open (marked ×), the rest get the players in order.
-    @ViewBuilder private var openCornerPicker: some View {
-        VStack(spacing: 6) {
-            Text("Open corner", bundle: .module)
-                .font(.footnote.bold())
-                .foregroundStyle(.white.opacity(0.85))
-            let grid: [[ZoneCorner]] = [[.topLeft, .topRight], [.bottomLeft, .bottomRight]]
-            VStack(spacing: 6) {
-                ForEach(0..<2, id: \.self) { row in
-                    HStack(spacing: 6) {
-                        ForEach(grid[row], id: \.self) { corner in
-                            let isOpen = game.openCorner == corner
-                            Button {
-                                game.openCorner = corner
-                            } label: {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(
-                                            isOpen
-                                                ? Color.black.opacity(0.4)
-                                                : .white.opacity(0.85))
-                                    if isOpen {
-                                        Text(verbatim: "×")
-                                            .font(.headline)
-                                            .foregroundStyle(.white.opacity(0.8))
-                                    } else if let slot = slotIndex(for: corner) {
-                                        Circle()
-                                            .fill(CouchGame.palette[game.colorIndices[slot]])
-                                            .frame(width: 16, height: 16)
-                                    }
-                                }
-                                .frame(width: 64, height: 40)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// Which player slot a corner gets in the 3P layout (zones fill in
-    /// bottom-left → bottom-right → top-left → top-right order, skipping
-    /// the open corner).
-    private func slotIndex(for corner: ZoneCorner) -> Int? {
-        ZoneCorner.allCases.filter { $0 != game.openCorner }.firstIndex(of: corner)
     }
 
     @ViewBuilder private var colorRow: some View {
@@ -364,18 +266,4 @@ struct SetupView: View {
         }
     }
 
-    private func squareChoice(
-        _ label: String, selected: Bool, action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Text(verbatim: label)
-                .font(.title3.bold())
-                .frame(width: 48, height: 40)
-                .background(
-                    selected ? Color.white.opacity(0.9) : .black.opacity(0.25),
-                    in: RoundedRectangle(cornerRadius: 10)
-                )
-                .foregroundStyle(selected ? .black : .white)
-        }
-    }
 }
