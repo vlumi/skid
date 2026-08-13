@@ -13,19 +13,22 @@ before anyone has scanned anything. Six to eight is enough for that.
 ## The link
 
 ```text
-https://skid.misaki.fi/t/<base64url share code>
+https://skid.misaki.fi/t/<base64url share code>     ← canonical
+https://skid.misaki.fi/t/#<base64url share code>    ← also accepted
 ```
 
 The whole track is in the URL, so there is no backend and a link cannot rot.
 
-**Path, not fragment.** A `#fragment` would keep the code out of server logs and
-referrer headers, which is worth nothing here — a track is not a secret, and the
-curated ones are published on the site anyway. A path is a cleaner link, and the
-site can *read* it, which leaves the door open to a server-rendered preview page
-later without changing the URL shape.
+**Accept both, emit the path form.** The parser takes the code from the fragment if
+there is one and from the path otherwise, which costs one branch and means a link
+keeps working whichever way it was written — including anything already shared. The
+path form is canonical because the site can *read* it, leaving room for a
+server-rendered preview page later without changing the URL shape; the fragment form
+keeps the code out of server logs, which is not a concern worth optimizing for but
+is free to support.
 
-This matches the `apple-app-site-association` already deployed on the site
-(`/t/*`), so nothing there needs changing.
+Both match the `apple-app-site-association` already deployed (`/t/*`), so nothing on
+the site needs changing.
 
 ## What already exists
 
@@ -60,9 +63,31 @@ Static content in the sibling site repo, in the shape it already uses for its
 presets: one data file, build-time QR codes, no JavaScript. Per track: preview
 image, QR, link, name, author.
 
-Preview images are **static files, produced by whatever is convenient** — most
-likely by running the app's own renderer once that exists. Not a pipeline, and
-nothing needs to be live.
+Preview images are **static files, produced by whatever is convenient**. Nothing
+needs to be live.
+
+**A CLI to make one from a code or URL is wanted, but not yet** — after things have
+stabilized, since a tool pinned to the renderer is churn while the renderer is still
+moving. Two constraints when it happens: a **command-line Swift** target, and it
+**must use the production rendering code** rather than a copy. A second
+implementation would drift, and then the site would advertise tracks that do not
+look like they do in the app.
+
+Already feasible, so this is scheduling rather than a question: `SkidKit` declares
+`.macOS(.v14)` and neither renderer imports UIKit, so a macOS executable target can
+call the real drawing code and put it through `ImageRenderer`.
+
+Settled details for when it is built:
+
+- **Name the file after the code** — `<code>.png`. The code is already base64url and
+  unpadded, so its alphabet is `[A-Za-z0-9_-]`: URL-safe *and* filename-safe, no
+  escaping. Verified against all four built-ins. Watch one edge: a signed code is
+  ~160–190 chars against a 255-byte filename limit, so it fits with room but not
+  endlessly — fall back to a truncated hash if that is ever reached.
+- **PNG, not JPEG.** A track preview is flat color with hard edges — thin white
+  lines, kerb stripes, a dark rim — which is what JPEG chroma subsampling smears,
+  giving ringing on every road edge. PNG is smaller *and* sharper for this content;
+  JPEG only wins on photographs.
 
 One asymmetry worth knowing: a track code is opaque, so unlike a tuning preset's
 data file, an entry cannot describe its own content and the site build cannot check
