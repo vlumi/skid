@@ -66,16 +66,29 @@ image, QR, link, name, author.
 Preview images are **static files, produced by whatever is convenient**. Nothing
 needs to be live.
 
-**A CLI to make one from a code or URL is wanted, but not yet** — after things have
+**A way to make one from a code or URL is wanted, but not yet** — after things have
 stabilized, since a tool pinned to the renderer is churn while the renderer is still
-moving. Two constraints when it happens: a **command-line Swift** target, and it
-**must use the production rendering code** rather than a copy. A second
-implementation would drift, and then the site would advertise tracks that do not
-look like they do in the app.
+moving. The one firm constraint: it **must use the production rendering code** rather
+than a copy, or the site ends up advertising tracks that do not look like they do in
+the app.
 
 Already feasible, so this is scheduling rather than a question: `SkidKit` declares
-`.macOS(.v14)` and neither renderer imports UIKit, so a macOS executable target can
-call the real drawing code and put it through `ImageRenderer`.
+`.macOS(.v14)` and neither renderer imports UIKit, so the real drawing code can run
+on a Mac and go through `ImageRenderer`.
+
+**Two shapes, and the Mac client changes which is better.** A Mac version is wanted
+anyway, and it links the renderer regardless — so:
+
+- **A render mode in the Mac app**, driven by arguments. One target, nothing extra to
+  maintain. An app binary can be invoked directly and read `argv`, so it can render
+  and exit without showing a window — but headless invocation of a bundled GUI app is
+  fiddlier than it sounds, since `ImageRenderer` wants a run-loop turn and the app
+  may still take an activation cycle.
+- **A small executable target** in the same package: a few lines importing SkidKit,
+  trivially driven from `make` or CI. Costs one target in `Package.swift`.
+
+Neither risks drift, since both link the same code. Decide when the Mac client
+exists — that is what makes the first option nearly free.
 
 Settled details for when it is built:
 

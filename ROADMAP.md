@@ -454,7 +454,12 @@ it got *cheaper* than planned, since a Mac joining as a rendering client needs n
 float determinism from its libm, which was the one real cross-platform risk.
 
 - [ ] macOS target (Universal Purchase, same bundle id), sim untouched —
-      only render/input capture differ
+      only render/input capture differ. `SkidKit` already declares `.macOS(.v14)`
+      and neither renderer imports UIKit, so this is less than it looks.
+      **Also unlocks the track-preview generator**: a Mac build links the renderer
+      already, so rendering a code to a PNG becomes a render mode on that target
+      rather than a second executable — see
+      [docs/track-sharing-plan.md](docs/track-sharing-plan.md).
 - [ ] Keyboard scheme (arrows/WASD, 1–2 players) and GameController support
       as additional `ControlSource`s
 - [ ] **Landscape mode (couch).** Turn the phone and the *whole game*
