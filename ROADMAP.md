@@ -400,18 +400,31 @@ id — what is missing is tying a result to a *person*.
 
 ## Tournaments & sharing — *a reason to keep playing*
 
-- [ ] **Grow the built-in track library to 8–12.** The dependency nobody
+- [ ] **Make the track library a channel, not a fixed set.** The dependency nobody
       scheduled, and the one that decides whether tournaments feel good: **a series
       is only as good as the tracks it draws from**, and four built-ins means every
       five-race series repeats itself, which no scoring rule fixes.
 
-      **This is authorship, not engineering.** The catalog already offers three
-      straights, 45°/90° curves at three radii each, hairpins, fitters, elevation,
-      crossings and railings — four tracks have been designed with all of it. Each
-      new one is a session in the editor plus two lines in `TrackLibrary.builtins`,
-      so it needs nothing built first and can run in parallel with everything else.
-      Aim for a deliberate spread — short/technical through long/fast, a couple that
-      climb — rather than whatever gets made.
+      **Sharing is the leverage.** Hand-authoring is the floor — six to eight
+      built-ins, because a tournament needs a pool present on first launch — but
+      every hand-made track costs a design session *and an app release*. A track
+      that travels as a link or a QR code can come from the site, a friend, or a
+      player, with no app update. Plan:
+      [docs/track-sharing-plan.md](docs/track-sharing-plan.md).
+
+      The whole track rides in the link (`skid.misaki.fi/t/<code>`), so nothing needs
+      a server and a link cannot rot; the path form matches the AASA already
+      deployed. Previews are needed in the app anyway — the library list wants
+      thumbnails, the share screen wants a picture — and `EditorRenderer.drawTrack`
+      already draws a layout at any scale. A curated collection on the site is static
+      content, with images produced by running that renderer. **Anyone else may host
+      their own collection**; the design privileges no domain.
+
+      The hand-authored floor is still authorship, not engineering: the catalog
+      already offers three straights, 45°/90° curves at three radii each, hairpins,
+      fitters, elevation, crossings and railings, and four tracks have been designed
+      with all of it. Aim for a deliberate spread — short/technical through
+      long/fast, a couple that climb.
 - [ ] **Tournaments.** A series of races across one or more couch sessions, with
       standings per profile. Also *unlocks* the **reverse-standings grid** (race
       N starts in reverse order of the standings after N−1, worst on pole; ties
@@ -441,7 +454,12 @@ it got *cheaper* than planned, since a Mac joining as a rendering client needs n
 float determinism from its libm, which was the one real cross-platform risk.
 
 - [ ] macOS target (Universal Purchase, same bundle id), sim untouched —
-      only render/input capture differ
+      only render/input capture differ. `SkidKit` already declares `.macOS(.v14)`
+      and neither renderer imports UIKit, so this is less than it looks.
+      **Also unlocks the track-preview generator**: a Mac build links the renderer
+      already, so rendering a code to a PNG becomes a render mode on that target
+      rather than a second executable — see
+      [docs/track-sharing-plan.md](docs/track-sharing-plan.md).
 - [ ] Keyboard scheme (arrows/WASD, 1–2 players) and GameController support
       as additional `ControlSource`s
 - [ ] **Landscape mode (couch).** Turn the phone and the *whole game*
