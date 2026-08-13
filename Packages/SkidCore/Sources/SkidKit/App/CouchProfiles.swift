@@ -40,6 +40,13 @@ extension CouchGame {
     /// one person cannot drive two cars. Without this, picking your own name in seat 2
     /// after having been in seat 1 would enter you twice and file both cars' results
     /// against you.
+    ///
+    /// **Not the way the UI sets a driver any more** — `entrants` is the source of truth
+    /// and `syncSeatIdentities` derives seats from it. This writes the derived array
+    /// directly, which is only correct for a caller that owns the whole mapping. Kept
+    /// because the seat *view* of the field is what the records layer will want, and the
+    /// exclusivity rule above is the part worth not re-deriving; it is exercised by
+    /// `SeatIdentityTests` rather than by any screen.
     public func assign(_ identity: SeatIdentity, toSeat seat: Int) {
         guard seatIdentities.indices.contains(seat) else { return }
         if let id = identity.profileID {
