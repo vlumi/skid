@@ -121,19 +121,26 @@ struct TrackShelfView: View {
         }
     }
 
+    /// **A tap opens the track; the rest is a long press.**
+    ///
+    /// The tile was a `Menu`, so choosing your track cost two taps and the primary action —
+    /// edit this one — was buried among three others. Worse, a tile that only opens a menu
+    /// reads as unresponsive: the obvious gesture appears to do nothing.
+    ///
+    /// A plain button with a `contextMenu` puts the common case on the tap and keeps copy,
+    /// rename and delete one press away.
     private func tile(entry: TrackLibraryBook.Entry) -> some View {
-        let layout = try? TrackCode.decode(entry.code)
-        return Menu {
-            Button {
-                game.openForEditing(entryID: entry.id)
-                dismiss()
-            } label: {
-                Label {
-                    Text("Edit", bundle: .module)
-                } icon: {
-                    Image(systemName: "pencil")
-                }
-            }
+        Button {
+            game.openForEditing(entryID: entry.id)
+            dismiss()
+        } label: {
+            card(
+                layout: try? TrackCode.decode(entry.code), name: entry.name,
+                // The one thing a picture cannot say: whether this ring closes. An
+                // unfinished track is not a fault, it is where you left off.
+                note: entry.isRaceable ? nil : Text("Unfinished", bundle: .module))
+        }
+        .contextMenu {
             Button {
                 game.startFrom(code: entry.code, name: entry.name)
                 dismiss()
@@ -163,12 +170,6 @@ struct TrackShelfView: View {
                     Image(systemName: "trash")
                 }
             }
-        } label: {
-            card(
-                layout: layout, name: entry.name,
-                // The one thing a picture cannot say: whether this ring closes. An
-                // unfinished track is not a fault, it is where you left off.
-                note: entry.isRaceable ? nil : Text("Unfinished", bundle: .module))
         }
     }
 

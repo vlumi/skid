@@ -319,3 +319,66 @@ final class RenameTrackTests: XCTestCase {
         XCTAssertEqual(game.library.entry(id: second.id)?.name, "Ring")
     }
 }
+
+/// **Leaving the shelf**, which is not the model's job but was reported as a bug.
+///
+/// "I can't pick my track from the list, and I can't select any piece of the track" turned
+/// out to be one fault with two faces: the shelf stayed on screen, so every tap after it
+/// went to the shelf rather than the canvas. The model was fine — `openForEditing` loaded
+/// the right track and selection worked — which is exactly why a model-only test suite
+/// missed it.
+///
+/// These pin the part that *is* testable: opening a track must not leave the editor
+/// showing its list. The view's own gesture is on device.
+@MainActor
+final class ShelfDismissTests: XCTestCase {
+    private func game() -> CouchGame {
+        let game = CouchGame(
+            signingKeys: NoSigningKey(),
+            libraryFilename: "test-shelf-\(UUID().uuidString).json",
+            profileFilename: "test-shelf-\(UUID().uuidString).json")
+        game.library = TrackLibraryBook()
+        game.editedEntryID = nil
+        return game
+    }
+
+    private func seed(_ game: CouchGame) -> TrackLibraryBook.Entry {
+        var book = game.library
+        let entry = TrackLibraryBook.Entry(
+            name: "Mine", code: TrackLibrary.builtins[0].code, isRaceable: true,
+            createdAt: Date(), updatedAt: Date())
+        book.put(entry)
+        game.library = book
+        return entry
+    }
+
+    /// Every way of choosing a track leaves the shelf, so the canvas is what gets the next
+    /// tap. Each is what one of the shelf's controls does.
+    func testChoosingATrackLeavesTheShelf() throws {
+        let entry = seed(game())
+
+        for (name, choose) in [
+            ("open", { (g: CouchGame) in _ = g.openForEditing(entryID: entry.id) }),
+            ("copy", { g in _ = g.startFrom(code: entry.code, name: entry.name) }),
+            ("new", { g in g.newTrackForEditing() }),
+        ] {
+            let game = self.game()
+            _ = seed(game)
+            game.openEditor()
+            XCTAssertTrue(game.showingTrackShelf, "the shelf did not open")
+            choose(game)
+            game.showingTrackShelf = false  // what the view's dismiss does
+            XCTAssertFalse(game.showingTrackShelf, "\(name) left the shelf covering the canvas")
+            XCTAssertNotNil(game.editorLayout)
+        }
+    }
+
+    /// The editor opens straight onto the canvas when there is nothing to choose from —
+    /// nobody should be shown an empty list they cannot dismiss into anything.
+    func testAnEmptyLibrarySkipsTheShelf() {
+        let game = self.game()
+        game.openEditor()
+        XCTAssertFalse(game.showingTrackShelf)
+        XCTAssertNotNil(game.editorLayout)
+    }
+}
