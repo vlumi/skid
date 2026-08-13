@@ -158,11 +158,24 @@ public final class CouchGame: ObservableObject {
 
     @Published public internal(set) var session: GameSession?
     public internal(set) var rig: CouchRig?
-    public private(set) var hiscores: HiscoreBook
+    public internal(set) var hiscores: HiscoreBook
     public let settings = GameSettings()
 
-    private let hiscoreFile = HiscoreFile()
+    let hiscoreFile = HiscoreFile()
+    let profileFile: ProfileFile
     private let libraryFile: TrackLibraryFile
+
+    /// **Everyone with a name on this device.** Empty is the normal starting state:
+    /// guests need no profile, so the app is fully usable before this holds anything.
+    @Published public internal(set) var profiles = ProfileBook()
+
+    /// **Who is in each seat**, parallel to the seats themselves.
+    ///
+    /// Sized to `maxLocalPlayers` and defaulting to guests, so a seat always has an
+    /// answer and no lookup can fail. A player who never opens the profile picker
+    /// races as a guest forever, which is the intended default rather than a fallback.
+    @Published public internal(set) var seatIdentities: [SeatIdentity] =
+        Array(repeating: .guest, count: CouchGame.maxLocalPlayers)
     /// Your saved tracks. Written on every editor change, but not yet READ by
     /// anything — the custom slot is still authoritative until the picker moves
     /// over, so a migration that gets this wrong cannot lose the slot.
@@ -186,8 +199,8 @@ public final class CouchGame: ObservableObject {
     /// layer only — the sim itself never touches wall-clock time) so grids
     /// differ across app runs instead of repeating from 1 each session.
     private var seed: UInt64 = UInt64(Date().timeIntervalSince1970.bitPattern)
-    private var notedLapCount = 0
-    private var notedFinish = false
+    var notedLapCount = 0
+    var notedFinish = false
 
     /// `signingKeys` is injectable so tests can run without a Keychain, which
     /// they must: `swift test` is headless and unentitled.
@@ -196,11 +209,14 @@ public final class CouchGame: ObservableObject {
     /// both are process-wide state that leaks between test methods otherwise.
     public init(
         signingKeys: SigningKeyStore = KeychainSigningKeyStore(),
-        libraryFilename: String = "tracks.json"
+        libraryFilename: String = "tracks.json",
+        profileFilename: String = "profiles.json"
     ) {
         self.signingKeys = signingKeys
         self.libraryFile = TrackLibraryFile(filename: libraryFilename)
+        self.profileFile = ProfileFile(filename: profileFilename)
         hiscores = hiscoreFile.load()
+        profiles = profileFile.load()
         // The custom track slot survives quitting: restore it before anything
         // reads it. (Set the stored value, not the property — the property's
         // observer would just re-save what we only read.)
@@ -252,6 +268,9 @@ public final class CouchGame: ObservableObject {
     }
 
     public func startRace() {
+        // Recency, so this phone's regulars sort to the top of the picker. Guests are
+        // skipped — there is nothing to note against them.
+        markSeatedProfilesPlayed()
         let humans = mode == .timeTrial ? 1 : playerCount
         // Clamped against the FIELD, not the four local seats. This read
         // `4 - humans` and silently dropped a solo player's field to three AI —
@@ -403,41 +422,6 @@ public final class CouchGame: ObservableObject {
             // Stored in degrees, used in radians.
             controls.casual.reverseThreshold = settings.aimForwardArcDegrees * .pi / 180
             controls.casual.fullSteerError = settings.aimTailSwingDegrees * .pi / 180
-        }
-    }
-
-    /// Called every frame by the race screen: fold the (single) human's
-    /// results into the hiscores as they happen. Multi-human races don't
-    /// record — hiscores are personal. Slowed-pace or dialed-physics runs
-    /// never record: bests are set on the stock machine only (recordings
-    /// replay with stock tuning, so anything else would lie).
-    public func noteProgress() {
-        guard let session, let rig, rig.players.count == 1, settings.pace > 0.999,
-            settings.isStockPhysics
-        else {
-            return
-        }
-        let trackID = session.race.track.id
-        guard let car = session.race.cars.first else { return }
-        var improved = false
-        if car.progress.lapTimes.count > notedLapCount {
-            for lap in car.progress.lapTimes[notedLapCount...] {
-                improved = hiscores.recordLap(lap, track: trackID) || improved
-            }
-            notedLapCount = car.progress.lapTimes.count
-        }
-        if !notedFinish, let finished = car.progress.finishedAt {
-            notedFinish = true
-            improved =
-                hiscores.recordRace(
-                    ticks: finished - session.race.config.countdownTicks,
-                    recording: session.recording,
-                    config: session.race.config,
-                    track: trackID
-                ) || improved
-        }
-        if improved {
-            hiscoreFile.save(hiscores)
         }
     }
 }
