@@ -414,8 +414,10 @@ id — what is missing is tying a result to a *person*.
       already persist per track; make them *visible* — a results screen worth
       reading, "you beat your best" in the moment, and a board per track.
 
-      Also wanted, and cheap: **time trial should show your past laps**, not only the
-      best one. `CarProgress.lapTimes` already holds every lap of the run.
+      **Time trial now shows your past laps**, not only the best one — a windowed list
+      of recent laps with the fastest starred, and that time pinned once its lap has
+      scrolled away. What is left here is the *results* half: a screen worth reading
+      and "you beat your best" in the moment.
 
       **Records stay per TRACK, not per profile** — a plan that was written and then
       argued out of. On a device that belongs to one person (perhaps shared with
