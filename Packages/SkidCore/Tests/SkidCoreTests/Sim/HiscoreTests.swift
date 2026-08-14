@@ -3,10 +3,21 @@ import XCTest
 @testable import SkidCore
 
 final class HiscoreTests: XCTestCase {
-    private func sampleRecording() -> RaceRecording {
-        var recording = RaceRecording(seed: 5, players: [PlayerID(0)])
-        recording.append([PlayerID(0): CarInput(steer: 0.5, throttle: 1)])
-        return recording
+    /// A ghost with one tick of input — enough to store and read back, without the cost of
+    /// driving a real lap for a test about the book rather than about replay.
+    private func sampleGhost() -> LapGhost {
+        LapGhost(
+            start: LapGhost.Start(
+                tick: 180,
+                cars: [
+                    LapGhost.CarPose(
+                        seat: PlayerID(0), position: Vec2(10, 20), velocity: Vec2(1, 0),
+                        heading: 0.5, height: 0, steerActuator: 0.25)
+                ]),
+            seed: 5, players: [PlayerID(0)],
+            // Quantised, as a real ghost's inputs are — the packed encoding stores
+            // exactly the numbers the sim stepped, so a raw fixture would not round-trip.
+            inputs: [[PlayerID(0): CarInput(steer: 0.5, throttle: 1).quantised]], ticks: 1)
     }
 
     func testLapRecordOnlyImproves() {
@@ -19,20 +30,19 @@ final class HiscoreTests: XCTestCase {
         XCTAssertFalse(book.recordLap(1, track: ""))
     }
 
-    func testRaceRecordStoresGhostRun() {
+    func testRaceRecordStoresTheLapGhost() {
         var book = HiscoreBook()
         let config = RaceConfig(laps: 3, countdownTicks: 180)
         XCTAssertTrue(
             book.recordRace(
-                ticks: 4000, recording: sampleRecording(), config: config,
-                track: "practice-loop"))
+                ticks: 4000, ghost: sampleGhost(), config: config, track: "practice-loop"))
         XCTAssertFalse(
             book.recordRace(
-                ticks: 4100, recording: sampleRecording(), config: config,
-                track: "practice-loop"))
+                ticks: 4100, ghost: sampleGhost(), config: config, track: "practice-loop"))
         let best = book.best(for: "practice-loop")
         XCTAssertEqual(best.raceTicks, 4000)
-        XCTAssertEqual(best.raceRecording?.seed, 5)
+        XCTAssertEqual(best.lapGhost?.seed, 5)
+        XCTAssertEqual(best.lapGhost?.start.cars.first?.steerActuator, 0.25)
         XCTAssertEqual(best.raceConfig, config)
     }
 
@@ -40,10 +50,26 @@ final class HiscoreTests: XCTestCase {
         var book = HiscoreBook()
         book.recordLap(999, track: "practice-loop")
         book.recordRace(
-            ticks: 4000, recording: sampleRecording(),
+            ticks: 4000, ghost: sampleGhost(),
             config: RaceConfig(laps: 3, countdownTicks: 180), track: "practice-loop")
         let data = try book.encoded()
         XCTAssertEqual(HiscoreBook.decode(data), book)
+    }
+
+    /// **A book from before packed lap ghosts is discarded, deliberately.**
+    ///
+    /// Migrating whole-race recordings was written and then deleted: a ghost is only
+    /// meaningful on the road it was driven on, and the built-in tracks are still changing
+    /// as the library grows — a lap replayed through a track that has moved is a car
+    /// driving through grass. Starting fresh is the honest outcome, and it keeps a legacy
+    /// field out of the model for good.
+    func testABookFromTheOldGhostFormatIsDiscarded() throws {
+        var old = HiscoreBook()
+        old.version = 1
+        old.tracks["clover"] = BestRecord()
+        XCTAssertNil(
+            HiscoreBook.decode(try old.encoded()),
+            "a v1 book was read as if this build understood its ghosts")
     }
 
     func testDecodeRejectsGarbageAndFutureVersions() throws {

@@ -418,21 +418,14 @@ id — what is missing is tying a result to a *person*.
       Also wanted, and cheap: **time trial should show your past laps**, not only the
       best one. `CarProgress.lapTimes` already holds every lap of the run.
 
-      **Fix the ghost storage first, or per-profile records multiply it.** Measured: a
-      3-lap clover ghost is **138 KB** of JSON — **72 bytes per tick** for a single
-      car's input, which is 4 bytes of actual data. A real `hiscores.json` on a test
-      device had already reached **1.2 MB**. Twelve tracks × four profiles projects to
-      **~6 MB** of input logs.
+      **The ghost storage is fixed** (was: 1.2 MB on a test device, and multiplying by
+      profile once records are per-player). A stored ghost is now **one lap, packed at four
+      bytes a tick**: 138 KB → 5.2 KB on a 3-lap clover, 446 KB → 5.2 KB on a 10-lap one —
+      constant whatever the race length, which matters once lap count is a setting.
 
-      The cause is `RaceRecording.inputs` being `[[PlayerID: CarInput]]` — a dictionary
-      per tick, spelling the player id as a JSON key every time. This is the same
-      mistake the networking round measured and fixed (28 bytes of payload → 438 bytes
-      of JSON), and the same remedy applies: **positional encoding against the
-      recording's own `players` list**, which is already stored alongside. `CarInputWire`
-      exists and packs an input into 4 bytes.
+      That also settled the question of whether every track keeps a ghost forever: at 5 KB
+      each, yes.
 
-      Worth deciding at the same time: whether every track keeps a ghost forever, or
-      only a few recent/nearest ones. Cheaper encoding may make the question moot.
 
 ## Tournaments & sharing — *a reason to keep playing*
 
