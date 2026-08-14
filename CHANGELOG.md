@@ -21,6 +21,16 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Best times start over, and ghosts got much smaller.** The ghost you race in
+  time trial was stored as the whole run it came from — every lap of it, to show
+  you one. It is now just the fastest lap, packed tightly: a three-lap best drops
+  from 138 KB to 5 KB, and a ten-lap one from 446 KB, since a ghost is now the
+  same size however long the race was.
+
+  **Existing best times are cleared** by this build. They were kept in the old
+  shape and could have been converted, but a ghost is only meaningful on the track
+  it was driven on — and the built-in tracks are still changing while the game is
+  in progress, so an old lap would be driven through a road that has moved.
 - **Pick a track by looking at it.** The track picker was a row of names, which was
   fine for four built-ins and useless the moment you had tracks of your own — "My
   track 3" says nothing about whether it is a tight circuit or a long sweeper. Now
