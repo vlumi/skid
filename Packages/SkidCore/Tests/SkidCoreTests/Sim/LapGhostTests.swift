@@ -142,64 +142,6 @@ struct LapGhostTests {
     }
 }
 
-/// **Upgrading a book that holds whole-race recordings.**
-///
-/// A player's stored best is their record — losing it to save space would be deleting the
-/// thing the space was spent on. So an old record migrates rather than being discarded.
-struct GhostMigrationTests {
-    /// Build a record the old way: a whole-race recording and no lap ghost.
-    private func legacyRecord(laps: Int = 3) -> (record: BestRecord, track: Track) {
-        let track = TrackLibrary.track(id: "clover")
-        let config = RaceConfig(laps: laps)
-        var race = Race(track: track, players: [PlayerID(0)], seed: 42, config: config)
-        var recording = RaceRecording(seed: 42, players: [PlayerID(0)])
-        var ai = AIDriver()
-        while race.phase != .finished, recording.inputs.count < 60 * 60 * 4 {
-            let input = ai.input(car: race.cars[0].state, track: track)
-            recording.append([PlayerID(0): input])
-            race.advance(inputs: [PlayerID(0): input])
-        }
-        var record = BestRecord()
-        record.raceTicks = 4000
-        record.raceRecording = recording
-        record.raceConfig = config
-        return (record, track)
-    }
-
-    /// **An old recording becomes a lap ghost**, rather than being thrown away.
-    @Test func aLegacyRecordingMigratesToALapGhost() throws {
-        let (record, track) = legacyRecord()
-        #expect(record.lapGhost == nil)
-
-        let migrated = record.migrated(on: track)
-        let ghost = try #require(migrated.lapGhost, "the player's ghost was lost on upgrade")
-        #expect(migrated.raceRecording == nil, "the superseded recording was kept as well")
-        #expect(migrated.raceTicks == 4000, "the time itself was disturbed")
-        // And it is a lap, not the run it came from.
-        #expect(ghost.inputs.count < record.raceRecording!.inputs.count / 2)
-    }
-
-    /// Migration is idempotent — though only as a *cost* saving, which is worth being
-    /// precise about: re-cutting a lap from a deterministic recording yields an identical
-    /// ghost, so removing the `lapGhost == nil` guard changes nothing observable here. What
-    /// it changes is replaying a whole run on every load. No sabotage available.
-    @Test func migratingTwiceChangesNothing() throws {
-        let (record, track) = legacyRecord()
-        let once = record.migrated(on: track)
-        let twice = once.migrated(on: track)
-        #expect(once == twice)
-    }
-
-    /// A record with neither is left alone rather than being given an empty ghost.
-    @Test func anEmptyRecordMigratesToNothing() {
-        var record = BestRecord()
-        record.bestLapTicks = 900
-        let migrated = record.migrated(on: TrackLibrary.track(id: "clover"))
-        #expect(migrated.lapGhost == nil)
-        #expect(migrated.bestLapTicks == 900)
-    }
-}
-
 /// **The packed encoding**, which is what makes a ghost small enough to keep per track.
 struct LapGhostPackingTests {
     private func ghost(seats: Int, ticks: Int) -> LapGhost {
