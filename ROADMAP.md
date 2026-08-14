@@ -431,6 +431,21 @@ id — what is missing is tying a result to a *person*.
       own best to chase — but that is a "when it comes up" feature, and attribution
       does not block it.
 
+      **A record is a SOLO time, and a nearby race sets none.** Already true —
+      `noteProgress` requires one local player, stock physics and normal pace — but
+      worth stating, because "should remote players set records on my device?" is a
+      question that will come back. Two reasons, and the first is mechanical:
+
+      - **A client is not simulating.** Networked play is host-authoritative, so a
+        guest's device renders snapshots rather than stepping its own race. A time it
+        showed is a number the host sent, not something it can reproduce — and a
+        record's ghost is a lap of *inputs replayed locally*, which a client does not
+        have; it has a stream of positions. The host is the exception on this point,
+        since its device does run the sim.
+      - **A lap in traffic is not the same lap.** Contact, slipstream and being held
+        up make a race lap incomparable with a time trial, which is what a board is
+        for. This one catches the host too.
+
       **The ghost storage is fixed** (was: 1.2 MB on a test device, and multiplying by
       profile once records are per-player). A stored ghost is now **one lap, packed at four
       bytes a tick**: 138 KB → 5.2 KB on a 3-lap clover, 446 KB → 5.2 KB on a 10-lap one —
