@@ -397,26 +397,54 @@ Needs the front end above to have somewhere to put it. The data is closer than i
 looks: per-track bests and full ghost recordings already persist, keyed by track
 id — what is missing is tying a result to a *person*.
 
-- [ ] **Local player profiles — and guests, which are the default.** A profile is a
-      chosen name and color, on-device only (no accounts, no server — see "out of
-      scope"). Everything below hangs off this, which is why it's first.
+- [x] **Local player profiles — and guests, which are the default.** SHIPPED. A
+      profile is a chosen name and color, on-device only.
 
       **Decided: guests, not name-up-front.** A seat races immediately with no name
-      and no setup; making a profile is the *upgrade* that keeps your results. Asking
-      for a name first would put a text field in front of the thing people opened the
-      app for, and a couch guest who wants one turn should not have to register for
-      it. So a guest races normally and records nothing, mixed seats are ordinary
-      (one profile, one visiting friend), and today's device records become the first
-      profile's — they were made by whoever owns the phone.
+      and no setup. Asking for a name first would put a text field in front of the
+      thing people opened the app for, and a couch guest who wants one turn should
+      not have to register for it.
+
+      **And a profile stays exactly that — a name and a color.** It is a label for a
+      seat, not an account: it cannot travel between devices (nearby play identifies
+      people by device), and the phone belongs to somebody, perhaps shared with kids.
+      Anything that treats it as an identity to hang a data model off is building for
+      a situation this app does not have.
 - [ ] **Records that stick, and are worth looking at.** Best lap and best race
-      already persist per track; make them visible and per-profile — a results
-      screen worth reading, "you beat your best" in the moment, and a per-track
-      board of who on this device holds what. Guests do not appear: with nothing to
-      attach a time to, inventing a slot for "whoever sat in seat 2" is worse than
-      not keeping it.
+      already persist per track; make them *visible* — a results screen worth
+      reading, "you beat your best" in the moment, and a board per track.
 
       Also wanted, and cheap: **time trial should show your past laps**, not only the
       best one. `CarProgress.lapTimes` already holds every lap of the run.
+
+      **Records stay per TRACK, not per profile** — a plan that was written and then
+      argued out of. On a device that belongs to one person (perhaps shared with
+      kids), a second record book per name mostly *fragments* the owner's own board
+      the first time somebody else plays. And a profile cannot travel, so there is no
+      wider board for it to feed.
+
+      What is worth having instead is **attribution**: store who set a time alongside
+      it, so a board reads "best lap 0:42.1 — Ada" without a second axis of storage.
+      A guest's time is stored with no name, which is honest rather than a hole.
+
+      Per-profile record books stay possible if kids sharing a phone each want their
+      own best to chase — but that is a "when it comes up" feature, and attribution
+      does not block it.
+
+      **A record is a SOLO time, and a nearby race sets none.** Already true —
+      `noteProgress` requires one local player, stock physics and normal pace — but
+      worth stating, because "should remote players set records on my device?" is a
+      question that will come back. Two reasons, and the first is mechanical:
+
+      - **A client is not simulating.** Networked play is host-authoritative, so a
+        guest's device renders snapshots rather than stepping its own race. A time it
+        showed is a number the host sent, not something it can reproduce — and a
+        record's ghost is a lap of *inputs replayed locally*, which a client does not
+        have; it has a stream of positions. The host is the exception on this point,
+        since its device does run the sim.
+      - **A lap in traffic is not the same lap.** Contact, slipstream and being held
+        up make a race lap incomparable with a time trial, which is what a board is
+        for. This one catches the host too.
 
       **The ghost storage is fixed** (was: 1.2 MB on a test device, and multiplying by
       profile once records are per-player). A stored ghost is now **one lap, packed at four
