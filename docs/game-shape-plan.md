@@ -197,9 +197,15 @@ What stays regardless of this plan:
 Deliberately ordered so each step is usable on its own, and so the riskiest
 design question (tournament rules) comes after there is something to hang it on.
 
-1. **Profiles, with guests as the default.** A seat is a guest unless a profile is
-   chosen; a profile is a name and a color, stored on device. Records become
-   per-player, and guests record nothing. Standings show names.
+1. **Profiles, with guests as the default.** SHIPPED. A seat is a guest unless a
+   profile is chosen; a profile is a name and a color, stored on device. Standings
+   show names.
+
+   **Records did NOT become per-player**, which this plan originally said they
+   would. On a device that belongs to somebody — perhaps shared with kids — a
+   record book per name mostly fragments the owner's own board, and a profile
+   cannot travel anyway, so there is no wider board for it to feed. What is worth
+   having is *attribution*: the name stored beside a time. See the roadmap.
 2. **The menu.** Solo / Couch / Nearby, then mode, then track. The current setup
    panel's knobs split into *what this session is* (on the way in) and
    *settings* (their own screen). Developer tuning moves behind a debug section
