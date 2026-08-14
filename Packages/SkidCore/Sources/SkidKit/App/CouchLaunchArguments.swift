@@ -10,6 +10,7 @@ import SwiftUI
 ///     -skid-players N        seat N people
 ///     -skid-ai N             any N > 0 means "fill the grid"
 ///     -skid-track ID         pick a track
+///     -skid-mode NAME        race | timeTrial
 ///     -skid-setup            open the race options
 ///     -skid-shelf            open the editor's track list
 ///     -skid-edit             open the editor canvas
@@ -31,6 +32,10 @@ extension CouchGame {
         }
         if let index = arguments.firstIndex(of: "-skid-track"), index + 1 < arguments.count {
             trackID = TrackLibrary.track(id: arguments[index + 1]).id
+        }
+        // Before `-skid-autostart`, which builds the race from whatever mode is set.
+        if let named = Self.mode(from: arguments) {
+            mode = named
         }
         // Straight to the race options, skipping the front door — for screenshots of
         // the setup screen, which is otherwise two taps in and unreachable from a
@@ -55,5 +60,18 @@ extension CouchGame {
             session?.started = true
         }
 
+    }
+
+    /// `-skid-mode NAME`, or nil when absent or unrecognized — an unknown name leaves the
+    /// mode alone rather than guessing at one.
+    private static func mode(from arguments: [String]) -> Mode? {
+        guard let index = arguments.firstIndex(of: "-skid-mode"),
+            index + 1 < arguments.count
+        else { return nil }
+        switch arguments[index + 1] {
+        case "timeTrial": return .timeTrial
+        case "race": return .race
+        default: return nil
+        }
     }
 }

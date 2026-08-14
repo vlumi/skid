@@ -21,6 +21,11 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Time trial shows the laps you have driven, not just your best.** It gave you a
+  running clock and a single "Best" line, so the run in front of you was invisible —
+  you could not see whether you were finding time or losing it. The chip now lists
+  your recent laps, the fastest one starred; once that lap scrolls out of the list,
+  its time stays pinned below so the number you are chasing is always on screen.
 - **Best times start over, and ghosts got much smaller.** The ghost you race in
   time trial was stored as the whole run it came from — every lap of it, to show
   you one. It is now just the fastest lap, packed tightly: a three-lap best drops
