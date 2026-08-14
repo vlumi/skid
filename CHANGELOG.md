@@ -21,6 +21,20 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Pick a track by looking at it.** The track picker was a row of names, which was
+  fine for four built-ins and useless the moment you had tracks of your own — "My
+  track 3" says nothing about whether it is a tight circuit or a long sweeper. Now
+  every track shows a picture of itself, drawn by the game's own renderer, so a
+  preview can never disagree with the track.
+- **The editor can open any of your tracks.** It could only ever work on the newest
+  one: your library kept everything and let you race it, but the editor had a single
+  slot. Opening it now shows your tracks — including the unfinished ones, which is
+  where they live, since the race picker will not offer a ring that does not close.
+  Start a new track, carry on with an old one, or start a copy of any of them
+  (including the built-ins, which is how you take one apart to see how it works).
+- **Tracks can be named.** Tap the name above the map while building — it works
+  before the track is saved, so you can name it the moment you think of one — or use
+  the ⋯ menu on any track in the list, which also copies and deletes.
 - **A new opening screen: say who is playing, then what to do.** The app used to
   open on one screen with every setting laid flat — mode, players, seating, AI
   count, difficulty, contact, track — and a player count that hid the difference
