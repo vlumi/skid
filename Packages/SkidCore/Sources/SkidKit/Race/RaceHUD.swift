@@ -131,21 +131,32 @@ struct RaceHUD: View {
             // mid/outer band, so keep status near the track). On finish it
             // moves to the band's center and becomes a proper card — plenty of
             // room now that the race is over.
-            let y =
-                finished
-                ? zone.midY
-                : (flipped ? zone.maxY - 18 : zone.minY + 18)
+            //
+            // Anchored by its EDGE, not its center: `.position` centers what it
+            // places, so a time trial's lap list — which is as tall as it has
+            // rows — grew half its height back over the track. Pinning the
+            // map-side edge makes it grow inward, into the band's empty middle.
             content
                 .foregroundStyle(.white)
                 .shadow(radius: 2)
                 .rotationEffect(flipped ? .degrees(180) : .zero)
-                .position(x: zone.midX, y: y)
+                .frame(width: zone.width, alignment: .center)
+                .frame(
+                    maxHeight: .infinity,
+                    alignment: finished ? .center : (flipped ? .bottom : .top)
+                )
+                .padding(finished ? [] : (flipped ? .bottom : .top), 18)
+                .frame(width: zone.width, height: zone.height)
+                .position(x: zone.midX, y: zone.midY)
         }
     }
 
     /// The compact in-race chip: color dot, live position, lap counter.
     @ViewBuilder private func racingChip(car: Car, index: Int) -> some View {
-        HStack(spacing: 6) {
+        // Top-aligned, not centered: a time trial's column is many rows tall, and a
+        // centered dot floats off beside the middle of the list with nothing to do
+        // with it. Against the first line it reads as labelling the clock.
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Circle()
                 .fill(index < colors.count ? colors[index] : .white)
                 .frame(width: 11, height: 11)
