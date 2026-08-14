@@ -54,3 +54,20 @@ public struct RaceRecording: Equatable, Sendable, Codable {
         }
     }
 }
+
+// MARK: - Keeping only the lap worth racing
+
+extension RaceRecording {
+    /// **Which ticks of a run cover its fastest lap.**
+    ///
+    /// `lapTimes` holds each lap's duration in order and laps run back to back from the
+    /// end of the countdown, so this is arithmetic rather than a search. Nil when the run
+    /// completed no laps — there is then no lap to keep.
+    public static func bestLapRange(lapTimes: [Tick], countdownTicks: Tick) -> Range<Tick>? {
+        guard let best = lapTimes.min(), let index = lapTimes.firstIndex(of: best) else {
+            return nil
+        }
+        let start = countdownTicks + lapTimes[..<index].reduce(0, +)
+        return start..<(start + best)
+    }
+}
