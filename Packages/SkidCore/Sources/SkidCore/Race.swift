@@ -134,7 +134,16 @@ public struct Race: Equatable, Sendable {
 
     /// Advance one tick. Missing inputs coast; cars held in the countdown
     /// and rolling out after their flag always coast.
-    public mutating func advance(inputs: [PlayerID: CarInput]) {
+    ///
+    /// **Every input is quantised on the way in**, to the same four bytes the wire and a
+    /// recording use — which is what makes both storable. A peer sending quantised input
+    /// while stepping its own raw thumb value diverges slowly and looks like a physics bug;
+    /// a recording stored as four bytes a tick replays a different line (measured: a clover
+    /// ghost diverged at **tick 0** before this, and is bit-identical with it). The
+    /// precision lost is far below what a thumb can express, and lost *uniformly*, which is
+    /// the property that matters.
+    public mutating func advance(inputs rawInputs: [PlayerID: CarInput]) {
+        let inputs = rawInputs.mapValues(\.quantised)
         let held = tick < config.countdownTicks
         if tick == config.countdownTicks {
             // First running tick: lap timing starts now, for everyone.

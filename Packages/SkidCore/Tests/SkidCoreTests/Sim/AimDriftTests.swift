@@ -101,10 +101,13 @@ final class AimDriftTests: XCTestCase {
             advance(&r, ticks: 1, input: CarInput(throttle: 0, aim: .pi))
             return r.cars[0].state.heading - before
         }
-        let half = flipStep(atFractionOfTop: 0.5)
-        let full = flipStep(atFractionOfTop: 0.99)
+        // **Magnitudes.** A flip toward `.pi` turns the car negatively, so both values are
+        // negative and comparing them signed asked whether one was more negative — which
+        // happened to hold, but is not the claim. The claim is about how big the step is.
+        let half = abs(flipStep(atFractionOfTop: 0.5))
+        let full = abs(flipStep(atFractionOfTop: 0.99))
         // Linear would give half ≈ 0.5·full; squared gives ≈ 0.25·full.
-        XCTAssertLessThan(half, full * 0.35)
+        XCTAssertLessThan(half, full * 0.35, "the flip is not curving with speed")
     }
 
     func testFlipAuthorityGrowsWithSpeed() {

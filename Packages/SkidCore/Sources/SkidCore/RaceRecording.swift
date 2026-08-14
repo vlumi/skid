@@ -17,8 +17,14 @@ public struct RaceRecording: Equatable, Sendable, Codable {
         self.inputs = []
     }
 
+    /// **Records what the sim will step, not what the thumb sent.**
+    ///
+    /// `Race.advance` quantises its inputs, so a recording of the raw values holds numbers
+    /// the race never used — it would replay a near-miss of the run, and a packed ghost
+    /// (four bytes a tick) could not round-trip it at all. Quantising here means a caller
+    /// cannot get this wrong by handing over what it happened to have.
     public mutating func append(_ tickInputs: [PlayerID: CarInput]) {
-        inputs.append(tickInputs)
+        inputs.append(tickInputs.mapValues(\.quantised))
     }
 
     /// Re-run the whole recording and return the resulting race state.
@@ -52,5 +58,22 @@ public struct RaceRecording: Equatable, Sendable, Codable {
             race.advance(inputs: tickInputs)
             after(race)
         }
+    }
+}
+
+// MARK: - Keeping only the lap worth racing
+
+extension RaceRecording {
+    /// **Which ticks of a run cover its fastest lap.**
+    ///
+    /// `lapTimes` holds each lap's duration in order and laps run back to back from the
+    /// end of the countdown, so this is arithmetic rather than a search. Nil when the run
+    /// completed no laps — there is then no lap to keep.
+    public static func bestLapRange(lapTimes: [Tick], countdownTicks: Tick) -> Range<Tick>? {
+        guard let best = lapTimes.min(), let index = lapTimes.firstIndex(of: best) else {
+            return nil
+        }
+        let start = countdownTicks + lapTimes[..<index].reduce(0, +)
+        return start..<(start + best)
     }
 }

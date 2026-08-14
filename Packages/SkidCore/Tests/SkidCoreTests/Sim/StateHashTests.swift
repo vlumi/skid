@@ -245,6 +245,11 @@ final class StateHashTests: XCTestCase {
     /// re-pinning (and the other tests in this file prove the sim still agrees
     /// with itself); a *platform* difference is the thing lockstep networking
     /// cannot survive, and re-pinning would hide it.
+    ///
+    /// **Re-pinned once, deliberately**: `Race.advance` began quantising its inputs, so
+    /// every hash moved. That is a change to what the sim steps rather than to how it
+    /// steps, it is the same on every platform, and it is what lets a lap be stored as four
+    /// bytes a tick and still replay the line that was driven.
     func testAFixedScriptProducesAKnownHashSequence() {
         let sequence = hashes(seed: 42, ticks: 600)
         // Sampled rather than pinned whole: 600 literals would be unreadable, and
@@ -254,8 +259,8 @@ final class StateHashTests: XCTestCase {
         XCTAssertEqual(
             samples,
             [
-                293_132_039_573_376_392, 4_444_394_593_673_369_299, 680_968_422_790_731_179,
-                17_334_009_286_448_697_965, 9_480_874_796_241_687_749, 633_532_361_097_108_376,
+                4_077_695_904_547_307_221, 8_998_183_219_137_324_596, 4_341_081_151_660_624_815,
+                13_682_242_403_462_166_235, 209_440_551_181_993_458, 1_519_371_944_129_834_014,
             ])
         XCTAssertEqual(sequence.count, 600)
     }
