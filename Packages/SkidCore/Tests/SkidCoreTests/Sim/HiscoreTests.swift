@@ -15,7 +15,9 @@ final class HiscoreTests: XCTestCase {
                         heading: 0.5, height: 0, steerActuator: 0.25)
                 ]),
             seed: 5, players: [PlayerID(0)],
-            inputs: [[PlayerID(0): CarInput(steer: 0.5, throttle: 1)]], ticks: 1)
+            // Quantised, as a real ghost's inputs are — the packed encoding stores
+            // exactly the numbers the sim stepped, so a raw fixture would not round-trip.
+            inputs: [[PlayerID(0): CarInput(steer: 0.5, throttle: 1).quantised]], ticks: 1)
     }
 
     func testLapRecordOnlyImproves() {

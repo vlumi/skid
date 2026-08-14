@@ -160,3 +160,80 @@ extension Race {
         }
     }
 }
+
+// MARK: - The compact form
+
+extension LapGhost {
+    /// **`Codable`, but the inputs travel as bytes.**
+    ///
+    /// `[[PlayerID: CarInput]]` encodes to JSON as a dictionary per tick, spelling the
+    /// seat id as a key and three `Double`s as decimal text on every one — measured at
+    /// **72 bytes a tick** for a single car, where the information is 4. It is the same
+    /// mistake the networking round measured (28 bytes of payload became 438 of JSON) and
+    /// fixed the same way: name the seats once, then write positions.
+    ///
+    /// The roster is `players`, which the ghost already stores, so a frame is just each
+    /// seat's four bytes in that order. Safe because `Race.advance` quantises what it
+    /// steps — the four bytes ARE the numbers the sim used, not a lossy summary of them.
+    private enum CodingKeys: String, CodingKey {
+        case start, seed, players, ticks, packedInputs
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        start = try container.decode(LapGhost.Start.self, forKey: .start)
+        seed = try container.decode(UInt64.self, forKey: .seed)
+        players = try container.decode([PlayerID].self, forKey: .players)
+        ticks = try container.decode(Tick.self, forKey: .ticks)
+        let packed = try container.decode(Data.self, forKey: .packedInputs)
+        inputs = LapGhost.unpack(packed, players: players)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(start, forKey: .start)
+        try container.encode(seed, forKey: .seed)
+        try container.encode(players, forKey: .players)
+        try container.encode(ticks, forKey: .ticks)
+        try container.encode(LapGhost.pack(inputs, players: players), forKey: .packedInputs)
+    }
+
+    /// Every tick's inputs, positionally against `players`.
+    ///
+    /// A seat missing from a frame is written as coast, which is what the sim does with it
+    /// anyway — so the round trip is faithful to the race rather than to the dictionary.
+    static func pack(_ inputs: [[PlayerID: CarInput]], players: [PlayerID]) -> Data {
+        var bytes: [UInt8] = []
+        bytes.reserveCapacity(inputs.count * players.count * CarInputWire.byteCount)
+        for frame in inputs {
+            for seat in players {
+                bytes.append(contentsOf: CarInputWire(frame[seat] ?? .coast).bytes)
+            }
+        }
+        return Data(bytes)
+    }
+
+    /// Rebuild frames from `pack`. A trailing partial frame is dropped rather than
+    /// half-decoded: a truncated file should cost the last tick, not produce a car with
+    /// two of its three channels set.
+    static func unpack(_ data: Data, players: [PlayerID]) -> [[PlayerID: CarInput]] {
+        guard !players.isEmpty else { return [] }
+        let stride = players.count * CarInputWire.byteCount
+        guard stride > 0 else { return [] }
+        let bytes = [UInt8](data)
+        var frames: [[PlayerID: CarInput]] = []
+        frames.reserveCapacity(bytes.count / stride)
+        var offset = 0
+        while offset + stride <= bytes.count {
+            var frame: [PlayerID: CarInput] = [:]
+            for seat in players {
+                let end = offset + CarInputWire.byteCount
+                guard let wire = CarInputWire(bytes: bytes[offset..<end]) else { return frames }
+                frame[seat] = wire.input
+                offset = end
+            }
+            frames.append(frame)
+        }
+        return frames
+    }
+}
