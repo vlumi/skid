@@ -15,10 +15,7 @@ public final class GhostPlayback {
     private var index = 0
 
     public init?(record: BestRecord, track: Track) {
-        // An old book holds a whole-race recording instead; `migrated(on:)` turns one into
-        // a lap ghost, so a player's existing best still has something to race against.
-        guard let ghost = record.migrated(on: track).lapGhost, let config = record.raceConfig
-        else { return nil }
+        guard let ghost = record.lapGhost, let config = record.raceConfig else { return nil }
         self.race = Race(
             track: track, players: ghost.players, seed: ghost.seed, config: config)
         // **Seeded to the lap's start**, since these inputs were driven from there rather

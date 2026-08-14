@@ -2,6 +2,11 @@ import Foundation
 
 /// A track's personal bests: the fastest full race, the fastest single lap, and one lap
 /// of driving to race against.
+///
+/// Bumping `HiscoreBook.currentVersion` is how this format changes: a book written by an
+/// older build decodes to nil and the player starts fresh. That is cheap here in a way it
+/// would not be for tracks or profiles — a record belongs to a specific road, and the roads
+/// are still changing.
 public struct BestRecord: Equatable, Sendable, Codable {
     /// Best full-race time, in ticks past the countdown.
     public var raceTicks: Tick?
@@ -18,41 +23,22 @@ public struct BestRecord: Equatable, Sendable, Codable {
     /// a setting. A `LapGhost` is the same size whatever the race length.
     public var lapGhost: LapGhost?
 
-    /// **The old whole-race recording, kept only to be read.**
-    ///
-    /// Existing books hold one, and it is a player's personal best — throwing it away on
-    /// upgrade would be deleting their record to save space they had already spent. So it
-    /// decodes, `migrated(on:)` turns it into a lap ghost, and nothing writes it again.
-    /// Once no book in the wild has one, this field can go.
-    public var raceRecording: RaceRecording?
-
     public init() {}
-
-    /// Turn an old whole-race recording into a lap ghost, if this record still has one.
-    ///
-    /// Needs the track to replay against, which is why it is not `didSet` on decode: the
-    /// book is loaded before any track is chosen, and a migration that guessed would
-    /// produce a ghost for the wrong road.
-    public func migrated(on track: Track) -> BestRecord {
-        guard lapGhost == nil, let recording = raceRecording, let config = raceConfig else {
-            return self
-        }
-        var record = self
-        record.raceRecording = nil
-        // The old recording holds no lap times, so they are recovered by replaying it —
-        // the run is deterministic, so this is exact rather than an estimate.
-        let replayed = recording.replay(on: track, config: config)
-        let lapTimes = replayed.cars.first?.progress.lapTimes ?? []
-        record.lapGhost = recording.bestLapGhost(on: track, lapTimes: lapTimes, config: config)
-        return record
-    }
 }
 
 /// All local hiscores, as a versioned envelope so the format can evolve
 /// without eating old data (tolerant decode: unknown future version → nil,
 /// caller starts fresh rather than crashing).
 public struct HiscoreBook: Equatable, Sendable, Codable {
-    public static let currentVersion = 1
+    /// **2: ghosts became one packed lap.**
+    ///
+    /// A version-1 book holds whole-race recordings, which this build has no reader for —
+    /// and deliberately so. Migrating them was written and then deleted: a ghost is only
+    /// meaningful on the road it was driven on, the built-in tracks are still changing as
+    /// the library grows, and a lap replayed through a track that has moved is a car
+    /// driving through grass. Old books therefore decode to nil and the player starts
+    /// fresh, which `decode` already does for any version it does not understand.
+    public static let currentVersion = 2
 
     public var version = HiscoreBook.currentVersion
     /// Keyed by `Track.id`.
@@ -93,8 +79,6 @@ public struct HiscoreBook: Equatable, Sendable, Codable {
         guard ticks < (record.raceTicks ?? .max) else { return false }
         record.raceTicks = ticks
         record.lapGhost = ghost
-        // The superseded whole-race recording goes with the record it belonged to.
-        record.raceRecording = nil
         record.raceConfig = config
         tracks[trackID] = record
         return true
@@ -104,10 +88,20 @@ public struct HiscoreBook: Equatable, Sendable, Codable {
         try JSONEncoder().encode(self)
     }
 
-    /// nil on garbage or a future version this build doesn't understand.
+    /// nil on garbage, or on any version that is not this one.
+    ///
+    /// **Older books are refused as well as newer ones**, which is stricter than the usual
+    /// tolerant-decode shape and is deliberate here: version 1 stored whole-race
+    /// recordings, and a lenient decode would have accepted such a book and quietly dropped
+    /// the ghost as an unknown key — leaving a record that claims a time with nothing to
+    /// race against. Refusing means the player starts fresh, which is the intended outcome
+    /// (see `currentVersion`) rather than a silent half-migration.
+    ///
+    /// A future format may well be worth reading forward from. That is a decision for
+    /// whoever writes version 3, with the data in front of them.
     public static func decode(_ data: Data) -> HiscoreBook? {
         guard let book = try? JSONDecoder().decode(HiscoreBook.self, from: data),
-            book.version <= currentVersion
+            book.version == currentVersion
         else { return nil }
         return book
     }

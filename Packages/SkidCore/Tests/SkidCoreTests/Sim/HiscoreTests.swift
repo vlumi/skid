@@ -46,42 +46,6 @@ final class HiscoreTests: XCTestCase {
         XCTAssertEqual(best.raceConfig, config)
     }
 
-    /// **Beating an old record drops the whole-race recording it carried.**
-    ///
-    /// The point of the new format is that the big field stops being written; a record
-    /// improved after an upgrade must not keep the megabyte its predecessor held. Starts
-    /// from a book that HAS one, since a fresh record's field is nil either way — an
-    /// assertion on a fresh book cannot fail and proves nothing.
-    func testBeatingALegacyRecordDropsItsRecording() {
-        var book = HiscoreBook()
-        var legacy = BestRecord()
-        legacy.raceTicks = 5000
-        legacy.raceRecording = RaceRecording(seed: 5, players: [PlayerID(0)])
-        legacy.raceConfig = RaceConfig(laps: 3)
-        book.tracks["practice-loop"] = legacy
-        XCTAssertNotNil(book.best(for: "practice-loop").raceRecording)
-
-        XCTAssertTrue(
-            book.recordRace(
-                ticks: 4000, ghost: sampleGhost(), config: RaceConfig(laps: 3),
-                track: "practice-loop"))
-        XCTAssertNil(
-            book.best(for: "practice-loop").raceRecording,
-            "the superseded whole-race recording was kept")
-        XCTAssertNotNil(book.best(for: "practice-loop").lapGhost)
-    }
-
-    /// A race with no completed lap still records the time; there is simply nothing to
-    /// race against.
-    func testARaceWithNoLapStillRecordsItsTime() {
-        var book = HiscoreBook()
-        XCTAssertTrue(
-            book.recordRace(
-                ticks: 4000, ghost: nil, config: RaceConfig(laps: 3), track: "practice-loop"))
-        XCTAssertEqual(book.best(for: "practice-loop").raceTicks, 4000)
-        XCTAssertNil(book.best(for: "practice-loop").lapGhost)
-    }
-
     func testEncodedRoundTrip() throws {
         var book = HiscoreBook()
         book.recordLap(999, track: "practice-loop")
@@ -90,6 +54,22 @@ final class HiscoreTests: XCTestCase {
             config: RaceConfig(laps: 3, countdownTicks: 180), track: "practice-loop")
         let data = try book.encoded()
         XCTAssertEqual(HiscoreBook.decode(data), book)
+    }
+
+    /// **A book from before packed lap ghosts is discarded, deliberately.**
+    ///
+    /// Migrating whole-race recordings was written and then deleted: a ghost is only
+    /// meaningful on the road it was driven on, and the built-in tracks are still changing
+    /// as the library grows — a lap replayed through a track that has moved is a car
+    /// driving through grass. Starting fresh is the honest outcome, and it keeps a legacy
+    /// field out of the model for good.
+    func testABookFromTheOldGhostFormatIsDiscarded() throws {
+        var old = HiscoreBook()
+        old.version = 1
+        old.tracks["clover"] = BestRecord()
+        XCTAssertNil(
+            HiscoreBook.decode(try old.encoded()),
+            "a v1 book was read as if this build understood its ghosts")
     }
 
     func testDecodeRejectsGarbageAndFutureVersions() throws {
