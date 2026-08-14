@@ -1,10 +1,13 @@
 import Foundation
 import SkidCore
 
-/// The personal-best run, replayed tick-by-tick through its own parallel
-/// sim — determinism makes the stored seed + inputs reproduce it exactly.
-/// Never interacts with the live race and never writes marks; it only gets
-/// drawn (translucently).
+/// **The personal-best LAP**, replayed tick-by-tick through its own parallel sim —
+/// determinism makes the stored pose + inputs reproduce it exactly. Never interacts with
+/// the live race and never writes marks; it only gets drawn (translucently).
+///
+/// One lap rather than the whole best race, which is what was stored before: a ghost is
+/// something to drive alongside, and the laps either side of the best one were never
+/// visible. See `LapGhost`.
 @MainActor
 public final class GhostPlayback {
     private(set) var race: Race
@@ -12,12 +15,16 @@ public final class GhostPlayback {
     private var index = 0
 
     public init?(record: BestRecord, track: Track) {
-        guard let recording = record.raceRecording, let config = record.raceConfig else {
-            return nil
-        }
+        // An old book holds a whole-race recording instead; `migrated(on:)` turns one into
+        // a lap ghost, so a player's existing best still has something to race against.
+        guard let ghost = record.migrated(on: track).lapGhost, let config = record.raceConfig
+        else { return nil }
         self.race = Race(
-            track: track, players: recording.players, seed: recording.seed, config: config)
-        self.inputs = recording.inputs
+            track: track, players: ghost.players, seed: ghost.seed, config: config)
+        // **Seeded to the lap's start**, since these inputs were driven from there rather
+        // than from the grid.
+        self.race.seed(from: ghost.start)
+        self.inputs = ghost.inputs
     }
 
     public var isDone: Bool { index >= inputs.count }

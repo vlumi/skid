@@ -32,7 +32,10 @@ extension CouchGame {
             improved =
                 hiscores.recordRace(
                     ticks: finished - session.race.config.countdownTicks,
-                    recording: session.recording,
+                    // Cut here, where the finished race still knows where its laps fell.
+                    ghost: session.recording.bestLapGhost(
+                        on: session.race.track, lapTimes: car.progress.lapTimes,
+                        config: session.race.config),
                     config: session.race.config,
                     track: trackID
                 ) || improved
