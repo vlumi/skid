@@ -131,21 +131,32 @@ struct RaceHUD: View {
             // mid/outer band, so keep status near the track). On finish it
             // moves to the band's center and becomes a proper card — plenty of
             // room now that the race is over.
-            let y =
-                finished
-                ? zone.midY
-                : (flipped ? zone.maxY - 18 : zone.minY + 18)
+            //
+            // Anchored by its EDGE, not its center: `.position` centers what it
+            // places, so a time trial's lap list — which is as tall as it has
+            // rows — grew half its height back over the track. Pinning the
+            // map-side edge makes it grow inward, into the band's empty middle.
             content
                 .foregroundStyle(.white)
                 .shadow(radius: 2)
                 .rotationEffect(flipped ? .degrees(180) : .zero)
-                .position(x: zone.midX, y: y)
+                .frame(width: zone.width, alignment: .center)
+                .frame(
+                    maxHeight: .infinity,
+                    alignment: finished ? .center : (flipped ? .bottom : .top)
+                )
+                .padding(finished ? [] : (flipped ? .bottom : .top), 18)
+                .frame(width: zone.width, height: zone.height)
+                .position(x: zone.midX, y: zone.midY)
         }
     }
 
     /// The compact in-race chip: color dot, live position, lap counter.
     @ViewBuilder private func racingChip(car: Car, index: Int) -> some View {
-        HStack(spacing: 6) {
+        // Top-aligned, not centered: a time trial's column is many rows tall, and a
+        // centered dot floats off beside the middle of the list with nothing to do
+        // with it. Against the first line it reads as labelling the clock.
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Circle()
                 .fill(index < colors.count ? colors[index] : .white)
                 .frame(width: 11, height: 11)
@@ -159,8 +170,8 @@ struct RaceHUD: View {
                         .font(.subheadline.monospacedDigit())
                 }
             } else {
-                // Time trial: current lap clock + best (was the solo block).
-                HStack(spacing: 6) { timeTrialLines(car: car) }
+                // Time trial: the running clock over the laps already driven.
+                timeTrialLines(car: car)
             }
         }
     }
@@ -230,16 +241,34 @@ struct RaceHUD: View {
         }
     }
 
+    /// **A time trial is its history**, not just its best: the running clock, then the
+    /// laps already driven so you can see whether you are improving or fading.
+    ///
+    /// A trial laps forever, so only the most recent `Self.shownLaps` are listed — an
+    /// unbounded column would run off a phone. The best lap is pinned below when it has
+    /// scrolled out of that window, so the target never disappears.
     @ViewBuilder private func timeTrialLines(car: Car) -> some View {
         let lapTicks = max(
             0, race.tick - max(car.progress.lapStartTick, race.config.countdownTicks))
-        Text(verbatim: formatTicks(lapTicks))
-            .font(.title3.monospacedDigit().bold())
-        if let best = car.progress.bestLapTicks {
-            Text("Best \(formatTicks(best))", bundle: .module)
-                .font(.subheadline.monospacedDigit())
+        let history = LapHistory(lapTimes: car.progress.lapTimes, limit: Self.shownLaps)
+        VStack(alignment: .trailing, spacing: 2) {
+            Text(verbatim: formatTicks(lapTicks))
+                .font(.title3.monospacedDigit().bold())
+            ForEach(history.rows, id: \.number) { row in
+                splitRow(
+                    Text("Lap \(row.number)", bundle: .module), ticks: row.ticks,
+                    best: row.isBest)
+            }
+            if let best = history.pinnedBest {
+                Divider().overlay(.white.opacity(0.3))
+                splitRow(Text("Best", bundle: .module), ticks: best, best: true)
+            }
         }
+        .frame(width: 124)
     }
+
+    /// How many recent laps the time-trial chip lists.
+    private static let shownLaps = 5
 }
 
 /// Final standings once every car has taken the flag.
