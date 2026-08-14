@@ -199,3 +199,83 @@ struct GhostMigrationTests {
         #expect(migrated.bestLapTicks == 900)
     }
 }
+
+/// **The packed encoding**, which is what makes a ghost small enough to keep per track.
+struct LapGhostPackingTests {
+    private func ghost(seats: Int, ticks: Int) -> LapGhost {
+        let players = (0..<seats).map { PlayerID($0) }
+        var inputs: [[PlayerID: CarInput]] = []
+        for tick in 0..<ticks {
+            var frame: [PlayerID: CarInput] = [:]
+            for (index, seat) in players.enumerated() {
+                // **Quantised, as a real ghost's inputs are.** `Race.advance` quantises
+                // everything it steps, so a recording holds values that survive four bytes
+                // exactly. Fixture data straight from arbitrary Doubles would not, and the
+                // round trip would be testing the fixture rather than the encoding.
+                frame[seat] =
+                    CarInput(
+                        steer: Double((tick + index) % 20) / 10 - 1,
+                        throttle: Double(tick % 3) - 1,
+                        aim: tick % 4 == 0 ? nil : Double(tick % 628) / 100 - 3.14
+                    ).quantised
+            }
+            inputs.append(frame)
+        }
+        return LapGhost(
+            start: LapGhost.Start(
+                tick: 180,
+                cars: players.map {
+                    LapGhost.CarPose(
+                        seat: $0, position: Vec2(1, 2), velocity: Vec2(3, 4), heading: 0.5,
+                        height: 0, steerActuator: 0.1)
+                }),
+            seed: 7, players: players, inputs: inputs, ticks: Tick(ticks))
+    }
+
+    /// **The round trip is exact**, because the sim only ever steps quantised values — so
+    /// the four bytes are the numbers it used rather than an approximation of them.
+    @Test func packingRoundTripsExactly() throws {
+        for seats in [1, 2, 4] {
+            let original = ghost(seats: seats, ticks: 120)
+            let data = try JSONEncoder().encode(original)
+            let back = try JSONDecoder().decode(LapGhost.self, from: data)
+            #expect(back == original, "a \(seats)-seat ghost did not survive the round trip")
+        }
+    }
+
+    /// **Four bytes a tick a seat**, which is the whole point.
+    @Test func inputsCostFourBytesPerTickPerSeat() {
+        let packed = LapGhost.pack(
+            ghost(seats: 2, ticks: 100).inputs, players: [PlayerID(0), PlayerID(1)])
+        #expect(packed.count == 100 * 2 * CarInputWire.byteCount)
+    }
+
+    /// A seat missing from a frame reads back as coast — what the sim does with it anyway,
+    /// so the round trip is faithful to the race rather than to the dictionary.
+    @Test func aMissingSeatBecomesCoast() {
+        let players = [PlayerID(0), PlayerID(1)]
+        let packed = LapGhost.pack([[PlayerID(0): CarInput(throttle: 1)]], players: players)
+        let back = LapGhost.unpack(packed, players: players)
+        #expect(back.count == 1)
+        #expect(back[0][PlayerID(1)] == CarInput.coast)
+    }
+
+    /// **A truncated file costs the last tick, not a half-decoded one.** A frame with two
+    /// of its three channels set would be a car steering into a wall for reasons nobody
+    /// could explain.
+    @Test func aTruncatedFrameIsDropped() {
+        let players = [PlayerID(0)]
+        var packed = LapGhost.pack(
+            [[PlayerID(0): CarInput(throttle: 1)], [PlayerID(0): CarInput(steer: 1)]],
+            players: players)
+        packed.removeLast(2)  // half of the second frame
+        #expect(LapGhost.unpack(packed, players: players).count == 1)
+    }
+
+    /// Empty in, empty out — no crash on a ghost with no inputs.
+    @Test func anEmptyGhostPacksToNothing() {
+        #expect(LapGhost.pack([], players: [PlayerID(0)]).isEmpty)
+        #expect(LapGhost.unpack(Data(), players: [PlayerID(0)]).isEmpty)
+        #expect(LapGhost.unpack(Data([1, 2, 3, 4]), players: []).isEmpty)
+    }
+}

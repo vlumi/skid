@@ -17,8 +17,14 @@ public struct RaceRecording: Equatable, Sendable, Codable {
         self.inputs = []
     }
 
+    /// **Records what the sim will step, not what the thumb sent.**
+    ///
+    /// `Race.advance` quantises its inputs, so a recording of the raw values holds numbers
+    /// the race never used — it would replay a near-miss of the run, and a packed ghost
+    /// (four bytes a tick) could not round-trip it at all. Quantising here means a caller
+    /// cannot get this wrong by handing over what it happened to have.
     public mutating func append(_ tickInputs: [PlayerID: CarInput]) {
-        inputs.append(tickInputs)
+        inputs.append(tickInputs.mapValues(\.quantised))
     }
 
     /// Re-run the whole recording and return the resulting race state.

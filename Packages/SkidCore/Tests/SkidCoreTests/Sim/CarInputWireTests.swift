@@ -156,16 +156,21 @@ final class CarInputWireTests: XCTestCase {
         XCTAssertEqual(Set(a).count, a.count, "hash repeated while cars moved")
     }
 
-    func testQuantisingChangesTheRaceAndSoMustBeAppliedEverywhere() {
-        // Quantising is lossy, so a quantised race differs from a raw one — which
-        // is exactly why it cannot be applied on only one side. A peer sending
-        // quantised input while stepping its own raw thumb value diverges, and
-        // this test is what says so out loud.
+    /// **The sim quantises what it is given, so applying it twice changes nothing.**
+    ///
+    /// This test used to assert the opposite — that a quantised race *differs* from a raw
+    /// one — which was true and was the reason a peer could not skip the step. It was a
+    /// rule enforced by discipline: every caller had to remember.
+    ///
+    /// `Race.advance` now quantises on the way in, so the rule holds by construction and
+    /// the observable consequence is this one. It is what makes a four-byte-per-tick
+    /// recording replay the line that was driven rather than a near-miss of it.
+    func testTheSimStepsQuantisedInputWhateverItIsHanded() {
         let raw = rawHashes(seed: 11, ticks: 600)
         let quantised = quantisedHashes(seed: 11, ticks: 600)
-        XCTAssertNotEqual(raw, quantised, "quantising is lossless? then a peer could skip it")
-        // Same grid, so they start together and part company as inputs bite.
-        XCTAssertEqual(raw.first, quantised.first)
+        XCTAssertEqual(
+            raw, quantised,
+            "the sim stepped raw input; a stored or transmitted lap would then diverge")
     }
 
     // MARK: - Bytes
