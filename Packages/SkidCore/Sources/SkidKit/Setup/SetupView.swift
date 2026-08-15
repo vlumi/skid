@@ -143,10 +143,20 @@ struct SetupView: View {
         let best = game.hiscores.best(for: game.trackID)
         HStack(spacing: 14) {
             if let lap = best.bestLapTicks {
-                Text("Best lap \(formatTicks(lap))", bundle: .module)
+                // Named when a player set it; a guest's time shows bare rather than
+                // borrowing somebody else's name.
+                if let holder = best.lapHolder {
+                    Text("Best lap \(formatTicks(lap)) — \(holder)", bundle: .module)
+                } else {
+                    Text("Best lap \(formatTicks(lap))", bundle: .module)
+                }
             }
             if let race = best.raceTicks {
-                Text("Best race \(formatTicks(race))", bundle: .module)
+                if let holder = best.raceHolder {
+                    Text("Best race \(formatTicks(race)) — \(holder)", bundle: .module)
+                } else {
+                    Text("Best race \(formatTicks(race))", bundle: .module)
+                }
             }
         }
         .font(Retro.caption)
