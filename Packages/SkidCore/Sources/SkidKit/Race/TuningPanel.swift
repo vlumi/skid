@@ -104,8 +104,21 @@ struct TuningPanel: View {
             Text("Physics dials apply on Reset; hiscores need stock", bundle: .module)
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.6))
-            Button(action: close) {
-                Text("Back", bundle: .module).pillStyle()
+            HStack(spacing: 12) {
+                Button(action: close) {
+                    Text("Back", bundle: .module).pillStyle()
+                }
+                // **The way back to stock.** The dials persist, and a tuned car records
+                // no times — so without this a phone that had been experimented with
+                // stops keeping records, and the only cure is matching a dozen values
+                // by hand. Hidden once already stock, so it is a fix, not a dial.
+                if !settings.isStockPhysics {
+                    Button {
+                        settings.resetPhysics()
+                    } label: {
+                        Text("Stock physics", bundle: .module).pillStyle()
+                    }
+                }
             }
         }
         .padding(22)

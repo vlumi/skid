@@ -21,6 +21,14 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Beating a record now says so.** Records were written to disk in silence: you could
+  drive the best lap of your life and the game would tell you nothing. A new best lap
+  is now crowned in the time trial's lap list as it happens — quietly, since a trial
+  has no ending to interrupt — and a race's results screen names what fell and the
+  time it beat, which is the part worth reading: "best lap 0:04.81, beat 0:05.28".
+- **The physics dials can go back to stock.** They persist between launches, and a
+  tuned car records no times — so a phone that had been experimented with would quietly
+  stop keeping records with no way back short of matching every dial by hand.
 - **Time trial shows the laps you have driven, not just your best.** It gave you a
   running clock and a single "Best" line, so the run in front of you was invisible —
   you could not see whether you were finding time or losing it. The chip now lists

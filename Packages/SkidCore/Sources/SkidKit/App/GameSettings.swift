@@ -117,6 +117,28 @@ public final class GameSettings: ObservableObject {
             && abs(wallYaw - stock.wallYaw) < 1e-9
     }
 
+    /// **Put every physics dial back to stock**, so `isStockPhysics` holds again.
+    ///
+    /// The dials persist in `UserDefaults`, which means a phone that has been tuned stays
+    /// tuned — and silently records no hiscores until somebody works out why. This is the
+    /// way back. Tests need it for the same reason: the store is process-wide, so a
+    /// developer's own tuning would otherwise decide whether a record test passes.
+    public func resetPhysics() {
+        let stock = CarTuning()
+        aimTurnRate = stock.aimTurnRate
+        aimFlipBoost = stock.aimFlipBoost
+        steerFlipBoost = stock.steerFlipBoost
+        driftRetention = stock.driftRetention
+        turnRate = stock.turnRate
+        gripScale = stock.gripScale
+        wallRestitution = stock.wallRestitution
+        wallGlanceBounce = stock.wallGlanceBounce
+        wallFriction = stock.wallFriction
+        wallDragFloor = stock.wallDragFloor
+        gravity = stock.gravity
+        wallYaw = stock.wallYaw
+    }
+
     /// The race tuning the dials describe (pace folded in).
     public var carTuning: CarTuning {
         CarTuning(
