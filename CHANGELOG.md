@@ -21,6 +21,8 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+### build 13 — 2026-08-15
+
 - **A new opening screen: say who is playing, then what to do.** The app used to
   open on one screen with every setting laid flat — mode, players, seating, AI
   count, difficulty, contact, track — and a player count that hid the difference
