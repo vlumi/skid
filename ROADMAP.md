@@ -424,8 +424,10 @@ id — what is missing is tying a result to a *person*.
       the time it beat. The signal comes from the write itself — the book only holds the
       *current* best, so "was that a record?" has to be captured as the record is set.
 
-      What is left here is **a board per track** (times worth browsing outside a race),
-      and **attribution** below.
+      **Both shipped.** Times are attributed (the holder's NAME, not their profile id —
+      a record is a snapshot, so deleting or renaming a profile must not rewrite who
+      drove it), and the track picker doubles as the board: every track shows its best
+      lap and whose it is, or "No time yet".
 
       **Records stay per TRACK, not per profile** — a plan that was written and then
       argued out of. On a device that belongs to one person (perhaps shared with
