@@ -105,29 +105,35 @@ struct TuningPanel: View {
                     slider(
                         Text("Deck scale", bundle: .module), value: $settings.deckScale,
                         range: 1.0...1.6, step: 0.05, format: "%.2f")
+
+                    // **Last thing in the scroll, not pinned.** Erasing everything is a
+                    // rare, irreversible act; it belongs where you have to go looking for
+                    // it, rather than sitting under your thumb the whole time you are
+                    // dragging sliders.
+                    resetAllDataLink
                 }
             }
             .frame(maxHeight: 460)
             Text("Physics dials apply on Reset; hiscores need stock", bundle: .module)
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.6))
+            // Floating footer: leaving, and undoing. Both are wanted from anywhere in the
+            // list, so they do not scroll away.
             HStack(spacing: 12) {
                 Button(action: close) {
                     Text("Back", bundle: .module).pillStyle()
                 }
-                // **The way back to stock.** The dials persist, and a tuned car records
-                // no times — so without this a phone that had been experimented with
-                // stops keeping records, and the only cure is matching a dozen values
-                // by hand. Hidden once already stock, so it is a fix, not a dial.
-                if !settings.isStockPhysics {
-                    Button {
-                        settings.resetPhysics()
-                    } label: {
-                        Text("Stock physics", bundle: .module).pillStyle()
-                    }
+                // **The way back.** The dials persist, so a phone that has been
+                // experimented with stays that way — and a tuned car records no times,
+                // which is a silent failure with no obvious cure. Covers the whole panel,
+                // not only the physics: the aim shape, the d-pad, elevation and pace are
+                // just as tuned, and a reset that left them was a half restore.
+                Button {
+                    settings.resetAllTunings()
+                } label: {
+                    Text("Reset to defaults", bundle: .module).pillStyle()
                 }
             }
-            resetAllDataButton
         }
         .padding(22)
         .frame(maxWidth: 340)
@@ -138,48 +144,55 @@ struct TuningPanel: View {
         .onChangeCompat(of: settings.deckScale) { _ in settings.applyRenderTuning() }
     }
 
-    /// **Wipe every stored track, record and dial** — a development tool, kept visually
-    /// apart and behind a second tap because it is irreversible and this panel opens
-    /// from a shake. The armed state says what will go, since "everything" is easy to
-    /// read as "the dials" on a panel full of dials.
-    @ViewBuilder private var resetAllDataButton: some View {
+    /// **Wipe every stored track, record and dial** — a development tool, so it reads as a
+    /// link rather than a button: the panel's real controls are the sliders and the two
+    /// footer pills, and this is neither.
+    ///
+    /// Armed by a first tap, because it cannot be undone. The armed state names what will
+    /// go, since "everything" is easy to read as "the dials" on a panel full of dials, and
+    /// it offers no Cancel of its own — tapping the link again disarms it, and the footer
+    /// already has the one way out. Two buttons that both mean "never mind" is what the
+    /// first version had, and it read as a mistake.
+    @ViewBuilder private var resetAllDataLink: some View {
         if let resetAllData {
-            VStack(spacing: 6) {
-                Divider().overlay(.white.opacity(0.25))
+            VStack(spacing: 8) {
+                Divider().overlay(.white.opacity(0.2))
                 if confirmingReset {
                     Text("Deletes your tracks, records and profiles", bundle: .module)
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
-                    HStack(spacing: 12) {
-                        Button {
-                            confirmingReset = false
-                        } label: {
-                            Text("Cancel", bundle: .module).pillStyle()
-                        }
-                        Button {
-                            confirmingReset = false
-                            resetAllData()
-                            close()
-                        } label: {
-                            Text("Erase everything", bundle: .module)
-                                .font(.footnote.bold())
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(.red.opacity(0.85), in: Capsule())
-                                .foregroundStyle(.white)
-                        }
+                    Button {
+                        confirmingReset = false
+                        resetAllData()
+                        close()
+                    } label: {
+                        Text("Erase everything", bundle: .module)
+                            .font(.footnote.bold())
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(.red.opacity(0.85), in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                    Button {
+                        confirmingReset = false
+                    } label: {
+                        Text("Never mind", bundle: .module)
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.6))
                     }
                 } else {
                     Button {
                         confirmingReset = true
                     } label: {
-                        Text("Reset all data", bundle: .module)
+                        Text("Erase all data", bundle: .module)
                             .font(.footnote)
-                            .foregroundStyle(.red.opacity(0.9))
+                            .underline()
+                            .foregroundStyle(.red.opacity(0.85))
                     }
                 }
             }
+            .padding(.top, 8)
         }
     }
 

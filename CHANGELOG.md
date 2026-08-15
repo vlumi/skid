@@ -22,8 +22,13 @@ ships (see [AGENTS.md](AGENTS.md)).
 ### Unreleased (next build)
 
 - **Reset all data**, in the tuning panel — a development tool that puts the app back
-  to freshly-installed: every track, record, profile and dial. Behind a confirmation,
+  to freshly-installed: every track, record, profile and dial. It reads as a link at
+  the end of the panel rather than a button under your thumb, and takes a confirmation,
   since it cannot be undone.
+- **Reset to defaults**, beside Back at the foot of the tuning panel: puts every dial on
+  the panel back to its factory value. The previous "stock physics" button covered only
+  the dials that hiscores check, so the aim shape, the d-pad feel, the elevation and the
+  pace stayed exactly as tuned — a restore that restored half the panel.
 
 - **Beating a record now says so.** Records were written to disk in silence: you could
   drive the best lap of your life and the game would tell you nothing. A new best lap
