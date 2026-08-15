@@ -15,6 +15,7 @@ import SwiftUI
 ///     -skid-shelf            open the editor's track list
 ///     -skid-edit             open the editor canvas
 ///     -skid-autostart        start the race, past the ready gate
+///     -skid-tuning           open the tuning panel (simctl cannot shake)
 extension CouchGame {
     func applyLaunchArguments() {
         let arguments = ProcessInfo.processInfo.arguments

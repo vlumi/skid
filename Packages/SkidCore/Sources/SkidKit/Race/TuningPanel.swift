@@ -7,6 +7,13 @@ import SwiftUI
 struct TuningPanel: View {
     @ObservedObject var settings: GameSettings
     let close: () -> Void
+    /// Throw away every stored track, record and dial. Nil where there is no game to
+    /// reset, which is how the panel stays usable without one.
+    var resetAllData: (() -> Void)?
+
+    /// Guards the wipe behind a second tap: it is irreversible, and it sits on a panel
+    /// opened by shaking the phone.
+    @State private var confirmingReset = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -120,6 +127,7 @@ struct TuningPanel: View {
                     }
                 }
             }
+            resetAllDataButton
         }
         .padding(22)
         .frame(maxWidth: 340)
@@ -128,6 +136,51 @@ struct TuningPanel: View {
         // Push the elevation knob into the renderer's global as it's dragged,
         // so the deck/car scale updates live.
         .onChangeCompat(of: settings.deckScale) { _ in settings.applyRenderTuning() }
+    }
+
+    /// **Wipe every stored track, record and dial** — a development tool, kept visually
+    /// apart and behind a second tap because it is irreversible and this panel opens
+    /// from a shake. The armed state says what will go, since "everything" is easy to
+    /// read as "the dials" on a panel full of dials.
+    @ViewBuilder private var resetAllDataButton: some View {
+        if let resetAllData {
+            VStack(spacing: 6) {
+                Divider().overlay(.white.opacity(0.25))
+                if confirmingReset {
+                    Text("Deletes your tracks, records and profiles", bundle: .module)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                    HStack(spacing: 12) {
+                        Button {
+                            confirmingReset = false
+                        } label: {
+                            Text("Cancel", bundle: .module).pillStyle()
+                        }
+                        Button {
+                            confirmingReset = false
+                            resetAllData()
+                            close()
+                        } label: {
+                            Text("Erase everything", bundle: .module)
+                                .font(.footnote.bold())
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(.red.opacity(0.85), in: Capsule())
+                                .foregroundStyle(.white)
+                        }
+                    }
+                } else {
+                    Button {
+                        confirmingReset = true
+                    } label: {
+                        Text("Reset all data", bundle: .module)
+                            .font(.footnote)
+                            .foregroundStyle(.red.opacity(0.9))
+                    }
+                }
+            }
+        }
     }
 
     private func section(_ label: Text) -> some View {

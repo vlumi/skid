@@ -61,6 +61,6 @@ public struct GameView: View {
         // root so every phase inherits it, which is the point: the dials used to be
         // a pause-menu button, reachable only from inside a race. In a production
         // build this is the identity function.
-        .tuningOnShake(settings: game.settings)
+        .tuningOnShake(settings: game.settings) { game.resetAllData() }
     }
 }
