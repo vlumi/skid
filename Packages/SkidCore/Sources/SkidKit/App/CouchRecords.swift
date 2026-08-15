@@ -23,22 +23,35 @@ extension CouchGame {
         var improved = false
         if car.progress.lapTimes.count > notedLapCount {
             for lap in car.progress.lapTimes[notedLapCount...] {
-                improved = hiscores.recordLap(lap, track: trackID) || improved
+                // **Read the standing record BEFORE the write**, which is the only moment
+                // it is knowable: `recordLap` replaces it, so afterwards the book agrees
+                // with the run and every lap would look like a record.
+                let previous = hiscores.best(for: trackID).bestLapTicks
+                if hiscores.recordLap(lap, track: trackID) {
+                    improved = true
+                    runRecords.lapRecord = RunRecords.Improvement(ticks: lap, previous: previous)
+                }
             }
             notedLapCount = car.progress.lapTimes.count
         }
         if !notedFinish, let finished = car.progress.finishedAt {
             notedFinish = true
-            improved =
-                hiscores.recordRace(
-                    ticks: finished - session.race.config.countdownTicks,
-                    // Cut here, where the finished race still knows where its laps fell.
-                    ghost: session.recording.bestLapGhost(
-                        on: session.race.track, lapTimes: car.progress.lapTimes,
-                        config: session.race.config),
-                    config: session.race.config,
-                    track: trackID
-                ) || improved
+            let previousRace = hiscores.best(for: trackID).raceTicks
+            let raceTicks = finished - session.race.config.countdownTicks
+            let setRace = hiscores.recordRace(
+                ticks: raceTicks,
+                // Cut here, where the finished race still knows where its laps fell.
+                ghost: session.recording.bestLapGhost(
+                    on: session.race.track, lapTimes: car.progress.lapTimes,
+                    config: session.race.config),
+                config: session.race.config,
+                track: trackID
+            )
+            if setRace {
+                runRecords.raceRecord = RunRecords.Improvement(
+                    ticks: raceTicks, previous: previousRace)
+            }
+            improved = setRace || improved
         }
         if improved {
             hiscoreFile.save(hiscores)
