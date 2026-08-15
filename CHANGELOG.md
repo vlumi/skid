@@ -21,76 +21,6 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
-- **Records say who set them.** A named player's best reads "0:05.30 — Ada"; a guest's
-  shows the bare time, since a guest chose not to give a name.
-- **The track picker is a record board.** Every track now shows what it holds and who
-  holds it, so browsing tells you where your times are — and "No time yet" marks the
-  tracks nobody has raced.
-
-- **The menus look like a 90s PC game.** Hard edges, a VGA palette, beveled panels and
-  monospaced type, in place of native iOS chrome that made a top-down arcade racer read
-  like a settings app. The look is 1994; the ergonomics are not — every row is still a
-  finger-sized target and scrolling is still native.
-- **A settings screen**, with sound, haptics, and the two-player layout: face to face
-  across a table, or side by side sharing one edge. That last one was fixed at
-  face-to-face with no way to change it.
-- **An about screen**, with the version.
-- **Ghost mode is gone; cars always collide.** It was a race option with no real use —
-  a race where you can drive through each other is not the game.
-- **The track editor got the same 90s treatment**, and so did picking a player.
-- **"Back" from the track list goes back.** The list is reached from the front door and
-  from inside the editor, and it used to leave the same way from both — so backing out
-  from the front door dropped you into a track you had not chosen to edit.
-- **Chunkier cars, square pixels.** The car was a thin capsule that read as a smudge at
-  the size it is actually drawn; it is now a solid, square-cornered block, matching the
-  app icon. The gate markers are square too.
-
-- **Reset all data**, in the tuning panel — a development tool that puts the app back
-  to freshly-installed: every track, record, profile and dial. It reads as a link at
-  the end of the panel rather than a button under your thumb, and takes a confirmation,
-  since it cannot be undone.
-- **Reset to defaults**, beside Back at the foot of the tuning panel: puts every dial on
-  the panel back to its factory value. The previous "stock physics" button covered only
-  the dials that hiscores check, so the aim shape, the d-pad feel, the elevation and the
-  pace stayed exactly as tuned — a restore that restored half the panel.
-
-- **Beating a record now says so.** Records were written to disk in silence: you could
-  drive the best lap of your life and the game would tell you nothing. A new best lap
-  is now crowned in the time trial's lap list as it happens — quietly, since a trial
-  has no ending to interrupt — and a race's results screen names what fell and the
-  time it beat, which is the part worth reading: "best lap 0:04.81, beat 0:05.28".
-- **The physics dials can go back to stock.** They persist between launches, and a
-  tuned car records no times — so a phone that had been experimented with would quietly
-  stop keeping records with no way back short of matching every dial by hand.
-- **Time trial shows the laps you have driven, not just your best.** It gave you a
-  running clock and a single "Best" line, so the run in front of you was invisible —
-  you could not see whether you were finding time or losing it. The chip now lists
-  your recent laps, the fastest one starred; once that lap scrolls out of the list,
-  its time stays pinned below so the number you are chasing is always on screen.
-- **Best times start over, and ghosts got much smaller.** The ghost you race in
-  time trial was stored as the whole run it came from — every lap of it, to show
-  you one. It is now just the fastest lap, packed tightly: a three-lap best drops
-  from 138 KB to 5 KB, and a ten-lap one from 446 KB, since a ghost is now the
-  same size however long the race was.
-
-  **Existing best times are cleared** by this build. They were kept in the old
-  shape and could have been converted, but a ghost is only meaningful on the track
-  it was driven on — and the built-in tracks are still changing while the game is
-  in progress, so an old lap would be driven through a road that has moved.
-- **Pick a track by looking at it.** The track picker was a row of names, which was
-  fine for four built-ins and useless the moment you had tracks of your own — "My
-  track 3" says nothing about whether it is a tight circuit or a long sweeper. Now
-  every track shows a picture of itself, drawn by the game's own renderer, so a
-  preview can never disagree with the track.
-- **The editor can open any of your tracks.** It could only ever work on the newest
-  one: your library kept everything and let you race it, but the editor had a single
-  slot. Opening it now shows your tracks — including the unfinished ones, which is
-  where they live, since the race picker will not offer a ring that does not close.
-  Start a new track, carry on with an old one, or start a copy of any of them
-  (including the built-ins, which is how you take one apart to see how it works).
-- **Tracks can be named.** Tap the name above the map while building — it works
-  before the track is saved, so you can name it the moment you think of one — or use
-  the ⋯ menu on any track in the list, which also copies and deletes.
 - **A new opening screen: say who is playing, then what to do.** The app used to
   open on one screen with every setting laid flat — mode, players, seating, AI
   count, difficulty, contact, track — and a player count that hid the difference
@@ -100,27 +30,89 @@ ships (see [AGENTS.md](AGENTS.md)).
 
   Add a driver with **+ Guest** or **+ Player**, and tap any row to change who is
   in it. Two things went away because they were questions nobody could answer
-  before driving: the seating layout (two players are face-to-face, three get a
-  fixed corner) and the number of AI cars — now simply **With AI** or **People
-  only**, filling whatever the grid has room for.
+  before driving: the seating layout, and the number of AI cars — now simply
+  **With AI** or **People only**, filling whatever the grid has room for.
 - **Players can have names.** Make a profile — a name and a color, kept on this
   device — and your best times are yours rather than the phone's. Nobody has to:
   **guests race exactly the same**, and a visitor taking one turn never has to
   register for it. A profile is remembered per seat, so swapping a row back and
   forth does not ask twice.
-- **The tuning dials moved to a shake.** They are a developer tool and were sitting
-  in the pause menu, reachable only from inside a race — so tuning anything about
-  the menus or the editor meant starting one first. Shake the device instead, from
-  anywhere. They will not be in the finished game at all.
+- **A settings screen**, with sound, haptics, and the two-player layout: face to
+  face across a table, or side by side sharing one edge. That last one was fixed
+  at face-to-face with no way to change it.
+- **An about screen**, with the version.
+
+- **The whole game looks like a 90s PC game.** Hard edges, a VGA palette, beveled
+  panels and monospaced type, in place of native iOS chrome that made a top-down
+  arcade racer read like a settings app. The menus, the editor, the pause screen
+  and the race HUD all went together. The look is 1994; the ergonomics are not —
+  every row is still a finger-sized target and scrolling is still native.
+- **Chunkier cars, square pixels.** The car was a thin capsule that read as a
+  smudge at the size it is actually drawn; it is now a solid, square-cornered
+  block, matching the app icon. The gate markers are square too.
 - **Cars say when they are reversing**, with white lamps at the tail. Which way a
   car *faces* and which way it is *traveling* are different questions, and in a
-  drift game they come apart constantly — this is the second one, and the one that
-  was easy to get wrong by accident.
-- **Cars are easier to tell apart.** The white shine across each car's nose is gone.
-  It was washing every car toward the same white, cutting the worst pair of car
-  colors from ΔE 24.7 to 9.1 (measured under normal vision and all three kinds of
-  color blindness) — the difference between "two colors" and "the same color" on
-  a moving car. Cars now keep the full separation the palette was chosen for.
+  drift game they come apart constantly.
+- **Cars are easier to tell apart.** The white shine across each car's nose is
+  gone. It was washing every car toward the same white, cutting the worst pair of
+  car colors from ΔE 24.7 to 9.1 (measured under normal vision and all three kinds
+  of color blindness) — the difference between "two colors" and "the same color"
+  on a moving car.
+
+- **Time trial shows the laps you have driven, not just your best.** It gave you a
+  running clock and a single "Best" line, so the run in front of you was invisible
+  — you could not see whether you were finding time or losing it. The chip now
+  lists your recent laps, the fastest one crowned; once that lap scrolls out of the
+  list, its time stays pinned below so the number you are chasing is on screen.
+- **Beating a record now says so.** Records were written to disk in silence: you
+  could drive the best lap of your life and the game would tell you nothing. A new
+  best is crowned in the trial's lap list as it happens — quietly, since a trial
+  has no ending to interrupt — and a race's results screen names what fell and the
+  time it beat: "best lap 0:04.81, beat 0:05.28".
+- **Records say who set them.** A named player's best reads "0:05.30 — Ada"; a
+  guest's shows the bare time, since a guest chose not to give a name.
+- **The track picker is a record board.** Every track shows what it holds and who
+  holds it, so browsing tells you where your times are — and "No time yet" marks
+  the tracks nobody has raced.
+
+- **Pick a track by looking at it.** The track picker was a row of names, which was
+  fine for four built-ins and useless the moment you had tracks of your own — "My
+  track 3" says nothing about whether it is a tight circuit or a long sweeper. Now
+  every track shows a picture of itself, drawn by the game's own renderer, so a
+  preview can never disagree with the track.
+- **The editor can open any of your tracks.** It could only ever work on the newest
+  one: your library kept everything and let you race it, but the editor had a single
+  slot. Opening it now shows your tracks — including the unfinished ones, since the
+  race picker will not offer a ring that does not close. Start a new track, carry on
+  with an old one, or start a copy of any of them (including the built-ins, which is
+  how you take one apart to see how it works).
+- **Tracks can be named.** Tap the name above the map while building — it works
+  before the track is saved, so you can name it the moment you think of one — or use
+  the ⋯ menu on any track in the list, which also copies and deletes.
+
+- **Ghost mode is gone; cars always collide.** It was a race option with no real
+  use — a race where you can drive through each other is not the game.
+- **Best times start over, and ghosts got much smaller.** The ghost you race in
+  time trial was stored as the whole run it came from — every lap of it, to show
+  you one. It is now just the fastest lap, packed tightly: a three-lap best drops
+  from 138 KB to 5 KB, and a ten-lap one from 446 KB, since a ghost is now the same
+  size however long the race was.
+
+  **Existing best times are cleared** by this build. They were kept in the old
+  shape and could have been converted, but a ghost is only meaningful on the track
+  it was driven on — and the built-in tracks are still changing while the game is
+  in progress, so an old lap would be driven through a road that has moved.
+
+**Behind the scenes** — developer tools, not part of the finished game:
+
+- **The tuning dials moved to a shake**, from the pause menu, so tuning the menus
+  or the editor no longer means starting a race first.
+- **Reset to defaults** puts every dial on the tuning panel back to its factory
+  value. The previous button covered only the dials that hiscores check, so the aim
+  shape, the d-pad, the elevation and the pace stayed exactly as tuned — and a tuned
+  car quietly records no times, with no obvious way back.
+- **Reset all data** puts the app back to freshly-installed: every track, record,
+  profile and dial, behind a confirmation.
 
 ### build 12 — 2026-08-10
 
