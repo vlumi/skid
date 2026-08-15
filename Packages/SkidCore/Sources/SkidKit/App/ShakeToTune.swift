@@ -57,9 +57,13 @@ extension View {
     /// Applied once at the app's root, so every screen inherits it — the race, the
     /// menus, the editor, the lobby. Built with `SKID_NO_TUNING=1` this is the
     /// identity function: no listener, no sheet, nothing retained.
-    func tuningOnShake(settings: GameSettings) -> some View {
+    /// `resetAllData` adds the panel's wipe-everything button; omit it and the button
+    /// is absent, which is how a caller without a game to reset stays valid.
+    func tuningOnShake(
+        settings: GameSettings, resetAllData: (() -> Void)? = nil
+    ) -> some View {
         #if SKID_TUNING && canImport(UIKit)
-        return modifier(ShakeTuningModifier(settings: settings))
+        return modifier(ShakeTuningModifier(settings: settings, resetAllData: resetAllData))
         #else
         return self
         #endif
@@ -70,10 +74,18 @@ extension View {
 
 private struct ShakeTuningModifier: ViewModifier {
     @ObservedObject var settings: GameSettings
+    let resetAllData: (() -> Void)?
     @State private var showing = false
 
     func body(content: Content) -> some View {
         content
+            .onAppear {
+                // `simctl` cannot shake a simulator, so a panel reached only by shaking
+                // is otherwise unreachable for a screenshot.
+                if ProcessInfo.processInfo.arguments.contains("-skid-tuning") {
+                    showing = true
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: ShakeToTune.shaken)) { _ in
                 // Toggle rather than set: a second shake closes it, so the panel can
                 // be dismissed the same way it was opened even if its own close
@@ -84,7 +96,9 @@ private struct ShakeTuningModifier: ViewModifier {
                 // A sheet rather than an overlay, deliberately: it dims and blocks
                 // what is underneath, so a stray drag while a slider is open cannot
                 // reach the controls of a live race behind it.
-                TuningPanel(settings: settings) { showing = false }
+                TuningPanel(
+                    settings: settings, close: { showing = false },
+                    resetAllData: resetAllData)
             }
     }
 }
