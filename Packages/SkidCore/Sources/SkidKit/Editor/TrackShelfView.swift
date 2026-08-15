@@ -22,7 +22,14 @@ import SwiftUI
 ///   which is the honest outcome: there is nothing yet to distinguish it from its source.
 struct TrackShelfView: View {
     @ObservedObject var game: CouchGame
-    let dismiss: () -> Void
+    /// **Leaving without choosing** — back to wherever the shelf was opened from.
+    let back: () -> Void
+    /// **A track was chosen**, so the canvas opens regardless of how we got here.
+    ///
+    /// Separate from `back` on purpose: the two were one closure, and making Back
+    /// context-aware silently turned every "open this track" into "return to the menu"
+    /// as well. Picking a track and backing out are opposite intents and now say so.
+    let openCanvas: () -> Void
 
     /// The track being renamed, and the name being typed. Held together so the field cannot
     /// outlive the row it belongs to.
@@ -80,7 +87,7 @@ struct TrackShelfView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button {
-                dismiss()
+                back()
             } label: {
                 Text("Back", bundle: .module)
                     .font(Retro.body)
@@ -98,7 +105,7 @@ struct TrackShelfView: View {
     private var newTrackButton: some View {
         Button {
             game.newTrackForEditing()
-            dismiss()
+            openCanvas()
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "plus.circle.fill").font(.title3)
@@ -134,7 +141,7 @@ struct TrackShelfView: View {
     private func tile(entry: TrackLibraryBook.Entry) -> some View {
         Button {
             game.openForEditing(entryID: entry.id)
-            dismiss()
+            openCanvas()
         } label: {
             card(
                 layout: try? TrackCode.decode(entry.code), name: entry.name,
@@ -162,7 +169,7 @@ struct TrackShelfView: View {
     @ViewBuilder private func actions(for entry: TrackLibraryBook.Entry) -> some View {
         Button {
             game.startFrom(code: entry.code, name: entry.name)
-            dismiss()
+            openCanvas()
         } label: {
             Label {
                 Text("Start a copy", bundle: .module)
@@ -195,7 +202,7 @@ struct TrackShelfView: View {
         Button {
             game.startFrom(
                 code: builtin.code, name: TrackLibrary.displayName(id: builtin.id))
-            dismiss()
+            openCanvas()
         } label: {
             card(
                 layout: try? TrackCode.decode(builtin.code),
