@@ -139,6 +139,35 @@ public final class GameSettings: ObservableObject {
         wallYaw = stock.wallYaw
     }
 
+    /// **Every dial in the tuning panel back to its factory value** — not just the
+    /// physics ones.
+    ///
+    /// `resetPhysics` is deliberately narrower: it means "stock enough to set records",
+    /// which is a rule the hiscores depend on, so it covers exactly the dials
+    /// `isStockPhysics` reads. That left the rest of the panel behind — the aim shape, the
+    /// d-pad feel, the elevation and the pace — and a phone that had been played with was
+    /// only half restored by the button that claimed to restore it.
+    ///
+    /// The stock values live in the property declarations, so this reads them from a fresh
+    /// `CarTuning` where one exists and repeats the literal where it does not. Repeating a
+    /// literal is a thing that drifts, and `GameSettingsTests` is what catches it: it
+    /// asserts a reset object equals a newly-defaulted one, dial by dial.
+    public func resetAllTunings() {
+        resetPhysics()
+        pace = 1.0
+        dpadDeadzone = 10.0
+        dpadTravel = 48.0
+        dpadSteps = 0
+        dpadExpo = 1.4
+        aimReverseBelowSpeed = 90.0
+        aimThrottleEase = 0.25
+        aimForwardArcDegrees = 150.0
+        aimTailSwingDegrees = 45.0
+        deckScale = 1.2
+        debugOverlay = false
+        applyRenderTuning()
+    }
+
     /// The race tuning the dials describe (pace folded in).
     public var carTuning: CarTuning {
         CarTuning(
