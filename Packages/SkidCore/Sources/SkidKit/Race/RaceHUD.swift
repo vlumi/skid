@@ -167,10 +167,10 @@ struct RaceHUD: View {
                 HStack(spacing: 5) {
                     if let place = shownPlace[index] {
                         Text(verbatim: ordinal(place))
-                            .font(.subheadline.monospacedDigit().bold())
+                            .font(Retro.font(15))
                     }
                     Text("Lap \(min(car.progress.lap + 1, laps))/\(laps)", bundle: .module)
-                        .font(.subheadline.monospacedDigit())
+                        .font(Retro.font(15, weight: .regular))
                 }
             } else {
                 // Time trial: the running clock over the laps already driven.
@@ -240,11 +240,11 @@ struct RaceHUD: View {
                 .foregroundStyle(.yellow)
                 .opacity(best || record ? 1 : 0)
             label
-                .font(.caption2)
+                .font(Retro.caption)
                 .opacity(0.6)
             Spacer(minLength: 6)
             Text(verbatim: formatTicks(ticks))
-                .font(.footnote.monospacedDigit())
+                .font(Retro.font(13, weight: .regular))
                 .opacity(record ? 1 : 0.9)
                 .fontWeight(record ? .bold : .regular)
                 .lineLimit(1)
@@ -271,7 +271,7 @@ struct RaceHUD: View {
         let setRecord = records.lapRecord != nil
         VStack(alignment: .trailing, spacing: 2) {
             Text(verbatim: formatTicks(lapTicks))
-                .font(.title3.monospacedDigit().bold())
+                .font(Retro.font(19))
             ForEach(history.rows, id: \.number) { row in
                 splitRow(
                     Text("Lap \(row.number)", bundle: .module), ticks: row.ticks,
@@ -316,13 +316,13 @@ struct ResultsCard: View {
                     && car.progress.bestLapTicks == fastestLap
                 HStack(spacing: 10) {
                     Text(verbatim: "\(place + 1).")
-                        .font(.title3.monospacedDigit().bold())
+                        .font(Retro.font(19))
                     Circle()
                         .fill(carIndex < colors.count ? colors[carIndex] : .white)
                         .frame(width: 16, height: 16)
                     if let finished = car.progress.finishedAt {
                         Text(verbatim: formatTicks(finished - race.config.countdownTicks))
-                            .font(.title3.monospacedDigit())
+                            .font(Retro.font(19, weight: .regular))
                     }
                     if let best = car.progress.bestLapTicks {
                         // The race's overall fastest lap gets a gold star; the
@@ -331,10 +331,10 @@ struct ResultsCard: View {
                         // uniform — the star alone marks the winner.
                         HStack(spacing: 4) {
                             Image(systemName: "star.fill")
-                                .font(.caption2)
+                                .font(Retro.caption)
                                 .opacity(ownsFastest ? 1 : 0)
                             Text("Best \(formatTicks(best))", bundle: .module)
-                                .font(.footnote.monospacedDigit())
+                                .font(Retro.font(13, weight: .regular))
                         }
                         .foregroundStyle(ownsFastest ? Retro.highlight : Retro.ink)
                         .opacity(ownsFastest ? 1 : 0.75)
@@ -399,18 +399,18 @@ struct ResultsCard: View {
     private func recordLine(_ label: Text, _ improvement: RunRecords.Improvement) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "crown.fill")
-                .font(.caption2)
+                .font(Retro.caption)
             label
                 .font(.footnote.bold())
             Text(verbatim: formatTicks(improvement.ticks))
-                .font(.footnote.monospacedDigit().bold())
+                .font(Retro.font(13))
             if let previous = improvement.previous {
                 Text("beat \(formatTicks(previous))", bundle: .module)
                     .font(.caption2.monospacedDigit())
                     .opacity(0.7)
             } else {
                 Text("first", bundle: .module)
-                    .font(.caption2)
+                    .font(Retro.caption)
                     .opacity(0.7)
             }
         }
