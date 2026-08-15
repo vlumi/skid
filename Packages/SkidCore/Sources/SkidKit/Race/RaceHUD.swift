@@ -9,6 +9,9 @@ struct RaceHUD: View {
     let colors: [Color]
     @ObservedObject var rig: CouchRig
     let size: CGSize
+    /// What this run has taken off the record book. Only a time trial reads it — a race
+    /// reports its records on the results screen, which a trial never reaches.
+    var records: RunRecords = .none
     /// The race has begun (ready gate cleared). Until then the countdown is
     /// suppressed — the sim sits frozen at tick 0 (phase `.countdown`), which
     /// would otherwise flash a "3" behind the Play button.
@@ -223,19 +226,26 @@ struct RaceHUD: View {
     /// One "★ label … time" row: a fixed star slot (gold on the best lap,
     /// invisible otherwise, so every row lines up), the label, then the
     /// right-aligned time. Uniform weight; the time never wraps.
-    private func splitRow(_ label: Text, ticks: Tick, best: Bool) -> some View {
+    ///
+    /// `record` promotes the row to a TRACK record rather than merely this run's best —
+    /// the star turns into a crown and the time brightens. A separate glyph rather than a
+    /// word: the column is 124pt wide, and "Record" would not fit beside a time.
+    private func splitRow(_ label: Text, ticks: Tick, best: Bool, record: Bool = false)
+        -> some View
+    {
         HStack(spacing: 6) {
-            Image(systemName: "star.fill")
+            Image(systemName: record ? "crown.fill" : "star.fill")
                 .font(.system(size: 8))
                 .foregroundStyle(.yellow)
-                .opacity(best ? 1 : 0)
+                .opacity(best || record ? 1 : 0)
             label
                 .font(.caption2)
                 .opacity(0.6)
             Spacer(minLength: 6)
             Text(verbatim: formatTicks(ticks))
                 .font(.footnote.monospacedDigit())
-                .opacity(0.9)
+                .opacity(record ? 1 : 0.9)
+                .fontWeight(record ? .bold : .regular)
                 .lineLimit(1)
                 .fixedSize()
         }
@@ -247,21 +257,30 @@ struct RaceHUD: View {
     /// A trial laps forever, so only the most recent `Self.shownLaps` are listed — an
     /// unbounded column would run off a phone. The best lap is pinned below when it has
     /// scrolled out of that window, so the target never disappears.
+    ///
+    /// **A trial has no ending**, so a record can only be reported while it runs. The mark
+    /// is deliberately quiet — the best line it already shows says "Record" — rather than a
+    /// banner interrupting a lap that is still being driven.
     @ViewBuilder private func timeTrialLines(car: Car) -> some View {
         let lapTicks = max(
             0, race.tick - max(car.progress.lapStartTick, race.config.countdownTicks))
         let history = LapHistory(lapTimes: car.progress.lapTimes, limit: Self.shownLaps)
+        // The run's best IS the track record only when this run set it — the book is
+        // written as the lap lands, so it cannot be asked after the fact.
+        let setRecord = records.lapRecord != nil
         VStack(alignment: .trailing, spacing: 2) {
             Text(verbatim: formatTicks(lapTicks))
                 .font(.title3.monospacedDigit().bold())
             ForEach(history.rows, id: \.number) { row in
                 splitRow(
                     Text("Lap \(row.number)", bundle: .module), ticks: row.ticks,
-                    best: row.isBest)
+                    best: row.isBest, record: row.isBest && setRecord)
             }
             if let best = history.pinnedBest {
                 Divider().overlay(.white.opacity(0.3))
-                splitRow(Text("Best", bundle: .module), ticks: best, best: true)
+                splitRow(
+                    Text("Best", bundle: .module), ticks: best, best: true,
+                    record: setRecord)
             }
         }
         .frame(width: 124)
@@ -273,7 +292,9 @@ struct RaceHUD: View {
 
 /// Final standings once every car has taken the flag.
 struct ResultsCard: View {
-    let game: CouchGame
+    /// Observed, not held flat: the record line reads `game.runRecords`, which is written
+    /// on the frame the finish lands — the same frame this card first appears.
+    @ObservedObject var game: CouchGame
     /// A networked race exits to the LOBBY rather than to setup — the connection is
     /// worth keeping, since the next race reuses it.
     let session: GameSession
@@ -319,6 +340,7 @@ struct ResultsCard: View {
                     }
                 }
             }
+            recordLines
             HStack(spacing: 12) {
                 Button {
                     // **A networked race exits to the LOBBY, not to setup**, and
@@ -348,5 +370,48 @@ struct ResultsCard: View {
         .padding(24)
         .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 18))
         .foregroundStyle(.white)
+    }
+
+    /// **What this race took off the record book**, and what it beat.
+    ///
+    /// The beaten time is the point: "best lap 0:04.81" is a number, while "beat 0:05.28"
+    /// is an achievement. A first-ever record has nothing behind it and says so rather
+    /// than inventing a comparison.
+    ///
+    /// Silent when nothing fell — including every run that does not qualify (more than one
+    /// human, slowed pace, dialed physics), which records nothing by design.
+    @ViewBuilder private var recordLines: some View {
+        let records = game.runRecords
+        if !records.isEmpty {
+            VStack(spacing: 4) {
+                if let lap = records.lapRecord {
+                    recordLine(Text("Best lap", bundle: .module), lap)
+                }
+                if let race = records.raceRecord {
+                    recordLine(Text("Best race", bundle: .module), race)
+                }
+            }
+        }
+    }
+
+    private func recordLine(_ label: Text, _ improvement: RunRecords.Improvement) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "crown.fill")
+                .font(.caption2)
+            label
+                .font(.footnote.bold())
+            Text(verbatim: formatTicks(improvement.ticks))
+                .font(.footnote.monospacedDigit().bold())
+            if let previous = improvement.previous {
+                Text("beat \(formatTicks(previous))", bundle: .module)
+                    .font(.caption2.monospacedDigit())
+                    .opacity(0.7)
+            } else {
+                Text("first", bundle: .module)
+                    .font(.caption2)
+                    .opacity(0.7)
+            }
+        }
+        .foregroundStyle(.yellow)
     }
 }

@@ -416,8 +416,16 @@ id — what is missing is tying a result to a *person*.
 
       **Time trial now shows your past laps**, not only the best one — a windowed list
       of recent laps with the fastest starred, and that time pinned once its lap has
-      scrolled away. What is left here is the *results* half: a screen worth reading
-      and "you beat your best" in the moment.
+      scrolled away.
+
+      **"You beat your best" now lands**, and deliberately differently per mode, because
+      the modes differ: a trial has no ending, so a new record is crowned in the lap list
+      as it happens, quietly; a race has one, so its results screen names what fell and
+      the time it beat. The signal comes from the write itself — the book only holds the
+      *current* best, so "was that a record?" has to be captured as the record is set.
+
+      What is left here is **a board per track** (times worth browsing outside a race),
+      and **attribution** below.
 
       **Records stay per TRACK, not per profile** — a plan that was written and then
       argued out of. On a device that belongs to one person (perhaps shared with

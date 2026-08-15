@@ -155,7 +155,7 @@ public final class CouchGame: ObservableObject {
     public internal(set) var hiscores: HiscoreBook
     public let settings = GameSettings()
 
-    let hiscoreFile = HiscoreFile()
+    let hiscoreFile: HiscoreFile
     let profileFile: ProfileFile
     private let libraryFile: TrackLibraryFile
 
@@ -210,6 +210,12 @@ public final class CouchGame: ObservableObject {
     var notedLapCount = 0
     var notedFinish = false
 
+    /// **What this run has taken off the record book**, captured as it happens because the
+    /// book itself cannot answer it afterwards. Drives the trial's "record" mark and the
+    /// results screen's record line. Published: it changes mid-race, on the frame a lap
+    /// lands, and the HUD has to notice.
+    @Published public internal(set) var runRecords = RunRecords.none
+
     /// `signingKeys` is injectable so tests can run without a Keychain, which
     /// they must: `swift test` is headless and unentitled.
     /// `signingKeys` and `libraryFilename` are injectable so tests can run
@@ -218,11 +224,13 @@ public final class CouchGame: ObservableObject {
     public init(
         signingKeys: SigningKeyStore = KeychainSigningKeyStore(),
         libraryFilename: String = "tracks.json",
-        profileFilename: String = "profiles.json"
+        profileFilename: String = "profiles.json",
+        hiscoreFilename: String = "hiscores.json"
     ) {
         self.signingKeys = signingKeys
         self.libraryFile = TrackLibraryFile(filename: libraryFilename)
         self.profileFile = ProfileFile(filename: profileFilename)
+        self.hiscoreFile = HiscoreFile(filename: hiscoreFilename)
         hiscores = hiscoreFile.load()
         profiles = profileFile.load()
         // The custom track slot survives quitting: restore it before anything
@@ -387,6 +395,7 @@ public final class CouchGame: ObservableObject {
             : nil
         notedLapCount = 0
         notedFinish = false
+        runRecords = .none
         let session = GameSession(
             track: track, players: players, config: config, seed: seed,
             tuning: settings.carTuning, ghost: ghost,
