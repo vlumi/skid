@@ -382,10 +382,11 @@ enum TrackRenderer {
             let rowCount = min(perRow, colors.count - row * perRow)
             let offset = (Double(seat) - Double(rowCount - 1) / 2) * pitch
             let center = infield.post + outward * (pitch + Double(row) * pitch) + along * offset
+            // **Square pixels, not circles** — the same rule as the menus. A grid
+            // of blocks reads as a start-light panel rather than as bubbles.
             let dot = CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)
-            context.fill(Path(ellipseIn: dot), with: .color(color))
-            context.stroke(
-                Path(ellipseIn: dot), with: .color(.white.opacity(0.9)), lineWidth: 2.5)
+            context.fill(Path(dot), with: .color(color))
+            context.stroke(Path(dot), with: .color(.white.opacity(0.9)), lineWidth: 2.5)
         }
     }
 

@@ -10,7 +10,9 @@ enum OverlayRenderer {
     /// `up` points from).
     static func drawZone(_ zone: ZoneChrome, into context: inout GraphicsContext) {
         let rect = zone.rect.insetBy(dx: 3, dy: 3)
-        let shape = Path(roundedRect: rect, cornerRadius: 10)
+        // Square, like everything else now — a rounded card around a pixel-art game
+        // was the last piece of native-looking chrome on the race screen.
+        let shape = Path(rect)
         context.fill(shape, with: .color(zone.color.opacity(0.15)))
         context.stroke(shape, with: .color(zone.color.opacity(0.5)), lineWidth: 2)
         // Tab at the middle of the zone's "home" edge (opposite of up),
@@ -23,8 +25,7 @@ enum OverlayRenderer {
             max(edge.y, zone.safeInsets.top + 10),
             zone.rect.maxY - zone.safeInsets.bottom - 10)
         let tab = CGRect(x: edge.x - 22, y: edge.y - 5, width: 44, height: 10)
-        context.fill(
-            Path(roundedRect: tab, cornerRadius: 5), with: .color(zone.color.opacity(0.6)))
+        context.fill(Path(tab), with: .color(zone.color.opacity(0.6)))
     }
 
     /// The floating d-pad: a faint disc plus four arrows in the owning

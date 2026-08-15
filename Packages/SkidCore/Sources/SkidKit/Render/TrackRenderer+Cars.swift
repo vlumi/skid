@@ -272,7 +272,7 @@ extension TrackRenderer {
         // out past the body sides.
         for offset in CarGeometry.tireOffsets {
             let tire = CGRect(x: offset.x - 4.5, y: offset.y - 3, width: 9, height: 6)
-            car2D.fill(Path(roundedRect: tire, cornerRadius: 2), with: .color(rubber))
+            car2D.fill(Path(tire), with: .color(rubber))
         }
         // Narrow open-wheeler body: a capsule nose-to-tail. The look is a bold
         // dark rim (the cartoony edge that reads well on grass/asphalt). A soft
@@ -280,8 +280,16 @@ extension TrackRenderer {
         // headlight — barely there on light surfaces, but enough to keep a dark
         // car legible on dark ground (the mud pit), where a dark-only edge
         // would vanish. Background-independent, and carries onto map themes.
-        let body = CGRect(x: -length / 2, y: -width / 4, width: length, height: width / 2)
-        let bodyPath = Path(roundedRect: body, cornerRadius: width / 4)
+        // **Chunky and square-cornered**, to match the menus' pixel look — and because
+        // the car is small on screen, where a thin capsule reads as a smudge.
+        //
+        // Rendering only: `CarGeometry` is the SIM's car (collision runs off `radius`),
+        // and widening that would move every wall contact and invalidate every stored
+        // ghost. So the drawn body is deliberately its own number — 0.62 of the nominal
+        // width rather than the old 0.5 — and the corners are square.
+        let bodyHeight = width * 0.62
+        let body = CGRect(x: -length / 2, y: -bodyHeight / 2, width: length, height: bodyHeight)
+        let bodyPath = Path(body)
         // The glow: the dark rim drawn into a layer with TWO stacked white
         // shadow filters, so a soft light aura bleeds out around the whole
         // silhouette. Stacking compounds the light so it stays visible even at
