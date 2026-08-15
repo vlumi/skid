@@ -109,7 +109,7 @@ struct RaceHUD: View {
 
     private func bigLabel(_ text: Text) -> some View {
         text
-            .font(.system(size: 84, weight: .black, design: .rounded))
+            .font(Retro.font(78, weight: .black))
             .foregroundStyle(.white.opacity(0.9))
             .shadow(radius: 4)
     }
@@ -191,7 +191,7 @@ struct RaceHUD: View {
                     .frame(width: 16, height: 16)
                 if let place = shownPlace[index] {
                     Text(verbatim: ordinal(place))
-                        .font(.system(size: 34, weight: .black, design: .rounded))
+                        .font(Retro.font(30, weight: .black))
                         .monospacedDigit()
                 }
             }
@@ -199,7 +199,8 @@ struct RaceHUD: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 14))
+        .background(Retro.ground.opacity(0.82))
+        .overlay(RetroBevel(thickness: 2))
     }
 
     /// One aligned column: a "★ Lap N … time" row per lap (the best lap gets
@@ -335,7 +336,7 @@ struct ResultsCard: View {
                             Text("Best \(formatTicks(best))", bundle: .module)
                                 .font(.footnote.monospacedDigit())
                         }
-                        .foregroundStyle(ownsFastest ? Color.yellow : .white)
+                        .foregroundStyle(ownsFastest ? Retro.highlight : Retro.ink)
                         .opacity(ownsFastest ? 1 : 0.75)
                     }
                 }
@@ -368,8 +369,9 @@ struct ResultsCard: View {
             }
         }
         .padding(24)
-        .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 18))
-        .foregroundStyle(.white)
+        .background(Retro.panel)
+        .overlay(RetroBevel())
+        .foregroundStyle(Retro.ink)
     }
 
     /// **What this race took off the record book**, and what it beat.
@@ -412,6 +414,6 @@ struct ResultsCard: View {
                     .opacity(0.7)
             }
         }
-        .foregroundStyle(.yellow)
+        .foregroundStyle(Retro.highlight)
     }
 }

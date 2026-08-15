@@ -16,7 +16,7 @@ struct SetupView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.28, green: 0.55, blue: 0.23).ignoresSafeArea()
+            Retro.ground.ignoresSafeArea()
             // Scrollable, because the lobby has outgrown the smallest screens
             // (an SE can't show mode + track + race options + colors + both
             // buttons at once). `minHeight` at the viewport height keeps the
@@ -48,27 +48,28 @@ struct SetupView: View {
                     TrackThumbnail(layout: layout)
                         .frame(width: 84, height: 60)
                 } else {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.black.opacity(0.25))
+                    Rectangle()
+                        .fill(Retro.panel.opacity(0.5))
                         .frame(width: 84, height: 60)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: trackDisplayName)
-                        .font(.headline)
-                        .foregroundStyle(.white)
+                        .font(Retro.body)
+                        .foregroundStyle(Retro.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     Text("Change track", bundle: .module)
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .font(Retro.caption)
+                        .foregroundStyle(Retro.inkSoft)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.caption.bold())
-                    .foregroundStyle(.white.opacity(0.5))
+                    .font(Retro.caption)
+                    .foregroundStyle(Retro.inkSoft)
             }
             .padding(10)
-            .background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
         }
         .padding(.horizontal, 16)
     }
@@ -83,8 +84,8 @@ struct SetupView: View {
         VStack(spacing: 24) {
             VStack(spacing: 6) {
                 Text("Race", bundle: .module)
-                    .font(.system(size: 40, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(Retro.font(30, weight: .black))
+                    .foregroundStyle(Retro.amber)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
                     .shadow(radius: 3)
@@ -117,11 +118,12 @@ struct SetupView: View {
                 game.startRace()
             } label: {
                 Text("Start", bundle: .module)
-                    .font(.title.bold())
+                    .font(Retro.font(20, weight: .black))
                     .padding(.horizontal, 48)
                     .padding(.vertical, 14)
-                    .background(.white.opacity(0.92), in: Capsule())
-                    .foregroundStyle(.black)
+                    .background(Retro.highlight)
+                    .overlay(RetroBevel())
+                    .foregroundStyle(Retro.onHighlight)
             }
 
             // Nearby and the editor are destinations of their own now, reached from
@@ -147,8 +149,8 @@ struct SetupView: View {
                 Text("Best race \(formatTicks(race))", bundle: .module)
             }
         }
-        .font(.footnote.monospacedDigit().bold())
-        .foregroundStyle(.white.opacity(0.85))
+        .font(Retro.caption)
+        .foregroundStyle(Retro.ink)
     }
 
     /// **Race options — what you are racing, not who.** Who is playing is chosen on the
@@ -201,15 +203,15 @@ struct SetupView: View {
                         Circle()
                             .fill(CouchGame.palette[game.colorIndices[slot]])
                             .frame(width: 46, height: 46)
-                            .overlay(Circle().stroke(.white.opacity(0.9), lineWidth: 2))
+                            .overlay(Circle().stroke(Retro.ink.opacity(0.7), lineWidth: 2))
                     }
                     // **Read-only here.** Who is in a seat is chosen on the front screen
                     // now; showing a second way in would be two controls for one
                     // decision, and the underline promised an edit this screen no
                     // longer owns.
                     Text(verbatim: game.displayName(forSeat: slot))
-                        .font(.caption.bold())
-                        .foregroundStyle(.white.opacity(0.85))
+                        .font(Retro.caption)
+                        .foregroundStyle(Retro.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .frame(width: 64)
@@ -221,11 +223,12 @@ struct SetupView: View {
                         Text(
                             game.schemes[slot] == .casual ? "Casual" : "Pro", bundle: .module
                         )
-                        .font(.caption2.bold())
+                        .font(Retro.caption)
                         .frame(width: 64)  // fixed, so toggling doesn't shift the column
                         .padding(.vertical, 5)
-                        .background(.black.opacity(0.25), in: Capsule())
-                        .foregroundStyle(.white)
+                        .background(Retro.panel)
+                        .overlay(RetroBevel(thickness: 2))
+                        .foregroundStyle(Retro.ink)
                     }
                 }
             }
@@ -242,8 +245,8 @@ struct SetupView: View {
     private func labeledRow(_ label: Text, @ViewBuilder content: () -> some View) -> some View {
         VStack(spacing: 8) {
             label
-                .font(.footnote.bold())
-                .foregroundStyle(.white.opacity(0.85))
+                .font(Retro.caption)
+                .foregroundStyle(Retro.ink)
             // 88, not 58: the 58 was sized for the single-digit player/AI steppers, and
             // once those went the only callers were WORD labels — which wrapped
             // mid-word into "Me/diu/m". A pill should never break a word.
@@ -263,13 +266,14 @@ struct SetupView: View {
     ) -> some View {
         Button(action: action) {
             label
-                .font(.callout.bold())
+                .font(Retro.font(14))
                 .padding(.horizontal, 18)
                 .padding(.vertical, 9)
                 .background(
-                    selected ? Color.white.opacity(0.9) : .black.opacity(0.25), in: Capsule()
+                    selected ? Retro.highlight : Retro.panel
                 )
-                .foregroundStyle(selected ? .black : .white)
+                .overlay(RetroBevel(thickness: 2))
+                .foregroundStyle(selected ? Retro.onHighlight : Retro.ink)
         }
     }
 

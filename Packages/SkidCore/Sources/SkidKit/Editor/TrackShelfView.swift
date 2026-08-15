@@ -33,7 +33,7 @@ struct TrackShelfView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.28, green: 0.55, blue: 0.23).ignoresSafeArea()
+            Retro.ground.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     newTrackButton
@@ -83,11 +83,12 @@ struct TrackShelfView: View {
                 dismiss()
             } label: {
                 Text("Back", bundle: .module)
-                    .font(.headline)
+                    .font(Retro.body)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(.white.opacity(0.92), in: Capsule())
-                    .foregroundStyle(.black)
+                    .background(Retro.panel)
+                    .overlay(RetroBevel(thickness: 2))
+                    .foregroundStyle(Retro.ink)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 8)
@@ -101,12 +102,13 @@ struct TrackShelfView: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "plus.circle.fill").font(.title3)
-                Text("New track", bundle: .module).font(.headline)
+                Text("New track", bundle: .module).font(Retro.body)
             }
-            .foregroundStyle(.black)
+            .foregroundStyle(Retro.ink)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(.white.opacity(0.92), in: Capsule())
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
         }
     }
 
@@ -115,8 +117,8 @@ struct TrackShelfView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             title
-                .font(.subheadline.bold())
-                .foregroundStyle(.white.opacity(0.8))
+                .font(Retro.body)
+                .foregroundStyle(Retro.onGround)
             LazyVGrid(columns: columns, spacing: 12) { content() }
         }
     }
@@ -149,7 +151,7 @@ struct TrackShelfView: View {
             } label: {
                 Image(systemName: "ellipsis.circle.fill")
                     .font(.title3)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(Retro.ink)
                     .padding(6)
             }
         }
@@ -213,17 +215,18 @@ struct TrackShelfView: View {
                     .frame(height: 96)
             }
             Text(verbatim: name)
-                .font(.footnote.bold())
+                .font(Retro.caption)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .foregroundStyle(.white)
+                .foregroundStyle(Retro.ink)
             if let note {
                 note
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .font(Retro.caption)
+                    .foregroundStyle(Retro.inkSoft)
             }
         }
         .padding(6)
-        .background(.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
+        .background(Retro.panel)
+        .overlay(RetroBevel(thickness: 2))
     }
 }
