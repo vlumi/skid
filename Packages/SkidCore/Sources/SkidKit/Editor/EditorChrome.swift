@@ -25,6 +25,7 @@ extension EditorView {
                 // hold many, the honest action is to go and pick one (or start a new one
                 // there), leaving this track saved.
                 iconButton("square.grid.2x2", "My tracks") {
+                    game.shelfCameFromEditor = true
                     game.showingTrackShelf = true
                 }
                 iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
@@ -73,18 +74,19 @@ extension EditorView {
             trackNameField = game.editedTrackName ?? ""
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: "pencil.line").font(.caption2)
+                Image(systemName: "pencil.line").font(Retro.caption)
                 if let name = game.editedTrackName {
                     Text(verbatim: name)
                 } else {
                     Text("Name this track", bundle: .module)
                 }
             }
-            .font(.footnote.bold())
-            .foregroundStyle(.white.opacity(0.9))
+            .font(Retro.caption)
+            .foregroundStyle(Retro.ink)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(.black.opacity(0.3), in: Capsule())
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
         }
     }
 

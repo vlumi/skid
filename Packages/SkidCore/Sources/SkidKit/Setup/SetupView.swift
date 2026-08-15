@@ -181,14 +181,6 @@ struct SetupView: View {
                     }
                 }
             }
-            HStack(spacing: 10) {
-                choice(Text("Contact", bundle: .module), selected: game.carContact) {
-                    game.carContact = true
-                }
-                choice(Text("Ghost", bundle: .module), selected: !game.carContact) {
-                    game.carContact = false
-                }
-            }
         }
     }
 

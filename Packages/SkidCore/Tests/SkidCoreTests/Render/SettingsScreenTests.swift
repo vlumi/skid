@@ -62,3 +62,54 @@ final class SettingsScreenTests: XCTestCase {
         }
     }
 }
+
+/// **Leaving the track shelf goes back the way you came.**
+///
+/// The shelf is reached two ways — from the front door, and from the editor's own
+/// chrome — and it used to leave the same way from both: dismissing always dropped you
+/// on the editor canvas, so "Back" from the front door went *forward*, into a track you
+/// had not chosen to edit.
+@MainActor
+final class TrackShelfNavigationTests: XCTestCase {
+    private func game() -> CouchGame {
+        let unique = UUID().uuidString
+        return CouchGame(
+            signingKeys: NoSigningKey(),
+            libraryFilename: "test-lib-\(unique).json",
+            profileFilename: "test-profiles-\(unique).json",
+            hiscoreFilename: "test-hiscores-\(unique).json")
+    }
+
+    override func tearDown() {
+        super.tearDown()
+        let base =
+            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first ?? FileManager.default.temporaryDirectory
+        let directory = base.appendingPathComponent("Skid", isDirectory: true)
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        for file in files where file.hasPrefix("test-") {
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(file))
+        }
+    }
+
+    /// From the FRONT DOOR: back out to the front door, not into the canvas.
+    func testBackFromTheFrontDoorReturnsToTheFrontDoor() {
+        let game = self.game()
+        game.openEditor()
+        game.showingTrackShelf = true  // as `openEditor` does when the library is not empty
+        game.closeTrackShelf()
+        XCTAssertEqual(game.phase, .menu, "Back went forward, into the editor")
+        XCTAssertFalse(game.showingTrackShelf)
+    }
+
+    /// From the EDITOR: back to the canvas you were working on.
+    func testBackFromTheEditorReturnsToTheCanvas() {
+        let game = self.game()
+        game.openEditor()
+        game.shelfCameFromEditor = true
+        game.showingTrackShelf = true
+        game.closeTrackShelf()
+        XCTAssertEqual(game.phase, .editing, "Back left the editor entirely")
+        XCTAssertFalse(game.showingTrackShelf)
+    }
+}

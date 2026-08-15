@@ -7,7 +7,7 @@ final class CarContactTests: XCTestCase {
     /// `elevatedLine` marks the forward segment as a bridge (the closing
     /// segment keeps the same line on the ground), so a layer-1 car has
     /// road to stand on instead of falling off.
-    private func headOn(contact: Bool, elevated: Bool = false) -> Race {
+    private func headOn(elevated: Bool = false) -> Race {
         let track = Track(
             centerline: [Vec2(-10000, 0), Vec2(10000, 0)],
             width: 800,
@@ -17,7 +17,7 @@ final class CarContactTests: XCTestCase {
         )
         var race = Race(
             track: track, players: [PlayerID(0), PlayerID(1)],
-            config: RaceConfig(carContact: contact)
+            config: RaceConfig()
         )
         // Pin the grid: the collision setup needs car 0 on the left and car 1
         // on the right, regardless of the random start-slot shuffle. Point
@@ -38,7 +38,7 @@ final class CarContactTests: XCTestCase {
     }
 
     func testContactCarsCollideAndSeparate() {
-        var race = headOn(contact: true)
+        var race = headOn()
         var minGap = Double.greatestFiniteMagnitude
         for _ in 0..<240 {
             converge(&race, ticks: 1)
@@ -55,16 +55,21 @@ final class CarContactTests: XCTestCase {
         XCTAssertLessThan(race.cars[0].state.position.x, race.cars[1].state.position.x)
     }
 
-    func testGhostCarsPassThrough() {
-        var race = headOn(contact: false)
+    /// **Cars never pass through each other.** Contact used to be a race option, and
+    /// the "ghost" half of it let two cars occupy the same spot — the setting is gone,
+    /// so this asserts the guarantee that replaced it: drive them head-on at full
+    /// throttle and they still cannot swap sides.
+    func testCarsCannotPassThroughEachOther() {
+        var race = headOn()
         converge(&race, ticks: 240)
-        // They crossed: car 0 is now to the RIGHT of car 1.
-        XCTAssertGreaterThan(race.cars[0].state.position.x, race.cars[1].state.position.x)
+        XCTAssertLessThan(
+            race.cars[0].state.position.x, race.cars[1].state.position.x,
+            "car 0 drove through car 1")
     }
 
     func testContactStaysDeterministic() {
         func run() -> Race {
-            var race = headOn(contact: true)
+            var race = headOn()
             for tick in 0..<600 {
                 let phase = Double(tick) / 60.0
                 race.advance(inputs: [
@@ -78,7 +83,7 @@ final class CarContactTests: XCTestCase {
     }
 
     func testDifferentLayersNeverCollide() {
-        var race = headOn(contact: true, elevated: true)
+        var race = headOn(elevated: true)
         race.cars[1].state.height = 1
         converge(&race, ticks: 240)
         XCTAssertGreaterThan(race.cars[0].state.position.x, race.cars[1].state.position.x)

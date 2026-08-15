@@ -89,7 +89,7 @@ extension EditorView {
             }
         }
         .background(.black.opacity(0.2))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(Rectangle())
     }
 
     /// One radius option, as how much turning the radius buys: a full circle
@@ -170,7 +170,7 @@ extension EditorView {
         let placeable = !empty && game.editorCanPlace(piece, pitch: buildPitch)
         let side: CGFloat = big ? 64 : 44
         ZStack {
-            RoundedRectangle(cornerRadius: 10)
+            Rectangle()
                 .fill(.black.opacity(placeable ? 0.3 : 0.12))
             if !empty {
                 // At the HEAD the icon previews what will be DRAWN, which is the
@@ -362,10 +362,10 @@ extension EditorView {
         return Button(action: action) {
             content
                 .frame(width: 34, height: 34)
-                .background(.black.opacity(0.55), in: Circle())
-                .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
+                .background(Retro.panel)
+                .overlay(RetroBevel(thickness: 2))
                 .opacity(enabled ? 1 : 0.35)
-                .contentShape(Circle())
+                .contentShape(Rectangle())
         }
         .disabled(!enabled)
         .accessibilityLabel(Text(label, bundle: .module))
@@ -378,15 +378,12 @@ extension EditorView {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 15, weight: .bold))
-                .foregroundColor(tint == .yellow ? .black : .white)
+                .foregroundColor(Retro.ink)
                 .frame(width: 34, height: 34)
-                .background(
-                    tint == .yellow ? Color.yellow.opacity(0.9) : .black.opacity(0.55),
-                    in: Circle()
-                )
-                .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
+                .background(tint == .yellow ? Retro.amber : Retro.panel)
+                .overlay(RetroBevel(thickness: 2))
                 .opacity(enabled ? 1 : 0.35)
-                .contentShape(Circle())
+                .contentShape(Rectangle())
         }
         .disabled(!enabled)
         .accessibilityLabel(Text(label, bundle: .module))
@@ -396,9 +393,9 @@ extension EditorView {
         // that swallows the tap and does nothing.
         .overlay {
             if !enabled {
-                Circle()
+                Rectangle()
                     .fill(.clear)
-                    .contentShape(Circle())
+                    .contentShape(Rectangle())
                     .onTapGesture {}
             }
         }

@@ -42,11 +42,7 @@ struct HomeView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView(
                 game: game, settings: game.settings,
-                close: { showingSettings = false },
-                showAbout: {
-                    showingSettings = false
-                    showingAbout = true
-                })
+                close: { showingSettings = false })
         }
         .sheet(isPresented: $showingAbout) {
             AboutView(close: { showingAbout = false })
