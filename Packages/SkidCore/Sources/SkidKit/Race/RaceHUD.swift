@@ -221,7 +221,7 @@ struct RaceHUD: View {
                     ticks: finished - race.config.countdownTicks, best: false)
             }
         }
-        .frame(width: 124)
+        .frame(width: 150)
     }
 
     /// One "★ label … time" row: a fixed star slot (gold on the best lap,
@@ -239,9 +239,15 @@ struct RaceHUD: View {
                 .font(.system(size: 8))
                 .foregroundStyle(.yellow)
                 .opacity(best || record ? 1 : 0)
+            // **Never wraps.** The label had no line limit, which was survivable in
+            // the old proportional face and is not in a monospaced one — "Lap 2" and
+            // "Total" both broke across two lines in a 124pt column. Reported from
+            // device. The time already had `fixedSize`; the label needed the same.
             label
                 .font(Retro.caption)
                 .opacity(0.6)
+                .lineLimit(1)
+                .fixedSize()
             Spacer(minLength: 6)
             Text(verbatim: formatTicks(ticks))
                 .font(Retro.font(13, weight: .regular))
@@ -284,7 +290,7 @@ struct RaceHUD: View {
                     record: setRecord)
             }
         }
-        .frame(width: 124)
+        .frame(width: 150)
     }
 
     /// How many recent laps the time-trial chip lists.

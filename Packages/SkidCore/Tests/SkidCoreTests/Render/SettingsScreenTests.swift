@@ -102,6 +102,44 @@ final class TrackShelfNavigationTests: XCTestCase {
         XCTAssertFalse(game.showingTrackShelf)
     }
 
+    /// **Choosing a track opens the canvas, from either entry point.**
+    ///
+    /// The bug this exists for: `back` and "open this track" were the SAME closure, so
+    /// making Back context-aware turned every tile on the shelf into "return to the
+    /// title screen". Reported from device — and the first two tests here passed
+    /// throughout, because they only ever exercised the Back path.
+    func testChoosingATrackFromTheFrontDoorOpensTheCanvas() {
+        let game = self.game()
+        game.openEditor()
+        game.showingTrackShelf = true
+
+        // **The view's OWN closures**, built exactly as `GameView` builds them — the
+        // bug was in this wiring, not in either destination, so a test that called
+        // `closeTrackShelf()` directly (as the two above do) could not see it.
+        let shelf = TrackShelfView(
+            game: game,
+            back: { game.closeTrackShelf() },
+            openCanvas: { game.showingTrackShelf = false })
+
+        game.newTrackForEditing()
+        shelf.openCanvas()
+        XCTAssertEqual(game.phase, .editing, "picking a track returned to the title screen")
+        XCTAssertFalse(game.showingTrackShelf)
+    }
+
+    /// And the same view's Back still leaves — the two exits must stay distinct.
+    func testTheSameShelfsBackStillLeaves() {
+        let game = self.game()
+        game.openEditor()
+        game.showingTrackShelf = true
+        let shelf = TrackShelfView(
+            game: game,
+            back: { game.closeTrackShelf() },
+            openCanvas: { game.showingTrackShelf = false })
+        shelf.back()
+        XCTAssertEqual(game.phase, .menu)
+    }
+
     /// From the EDITOR: back to the canvas you were working on.
     func testBackFromTheEditorReturnsToTheCanvas() {
         let game = self.game()
