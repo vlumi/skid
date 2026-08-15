@@ -53,9 +53,11 @@ extension CouchGame {
             phase = .editing
             showingTrackShelf = false
         }
+        // Explicit, so a screenshot of the shelf leaves the same way a real one would.
         if arguments.contains("-skid-shelf") {
             phase = .editing
             showingTrackShelf = true
+            shelfCameFromEditor = false
         }
         if arguments.contains("-skid-autostart") {
             startRace()

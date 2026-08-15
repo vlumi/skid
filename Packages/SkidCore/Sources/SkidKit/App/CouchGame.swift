@@ -137,7 +137,6 @@ public final class CouchGame: ObservableObject {
     /// Each human player's control scheme, chosen in setup (Casual/Pro). One
     /// entry per seat; only the first `playerCount` are used.
     @Published public var schemes: [ControlScheme] = [.casual, .casual, .casual, .casual]
-    @Published public var carContact = true
     /// The chosen circuit (a `Track.id` from `TrackLibrary.all`).
     @Published public var trackID = TrackLibrary.builtins[0].id
     /// 2P seating: face-to-face (default) vs side-by-side.
@@ -324,10 +323,29 @@ public final class CouchGame: ObservableObject {
         // expects to choose which one; a player with none would be asked to choose
         // from an empty list, so they go straight to building. See `TrackShelfView`.
         showingTrackShelf = !library.tracks.isEmpty
+        // Opened from the front door: Back belongs to the front door.
+        shelfCameFromEditor = false
+    }
+
+    /// **Leave the shelf the way you came in.** From the canvas, back to the canvas;
+    /// from the front door, back out to it.
+    public func closeTrackShelf() {
+        showingTrackShelf = false
+        if !shelfCameFromEditor {
+            backToMenu()
+        }
     }
 
     /// Whether the editor is showing its track list rather than the canvas.
     @Published public var showingTrackShelf = false
+
+    /// **Where "Back" goes from the shelf**, which depends on how you got there.
+    ///
+    /// The same screen is reached two ways, and it used to leave the same way from both:
+    /// dismissing always dropped you on the editor canvas. Arriving from the front door
+    /// and pressing Back therefore did not go back — it went *forward*, into a track you
+    /// had not chosen to edit. Reported from device.
+    var shelfCameFromEditor = false
 
     /// Compile the current editor layout to a runtime `Track` for preview.
     /// Nil if it isn't saveable yet. (Test-driving it in a real race arrives
@@ -384,7 +402,7 @@ public final class CouchGame: ObservableObject {
         switch mode {
         case .race:
             config = RaceConfig(
-                laps: 3, countdownTicks: 3 * Race.tickRate, carContact: carContact)
+                laps: 3, countdownTicks: 3 * Race.tickRate)
         case .timeTrial:
             // No finish line — lap forever, chase the best lap.
             config = RaceConfig(laps: nil, countdownTicks: 3 * Race.tickRate)

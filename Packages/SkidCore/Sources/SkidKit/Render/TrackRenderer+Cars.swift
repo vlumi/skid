@@ -22,7 +22,6 @@ extension TrackRenderer {
     ) {
         let race = scene.race
         let track = race.track
-        let translucent = ghostOverlaps(race: race)
 
         // The PB ghost drives under the real cars, translucent and colorless —
         // present, never in the way.
@@ -34,14 +33,13 @@ extension TrackRenderer {
 
         for (index, car) in race.cars.enumerated() where !car.state.isAirborne {
             let state = car.state
-            let opacity = translucent.contains(index) ? 0.55 : 1
             let storey = carStorey(of: state, on: track)
             order.add(storey: storey, kind: .car) { context in
                 // Scaled by the continuous height at its position (the same
                 // Elevation.scale the road width uses), so a car grows as it
                 // climbs — no discrete pop at a level boundary.
                 draw(
-                    car: state, color: colorAt(index), opacity: opacity,
+                    car: state, color: colorAt(index),
                     scale: Elevation.scale(atHeight: state.height), into: &context)
             }
             // Never-invisible rule: a car with road a full level above it is
@@ -231,24 +229,6 @@ extension TrackRenderer {
     /// bridge's footprint the window keeps being drawn, since a disc centered
     /// just outside the bridge still overlaps it.
     static let holeRadius: Double = 20
-
-    /// Ghost mode: overlapping pass-through cars go translucent so pileups
-    /// on the racing line stay readable.
-    private static func ghostOverlaps(race: Race) -> Set<Int> {
-        var translucent: Set<Int> = []
-        guard !race.config.carContact else { return translucent }
-        for i in 0..<race.cars.count {
-            for j in (i + 1)..<race.cars.count {
-                let gap = race.cars[i].state.position.distance(
-                    to: race.cars[j].state.position)
-                if gap < CarGeometry.radius * 2.6 {
-                    translucent.insert(i)
-                    translucent.insert(j)
-                }
-            }
-        }
-        return translucent
-    }
 
     private static func draw(
         car: CarState, color: Color, opacity: Double = 1, scale: Double = 1,

@@ -42,7 +42,8 @@ struct AboutView: View {
     /// The title, drawn as the game's own rather than as a nav bar — this is the one
     /// screen where a bit of swagger belongs.
     private var logo: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
+            RetroCheckers(rows: 2, cell: 6)
             Text(verbatim: "SKID JAM")
                 .font(Retro.font(34, weight: .black))
                 .foregroundStyle(Retro.amber)
@@ -50,12 +51,11 @@ struct AboutView: View {
                 .lineLimit(1)
             Text(verbatim: AboutView.versionLine)
                 .font(Retro.caption)
-                .foregroundStyle(Retro.onHighlight.opacity(0.75))
+                .foregroundStyle(Retro.onGroundSoft)
+            RetroCheckers(rows: 2, cell: 6)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 22)
-        .background(Retro.highlight)
-        .overlay(RetroBevel(inset: true, thickness: 2))
+        .padding(.vertical, 18)
     }
 
     private var blurb: some View {

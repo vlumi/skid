@@ -32,13 +32,13 @@ extension EditorView {
                     Text(verbatim: label)
                 }
             }
-            .font(.footnote.bold())
-            .foregroundStyle(levelFilter == .off ? .white : .black)
+            .font(Retro.caption)
+            .foregroundStyle(levelFilter == .off ? Retro.ink : Retro.onHighlight)
             .padding(.horizontal, 11)
             .padding(.vertical, 7)
-            .background(levelFilter == .off ? .black.opacity(0.55) : Color.white, in: Capsule())
-            .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 1))
-            .contentShape(Capsule())
+            .background(levelFilter == .off ? Retro.panel : Retro.highlight)
+            .overlay(RetroBevel(thickness: 2))
+            .contentShape(Rectangle())
         }
         .accessibilityLabel(Text("Level filter", bundle: .module))
     }
@@ -156,7 +156,7 @@ extension EditorView {
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(railed ? EditorRenderer.bridgeRail : .white.opacity(0.6))
                 Text("Railings", bundle: .module)
-                    .font(.caption)
+                    .font(Retro.caption)
                     .foregroundStyle(.white)
             }
             .padding(.horizontal, 12)
@@ -185,7 +185,7 @@ extension EditorView {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(EditorView.decalTint(decal))
                 Text(EditorView.decalLabel(decal), bundle: .module)
-                    .font(.caption2)
+                    .font(Retro.caption)
                     .foregroundStyle(.white)
             }
             .frame(width: 84, height: 68)

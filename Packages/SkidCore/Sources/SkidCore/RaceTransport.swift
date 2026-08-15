@@ -64,10 +64,6 @@ public struct RaceStart: Equatable, Sendable, Codable {
     public var roster: RaceRoster
     /// Laps, countdown — the rules both peers score against.
     public var laps: Int?
-    /// Whether cars collide. Physics, so the host owns it — the same trap as
-    /// `tuning`: it was read from each device's own settings, and two peers
-    /// disagreeing about whether a touch is a collision diverge on first contact.
-    public var carContact: Bool
     /// **The physics, from the host.**
     ///
     /// Nineteen numbers that decide how a car accelerates, grips and slides. Each
@@ -84,14 +80,13 @@ public struct RaceStart: Equatable, Sendable, Codable {
 
     public init(
         course: Course, seed: UInt64, roster: RaceRoster, laps: Int?,
-        tuning: CarTuning = CarTuning(), carContact: Bool = true
+        tuning: CarTuning = CarTuning()
     ) {
         self.course = course
         self.seed = seed
         self.roster = roster
         self.laps = laps
         self.tuning = tuning
-        self.carContact = carContact
     }
 
     /// Reliable-channel bytes. JSON rather than the compact packing used for

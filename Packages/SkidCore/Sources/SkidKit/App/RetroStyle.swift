@@ -101,6 +101,46 @@ struct RetroBevel: View {
     }
 }
 
+/// **A screen's title — and deliberately not a button.**
+///
+/// The first version was a beveled blue bar, which read as something to press; making
+/// the bevel inset only made it read as a *pressed* button. The bevel was the problem.
+/// A title is now flat colour with checkered rules under it: nothing in the app's button
+/// vocabulary, so there is nothing to mistake.
+struct RetroTitle: View {
+    private let label: Text
+
+    init(_ label: Text) {
+        self.label = label
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            label
+                .font(Retro.font(20, weight: .black))
+                .foregroundStyle(Retro.amber)
+                .frame(maxWidth: .infinity)
+            RetroCheckers(rows: 2, cell: 6)
+        }
+    }
+}
+
+/// A section heading inside a panel. Flat, uppercase, never interactive.
+struct RetroHeading: View {
+    private let label: Text
+
+    init(_ label: Text) {
+        self.label = label
+    }
+
+    var body: some View {
+        label
+            .font(Retro.heading)
+            .foregroundStyle(Retro.inkSoft)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 /// **A checkered block, drawn as square pixels.**
 ///
 /// The cheap, cheerful racing-game decoration — a start/finish flag rendered the way a
@@ -164,5 +204,78 @@ extension View {
             .frame(maxWidth: wide ? .infinity : nil, minHeight: 44)
             .background(tint)
             .overlay(RetroBevel())
+    }
+}
+
+/// A labelled on/off row.
+///
+/// Drawn rather than a `Toggle`, so it matches the panel — but it is a plain button with
+/// a 44pt row, so it behaves like every other control here. The state reads as a word
+/// (`ON` / `OFF`) as well as a colour, which a switch does not.
+struct RetroToggle: View {
+    let label: Text
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+        } label: {
+            HStack {
+                label
+                    .font(Retro.body)
+                    .foregroundStyle(Retro.ink)
+                Spacer(minLength: 12)
+                Text(isOn ? "ON" : "OFF", bundle: .module)
+                    .font(Retro.body)
+                    .foregroundStyle(isOn ? Retro.onHighlight : Retro.inkSoft)
+                    .frame(width: 56, height: 30)
+                    .background(isOn ? Retro.highlight : Retro.panel.opacity(0.5))
+                    .overlay(RetroBevel(inset: !isOn, thickness: 2))
+            }
+            .frame(minHeight: 44)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// One option in a pick-one list, marked by a DOS-style ▸ rather than a checkmark.
+struct RetroChoice: View {
+    let label: Text
+    var detail: Text?
+    let selected: Bool
+    /// An optional colour chip — a player's car colour, drawn as a square pixel.
+    var swatch: Color?
+    let choose: () -> Void
+
+    var body: some View {
+        Button(action: choose) {
+            HStack(alignment: .top, spacing: 8) {
+                Text(verbatim: selected ? "▸" : " ")
+                    .font(Retro.body)
+                    .foregroundStyle(Retro.amber)
+                if let swatch {
+                    Rectangle()
+                        .fill(swatch)
+                        .frame(width: 18, height: 18)
+                        .overlay(RetroBevel(thickness: 2))
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    label
+                        .font(Retro.body)
+                    if let detail {
+                        detail
+                            .font(Retro.caption)
+                            .foregroundStyle(
+                                selected ? Retro.onHighlight.opacity(0.8) : Retro.inkSoft)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(selected ? Retro.onHighlight : Retro.ink)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .background(selected ? Retro.highlight : Color.clear)
+        }
+        .buttonStyle(.plain)
     }
 }

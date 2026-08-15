@@ -260,7 +260,7 @@ struct NetworkLobbyView: View {
             laps: CouchGame.networkedLaps,
             // The host's physics go on the wire; guests race the host's car, not
             // whatever their own tuning panel happens to say.
-            tuning: game.settings.carTuning, carContact: game.carContact)
+            tuning: game.settings.carTuning)
     }
 
     private func label(_ text: Text, filled: Bool) -> some View {

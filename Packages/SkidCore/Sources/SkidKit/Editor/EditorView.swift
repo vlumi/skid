@@ -166,7 +166,7 @@ struct EditorView: View {
             let walk = layout.walk()
             let transform = fitTransform(walk: walk, in: geo.size)
             ZStack {
-                Color(red: 0.28, green: 0.55, blue: 0.23).ignoresSafeArea()
+                Retro.ground.ignoresSafeArea()
 
                 Canvas { context, _ in
                     EditorRenderer.draw(
@@ -347,10 +347,11 @@ struct EditorView: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.callout.bold())
+                .font(Retro.font(14))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
-                .background(.black.opacity(0.35), in: Capsule())
+                .background(Retro.panel)
+                .overlay(RetroBevel(thickness: 2))
                 .foregroundStyle(.white)
         }
         .accessibilityLabel(Text(label, bundle: .module))
@@ -362,7 +363,7 @@ struct EditorView: View {
         Group {
             if game.editorIsSaveable() {
                 Text("Track complete", bundle: .module)
-                    .font(.footnote.bold())
+                    .font(Retro.caption)
                     .foregroundStyle(.white)
             } else if let gap = closureHint(walk) {
                 Text(verbatim: gap)
@@ -370,7 +371,7 @@ struct EditorView: View {
                     .foregroundStyle(.white.opacity(0.9))
             } else {
                 Text("Extend the loose end to close the loop", bundle: .module)
-                    .font(.footnote)
+                    .font(Retro.caption)
                     .foregroundStyle(.white.opacity(0.9))
             }
         }
