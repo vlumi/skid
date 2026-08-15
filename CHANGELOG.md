@@ -21,6 +21,10 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Reset all data**, in the tuning panel — a development tool that puts the app back
+  to freshly-installed: every track, record, profile and dial. Behind a confirmation,
+  since it cannot be undone.
+
 - **Beating a record now says so.** Records were written to disk in silence: you could
   drive the best lap of your life and the game would tell you nothing. A new best lap
   is now crowned in the time trial's lap list as it happens — quietly, since a trial
