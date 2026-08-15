@@ -179,6 +179,29 @@ final class RunRecordsTests: XCTestCase {
 
     /// **A two-human race records nothing**, which is the existing rule — and the record
     /// line must stay silent rather than reporting a record that was never written.
+    /// **A named player's record carries their name**, end to end: seat a profile, drive,
+    /// and the book has the name — not just that `recordLap` can store one.
+    func testANamedPlayersRecordCarriesTheirName() throws {
+        let game = self.game()
+        let profile = try XCTUnwrap(
+            game.createProfile(named: "Ada", colorIndex: 0, forSeat: 0))
+        let session = seat(game, laps: nil)
+        game.setEntrant(.profile(profile.id), at: 0)
+        drive(session, game, laps: 1)
+        XCTAssertEqual(
+            game.hiscores.best(for: session.race.track.id).lapHolder, "Ada",
+            "the run recorded no name for a named player")
+    }
+
+    /// **A guest's record stores no name**, which is the default path.
+    func testAGuestsRunStoresNoName() {
+        let game = self.game()
+        let session = seat(game, laps: nil)
+        drive(session, game, laps: 1)
+        XCTAssertNotNil(game.hiscores.best(for: session.race.track.id).bestLapTicks)
+        XCTAssertNil(game.hiscores.best(for: session.race.track.id).lapHolder)
+    }
+
     func testATwoPlayerRaceRecordsNothing() {
         let game = self.game()
         let track = TrackLibrary.track(id: "clover")

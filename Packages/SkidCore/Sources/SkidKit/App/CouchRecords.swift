@@ -20,6 +20,9 @@ extension CouchGame {
         }
         let trackID = session.race.track.id
         guard let car = session.race.cars.first else { return }
+        // **Who is driving.** Exactly one human by the guard above, so seat 0 is the
+        // answer; a guest has no name and stores none.
+        let holder = entrants.first?.profileID.flatMap { profiles.profile(id: $0)?.name }
         var improved = false
         if car.progress.lapTimes.count > notedLapCount {
             for lap in car.progress.lapTimes[notedLapCount...] {
@@ -27,7 +30,7 @@ extension CouchGame {
                 // it is knowable: `recordLap` replaces it, so afterwards the book agrees
                 // with the run and every lap would look like a record.
                 let previous = hiscores.best(for: trackID).bestLapTicks
-                if hiscores.recordLap(lap, track: trackID) {
+                if hiscores.recordLap(lap, track: trackID, holder: holder) {
                     improved = true
                     runRecords.lapRecord = RunRecords.Improvement(ticks: lap, previous: previous)
                 }
@@ -45,7 +48,8 @@ extension CouchGame {
                     on: session.race.track, lapTimes: car.progress.lapTimes,
                     config: session.race.config),
                 config: session.race.config,
-                track: trackID
+                track: trackID,
+                holder: holder
             )
             if setRace {
                 runRecords.raceRecord = RunRecords.Improvement(

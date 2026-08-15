@@ -15,6 +15,18 @@ public struct BestRecord: Equatable, Sendable, Codable {
     /// Best single lap, from any mode.
     public var bestLapTicks: Tick?
 
+    /// **Who set the best lap**, and who set the best race. Nil for a guest, which is
+    /// honest rather than a hole: a guest chose not to give a name, and inventing
+    /// "Player 1" would attribute a time to somebody who does not exist.
+    ///
+    /// **The NAME, not the profile id.** A record is a snapshot of something that
+    /// happened: deleting the profile afterwards does not un-drive the lap, and renaming
+    /// yourself does not make last week's record somebody else's. An id would leave a
+    /// dangling reference on delete and silently rewrite history on rename — both wrong
+    /// for a board whose whole job is to say what happened.
+    public var lapHolder: String?
+    public var raceHolder: String?
+
     /// **The lap you race against** — one lap, not the run it came from.
     ///
     /// This used to be the whole best race (`raceRecording`, below). A ghost is something
@@ -51,12 +63,18 @@ public struct HiscoreBook: Equatable, Sendable, Codable {
     }
 
     /// Record a completed lap; returns true if it's a new best.
+    ///
+    /// `holder` is the driver's name, or nil for a guest. It is stored ONLY when the time
+    /// is taken, so a slower lap by somebody else cannot rewrite whose record it is.
     @discardableResult
-    public mutating func recordLap(_ ticks: Tick, track trackID: String) -> Bool {
+    public mutating func recordLap(
+        _ ticks: Tick, track trackID: String, holder: String? = nil
+    ) -> Bool {
         guard !trackID.isEmpty else { return false }
         var record = best(for: trackID)
         guard ticks < (record.bestLapTicks ?? .max) else { return false }
         record.bestLapTicks = ticks
+        record.lapHolder = holder
         tracks[trackID] = record
         return true
     }
@@ -72,7 +90,8 @@ public struct HiscoreBook: Equatable, Sendable, Codable {
     /// against. That is what an abandoned or lapless run leaves behind.
     @discardableResult
     public mutating func recordRace(
-        ticks: Tick, ghost: LapGhost?, config: RaceConfig, track trackID: String
+        ticks: Tick, ghost: LapGhost?, config: RaceConfig, track trackID: String,
+        holder: String? = nil
     ) -> Bool {
         guard !trackID.isEmpty else { return false }
         var record = best(for: trackID)
@@ -80,6 +99,7 @@ public struct HiscoreBook: Equatable, Sendable, Codable {
         record.raceTicks = ticks
         record.lapGhost = ghost
         record.raceConfig = config
+        record.raceHolder = holder
         tracks[trackID] = record
         return true
     }
