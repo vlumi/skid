@@ -22,7 +22,14 @@ import SwiftUI
 ///   which is the honest outcome: there is nothing yet to distinguish it from its source.
 struct TrackShelfView: View {
     @ObservedObject var game: CouchGame
-    let dismiss: () -> Void
+    /// **Leaving without choosing** — back to wherever the shelf was opened from.
+    let back: () -> Void
+    /// **A track was chosen**, so the canvas opens regardless of how we got here.
+    ///
+    /// Separate from `back` on purpose: the two were one closure, and making Back
+    /// context-aware silently turned every "open this track" into "return to the menu"
+    /// as well. Picking a track and backing out are opposite intents and now say so.
+    let openCanvas: () -> Void
 
     /// The track being renamed, and the name being typed. Held together so the field cannot
     /// outlive the row it belongs to.
@@ -33,7 +40,7 @@ struct TrackShelfView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.28, green: 0.55, blue: 0.23).ignoresSafeArea()
+            Retro.ground.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     newTrackButton
@@ -80,14 +87,15 @@ struct TrackShelfView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button {
-                dismiss()
+                back()
             } label: {
                 Text("Back", bundle: .module)
-                    .font(.headline)
+                    .font(Retro.body)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(.white.opacity(0.92), in: Capsule())
-                    .foregroundStyle(.black)
+                    .background(Retro.panel)
+                    .overlay(RetroBevel(thickness: 2))
+                    .foregroundStyle(Retro.ink)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 8)
@@ -97,16 +105,17 @@ struct TrackShelfView: View {
     private var newTrackButton: some View {
         Button {
             game.newTrackForEditing()
-            dismiss()
+            openCanvas()
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "plus.circle.fill").font(.title3)
-                Text("New track", bundle: .module).font(.headline)
+                Text("New track", bundle: .module).font(Retro.body)
             }
-            .foregroundStyle(.black)
+            .foregroundStyle(Retro.ink)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(.white.opacity(0.92), in: Capsule())
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
         }
     }
 
@@ -115,8 +124,8 @@ struct TrackShelfView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             title
-                .font(.subheadline.bold())
-                .foregroundStyle(.white.opacity(0.8))
+                .font(Retro.body)
+                .foregroundStyle(Retro.onGround)
             LazyVGrid(columns: columns, spacing: 12) { content() }
         }
     }
@@ -132,7 +141,7 @@ struct TrackShelfView: View {
     private func tile(entry: TrackLibraryBook.Entry) -> some View {
         Button {
             game.openForEditing(entryID: entry.id)
-            dismiss()
+            openCanvas()
         } label: {
             card(
                 layout: try? TrackCode.decode(entry.code), name: entry.name,
@@ -149,7 +158,7 @@ struct TrackShelfView: View {
             } label: {
                 Image(systemName: "ellipsis.circle.fill")
                     .font(.title3)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(Retro.ink)
                     .padding(6)
             }
         }
@@ -160,7 +169,7 @@ struct TrackShelfView: View {
     @ViewBuilder private func actions(for entry: TrackLibraryBook.Entry) -> some View {
         Button {
             game.startFrom(code: entry.code, name: entry.name)
-            dismiss()
+            openCanvas()
         } label: {
             Label {
                 Text("Start a copy", bundle: .module)
@@ -193,7 +202,7 @@ struct TrackShelfView: View {
         Button {
             game.startFrom(
                 code: builtin.code, name: TrackLibrary.displayName(id: builtin.id))
-            dismiss()
+            openCanvas()
         } label: {
             card(
                 layout: try? TrackCode.decode(builtin.code),
@@ -213,17 +222,18 @@ struct TrackShelfView: View {
                     .frame(height: 96)
             }
             Text(verbatim: name)
-                .font(.footnote.bold())
+                .font(Retro.caption)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .foregroundStyle(.white)
+                .foregroundStyle(Retro.ink)
             if let note {
                 note
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .font(Retro.caption)
+                    .foregroundStyle(Retro.inkSoft)
             }
         }
         .padding(6)
-        .background(.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
+        .background(Retro.panel)
+        .overlay(RetroBevel(thickness: 2))
     }
 }

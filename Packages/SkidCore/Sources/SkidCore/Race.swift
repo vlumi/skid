@@ -10,12 +10,10 @@ public struct RaceConfig: Equatable, Sendable, Codable {
     /// Car contact is a race option, not a constant: `true` = cars collide
     /// and bump (derby flavour); `false` = ghost racing, cars pass through
     /// each other (pure speed). Walls and surfaces behave the same in both.
-    public var carContact: Bool
 
-    public init(laps: Int? = nil, countdownTicks: Int = 0, carContact: Bool = true) {
+    public init(laps: Int? = nil, countdownTicks: Int = 0) {
         self.laps = laps
         self.countdownTicks = countdownTicks
-        self.carContact = carContact
     }
 }
 
@@ -165,7 +163,7 @@ public struct Race: Equatable, Sendable {
             }
             cars[i] = car
         }
-        if config.carContact, !held {
+        if !held {
             collideCars()
         }
         if !held {

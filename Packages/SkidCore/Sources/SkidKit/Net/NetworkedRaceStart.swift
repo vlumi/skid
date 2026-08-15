@@ -115,10 +115,8 @@ extension CouchGame {
     private func makeNetworkedSession(
         track: Track, start: RaceStart, localSeats: [PlayerID], driver: NetworkedRaceDriver
     ) -> GameSession {
-        let config = RaceConfig(
-            // Every value the SIM reads comes from the host's message. `carContact` is
-            // physics, so a peer with it toggled the other way diverges on first touch.
-            laps: start.laps, countdownTicks: 3 * Race.tickRate, carContact: start.carContact)
+        // Every value the SIM reads comes from the host's message.
+        let config = RaceConfig(laps: start.laps, countdownTicks: 3 * Race.tickRate)
         // **Bands are found by seat, not by index.** Global seat numbers are sparse
         // — this device might drive seats 2 and 3 — so indexing the rig by
         // `rawValue` would read past its end. The rig's players now carry their real

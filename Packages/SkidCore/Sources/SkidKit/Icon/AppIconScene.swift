@@ -88,13 +88,16 @@ public struct AppIconScene: View {
                     tire.rotate(by: .degrees(26))
                 }
                 tire.fill(
-                    Path(roundedRect: CGRect(x: -4.5, y: -3, width: 9, height: 6), cornerRadius: 2),
+                    Path(CGRect(x: -4.5, y: -3, width: 9, height: 6)),
                     with: .color(Color(white: 0.12)))
             }
+            // Chunky and square, matching the in-game car — see `TrackRenderer+Cars`
+            // for why the drawn height is its own number rather than `CarGeometry`'s.
+            let bodyHeight = CarGeometry.width * 0.62
             let body = CGRect(
-                x: -CarGeometry.length / 2, y: -CarGeometry.width / 4,
-                width: CarGeometry.length, height: CarGeometry.width / 2)
-            let bodyPath = Path(roundedRect: body, cornerRadius: CarGeometry.width / 4)
+                x: -CarGeometry.length / 2, y: -bodyHeight / 2,
+                width: CarGeometry.length, height: bodyHeight)
+            let bodyPath = Path(body)
             car.fill(bodyPath, with: .color(.red))
             // Lit nose: a sheen over the front half with warm lamp dots at the
             // tip — the game's facing cue, so the icon shows which way the car

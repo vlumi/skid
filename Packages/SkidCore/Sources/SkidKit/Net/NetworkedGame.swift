@@ -84,7 +84,6 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     /// What the last race was raced on, so Rematch needs no new decisions.
     var lastCourse: RaceStart.Course?
     var lastTuning = CarTuning()
-    var lastCarContact = true
     /// The host's half of the sync, or nil on a client.
     var relay: HostRelay?
     /// The client's half, or nil on the host.
@@ -134,7 +133,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     /// the host applies its own message, exactly as a guest does.
     public func startRace(
         course: RaceStart.Course, seed: UInt64, laps: Int?,
-        tuning: CarTuning = CarTuning(), carContact: Bool = true
+        tuning: CarTuning = CarTuning()
     ) {
         // Traced BEFORE the guard: "the note that did not print" has been the only
         // usable signal from a device each time this flow broke.
@@ -145,7 +144,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         }
         let message = RaceStart(
             course: course, seed: seed, roster: roster, laps: laps,
-            tuning: tuning, carContact: carContact)
+            tuning: tuning)
         note("sending start: seed \(seed), \(roster.seatCount) cars")
         transmit(message.encoded, reliable: true)
         // **Discovery is NOT torn down here.** Stopping the advertiser mid-handshake
@@ -165,7 +164,6 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         // Remembered so Rematch needs no new decisions from anybody.
         lastCourse = message.course
         lastTuning = message.tuning
-        lastCarContact = message.carContact
         endedReason = nil
         presence.reset()
         generation += 1

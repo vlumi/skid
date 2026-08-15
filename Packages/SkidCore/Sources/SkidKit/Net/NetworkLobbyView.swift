@@ -13,11 +13,11 @@ struct NetworkLobbyView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.18, green: 0.35, blue: 0.15).ignoresSafeArea()
+            Retro.ground.ignoresSafeArea()
             VStack(spacing: 22) {
                 Text("Play together", bundle: .module)
-                    .font(.title2.bold())
-                    .foregroundStyle(.white)
+                    .font(Retro.font(20, weight: .black))
+                    .foregroundStyle(Retro.onGround)
 
                 switch net.phase {
                 case .idle: chooser
@@ -38,7 +38,7 @@ struct NetworkLobbyView: View {
                         ForEach(Array(net.trace.enumerated()), id: \.offset) { _, line in
                             Text(line)
                                 .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(.white.opacity(0.65))
+                                .foregroundStyle(Retro.inkSoft)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -49,8 +49,8 @@ struct NetworkLobbyView: View {
                     game.backToMenu()
                 } label: {
                     Text("Back", bundle: .module)
-                        .font(.headline)
-                        .foregroundStyle(.white.opacity(0.9))
+                        .font(Retro.body)
+                        .foregroundStyle(Retro.onGround)
                 }
             }
             .padding(28)
@@ -73,8 +73,8 @@ struct NetworkLobbyView: View {
                 label(Text("Join a race", bundle: .module), filled: false)
             }
             Text("Both phones need Wi-Fi or Bluetooth on. No router required.", bundle: .module)
-                .font(.footnote)
-                .foregroundStyle(.white.opacity(0.6))
+                .font(Retro.caption)
+                .foregroundStyle(Retro.inkSoft)
                 .multilineTextAlignment(.center)
         }
     }
@@ -84,15 +84,15 @@ struct NetworkLobbyView: View {
     private var seatPicker: some View {
         VStack(spacing: 8) {
             Text("Players on this device", bundle: .module)
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.8))
+                .font(Retro.body)
+                .foregroundStyle(Retro.onGround)
             HStack(spacing: 10) {
                 ForEach(1...RaceRoster.maxSeatsPerDevice, id: \.self) { count in
                     Button {
                         game.playerCount = count
                     } label: {
                         Text("\(count)")
-                            .font(.headline)
+                            .font(Retro.body)
                             .frame(width: 46, height: 40)
                             .background(
                                 game.playerCount == count
@@ -111,8 +111,8 @@ struct NetworkLobbyView: View {
     private var waiting: some View {
         VStack(spacing: 16) {
             Text(status)
-                .font(.headline)
-                .foregroundStyle(.white)
+                .font(Retro.body)
+                .foregroundStyle(Retro.onGround)
                 .multilineTextAlignment(.center)
 
             // The roster as everyone will race it — seat numbers included, because
@@ -126,47 +126,48 @@ struct NetworkLobbyView: View {
                                 ? "\(DeviceName.display(entry.peer)) (you)"
                                 : DeviceName.display(entry.peer)
                         )
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Retro.ink)
                         Spacer()
                         Text(entry.seats.map { "\($0.rawValue + 1)" }.joined(separator: ", "))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(Retro.inkSoft)
                     }
-                    .font(.subheadline)
+                    .font(Retro.body)
                 }
             }
             .padding(14)
-            .background(.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
 
             // Guests asking in. The host decides — not security (the field cap
             // bounds who gets in) but so nobody appears unannounced.
             ForEach(net.pendingJoins) { pending in
                 HStack(spacing: 10) {
                     Text(verbatim: "\(pending.display) (\(pending.seats))")
-                        .font(.subheadline)
-                        .foregroundStyle(.white)
+                        .font(Retro.body)
+                        .foregroundStyle(Retro.onGround)
                     Spacer()
                     Button {
                         net.approve(pending.peer)
                     } label: {
-                        Text("Let in", bundle: .module).font(.subheadline.bold())
+                        Text("Let in", bundle: .module).font(Retro.body)
                     }
                     Button {
                         net.decline(pending.peer)
                     } label: {
-                        Text("No", bundle: .module).font(.subheadline)
+                        Text("No", bundle: .module).font(Retro.body)
                     }
                 }
             }
 
             if let note = net.endedReason {
                 Text(note)
-                    .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .font(Retro.caption)
+                    .foregroundStyle(Retro.inkSoft)
             }
 
             if let note = net.joinNote {
                 Text(note)
-                    .font(.footnote)
+                    .font(Retro.caption)
                     .foregroundStyle(.orange)
                     .multilineTextAlignment(.center)
             }
@@ -183,8 +184,8 @@ struct NetworkLobbyView: View {
                 .opacity(net.roster.entries.count < 2 ? 0.4 : 1)
             } else {
                 Text("Waiting for the host to start…", bundle: .module)
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .font(Retro.body)
+                    .foregroundStyle(Retro.inkSoft)
             }
         }
     }
@@ -195,11 +196,11 @@ struct NetworkLobbyView: View {
     private var hostList: some View {
         VStack(spacing: 14) {
             Text("Looking for a race…", bundle: .module)
-                .font(.headline)
-                .foregroundStyle(.white)
+                .font(Retro.body)
+                .foregroundStyle(Retro.onGround)
             if let note = net.endedReason {
                 Text(note)
-                    .font(.footnote)
+                    .font(Retro.caption)
                     .foregroundStyle(.orange)
             }
             ForEach(net.visibleHosts, id: \.self) { host in
@@ -214,15 +215,15 @@ struct NetworkLobbyView: View {
 
     private var asking: some View {
         Text("Asking to join…", bundle: .module)
-            .font(.headline)
-            .foregroundStyle(.white)
+            .font(Retro.body)
+            .foregroundStyle(Retro.onGround)
     }
 
     private func ended(_ reason: String?) -> some View {
         VStack(spacing: 14) {
             Text(reason ?? String(localized: "The race ended"))
-                .font(.headline)
-                .foregroundStyle(.white)
+                .font(Retro.body)
+                .foregroundStyle(Retro.onGround)
                 .multilineTextAlignment(.center)
             Button {
                 net.leave()
@@ -235,8 +236,8 @@ struct NetworkLobbyView: View {
 
     private var connecting: some View {
         Text("Starting…", bundle: .module)
-            .font(.headline)
-            .foregroundStyle(.white)
+            .font(Retro.body)
+            .foregroundStyle(Retro.onGround)
     }
 
     private var status: String {
@@ -259,12 +260,12 @@ struct NetworkLobbyView: View {
             laps: CouchGame.networkedLaps,
             // The host's physics go on the wire; guests race the host's car, not
             // whatever their own tuning panel happens to say.
-            tuning: game.settings.carTuning, carContact: game.carContact)
+            tuning: game.settings.carTuning)
     }
 
     private func label(_ text: Text, filled: Bool) -> some View {
         text
-            .font(.headline)
+            .font(Retro.body)
             .foregroundStyle(filled ? .black : .white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)

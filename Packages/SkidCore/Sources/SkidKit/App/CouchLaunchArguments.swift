@@ -16,6 +16,8 @@ import SwiftUI
 ///     -skid-edit             open the editor canvas
 ///     -skid-autostart        start the race, past the ready gate
 ///     -skid-tuning           open the tuning panel (simctl cannot shake)
+///     -skid-settings         open the settings sheet
+///     -skid-about            open the about sheet
 extension CouchGame {
     func applyLaunchArguments() {
         let arguments = ProcessInfo.processInfo.arguments
@@ -51,9 +53,11 @@ extension CouchGame {
             phase = .editing
             showingTrackShelf = false
         }
+        // Explicit, so a screenshot of the shelf leaves the same way a real one would.
         if arguments.contains("-skid-shelf") {
             phase = .editing
             showingTrackShelf = true
+            shelfCameFromEditor = false
         }
         if arguments.contains("-skid-autostart") {
             startRace()

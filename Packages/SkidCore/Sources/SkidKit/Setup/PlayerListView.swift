@@ -62,20 +62,20 @@ struct PlayerListView: View {
             } label: {
                 HStack(spacing: 8) {
                     Text(verbatim: game.entrantDetail(index))
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white)
+                        .font(Retro.body)
+                        .foregroundStyle(Retro.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     // Says which of the two this is without a control to read it off.
                     if entrant.kind == .guest {
                         Text("Guest", bundle: .module)
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.55))
+                            .font(Retro.caption)
+                            .foregroundStyle(Retro.inkSoft)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.white.opacity(0.5))
+                        .font(Retro.caption)
+                        .foregroundStyle(Retro.inkSoft)
                 }
             }
 
@@ -86,14 +86,15 @@ struct PlayerListView: View {
                     game.removeEntrant(at: index)
                 } label: {
                     Image(systemName: "minus.circle.fill")
-                        .foregroundStyle(.white.opacity(0.55))
-                        .font(.title3)
+                        .foregroundStyle(Retro.inkSoft)
+                        .font(Retro.body)
                 }
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
+        .background(Retro.panel)
+        .overlay(RetroBevel(thickness: 2))
     }
 
     /// Two ways to add a person: anonymously, or by name. Both add a row — the second
@@ -114,11 +115,12 @@ struct PlayerListView: View {
     {
         Button(action: action) {
             title
-                .font(.caption.bold())
+                .font(Retro.font(13))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
-                .background(.white.opacity(0.16), in: Capsule())
-                .foregroundStyle(.white)
+                .background(Retro.panel)
+                .overlay(RetroBevel(thickness: 2))
+                .foregroundStyle(Retro.ink)
         }
         .disabled(!game.canAdd(kind))
         .opacity(game.canAdd(kind) ? 1 : 0.35)

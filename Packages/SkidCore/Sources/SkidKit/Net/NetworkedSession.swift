@@ -151,7 +151,7 @@ extension NetworkedGame {
         note("rematch: seed \(seed)")
         startRace(
             course: course, seed: seed, laps: CouchGame.networkedLaps,
-            tuning: lastTuning, carContact: lastCarContact)
+            tuning: lastTuning)
     }
 
     /// Whether Rematch is available: the host, out of a race, with a course to

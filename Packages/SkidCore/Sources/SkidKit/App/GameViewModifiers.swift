@@ -33,11 +33,15 @@ extension View {
         #endif
     }
 
+    /// The standard button face. **Square and beveled, not a capsule** — this is the one
+    /// seam every screen's buttons already ran through, so converting it is what turned
+    /// the menus retro in one move rather than screen by screen. See `Retro`.
     func pillStyle() -> some View {
-        font(.callout.bold())
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(.black.opacity(0.35), in: Capsule())
-            .foregroundStyle(.white)
+        font(Retro.font(14))
+            .padding(.horizontal, 16)
+            .frame(minHeight: 40)
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
+            .foregroundStyle(Retro.ink)
     }
 }
