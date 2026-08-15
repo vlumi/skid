@@ -410,9 +410,9 @@ id — what is missing is tying a result to a *person*.
       people by device), and the phone belongs to somebody, perhaps shared with kids.
       Anything that treats it as an identity to hang a data model off is building for
       a situation this app does not have.
-- [ ] **Records that stick, and are worth looking at.** Best lap and best race
-      already persist per track; make them *visible* — a results screen worth
-      reading, "you beat your best" in the moment, and a board per track.
+- [x] **Records that stick, and are worth looking at.** SHIPPED, across four PRs:
+      past laps in the trial, "you beat your best" in the moment, attribution, and a
+      board per track.
 
       **Time trial now shows your past laps**, not only the best one — a windowed list
       of recent laps with the fastest starred, and that time pinned once its lap has
