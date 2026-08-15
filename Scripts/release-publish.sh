@@ -10,7 +10,10 @@
 # shipped version (see release_base in release-lib.sh).
 #
 # Versioning (project.yml, shared across all app targets):
-#   • MARKETING_VERSION — bumped only on an `all` release, and only if you say so.
+#   • MARKETING_VERSION — you are always asked, on every release, and blank keeps
+#     it. It is shared by every app target, so a version cut on an iOS-only
+#     release is the project's version — which is the point: a milestone that
+#     only ships to one platform still moved the project on.
 #   • CURRENT_PROJECT_VERSION — the build number, always bumped on every target.
 #
 # Usage: release-publish.sh <ios|macos|all>
@@ -44,25 +47,27 @@ if [ "$cur_build" -gt "$(highest_tagged_build)" ]; then
     exit 0
 fi
 
+# **Asked on every release, not only on `all`.** The prompt used to be gated behind
+# an all-platform release, so an iOS-only one silently kept the version — and since
+# iOS is the only platform shipping today, that meant the version could never be cut
+# from the release lane at all. Blank keeps it, so nothing here forces a bump.
 new_version="$cur_version"
-if [ "$platform" = "all" ]; then
-    IFS='.' read -r MA MI PA <<EOF
+IFS='.' read -r MA MI PA <<EOF
 ${cur_version}
 EOF
-    suggested="${MA}.${MI}.$(( ${PA:-0} + 1 ))"
-    printf 'Bump marketing version? current %s — enter new (blank = keep, "p" = %s): ' \
-        "$cur_version" "$suggested"
-    read -r answer || answer=""
-    case "$answer" in
-        "")  new_version="$cur_version" ;;
-        p|P) new_version="$suggested" ;;
-        *)   [[ "$answer" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
-                 || die "version must be X.Y.Z (got '$answer')"
-             new_version="$answer" ;;
-    esac
-else
-    echo "single-platform release ($platform): keeping version ${cur_version} (build still bumps every target)."
-fi
+suggested="${MA}.${MI}.$(( ${PA:-0} + 1 ))"
+minor_suggested="${MA}.$(( ${MI:-0} + 1 )).0"
+printf 'Bump marketing version? current %s — blank = keep, "p" = %s, "m" = %s, or X.Y.Z: ' \
+    "$cur_version" "$suggested" "$minor_suggested"
+read -r answer || answer=""
+case "$answer" in
+    "")  new_version="$cur_version" ;;
+    p|P) new_version="$suggested" ;;
+    m|M) new_version="$minor_suggested" ;;
+    *)   [[ "$answer" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+             || die "version must be X.Y.Z (got '$answer')"
+         new_version="$answer" ;;
+esac
 # Next build = one past BOTH the base's current build and every existing tag:
 # on main those agree, but a patch branch lags behind builds main has cut since
 # (and vice versa), and build numbers stay globally monotonic across branches so
