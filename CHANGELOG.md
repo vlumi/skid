@@ -21,6 +21,12 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **Records say who set them.** A named player's best reads "0:05.30 — Ada"; a guest's
+  shows the bare time, since a guest chose not to give a name.
+- **The track picker is a record board.** Every track now shows what it holds and who
+  holds it, so browsing tells you where your times are — and "No time yet" marks the
+  tracks nobody has raced.
+
 - **The menus look like a 90s PC game.** Hard edges, a VGA palette, beveled panels and
   monospaced type, in place of native iOS chrome that made a top-down arcade racer read
   like a settings app. The look is 1994; the ergonomics are not — every row is still a

@@ -72,8 +72,38 @@ struct TrackBrowserView: View {
         VStack(alignment: .leading, spacing: 10) {
             title
                 .font(Retro.body)
-                .foregroundStyle(Retro.ink)
+                // On the ground, not on a panel — `ink` is dark-on-grey and vanishes here.
+                .foregroundStyle(Retro.onGround)
             LazyVGrid(columns: columns, spacing: 12) { content() }
+        }
+    }
+
+    /// **What this track holds** — the board, one line per tile.
+    ///
+    /// A record with a name reads "0:05.28 Ada"; a guest's reads as the bare time, which
+    /// is honest (see `BestRecord.lapHolder`). A track nobody has raced says so rather
+    /// than showing an empty row, so the blank means "unraced" instead of "broken".
+    @ViewBuilder private func recordLine(for id: String, selected: Bool) -> some View {
+        let best = game.hiscores.best(for: id)
+        if let lap = best.bestLapTicks {
+            HStack(spacing: 4) {
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 7))
+                Text(verbatim: formatTicks(lap))
+                    .lineLimit(1)
+                if let holder = best.lapHolder {
+                    Text(verbatim: holder)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .opacity(0.75)
+                }
+            }
+            .font(Retro.caption)
+            .foregroundStyle(selected ? Retro.onHighlight : Retro.inkSoft)
+        } else {
+            Text("No time yet", bundle: .module)
+                .font(Retro.caption)
+                .foregroundStyle(selected ? Retro.onHighlight.opacity(0.7) : Retro.inkSoft)
         }
     }
 
@@ -92,8 +122,8 @@ struct TrackBrowserView: View {
                 } else {
                     // A code that will not decode shows as a blank rather than an error:
                     // one corrupt row is not worth a dialog, and the name still selects.
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.black.opacity(0.25))
+                    Rectangle()
+                        .fill(Retro.panel.opacity(0.4))
                         .frame(height: 96)
                 }
                 HStack(spacing: 4) {
@@ -107,17 +137,12 @@ struct TrackBrowserView: View {
                             .foregroundStyle(Retro.inkSoft)
                     }
                 }
-                .foregroundStyle(Retro.ink)
+                .foregroundStyle(selected ? Retro.onHighlight : Retro.ink)
+                recordLine(for: id, selected: selected)
             }
             .padding(6)
-            .background(
-                selected ? Color.white.opacity(0.22) : .black.opacity(0.18),
-                in: RoundedRectangle(cornerRadius: 12)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(.white.opacity(selected ? 0.9 : 0), lineWidth: 2)
-            )
+            .background(selected ? Retro.highlight : Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
         }
     }
 }
