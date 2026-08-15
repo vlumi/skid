@@ -20,7 +20,7 @@ struct TrackBrowserView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.28, green: 0.55, blue: 0.23).ignoresSafeArea()
+            Retro.ground.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     section(Text("Tracks", bundle: .module)) {
@@ -54,11 +54,12 @@ struct TrackBrowserView: View {
                 dismiss()
             } label: {
                 Text("Done", bundle: .module)
-                    .font(.headline)
+                    .font(Retro.body)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(.white.opacity(0.92), in: Capsule())
-                    .foregroundStyle(.black)
+                    .background(Retro.panel)
+                    .overlay(RetroBevel(thickness: 2))
+                    .foregroundStyle(Retro.ink)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 8)
@@ -70,8 +71,8 @@ struct TrackBrowserView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             title
-                .font(.subheadline.bold())
-                .foregroundStyle(.white.opacity(0.8))
+                .font(Retro.body)
+                .foregroundStyle(Retro.ink)
             LazyVGrid(columns: columns, spacing: 12) { content() }
         }
     }
@@ -97,16 +98,16 @@ struct TrackBrowserView: View {
                 }
                 HStack(spacing: 4) {
                     Text(verbatim: name)
-                        .font(.footnote.bold())
+                        .font(Retro.caption)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     if signed {
                         Image(systemName: "seal")
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.7))
+                            .font(Retro.caption)
+                            .foregroundStyle(Retro.inkSoft)
                     }
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Retro.ink)
             }
             .padding(6)
             .background(
