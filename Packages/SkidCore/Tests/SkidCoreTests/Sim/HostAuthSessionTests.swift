@@ -23,7 +23,7 @@ final class HostAuthSessionTests: XCTestCase {
     private func raceStart() -> RaceStart {
         RaceStart(
             course: .builtin("small"), seed: 5, roster: roster,
-            laps: 3, tuning: CarTuning(), carContact: true)
+            laps: 3, tuning: CarTuning())
     }
 
     private func thumb(_ seat: PlayerID, _ tick: Tick) -> CarInput {

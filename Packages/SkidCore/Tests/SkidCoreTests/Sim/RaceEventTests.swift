@@ -34,7 +34,7 @@ final class RaceEventTests: XCTestCase {
         )
         var race = Race(
             track: track, players: [PlayerID(0), PlayerID(1)],
-            config: RaceConfig(carContact: true))
+            config: RaceConfig())
         // Pin the grid so the two cars face each other head-on regardless of
         // the random start-slot shuffle: car 0 left, car 1 right facing back.
         race.cars[0].state.position = Vec2(-140, 0)

@@ -22,27 +22,79 @@ struct HomeView: View {
     @ObservedObject var game: CouchGame
     let net: NetworkedGame
 
+    // `simctl` cannot tap, so these screens are otherwise unreachable for a screenshot.
+    @State private var showingSettings =
+        ProcessInfo.processInfo.arguments.contains("-skid-settings")
+    @State private var showingAbout =
+        ProcessInfo.processInfo.arguments.contains("-skid-about")
+
     var body: some View {
         ZStack {
-            Color(red: 0.28, green: 0.55, blue: 0.23).ignoresSafeArea()
-            GeometryReader { proxy in
-                ScrollView(.vertical, showsIndicators: false) {
-                    home
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: proxy.size.height)
-                }
+            Retro.ground.ignoresSafeArea()
+            // **Top-aligned inside the safe area**, not centered: the content is a
+            // fixed stack, so centering it left a gap above the title on a tall phone
+            // and floated the corner buttons away from the corner they name.
+            ScrollView(.vertical, showsIndicators: false) {
+                home
+                    .frame(maxWidth: .infinity, alignment: .top)
             }
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(
+                game: game, settings: game.settings,
+                close: { showingSettings = false })
+        }
+        .sheet(isPresented: $showingAbout) {
+            AboutView(close: { showingAbout = false })
+        }
+    }
+
+    /// A small icon button for the corner strip. Labelled for VoiceOver, since an icon
+    /// alone says nothing to it.
+    private func cornerButton(
+        _ symbol: String, _ label: Text, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(Retro.ink)
+                .frame(width: 44, height: 44)
+                .background(Retro.panel)
+                .overlay(RetroBevel(thickness: 2))
+        }
+        .accessibilityLabel(label)
     }
 
     private var home: some View {
         VStack(spacing: 20) {
-            Text(verbatim: "SKID JAM")
-                .font(.system(size: 44, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-                .shadow(radius: 3)
+            // Settings and About ride in the corner rather than as rows: the front door
+            // is about who is playing and what to do, and two more full-width buttons
+            // would bury that under housekeeping.
+            HStack(spacing: 10) {
+                Spacer()
+                cornerButton("gearshape.fill", Text("Settings", bundle: .module)) {
+                    showingSettings = true
+                }
+                cornerButton("info.circle.fill", Text("About", bundle: .module)) {
+                    showingAbout = true
+                }
+            }
+            .padding(.horizontal, 16)
+
+            // **No bevel of any kind.** A raised one read as a button and an inset one as
+            // a pressed button — the frame was the problem, not its direction. Checkered
+            // bands say "racing" instead, and a title nobody can mistake for a control.
+            VStack(spacing: 10) {
+                RetroCheckers()
+                Text(verbatim: "SKID JAM")
+                    .font(Retro.font(38, weight: .black))
+                    .foregroundStyle(Retro.amber)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity)
+                RetroCheckers()
+            }
+            .padding(.vertical, 4)
 
             PlayerListView(game: game)
                 .padding(.horizontal, 16)
@@ -56,7 +108,8 @@ struct HomeView: View {
                 Text("Track editor", bundle: .module).pillStyle()
             }
         }
-        .padding(.vertical, 18)
+        .padding(.top, 8)
+        .padding(.bottom, 18)
     }
 
     private var actions: some View {
@@ -64,12 +117,12 @@ struct HomeView: View {
             Button {
                 game.openSetup()
             } label: {
-                Text("Start", bundle: .module)
-                    .font(.title3.bold())
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(.white.opacity(0.92), in: Capsule())
-                    .foregroundStyle(.black)
+                Text("START", bundle: .module)
+                    .font(Retro.font(20, weight: .black))
+                    .foregroundStyle(Retro.onHighlight)
+                    .frame(maxWidth: .infinity, minHeight: 54)
+                    .background(Retro.highlight)
+                    .overlay(RetroBevel())
             }
 
             HStack(spacing: 10) {

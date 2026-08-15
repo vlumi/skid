@@ -17,12 +17,12 @@ extension EditorView {
                 Text(gating ? "Done" : "Gates", bundle: .module)
             }
             .font(.footnote.bold())
-            .foregroundStyle(gating ? .black : .white)
+            .foregroundStyle(gating ? Retro.onHighlight : Retro.ink)
             .padding(.horizontal, 11)
             .padding(.vertical, 7)
-            .background(gating ? Color.cyan : .black.opacity(0.55), in: Capsule())
-            .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 1))
-            .contentShape(Capsule())
+            .background(gating ? Retro.highlight : Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
+            .contentShape(Rectangle())
         }
         .accessibilityLabel(Text(gating ? "Leave gate mode" : "Edit gates", bundle: .module))
     }

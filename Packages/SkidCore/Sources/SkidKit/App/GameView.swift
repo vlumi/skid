@@ -40,7 +40,10 @@ public struct GameView: View {
                 // The shelf is a full screen rather than a sheet: choosing which track to
                 // work on is the first step of editing, not an interruption of it.
                 if game.showingTrackShelf {
-                    TrackShelfView(game: game) { game.showingTrackShelf = false }
+                    TrackShelfView(
+                        game: game,
+                        back: { game.closeTrackShelf() },
+                        openCanvas: { game.showingTrackShelf = false })
                 } else {
                     EditorView(game: game)
                 }

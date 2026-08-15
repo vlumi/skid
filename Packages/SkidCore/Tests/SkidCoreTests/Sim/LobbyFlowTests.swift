@@ -138,8 +138,8 @@ final class LobbyFlowTests: XCTestCase {
     @MainActor
     func testEveryPhysicsInputComesFromTheHostNotTheDevice() {
         // **The desync, found after five device sessions.** Each device raced with its
-        // OWN persisted tuning — 19 physics values behind a tuning panel — and its own
-        // `carContact` setting. Any value nudged on either phone made the cars
+        // OWN persisted tuning — 19 physics values behind a tuning panel. Any value
+        // nudged on either phone made the cars
         // physically different, so the sims diverged from the first tick whose input is
         // actually applied. That is exactly what was measured: a repeatable desync at
         // tick 182, which is `countdownTicks + delayTicks`, with everything before it
@@ -153,7 +153,6 @@ final class LobbyFlowTests: XCTestCase {
         // live `@AppStorage` settings — which are one shared `UserDefaults` and leaked
         // into two unrelated tests when I tried — this asserts the wiring directly:
         // whatever the host sent is what the race runs, and it is NOT this device's.
-        game.carContact = false
 
         var roster = RaceRoster()
         let me = "guest#bbbb"
@@ -166,7 +165,7 @@ final class LobbyFlowTests: XCTestCase {
         hostTuning.gripScale += 0.3
         let start = RaceStart(
             course: .builtin(game.trackID), seed: 9, roster: roster, laps: 3,
-            tuning: hostTuning, carContact: true)
+            tuning: hostTuning)
         game.startNetworkedRace(start, driver: StubDriver(roster.seats(for: me)))
 
         guard let session = game.session else { return XCTFail("no session was built") }
@@ -177,8 +176,6 @@ final class LobbyFlowTests: XCTestCase {
         // (default) tuning had been used instead, these would differ.
         XCTAssertNotEqual(hostTuning, CarTuning(), "the test's host tuning is not distinctive")
         XCTAssertEqual(session.race.tuning.turnRate, hostTuning.turnRate, accuracy: 1e-9)
-        XCTAssertTrue(
-            session.race.config.carContact, "carContact came from the device, not the host")
     }
 
     func testTheStartMessageCarriesTheWholePhysicsPicture() {
@@ -191,15 +188,13 @@ final class LobbyFlowTests: XCTestCase {
         tuning.engineAccel += 123
         tuning.aimFlipBoost += 0.5
         let start = RaceStart(
-            course: .builtin("clover"), seed: 42, roster: roster, laps: 5, tuning: tuning,
-            carContact: false)
+            course: .builtin("clover"), seed: 42, roster: roster, laps: 5, tuning: tuning)
 
         guard let back = RaceStart(bytes: start.encoded) else {
             return XCTFail("the start message did not round-trip")
         }
         XCTAssertEqual(back, start)
         XCTAssertEqual(back.tuning, tuning, "the physics did not survive the wire")
-        XCTAssertEqual(back.carContact, false)
         XCTAssertEqual(back.laps, 5)
     }
 

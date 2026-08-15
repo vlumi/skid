@@ -22,7 +22,6 @@ extension TrackRenderer {
     ) {
         let race = scene.race
         let track = race.track
-        let translucent = ghostOverlaps(race: race)
 
         // The PB ghost drives under the real cars, translucent and colorless —
         // present, never in the way.
@@ -34,14 +33,13 @@ extension TrackRenderer {
 
         for (index, car) in race.cars.enumerated() where !car.state.isAirborne {
             let state = car.state
-            let opacity = translucent.contains(index) ? 0.55 : 1
             let storey = carStorey(of: state, on: track)
             order.add(storey: storey, kind: .car) { context in
                 // Scaled by the continuous height at its position (the same
                 // Elevation.scale the road width uses), so a car grows as it
                 // climbs — no discrete pop at a level boundary.
                 draw(
-                    car: state, color: colorAt(index), opacity: opacity,
+                    car: state, color: colorAt(index),
                     scale: Elevation.scale(atHeight: state.height), into: &context)
             }
             // Never-invisible rule: a car with road a full level above it is
@@ -232,24 +230,6 @@ extension TrackRenderer {
     /// just outside the bridge still overlaps it.
     static let holeRadius: Double = 20
 
-    /// Ghost mode: overlapping pass-through cars go translucent so pileups
-    /// on the racing line stay readable.
-    private static func ghostOverlaps(race: Race) -> Set<Int> {
-        var translucent: Set<Int> = []
-        guard !race.config.carContact else { return translucent }
-        for i in 0..<race.cars.count {
-            for j in (i + 1)..<race.cars.count {
-                let gap = race.cars[i].state.position.distance(
-                    to: race.cars[j].state.position)
-                if gap < CarGeometry.radius * 2.6 {
-                    translucent.insert(i)
-                    translucent.insert(j)
-                }
-            }
-        }
-        return translucent
-    }
-
     private static func draw(
         car: CarState, color: Color, opacity: Double = 1, scale: Double = 1,
         shadow: Bool = false, into context: inout GraphicsContext
@@ -272,7 +252,7 @@ extension TrackRenderer {
         // out past the body sides.
         for offset in CarGeometry.tireOffsets {
             let tire = CGRect(x: offset.x - 4.5, y: offset.y - 3, width: 9, height: 6)
-            car2D.fill(Path(roundedRect: tire, cornerRadius: 2), with: .color(rubber))
+            car2D.fill(Path(tire), with: .color(rubber))
         }
         // Narrow open-wheeler body: a capsule nose-to-tail. The look is a bold
         // dark rim (the cartoony edge that reads well on grass/asphalt). A soft
@@ -280,8 +260,16 @@ extension TrackRenderer {
         // headlight — barely there on light surfaces, but enough to keep a dark
         // car legible on dark ground (the mud pit), where a dark-only edge
         // would vanish. Background-independent, and carries onto map themes.
-        let body = CGRect(x: -length / 2, y: -width / 4, width: length, height: width / 2)
-        let bodyPath = Path(roundedRect: body, cornerRadius: width / 4)
+        // **Chunky and square-cornered**, to match the menus' pixel look — and because
+        // the car is small on screen, where a thin capsule reads as a smudge.
+        //
+        // Rendering only: `CarGeometry` is the SIM's car (collision runs off `radius`),
+        // and widening that would move every wall contact and invalidate every stored
+        // ghost. So the drawn body is deliberately its own number — 0.62 of the nominal
+        // width rather than the old 0.5 — and the corners are square.
+        let bodyHeight = width * 0.62
+        let body = CGRect(x: -length / 2, y: -bodyHeight / 2, width: length, height: bodyHeight)
+        let bodyPath = Path(body)
         // The glow: the dark rim drawn into a layer with TWO stacked white
         // shadow filters, so a soft light aura bleeds out around the whole
         // silhouette. Stacking compounds the light so it stays visible even at

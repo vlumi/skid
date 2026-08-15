@@ -147,7 +147,8 @@ struct RaceScreen: View {
             .font(.system(size: 44))
             .foregroundStyle(.white.opacity(0.9))
             .frame(width: 96, height: 96)
-            .background(.black.opacity(0.45), in: Circle())
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
             .shadow(radius: 6)
             .position(point)
             .allowsHitTesting(false)
@@ -252,7 +253,8 @@ struct PauseMenu: View {
             }
         }
         .padding(22)
-        .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 18))
+        .background(Retro.panel)
+        .overlay(RetroBevel())
     }
 }
 

@@ -109,7 +109,7 @@ struct RaceHUD: View {
 
     private func bigLabel(_ text: Text) -> some View {
         text
-            .font(.system(size: 84, weight: .black, design: .rounded))
+            .font(Retro.font(78, weight: .black))
             .foregroundStyle(.white.opacity(0.9))
             .shadow(radius: 4)
     }
@@ -167,10 +167,10 @@ struct RaceHUD: View {
                 HStack(spacing: 5) {
                     if let place = shownPlace[index] {
                         Text(verbatim: ordinal(place))
-                            .font(.subheadline.monospacedDigit().bold())
+                            .font(Retro.font(15))
                     }
                     Text("Lap \(min(car.progress.lap + 1, laps))/\(laps)", bundle: .module)
-                        .font(.subheadline.monospacedDigit())
+                        .font(Retro.font(15, weight: .regular))
                 }
             } else {
                 // Time trial: the running clock over the laps already driven.
@@ -191,7 +191,7 @@ struct RaceHUD: View {
                     .frame(width: 16, height: 16)
                 if let place = shownPlace[index] {
                     Text(verbatim: ordinal(place))
-                        .font(.system(size: 34, weight: .black, design: .rounded))
+                        .font(Retro.font(30, weight: .black))
                         .monospacedDigit()
                 }
             }
@@ -199,7 +199,8 @@ struct RaceHUD: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 14))
+        .background(Retro.ground.opacity(0.82))
+        .overlay(RetroBevel(thickness: 2))
     }
 
     /// One aligned column: a "★ Lap N … time" row per lap (the best lap gets
@@ -220,7 +221,7 @@ struct RaceHUD: View {
                     ticks: finished - race.config.countdownTicks, best: false)
             }
         }
-        .frame(width: 124)
+        .frame(width: 150)
     }
 
     /// One "★ label … time" row: a fixed star slot (gold on the best lap,
@@ -238,12 +239,18 @@ struct RaceHUD: View {
                 .font(.system(size: 8))
                 .foregroundStyle(.yellow)
                 .opacity(best || record ? 1 : 0)
+            // **Never wraps.** The label had no line limit, which was survivable in
+            // the old proportional face and is not in a monospaced one — "Lap 2" and
+            // "Total" both broke across two lines in a 124pt column. Reported from
+            // device. The time already had `fixedSize`; the label needed the same.
             label
-                .font(.caption2)
+                .font(Retro.caption)
                 .opacity(0.6)
+                .lineLimit(1)
+                .fixedSize()
             Spacer(minLength: 6)
             Text(verbatim: formatTicks(ticks))
-                .font(.footnote.monospacedDigit())
+                .font(Retro.font(13, weight: .regular))
                 .opacity(record ? 1 : 0.9)
                 .fontWeight(record ? .bold : .regular)
                 .lineLimit(1)
@@ -270,7 +277,7 @@ struct RaceHUD: View {
         let setRecord = records.lapRecord != nil
         VStack(alignment: .trailing, spacing: 2) {
             Text(verbatim: formatTicks(lapTicks))
-                .font(.title3.monospacedDigit().bold())
+                .font(Retro.font(19))
             ForEach(history.rows, id: \.number) { row in
                 splitRow(
                     Text("Lap \(row.number)", bundle: .module), ticks: row.ticks,
@@ -283,7 +290,7 @@ struct RaceHUD: View {
                     record: setRecord)
             }
         }
-        .frame(width: 124)
+        .frame(width: 150)
     }
 
     /// How many recent laps the time-trial chip lists.
@@ -315,13 +322,13 @@ struct ResultsCard: View {
                     && car.progress.bestLapTicks == fastestLap
                 HStack(spacing: 10) {
                     Text(verbatim: "\(place + 1).")
-                        .font(.title3.monospacedDigit().bold())
+                        .font(Retro.font(19))
                     Circle()
                         .fill(carIndex < colors.count ? colors[carIndex] : .white)
                         .frame(width: 16, height: 16)
                     if let finished = car.progress.finishedAt {
                         Text(verbatim: formatTicks(finished - race.config.countdownTicks))
-                            .font(.title3.monospacedDigit())
+                            .font(Retro.font(19, weight: .regular))
                     }
                     if let best = car.progress.bestLapTicks {
                         // The race's overall fastest lap gets a gold star; the
@@ -330,12 +337,12 @@ struct ResultsCard: View {
                         // uniform — the star alone marks the winner.
                         HStack(spacing: 4) {
                             Image(systemName: "star.fill")
-                                .font(.caption2)
+                                .font(Retro.caption)
                                 .opacity(ownsFastest ? 1 : 0)
                             Text("Best \(formatTicks(best))", bundle: .module)
-                                .font(.footnote.monospacedDigit())
+                                .font(Retro.font(13, weight: .regular))
                         }
-                        .foregroundStyle(ownsFastest ? Color.yellow : .white)
+                        .foregroundStyle(ownsFastest ? Retro.highlight : Retro.ink)
                         .opacity(ownsFastest ? 1 : 0.75)
                     }
                 }
@@ -368,8 +375,9 @@ struct ResultsCard: View {
             }
         }
         .padding(24)
-        .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 18))
-        .foregroundStyle(.white)
+        .background(Retro.panel)
+        .overlay(RetroBevel())
+        .foregroundStyle(Retro.ink)
     }
 
     /// **What this race took off the record book**, and what it beat.
@@ -397,21 +405,21 @@ struct ResultsCard: View {
     private func recordLine(_ label: Text, _ improvement: RunRecords.Improvement) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "crown.fill")
-                .font(.caption2)
+                .font(Retro.caption)
             label
                 .font(.footnote.bold())
             Text(verbatim: formatTicks(improvement.ticks))
-                .font(.footnote.monospacedDigit().bold())
+                .font(Retro.font(13))
             if let previous = improvement.previous {
                 Text("beat \(formatTicks(previous))", bundle: .module)
                     .font(.caption2.monospacedDigit())
                     .opacity(0.7)
             } else {
                 Text("first", bundle: .module)
-                    .font(.caption2)
+                    .font(Retro.caption)
                     .opacity(0.7)
             }
         }
-        .foregroundStyle(.yellow)
+        .foregroundStyle(Retro.highlight)
     }
 }

@@ -21,6 +21,24 @@ ships (see [AGENTS.md](AGENTS.md)).
 
 ### Unreleased (next build)
 
+- **The menus look like a 90s PC game.** Hard edges, a VGA palette, beveled panels and
+  monospaced type, in place of native iOS chrome that made a top-down arcade racer read
+  like a settings app. The look is 1994; the ergonomics are not — every row is still a
+  finger-sized target and scrolling is still native.
+- **A settings screen**, with sound, haptics, and the two-player layout: face to face
+  across a table, or side by side sharing one edge. That last one was fixed at
+  face-to-face with no way to change it.
+- **An about screen**, with the version.
+- **Ghost mode is gone; cars always collide.** It was a race option with no real use —
+  a race where you can drive through each other is not the game.
+- **The track editor got the same 90s treatment**, and so did picking a player.
+- **"Back" from the track list goes back.** The list is reached from the front door and
+  from inside the editor, and it used to leave the same way from both — so backing out
+  from the front door dropped you into a track you had not chosen to edit.
+- **Chunkier cars, square pixels.** The car was a thin capsule that read as a smudge at
+  the size it is actually drawn; it is now a solid, square-cornered block, matching the
+  app icon. The gate markers are square too.
+
 - **Reset all data**, in the tuning panel — a development tool that puts the app back
   to freshly-installed: every track, record, profile and dial. It reads as a link at
   the end of the panel rather than a button under your thumb, and takes a confirmation,
