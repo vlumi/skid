@@ -28,8 +28,11 @@ extension CouchGame {
     /// — and a paused or restarted race cannot replay one it already played.
     func noteCountdownBeep(in race: Race) {
         let now = StartBeeps.secondsRemaining(in: race)
+        // **No early return on the first frame.** `notedCountdownSeconds` is nil exactly
+        // when the countdown begins, which is when the first lights appear — bailing out
+        // there is what left the opening state silent.
+        let previous = notedCountdownSeconds
         defer { notedCountdownSeconds = now }
-        guard let previous = notedCountdownSeconds else { return }
         if let isFinal = StartBeeps.beep(secondsBefore: previous, secondsAfter: now) {
             sound.startBeep(final: isFinal)
         }
