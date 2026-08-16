@@ -165,8 +165,8 @@ extension EditorRenderer {
     /// skipped rather than drawn as a blob.
     /// **The centre line's dashes for one piece.**
     ///
-    /// Self-contained: whole dashes fitted inside this piece, so nothing is clipped at a
-    /// join and the seam always lands in a gap. See `LaneDashPlan`.
+    /// No edge compensation here: `LaneDashPlan` centres the run so the paint never
+    /// reaches the seam overlap in the first place.
     static func drawLaneDashes(
         _ placed: PlacedPiece, width: Double, paint: Color = kerbWhite,
         transform t: Transform, into context: inout GraphicsContext
@@ -174,6 +174,7 @@ extension EditorRenderer {
         let samples = placed.centerlineSamples()
         guard samples.count > 1 else { return }
         let length = LaneDashPlan.polylineLength(samples)
+        guard length > 0 else { return }
         let half = width * LaneDashPlan.widthFraction
         for dash in LaneDashPlan.dashes(inPieceOfLength: length) {
             let path = dashPath(
