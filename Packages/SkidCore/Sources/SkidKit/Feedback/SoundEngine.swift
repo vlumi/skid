@@ -141,6 +141,15 @@ public final class SoundEngine {
         }
     }
 
+    /// One xorshift noise sample in -1…1 — low-passed for skid, raw-ish for thumps.
+    /// Advances `seed` in place.
+    private nonisolated static func noise(_ seed: inout UInt64) -> Double {
+        seed ^= seed << 13
+        seed ^= seed >> 7
+        seed ^= seed << 17
+        return Double(Int64(bitPattern: seed % 2000) - 1000) / 1000
+    }
+
     /// One sample of the countdown beep: a clean sine, so it cuts through the engine's
     /// saws rather than blending into them. Advances `phase` in place.
     private nonisolated static func beepSample(
@@ -195,11 +204,7 @@ public final class SoundEngine {
                 let engine = EngineVoice.sample(
                     phase: phase1, subPhase: subPhase, duty: smoothedDuty)
 
-                // xorshift noise, low-passed for skid, raw-ish for thumps.
-                seed ^= seed << 13
-                seed ^= seed >> 7
-                seed ^= seed << 17
-                let white = Double(Int64(bitPattern: seed % 2000) - 1000) / 1000
+                let white = SoundEngine.noise(&seed)
                 noiseFilter += (white - noiseFilter) * 0.12
 
                 let sample =
