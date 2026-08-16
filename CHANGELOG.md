@@ -25,662 +25,203 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### build 13 — 2026-08-15
 
-- **A new opening screen: say who is playing, then what to do.** The app used to
-  open on one screen with every setting laid flat — mode, players, seating, AI
-  count, difficulty, contact, track — and a player count that hid the difference
-  between racing alone and racing three friends. Now the first thing you see is a
-  list of who is here, and three plain choices under it: race here, host a race
-  for nearby devices, or join one.
+- **A new opening screen: say who is playing, then what to do.** The app used to open on one screen with every setting laid flat — mode, players, seating, AI count, difficulty, contact, track — and a player count that hid the difference between racing alone and racing three friends. Now the first thing you see is a list of who is here, and three plain choices under it: race here, host a race for nearby devices, or join one.
 
-  Add a driver with **+ Guest** or **+ Player**, and tap any row to change who is
-  in it. Two things went away because they were questions nobody could answer
-  before driving: the seating layout, and the number of AI cars — now simply
-  **With AI** or **People only**, filling whatever the grid has room for.
-- **Players can have names.** Make a profile — a name and a color, kept on this
-  device — and your best times are yours rather than the phone's. Nobody has to:
-  **guests race exactly the same**, and a visitor taking one turn never has to
-  register for it. A profile is remembered per seat, so swapping a row back and
-  forth does not ask twice.
-- **A settings screen**, with sound, haptics, and the two-player layout: face to
-  face across a table, or side by side sharing one edge. That last one was fixed
-  at face-to-face with no way to change it.
+  Add a driver with **+ Guest** or **+ Player**, and tap any row to change who is in it. Two things went away because they were questions nobody could answer before driving: the seating layout, and the number of AI cars — now simply **With AI** or **People only**, filling whatever the grid has room for.
+- **Players can have names.** Make a profile — a name and a color, kept on this device — and your best times are yours rather than the phone's. Nobody has to: **guests race exactly the same**, and a visitor taking one turn never has to register for it. A profile is remembered per seat, so swapping a row back and forth does not ask twice.
+- **A settings screen**, with sound, haptics, and the two-player layout: face to face across a table, or side by side sharing one edge. That last one was fixed at face-to-face with no way to change it.
 - **An about screen**, with the version.
 
-- **The whole game looks like a 90s PC game.** Hard edges, a VGA palette, beveled
-  panels and monospaced type, in place of native iOS chrome that made a top-down
-  arcade racer read like a settings app. The menus, the editor, the pause screen
-  and the race HUD all went together. The look is 1994; the ergonomics are not —
-  every row is still a finger-sized target and scrolling is still native.
-- **Chunkier cars, square pixels.** The car was a thin capsule that read as a
-  smudge at the size it is actually drawn; it is now a solid, square-cornered
-  block, matching the app icon. The gate markers are square too.
-- **Cars say when they are reversing**, with white lamps at the tail. Which way a
-  car *faces* and which way it is *traveling* are different questions, and in a
-  drift game they come apart constantly.
-- **Cars are easier to tell apart.** The white shine across each car's nose is
-  gone. It was washing every car toward the same white, cutting the worst pair of
-  car colors from ΔE 24.7 to 9.1 (measured under normal vision and all three kinds
-  of color blindness) — the difference between "two colors" and "the same color"
-  on a moving car.
+- **The whole game looks like a 90s PC game.** Hard edges, a VGA palette, beveled panels and monospaced type, in place of native iOS chrome that made a top-down arcade racer read like a settings app. The menus, the editor, the pause screen and the race HUD all went together. The look is 1994; the ergonomics are not — every row is still a finger-sized target and scrolling is still native.
+- **Chunkier cars, square pixels.** The car was a thin capsule that read as a smudge at the size it is actually drawn; it is now a solid, square-cornered block, matching the app icon. The gate markers are square too.
+- **Cars say when they are reversing**, with white lamps at the tail. Which way a car *faces* and which way it is *traveling* are different questions, and in a drift game they come apart constantly.
+- **Cars are easier to tell apart.** The white shine across each car's nose is gone. It was washing every car toward the same white, cutting the worst pair of car colors from ΔE 24.7 to 9.1 (measured under normal vision and all three kinds of color blindness) — the difference between "two colors" and "the same color" on a moving car.
 
-- **Time trial shows the laps you have driven, not just your best.** It gave you a
-  running clock and a single "Best" line, so the run in front of you was invisible
-  — you could not see whether you were finding time or losing it. The chip now
-  lists your recent laps, the fastest one crowned; once that lap scrolls out of the
-  list, its time stays pinned below so the number you are chasing is on screen.
-- **Beating a record now says so.** Records were written to disk in silence: you
-  could drive the best lap of your life and the game would tell you nothing. A new
-  best is crowned in the trial's lap list as it happens — quietly, since a trial
-  has no ending to interrupt — and a race's results screen names what fell and the
-  time it beat: "best lap 0:04.81, beat 0:05.28".
-- **Records say who set them.** A named player's best reads "0:05.30 — Ada"; a
-  guest's shows the bare time, since a guest chose not to give a name.
-- **The track picker is a record board.** Every track shows what it holds and who
-  holds it, so browsing tells you where your times are — and "No time yet" marks
-  the tracks nobody has raced.
+- **Time trial shows the laps you have driven, not just your best.** It gave you a running clock and a single "Best" line, so the run in front of you was invisible — you could not see whether you were finding time or losing it. The chip now lists your recent laps, the fastest one crowned; once that lap scrolls out of the list, its time stays pinned below so the number you are chasing is on screen.
+- **Beating a record now says so.** Records were written to disk in silence: you could drive the best lap of your life and the game would tell you nothing. A new best is crowned in the trial's lap list as it happens — quietly, since a trial has no ending to interrupt — and a race's results screen names what fell and the time it beat: "best lap 0:04.81, beat 0:05.28".
+- **Records say who set them.** A named player's best reads "0:05.30 — Ada"; a guest's shows the bare time, since a guest chose not to give a name.
+- **The track picker is a record board.** Every track shows what it holds and who holds it, so browsing tells you where your times are — and "No time yet" marks the tracks nobody has raced.
 
-- **Pick a track by looking at it.** The track picker was a row of names, which was
-  fine for four built-ins and useless the moment you had tracks of your own — "My
-  track 3" says nothing about whether it is a tight circuit or a long sweeper. Now
-  every track shows a picture of itself, drawn by the game's own renderer, so a
-  preview can never disagree with the track.
-- **The editor can open any of your tracks.** It could only ever work on the newest
-  one: your library kept everything and let you race it, but the editor had a single
-  slot. Opening it now shows your tracks — including the unfinished ones, since the
-  race picker will not offer a ring that does not close. Start a new track, carry on
-  with an old one, or start a copy of any of them (including the built-ins, which is
-  how you take one apart to see how it works).
-- **Tracks can be named.** Tap the name above the map while building — it works
-  before the track is saved, so you can name it the moment you think of one — or use
-  the ⋯ menu on any track in the list, which also copies and deletes.
+- **Pick a track by looking at it.** The track picker was a row of names, which was fine for four built-ins and useless the moment you had tracks of your own — "My track 3" says nothing about whether it is a tight circuit or a long sweeper. Now every track shows a picture of itself, drawn by the game's own renderer, so a preview can never disagree with the track.
+- **The editor can open any of your tracks.** It could only ever work on the newest one: your library kept everything and let you race it, but the editor had a single slot. Opening it now shows your tracks — including the unfinished ones, since the race picker will not offer a ring that does not close. Start a new track, carry on with an old one, or start a copy of any of them (including the built-ins, which is how you take one apart to see how it works).
+- **Tracks can be named.** Tap the name above the map while building — it works before the track is saved, so you can name it the moment you think of one — or use the ⋯ menu on any track in the list, which also copies and deletes.
 
-- **Ghost mode is gone; cars always collide.** It was a race option with no real
-  use — a race where you can drive through each other is not the game.
-- **Best times start over, and ghosts got much smaller.** The ghost you race in
-  time trial was stored as the whole run it came from — every lap of it, to show
-  you one. It is now just the fastest lap, packed tightly: a three-lap best drops
-  from 138 KB to 5 KB, and a ten-lap one from 446 KB, since a ghost is now the same
-  size however long the race was.
+- **Ghost mode is gone; cars always collide.** It was a race option with no real use — a race where you can drive through each other is not the game.
+- **Best times start over, and ghosts got much smaller.** The ghost you race in time trial was stored as the whole run it came from — every lap of it, to show you one. It is now just the fastest lap, packed tightly: a three-lap best drops from 138 KB to 5 KB, and a ten-lap one from 446 KB, since a ghost is now the same size however long the race was.
 
-  **Existing best times are cleared** by this build. They were kept in the old
-  shape and could have been converted, but a ghost is only meaningful on the track
-  it was driven on — and the built-in tracks are still changing while the game is
-  in progress, so an old lap would be driven through a road that has moved.
+  **Existing best times are cleared** by this build. They were kept in the old shape and could have been converted, but a ghost is only meaningful on the track it was driven on — and the built-in tracks are still changing while the game is in progress, so an old lap would be driven through a road that has moved.
 
 **Behind the scenes** — developer tools, not part of the finished game:
 
-- **The tuning dials moved to a shake**, from the pause menu, so tuning the menus
-  or the editor no longer means starting a race first.
-- **Reset to defaults** puts every dial on the tuning panel back to its factory
-  value. The previous button covered only the dials that hiscores check, so the aim
-  shape, the d-pad, the elevation and the pace stayed exactly as tuned — and a tuned
-  car quietly records no times, with no obvious way back.
-- **Reset all data** puts the app back to freshly-installed: every track, record,
-  profile and dial, behind a confirmation.
+- **The tuning dials moved to a shake**, from the pause menu, so tuning the menus or the editor no longer means starting a race first.
+- **Reset to defaults** puts every dial on the tuning panel back to its factory value. The previous button covered only the dials that hiscores check, so the aim shape, the d-pad, the elevation and the pace stayed exactly as tuned — and a tuned car quietly records no times, with no obvious way back.
+- **Reset all data** puts the app back to freshly-installed: every track, record, profile and dial, behind a confirmation.
 
 ## v0.7.0
 
 ### build 12 — 2026-08-10
 
-- **Race together across devices.** "Play together" in the setup screen hosts or
-  joins a race over the local network — same Wi-Fi, or nothing but proximity — with
-  up to four players per device sharing each screen as usual, and up to nine cars in
-  a race. Two phones is what has been played; more should work and has only been
-  proven in tests. The host's device runs
-  the race; everyone else's shows it live, riding out rough Wi-Fi by trading a little
-  delay for smoothness. Pick which race to join, and the host lets you in.
+- **Race together across devices.** "Play together" in the setup screen hosts or joins a race over the local network — same Wi-Fi, or nothing but proximity — with up to four players per device sharing each screen as usual, and up to nine cars in a race. Two phones is what has been played; more should work and has only been proven in tests. The host's device runs the race; everyone else's shows it live, riding out rough Wi-Fi by trading a little delay for smoothness. Pick which race to join, and the host lets you in.
 
-  Races come one after another without restarting: finish, tap Lobby, and the host
-  starts the next one with the same field. A brief Wi-Fi wobble no longer throws
-  anyone out mid-race, though a real disconnection ends it for you. No accounts, no
-  internet, nothing leaves the room.
+  Races come one after another without restarting: finish, tap Lobby, and the host starts the next one with the same field. A brief Wi-Fi wobble no longer throws anyone out mid-race, though a real disconnection ends it for you. No accounts, no internet, nothing leaves the room.
 
-- **Cars fall properly.** Drive off a bridge with no railing, off the side of a ramp,
-  or off the end of a road that stops, and you drop along a real arc onto whatever is
-  beneath — which may be a lower deck rather than the ground. A ramp that ends in mid
-  air keeps its full slope instead of levelling off at the top, so leaving one throws
-  you rather than dribbling off an edge.
+- **Cars fall properly.** Drive off a bridge with no railing, off the side of a ramp, or off the end of a road that stops, and you drop along a real arc onto whatever is beneath — which may be a lower deck rather than the ground. A ramp that ends in mid air keeps its full slope instead of levelling off at the top, so leaving one throws you rather than dribbling off an edge.
 
-  The **Launch** tuning slider is gone with the trigger it drove: cars are heavy, so
-  what speed buys is how far you get before you land, not how high you go.
+  The **Launch** tuning slider is gone with the trigger it drove: cars are heavy, so what speed buys is how far you get before you land, not how high you go.
 
-  *(Building the gaps and level-drops that make a jump is a work-in-progress and only
-  appears in development builds. Tracks that use them race normally on any build, so a
-  shared code always works.)*
+  *(Building the gaps and level-drops that make a jump is a work-in-progress and only appears in development builds. Tracks that use them race normally on any build, so a shared code always works.)*
 
-- **See and edit one level at a time.** The **Levels** button cycles through the
-  storeys your track uses: it badges every raised piece with its level, and picking a
-  level dims the others and aims your taps at that one — which is the only way to get
-  at a piece with two more stacked on top of it.
+- **See and edit one level at a time.** The **Levels** button cycles through the storeys your track uses: it badges every raised piece with its level, and picking a level dims the others and aims your taps at that one — which is the only way to get at a piece with two more stacked on top of it.
 
-- **A warning when a track can't be driven.** If a wall ends up standing across the
-  road — a high ramp's bank cutting off the road beneath it, say — the offending piece
-  is marked in the editor. The track still races: it points at the problem rather
-  than hiding your track from the picker.
+- **A warning when a track can't be driven.** If a wall ends up standing across the road — a high ramp's bank cutting off the road beneath it, say — the offending piece is marked in the editor. The track still races: it points at the problem rather than hiding your track from the picker.
 
-- **The palette shows whether the next piece will be walled.** Every shape button's
-  casing turns the railing's blue when the rails toggle is on, so you can see what you
-  are about to lay instead of remembering.
+- **The palette shows whether the next piece will be walled.** Every shape button's casing turns the railing's blue when the rails toggle is on, so you can see what you are about to lay instead of remembering.
 
-- **The editor's buttons are grouped by what they do, and stay put.** Delete and
-  markings no longer float over the track — they sit in a fixed row with a railings
-  toggle, so you can trim several pieces without the bin moving and without deleting
-  one by accident while reaching for another. Rotate, raise, lower and reverse move
-  behind one **Transform** button that expands them beside the map, since they are
-  laid-out-once operations — and you can watch the track turn as you tap. Undo and redo
-  sit out front the rest of the time. The railings-while-building switch moves
-  into the palette beside the climb selector, where the pieces it affects are.
+- **The editor's buttons are grouped by what they do, and stay put.** Delete and markings no longer float over the track — they sit in a fixed row with a railings toggle, so you can trim several pieces without the bin moving and without deleting one by accident while reaching for another. Rotate, raise, lower and reverse move behind one **Transform** button that expands them beside the map, since they are laid-out-once operations — and you can watch the track turn as you tap. Undo and redo sit out front the rest of the time. The railings-while-building switch moves into the palette beside the climb selector, where the pieces it affects are.
 
-- **Track markings line up on raised roads.** The chequered start line, the
-  construction stripes on an unfinished end, and the dashed checkpoint markers all
-  stopped short of the edges of a road that sits high up, where the road is drawn wider.
+- **Track markings line up on raised roads.** The chequered start line, the construction stripes on an unfinished end, and the dashed checkpoint markers all stopped short of the edges of a road that sits high up, where the road is drawn wider.
 
-- **No more phantom cutout on a curving ramp.** A car climbing one of the clover's
-  curved ramps was drawn with the round "you are underneath something" window, as
-  though the road it was about to drive onto were overhead. Straight ramps were
-  never affected.
+- **No more phantom cutout on a curving ramp.** A car climbing one of the clover's curved ramps was drawn with the round "you are underneath something" window, as though the road it was about to drive onto were overhead. Straight ramps were never affected.
 
-- **Tapping a raised piece works across its whole width.** A high bridge is drawn
-  wider than the ground, but taps were still measured against the ground's width, so
-  the edges of a raised road did not respond. Where pieces stack, a tap now takes the
-  topmost rather than an arbitrary one.
+- **Tapping a raised piece works across its whole width.** A high bridge is drawn wider than the ground, but taps were still measured against the ground's width, so the edges of a raised road did not respond. Where pieces stack, a tap now takes the topmost rather than an arbitrary one.
 
 ## v0.6.0
 
 ### build 11 — 2026-08-04
 
-- **Your tracks are a library, not one slot.** Every track you build or paste in
-  is kept, and they all show up as choices in the setup picker rather than a
-  single "My track". A pasted track keeps its signature so you can pass it on
-  intact, and keeps whatever name you give it if it arrives again. Tracks you
-  are still building are saved but not offered to race until they close.
-- **A shared track can say who made it.** Copying a track now signs it, so
-  whoever you send it to can see it came from you — and a track you receive
-  shows whether its signature still matches, which is the only sign it was
-  edited along the way. A track with a broken signature still loads and races
-  normally; this is attribution, not a lock. **Long-press Copy** for a shorter
-  unsigned code when the link is disposable. Sharing keeps working when no
-  signing key is available; the code is simply unsigned.
-- **Bridges over bridges: tracks can climb three storeys.** A climb that turns as
-  it rises costs no extra room, so a spiral fits where a straight ramp would eat
-  the canvas. Each storey has its own road brightness, so you can tell level 1
-  from level 3 at a glance.
-- **Cars now arc through the air.** Driving off a bridge used to drop you to the
-  ground instantly and then play a short hop; now you fall, gathering speed, and
-  land on whatever is beneath you — which may be a lower deck rather than the
-  ground. Launching off a ramp arcs up and over, and a faster car flies further.
-  **Gravity** and **Launch** are in the Tuning panel under Air.
-- **Railings are yours to place.** A guard railing is now a property of a piece
-  you have laid, toggled from the piece's own panel in the editor — so you can
-  build a bridge with an open edge to drive off, or fence a flat corner. Pieces
-  start with no railing; the built-in tracks keep theirs. There is also a **Rails**
-  toggle beside the Gates button: flip it on and everything you lay from then on
-  arrives railed, so fencing a whole bridge is one decision.
-- **Ramp sides are one-way.** You can drive off the side of a ramp — and fall,
-  following the same arc as any other drop — but you still can't drive into one
-  from below.
-- **Roads can cross at ground level.** A track can now run across itself
-  without a bridge, so a figure-eight works flat — build one road, then take
-  another straight across it. Roads that merely graze each other at a shallow
-  angle are still refused, since that is nearly always a mistake rather than a
-  junction.
-- **Tracks can be turned around in the editor.** A new button on a closed ring
-  reverses the driving direction: the same road, driven the other way. Every
-  curve mirrors, every climb becomes a descent, and the start line moves to the
-  other end of the start piece — so the grid, the gates and the lap all follow
-  the new direction. Reversing twice gives back exactly the track you had, and
-  a reversed track keeps its own share code.
-- **Undo and redo in the track editor.** Every edit can be taken back —
-  placing pieces, deleting, gating, rotating the whole track, raising and
-  lowering it — with a long history, so a wrong turn thirty pieces ago is
-  still recoverable. A one-tap compound counts as one step, and the delete
-  button now wears a bin rather than an undo arrow.
-- **Checkpoints are edited in their own mode.** A tap on the track used to mean
-  two things at once — pick the end you're building from, or add a checkpoint —
-  so it was easy to move a checkpoint you never meant to touch. Tap **Gates** to
-  switch: checkpoints stand out, every seam that can take one is marked, and
-  taps do nothing else until you're done.
-- **Build from either end of a track, and delete any piece of a loop.** Tap a
-  piece to select it — the bin now sits on the piece it will remove, instead of
-  always taking the last one you laid. On a closed loop you can delete anywhere
-  and the rest of the road stays exactly where it is; on an unfinished track,
-  arrows on the selected end piece choose which end the palette builds from, so
-  a track can grow backwards from its start line as well as forwards.
-- **Trimming a track back is one tap per piece.** Deleting the piece at an end
-  now selects the one behind it, so you can keep tapping the bin instead of
-  reselecting between each. Building follows the selection too: the end you have
-  selected is the end pieces are added to, and with nothing selected the palette
-  greys out rather than adding somewhere you weren't looking.
-- **Direction arrows can be painted on the track.** Select a piece and tap the
-  brush to mark it with an arrow showing which way the track is driven — curved
-  on corners, straight on straights, following the road itself. Tracks with no
-  markings are unaffected, and their share codes are unchanged.
-- **Holding back keeps reversing.** In Casual, pushing back reversed for a moment
-  and then tried to swing the car around instead — which made backing out of a
-  tight spot much harder than it should be. Aim within 30° of straight back and
-  the car now reverses for as long as you hold it there, swinging its tail around
-  onto your thumb — and straight back if that's where you point. The body-flip
-  still takes over anywhere inside the forward arc, or when you are driving
-  forward at speed. **Forward arc** and **Tail swing** are in the Tuning panel;
-  "Reverse under" is now "Reverse under speed", since it sets a speed rather than
-  an angle.
-- **Walls have weight, and cost you time.** Scraping along a barrier now slows
-  the car instead of being free, so avoiding walls is the faster line; a
-  glancing hit pulls the nose along the wall rather than pinging the car off it,
-  and a hard one can nearly stop you. Hitting a wall square on still bounces.
-  Leaning on a barrier no longer pins the car in place either — sliding along a
-  wall moves you along it, losing speed rather than all momentum.
-- **Railings hold you where they look like they should.** Near a ramp a railing
-  used to behave erratically: it stopped you in some places and not others, one
-  partway up a climb stopped nobody at all, and hitting one could fling the car
-  clean through to the other side or off the road entirely. A railing now guards
-  the road it edges, from end to end — the ground beneath a bridge runs clear, as
-  it looks like it should, while a ramp keeps a solid bank along its sides.
-- **A ramp no longer walls off the road beneath it.** On a track that spiralled up
-  through several storeys, the earth under a high ramp reached all the way to the
-  ground and blocked the lower road — the track built fine but could not be driven.
-  A ramp's earth now fills only from the storey it stands on.
-- **Cars can no longer end up outside the track.** Hitting a barrier hard enough
-  could push a car straight through it and leave it stranded out on the grass,
-  because the bounce worked out which way to push from where the car had already
-  got to — by then, the wrong side. Fast enough, and the barrier was missed
-  altogether. Both are fixed: a car is always put back on the side it came from,
-  at any speed.
-- **A car under a high bridge shows through it again.** Beneath a second- or
-  third-storey deck the car simply vanished, and a car climbing a ramp stayed
-  hidden under another ramp crossing above it. The see-through window now finds
-  every stretch of road above the car, so a car under two stacked decks shows
-  through both.
-- **Cars no longer clip through walls beside a ramp.** A car on the grass beside a
-  climb switched from being drawn under the barrier to over it partway up.
-- **Railings reach the edge of the road on high bridges.** On a level-2 or -3 deck
-  the car stopped well short of the visible barrier, as if hitting something
-  invisible. Railings now sit exactly where the asphalt ends, at any height.
-- **Checkpoints span the whole road on high bridges.** A gate on a raised deck was
-  narrower than the asphalt it crossed, so running wide up there could miss the
-  checkpoint entirely. The gate bar, its lights and the start line now all match the
-  road's width at any height.
-- **Editor taps land where you tap.** Selecting a piece or a gate needed a tap
-  slightly below the target, because the map was drawn into the screen's safe-area
-  insets while taps were measured without them.
-- **One track, one share code.** Checkpoint order carries no meaning — a lap
-  collects them all — but it was reaching the code, so the same track could
-  produce two different codes depending on the order its checkpoints happened
-  to be marked in. Codes are an identity (dedup, per-track records), so that
-  had to hold. The **Eight built-in's code changed** as a result; it is the same
-  track, and the old code still opens it.
-- **Pieces near other roads are no longer refused when nothing touches.** The
-  overlap check measured distance between road CENTERLINES, which overstates
-  wildly when a piece merely ends near another road — a rising curve with a
-  third of a road width of clear grass was refused as an overlap. It now
-  measures the asphalt itself.
-- **A piece that fits is no longer refused depending on which end you build
-  from.** Closing a loop could be rejected as an overlap while the very same
-  piece went in fine from the other end — the check was looking at where the
-  piece list happened to start rather than at the road.
-- **Building backwards now matches what you draw.** Extending a track from its
-  start end, a left-hand corner was laid as a right-hander and a climb came out
-  as a descent — the buttons described the piece as a car would meet it, not as
-  you were drawing it. Tap what you want to see.
-- **Kerbs no longer rearrange themselves.** A corner that happened to straddle
-  the point where a loop's piece list begins was treated as two separate
-  corners, so it got two apexes and two run-off kerbs — and which corner that
-  was depended on where the loop started, meaning the same track could paint
-  differently after a copy and paste. A loop's kerbs are now the same however
-  it was built.
+- **Your tracks are a library, not one slot.** Every track you build or paste in is kept, and they all show up as choices in the setup picker rather than a single "My track". A pasted track keeps its signature so you can pass it on intact, and keeps whatever name you give it if it arrives again. Tracks you are still building are saved but not offered to race until they close.
+- **A shared track can say who made it.** Copying a track now signs it, so whoever you send it to can see it came from you — and a track you receive shows whether its signature still matches, which is the only sign it was edited along the way. A track with a broken signature still loads and races normally; this is attribution, not a lock. **Long-press Copy** for a shorter unsigned code when the link is disposable. Sharing keeps working when no signing key is available; the code is simply unsigned.
+- **Bridges over bridges: tracks can climb three storeys.** A climb that turns as it rises costs no extra room, so a spiral fits where a straight ramp would eat the canvas. Each storey has its own road brightness, so you can tell level 1 from level 3 at a glance.
+- **Cars now arc through the air.** Driving off a bridge used to drop you to the ground instantly and then play a short hop; now you fall, gathering speed, and land on whatever is beneath you — which may be a lower deck rather than the ground. Launching off a ramp arcs up and over, and a faster car flies further. **Gravity** and **Launch** are in the Tuning panel under Air.
+- **Railings are yours to place.** A guard railing is now a property of a piece you have laid, toggled from the piece's own panel in the editor — so you can build a bridge with an open edge to drive off, or fence a flat corner. Pieces start with no railing; the built-in tracks keep theirs. There is also a **Rails** toggle beside the Gates button: flip it on and everything you lay from then on arrives railed, so fencing a whole bridge is one decision.
+- **Ramp sides are one-way.** You can drive off the side of a ramp — and fall, following the same arc as any other drop — but you still can't drive into one from below.
+- **Roads can cross at ground level.** A track can now run across itself without a bridge, so a figure-eight works flat — build one road, then take another straight across it. Roads that merely graze each other at a shallow angle are still refused, since that is nearly always a mistake rather than a junction.
+- **Tracks can be turned around in the editor.** A new button on a closed ring reverses the driving direction: the same road, driven the other way. Every curve mirrors, every climb becomes a descent, and the start line moves to the other end of the start piece — so the grid, the gates and the lap all follow the new direction. Reversing twice gives back exactly the track you had, and a reversed track keeps its own share code.
+- **Undo and redo in the track editor.** Every edit can be taken back — placing pieces, deleting, gating, rotating the whole track, raising and lowering it — with a long history, so a wrong turn thirty pieces ago is still recoverable. A one-tap compound counts as one step, and the delete button now wears a bin rather than an undo arrow.
+- **Checkpoints are edited in their own mode.** A tap on the track used to mean two things at once — pick the end you're building from, or add a checkpoint — so it was easy to move a checkpoint you never meant to touch. Tap **Gates** to switch: checkpoints stand out, every seam that can take one is marked, and taps do nothing else until you're done.
+- **Build from either end of a track, and delete any piece of a loop.** Tap a piece to select it — the bin now sits on the piece it will remove, instead of always taking the last one you laid. On a closed loop you can delete anywhere and the rest of the road stays exactly where it is; on an unfinished track, arrows on the selected end piece choose which end the palette builds from, so a track can grow backwards from its start line as well as forwards.
+- **Trimming a track back is one tap per piece.** Deleting the piece at an end now selects the one behind it, so you can keep tapping the bin instead of reselecting between each. Building follows the selection too: the end you have selected is the end pieces are added to, and with nothing selected the palette greys out rather than adding somewhere you weren't looking.
+- **Direction arrows can be painted on the track.** Select a piece and tap the brush to mark it with an arrow showing which way the track is driven — curved on corners, straight on straights, following the road itself. Tracks with no markings are unaffected, and their share codes are unchanged.
+- **Holding back keeps reversing.** In Casual, pushing back reversed for a moment and then tried to swing the car around instead — which made backing out of a tight spot much harder than it should be. Aim within 30° of straight back and the car now reverses for as long as you hold it there, swinging its tail around onto your thumb — and straight back if that's where you point. The body-flip still takes over anywhere inside the forward arc, or when you are driving forward at speed. **Forward arc** and **Tail swing** are in the Tuning panel; "Reverse under" is now "Reverse under speed", since it sets a speed rather than an angle.
+- **Walls have weight, and cost you time.** Scraping along a barrier now slows the car instead of being free, so avoiding walls is the faster line; a glancing hit pulls the nose along the wall rather than pinging the car off it, and a hard one can nearly stop you. Hitting a wall square on still bounces. Leaning on a barrier no longer pins the car in place either — sliding along a wall moves you along it, losing speed rather than all momentum.
+- **Railings hold you where they look like they should.** Near a ramp a railing used to behave erratically: it stopped you in some places and not others, one partway up a climb stopped nobody at all, and hitting one could fling the car clean through to the other side or off the road entirely. A railing now guards the road it edges, from end to end — the ground beneath a bridge runs clear, as it looks like it should, while a ramp keeps a solid bank along its sides.
+- **A ramp no longer walls off the road beneath it.** On a track that spiralled up through several storeys, the earth under a high ramp reached all the way to the ground and blocked the lower road — the track built fine but could not be driven. A ramp's earth now fills only from the storey it stands on.
+- **Cars can no longer end up outside the track.** Hitting a barrier hard enough could push a car straight through it and leave it stranded out on the grass, because the bounce worked out which way to push from where the car had already got to — by then, the wrong side. Fast enough, and the barrier was missed altogether. Both are fixed: a car is always put back on the side it came from, at any speed.
+- **A car under a high bridge shows through it again.** Beneath a second- or third-storey deck the car simply vanished, and a car climbing a ramp stayed hidden under another ramp crossing above it. The see-through window now finds every stretch of road above the car, so a car under two stacked decks shows through both.
+- **Cars no longer clip through walls beside a ramp.** A car on the grass beside a climb switched from being drawn under the barrier to over it partway up.
+- **Railings reach the edge of the road on high bridges.** On a level-2 or -3 deck the car stopped well short of the visible barrier, as if hitting something invisible. Railings now sit exactly where the asphalt ends, at any height.
+- **Checkpoints span the whole road on high bridges.** A gate on a raised deck was narrower than the asphalt it crossed, so running wide up there could miss the checkpoint entirely. The gate bar, its lights and the start line now all match the road's width at any height.
+- **Editor taps land where you tap.** Selecting a piece or a gate needed a tap slightly below the target, because the map was drawn into the screen's safe-area insets while taps were measured without them.
+- **One track, one share code.** Checkpoint order carries no meaning — a lap collects them all — but it was reaching the code, so the same track could produce two different codes depending on the order its checkpoints happened to be marked in. Codes are an identity (dedup, per-track records), so that had to hold. The **Eight built-in's code changed** as a result; it is the same track, and the old code still opens it.
+- **Pieces near other roads are no longer refused when nothing touches.** The overlap check measured distance between road CENTERLINES, which overstates wildly when a piece merely ends near another road — a rising curve with a third of a road width of clear grass was refused as an overlap. It now measures the asphalt itself.
+- **A piece that fits is no longer refused depending on which end you build from.** Closing a loop could be rejected as an overlap while the very same piece went in fine from the other end — the check was looking at where the piece list happened to start rather than at the road.
+- **Building backwards now matches what you draw.** Extending a track from its start end, a left-hand corner was laid as a right-hander and a climb came out as a descent — the buttons described the piece as a car would meet it, not as you were drawing it. Tap what you want to see.
+- **Kerbs no longer rearrange themselves.** A corner that happened to straddle the point where a loop's piece list begins was treated as two separate corners, so it got two apexes and two run-off kerbs — and which corner that was depended on where the loop started, meaning the same track could paint differently after a copy and paste. A loop's kerbs are now the same however it was built.
 
 ### build 10 — 2026-07-29
 
-- **A track can close even when the pieces don't quite meet.** Mixing straights
-  along the grid with diagonal ones used to leave gaps no piece could fill, which
-  made some shapes — a figure-eight with one diagonal loop, say — impossible to
-  finish. When that happens the editor now offers to close the loop with a fitted
-  piece, shaped to the gap.
-- **The app icon's car matches the one you drive.** Same lit nose and
-  rear-seated driver as in the game, instead of the older plain body.
-- **Railings stop you where they look like they should.** Coming off the grass
-  at a ramp or bridge, the car used to stop just short of the railing, in
-  mid-air. A railing is now exactly as solid as it looks, at every height.
+- **A track can close even when the pieces don't quite meet.** Mixing straights along the grid with diagonal ones used to leave gaps no piece could fill, which made some shapes — a figure-eight with one diagonal loop, say — impossible to finish. When that happens the editor now offers to close the loop with a fitted piece, shaped to the gap.
+- **The app icon's car matches the one you drive.** Same lit nose and rear-seated driver as in the game, instead of the older plain body.
+- **Railings stop you where they look like they should.** Coming off the grass at a ramp or bridge, the car used to stop just short of the railing, in mid-air. A railing is now exactly as solid as it looks, at every height.
 
 ### build 9 — 2026-07-28
 
-- **The road on a bridge is as wide as it looks.** An elevated road is drawn
-  wider than one on the ground, but the game still used the ground width — so
-  a strip of the bridge that looked like asphalt behaved like grass, and you
-  could fall off a deck you were still driving on.
-- **Race positions follow the road.** Live standings measured "who's closer
-  to the next checkpoint" as the crow flies, so on a track that curls back on
-  itself a trailing car could rank ahead of the leader rounding a loop —
-  progress is measured along the road now.
-- **No hairline gaps in the race view.** The seam overlap that keeps piece
-  joints solid held in the editor but shrank under the race map's scale;
-  walls showed it first.
-- **See through bridges.** A car driving under a deck now shows through a
-  dark window in the road above — the car itself, pointing where it points,
-  instead of the solid colored dot. The hole covers the bridge's whole width,
-  railings included, and a car driving ON the deck passes over it.
-- **The car shows where it points, without the headlight beam.** The thrown
-  cone kept landing on the wrong surface around ramps and bridges, so the
-  body carries the cue now: a lit nose, and the driver seated at the back
-  like the classic single-seaters.
-- **Steering works with your thumb near the screen edge.** On phones with a
-  notch, a thumb that strayed into the inset used to leave the stick barely
-  able to turn — it now points where your thumb is, at full lock.
-- **No more hairlines between track pieces.** Abutting pieces overlap enough to
-  cover the edge blending now — most visible on a ramp, where the seam ran
-  through a gradient.
-- **Cars and bridges stack correctly, everywhere.** A car that slid onto the
-  grass under a bridge used to be drawn on top of it. The world is now painted
-  strictly bottom-up — ground, then whatever stands on it, then the level above
-  — so what covers what follows from where things are, not from a list of
-  special cases.
+- **The road on a bridge is as wide as it looks.** An elevated road is drawn wider than one on the ground, but the game still used the ground width — so a strip of the bridge that looked like asphalt behaved like grass, and you could fall off a deck you were still driving on.
+- **Race positions follow the road.** Live standings measured "who's closer to the next checkpoint" as the crow flies, so on a track that curls back on itself a trailing car could rank ahead of the leader rounding a loop — progress is measured along the road now.
+- **No hairline gaps in the race view.** The seam overlap that keeps piece joints solid held in the editor but shrank under the race map's scale; walls showed it first.
+- **See through bridges.** A car driving under a deck now shows through a dark window in the road above — the car itself, pointing where it points, instead of the solid colored dot. The hole covers the bridge's whole width, railings included, and a car driving ON the deck passes over it.
+- **The car shows where it points, without the headlight beam.** The thrown cone kept landing on the wrong surface around ramps and bridges, so the body carries the cue now: a lit nose, and the driver seated at the back like the classic single-seaters.
+- **Steering works with your thumb near the screen edge.** On phones with a notch, a thumb that strayed into the inset used to leave the stick barely able to turn — it now points where your thumb is, at full lock.
+- **No more hairlines between track pieces.** Abutting pieces overlap enough to cover the edge blending now — most visible on a ramp, where the seam ran through a gradient.
+- **Cars and bridges stack correctly, everywhere.** A car that slid onto the grass under a bridge used to be drawn on top of it. The world is now painted strictly bottom-up — ground, then whatever stands on it, then the level above — so what covers what follows from where things are, not from a list of special cases.
 
 ### build 8 — 2026-07-27
 
-- **A rebuilt editor palette.** Picking a piece used to mean tabs, a radius row,
-  and ten buttons that multiplied with every family added to the catalog. Now
-  it's turn left, turn right and go straight, with how-tight and uphill/downhill
-  as small three-way pickers beside them — everything visible, one tap each.
-- **A new built-in: Clover.** Four sweeping loops that cross themselves at two
-  heights, and the first track whose start line sits up on the deck — the lap
-  dips down to ground level and climbs back.
-- **Raise and lower a whole track.** New controls above the palette turn the
-  track either way and lift or drop it half a level at a time — so a start line
-  can sit up on the deck, and a bridge can cross under itself. The height
-  buttons gray out when there's no room left to move.
-- **A smoother Eight.** The built-in figure-eight was rebuilt in the editor
-  with the new pitch tools — gentle sweeping climbs instead of straight ramps.
-- **Skid marks on bridges.** Rubber, mud and scuffs now print at every height,
-  each drawn on its own level — deck marks on the deck, ground marks under it.
-- **Gate taps land where you aim.** Tapping to set a checkpoint used to need
-  the piece before the seam you meant; now the tap targets the seam itself.
-- **Lay road uphill and downhill.** A pitch selector (up / level / down)
-  joins the palette: every straight and corner can climb or descend half a
-  level, so ramps stop being a special button — build a bridge from any shape,
-  at any radius, pause a climb halfway, and put a checkpoint at its apex. The
-  under-bridge rules follow automatically: embankments seal, decks stay open.
-- **Build any shape from the same few pieces.** Corners are 45°, so two make a
-  90° and four make a hairpin — which means you can put a checkpoint at a
-  hairpin's apex, or anywhere else you like, instead of only where a big
-  prefabricated piece happened to end. Share codes stay just as short: they pack
-  runs of corners back down as they're written.
-- **A tidier editor.** Delete and Close-the-loop moved onto the map, right at the
-  end you're building from, and the top bar is all icons — so the track gets the
-  space the buttons used to take.
-- **The editor stays quick as the track grows.** Placement checks and the
-  close-the-loop suggestion used to re-measure the whole track against itself on
-  every tap, which dragged once a design ran long; they now share one indexed
-  proximity rule, so a forty-piece track edits as smoothly as a four-piece one.
-- **Track codes from earlier builds no longer load.** Checkpoints are numbered
-  against the new smaller pieces, so an older code would come back the wrong
-  shape. Copy your track out of the editor again to get a fresh code. (The
-  built-in tracks are unchanged to drive — same corners, same start line.)
-- **Laps count properly on Big oval.** The track had two checkpoints stacked on
-  the start/finish line, so after the first lap the finish had to be crossed
-  twice before the lap registered. Checkpoint numbering is now uniform — each one
-  marks the end of a piece — so no two can land on the same spot. The start line
-  and grid are exactly where they were.
+- **A rebuilt editor palette.** Picking a piece used to mean tabs, a radius row, and ten buttons that multiplied with every family added to the catalog. Now it's turn left, turn right and go straight, with how-tight and uphill/downhill as small three-way pickers beside them — everything visible, one tap each.
+- **A new built-in: Clover.** Four sweeping loops that cross themselves at two heights, and the first track whose start line sits up on the deck — the lap dips down to ground level and climbs back.
+- **Raise and lower a whole track.** New controls above the palette turn the track either way and lift or drop it half a level at a time — so a start line can sit up on the deck, and a bridge can cross under itself. The height buttons gray out when there's no room left to move.
+- **A smoother Eight.** The built-in figure-eight was rebuilt in the editor with the new pitch tools — gentle sweeping climbs instead of straight ramps.
+- **Skid marks on bridges.** Rubber, mud and scuffs now print at every height, each drawn on its own level — deck marks on the deck, ground marks under it.
+- **Gate taps land where you aim.** Tapping to set a checkpoint used to need the piece before the seam you meant; now the tap targets the seam itself.
+- **Lay road uphill and downhill.** A pitch selector (up / level / down) joins the palette: every straight and corner can climb or descend half a level, so ramps stop being a special button — build a bridge from any shape, at any radius, pause a climb halfway, and put a checkpoint at its apex. The under-bridge rules follow automatically: embankments seal, decks stay open.
+- **Build any shape from the same few pieces.** Corners are 45°, so two make a 90° and four make a hairpin — which means you can put a checkpoint at a hairpin's apex, or anywhere else you like, instead of only where a big prefabricated piece happened to end. Share codes stay just as short: they pack runs of corners back down as they're written.
+- **A tidier editor.** Delete and Close-the-loop moved onto the map, right at the end you're building from, and the top bar is all icons — so the track gets the space the buttons used to take.
+- **The editor stays quick as the track grows.** Placement checks and the close-the-loop suggestion used to re-measure the whole track against itself on every tap, which dragged once a design ran long; they now share one indexed proximity rule, so a forty-piece track edits as smoothly as a four-piece one.
+- **Track codes from earlier builds no longer load.** Checkpoints are numbered against the new smaller pieces, so an older code would come back the wrong shape. Copy your track out of the editor again to get a fresh code. (The built-in tracks are unchanged to drive — same corners, same start line.)
+- **Laps count properly on Big oval.** The track had two checkpoints stacked on the start/finish line, so after the first lap the finish had to be crossed twice before the lap registered. Checkpoint numbering is now uniform — each one marks the end of a piece — so no two can land on the same spot. The start line and grid are exactly where they were.
 
 ### build 7 — 2026-07-26
 
-- **Build your own tracks.** A new track editor lets you lay a course piece by
-  piece from the start line — straights, curves, hairpins, and ramps — extending
-  from a loose end until the loop closes back on itself. The layout renders live
-  as you build, with a "build here" arrow on the end you're extending and
-  construction stripes on any end still open. Tap a joint to mark a checkpoint,
-  and when the loop closes you can race it. A "My track" slot keeps your design
-  between sessions, and Copy/Paste moves a track around as a short share code.
-  The editor shows the size limit as a dashed boundary, and a Rotate button turns
-  the whole track 45° at a time to reshape its footprint.
-- **Every track is built from the same pieces, including the built-in ones.**
-  Small track, Big oval, and Eight replace the four hand-authored circuits, and
-  they're made of exactly what the editor gives you — so a built-in can be
-  opened, reshaped and raced like your own. What you build is also literally what
-  you drive: the editor and the race draw from the same pieces with the same
-  renderer, so kerbs, rails, markings and shading match. (Surface hazards like
-  the old oil patches will return as a piece you can place.)
-- **Roads that look like roads.** Every road carries a thin white edge line, and
-  corners earn red/white kerbs where a real circuit puts them: at the apex you
-  cut, on the outside of a corner exit where you run wide under power, and on
-  both sides of a chicane. Kerbs are worked out from the whole layout's corners
-  rather than piece by piece, so one continuous kerb runs across several pieces
-  with an even stripe rhythm — and all of it sits outboard, so nothing narrows
-  the road you actually drive on.
-- **Bridges you can drive.** Elevation is one continuous height from ground to
-  deck: the car climbs a ramp, rides the deck, and comes back down in one smooth
-  motion, widening the road and growing the car as it rises. A bridge crosses
-  over its own road, so cars above and below pass each other cleanly, and the
-  deck and its ramps are fenced. Ramps are for driving up — for being launched,
-  there's the jump piece. One "Deck scale" dial in the Tuning panel tunes the
-  whole elevated look at once.
-- **A debug overlay.** Tuning → Debug → "Show sim overlay" draws what the
-  simulation believes on top of what you see: the centerline colored by height
-  (green at ground, red at deck), every wall with its height, and each car's
-  height, surface and on-road state.
+- **Build your own tracks.** A new track editor lets you lay a course piece by piece from the start line — straights, curves, hairpins, and ramps — extending from a loose end until the loop closes back on itself. The layout renders live as you build, with a "build here" arrow on the end you're extending and construction stripes on any end still open. Tap a joint to mark a checkpoint, and when the loop closes you can race it. A "My track" slot keeps your design between sessions, and Copy/Paste moves a track around as a short share code. The editor shows the size limit as a dashed boundary, and a Rotate button turns the whole track 45° at a time to reshape its footprint.
+- **Every track is built from the same pieces, including the built-in ones.** Small track, Big oval, and Eight replace the four hand-authored circuits, and they're made of exactly what the editor gives you — so a built-in can be opened, reshaped and raced like your own. What you build is also literally what you drive: the editor and the race draw from the same pieces with the same renderer, so kerbs, rails, markings and shading match. (Surface hazards like the old oil patches will return as a piece you can place.)
+- **Roads that look like roads.** Every road carries a thin white edge line, and corners earn red/white kerbs where a real circuit puts them: at the apex you cut, on the outside of a corner exit where you run wide under power, and on both sides of a chicane. Kerbs are worked out from the whole layout's corners rather than piece by piece, so one continuous kerb runs across several pieces with an even stripe rhythm — and all of it sits outboard, so nothing narrows the road you actually drive on.
+- **Bridges you can drive.** Elevation is one continuous height from ground to deck: the car climbs a ramp, rides the deck, and comes back down in one smooth motion, widening the road and growing the car as it rises. A bridge crosses over its own road, so cars above and below pass each other cleanly, and the deck and its ramps are fenced. Ramps are for driving up — for being launched, there's the jump piece. One "Deck scale" dial in the Tuning panel tunes the whole elevated look at once.
+- **A debug overlay.** Tuning → Debug → "Show sim overlay" draws what the simulation believes on top of what you see: the centerline colored by height (green at ground, red at deck), every wall with its height, and each car's height, surface and on-road state.
 
 ## v0.5.0
 
 ### build 6 — 2026-07-24
 
-- **Each player picks their own controls.** Casual (aim) or Pro (d-pad) is
-  now chosen per player in setup, under their color — so one couch can mix
-  aim drivers and d-pad drivers. (The old global scheme toggle in the pause
-  menu is gone; set it before the race for now.)
-- **Everyone ready? Tap to go.** A race now opens frozen with a Play button
-  on the map — get all your thumbs in place, then tap the map to start the
-  countdown. No more scrambling because the race began before you were set.
-- **Tap the map to pause.** The pause button is gone; once the race is
-  running, a tap on the map opens the pause menu (the same map tap you used
-  to start). The track stays clear of any button, on every seating.
-- **Your position, right in your chip.** Each player's chip now shows their
-  live race position (1st, 2nd, …) next to the lap counter, so you always know
-  where you stand without a shared scoreboard. It settles briefly before
-  changing, so a photo-finish for a spot doesn't flicker the number.
-- **A clear finish, with your splits.** When you take the flag, your lap
-  times appear right in your control band — an unmistakable "you're done,
-  here's how it went" instead of guessing whether the race is over.
-- **Pro's pad stays put.** The direct steer/throttle pad now anchors where
-  your thumb first lands instead of trailing it — so gas / brake / left /
-  right keep fixed spots. Holding the gas no longer creeps the pad up the
-  screen. (The Casual aim stick still trails your thumb, which suits
-  constant re-aiming.)
+- **Each player picks their own controls.** Casual (aim) or Pro (d-pad) is now chosen per player in setup, under their color — so one couch can mix aim drivers and d-pad drivers. (The old global scheme toggle in the pause menu is gone; set it before the race for now.)
+- **Everyone ready? Tap to go.** A race now opens frozen with a Play button on the map — get all your thumbs in place, then tap the map to start the countdown. No more scrambling because the race began before you were set.
+- **Tap the map to pause.** The pause button is gone; once the race is running, a tap on the map opens the pause menu (the same map tap you used to start). The track stays clear of any button, on every seating.
+- **Your position, right in your chip.** Each player's chip now shows their live race position (1st, 2nd, …) next to the lap counter, so you always know where you stand without a shared scoreboard. It settles briefly before changing, so a photo-finish for a spot doesn't flicker the number.
+- **A clear finish, with your splits.** When you take the flag, your lap times appear right in your control band — an unmistakable "you're done, here's how it went" instead of guessing whether the race is over.
+- **Pro's pad stays put.** The direct steer/throttle pad now anchors where your thumb first lands instead of trailing it — so gas / brake / left / right keep fixed spots. Holding the gas no longer creeps the pad up the screen. (The Casual aim stick still trails your thumb, which suits constant re-aiming.)
 
 ### build 5 — 2026-07-23
 
-- **The grid's shuffled every race.** Who starts on pole is random now, so
-  no one's stuck with the same start over and over. Still fully
-  deterministic under the hood (replays and ghosts are unaffected).
-- **The track's clear of your thumbs now.** On a shared screen each player's
-  controls live in a band in the grass beside the map — below the map from
-  their seat (rotated for players across the table) — instead of over the
-  whole half/quadrant. The track sits clean in the middle: no more zone
-  outlines or fingers covering the road, and lap/time chips ride the outer
-  edge of each band, out of the notch. One shared pause sits on the seam
-  below the map. The map and every control center within the safe area on
-  notched phones — only the band's tinted box bleeds to the screen edge.
-- **The stick follows your thumb to the edge.** Drag past the edge of the
-  control stick and it slides along with your finger instead of pinning —
-  so in a narrow control zone you can swing full-left to full-right without
-  lifting off. Works for both Casual (aim) and Pro (d-pad).
-- **Two control schemes, named.** The prototype roster is down to the two
-  that earned it: **Casual** (aim where you want to go, the game handles the
-  drift) and **Pro** (direct steer + throttle, now drifting too). Slide,
-  two-zone, one-touch, and split are gone — on a touchscreen they never
-  beat these two.
-- **The d-pad drifts too now.** Hold a direction at speed and the body
-  flips into the corner like the aim scheme does — no delicate countersteer
-  to hold a slide. A light thumb still places the car precisely (the assist
-  scales with how far you push), so analog fine control is intact; it's the
-  full-lock holds (and the keyboard later) that get the drift. Tune it with
-  the new "Flip" dial in the pause menu. The flip now stays gentle at low
-  speed and only really bites once you're moving (for aim mode too), so
-  slow maneuvering isn't twitchy.
-- **A "Grip" dial** for the drift's weight: turn it down and the car's
-  motion lags where it's pointing longer — a heavier, slidier feel — up and
-  it snaps to the nose. Plus the aim "Flip rate" now dials all the way to 0
-  for the light-touch end.
+- **The grid's shuffled every race.** Who starts on pole is random now, so no one's stuck with the same start over and over. Still fully deterministic under the hood (replays and ghosts are unaffected).
+- **The track's clear of your thumbs now.** On a shared screen each player's controls live in a band in the grass beside the map — below the map from their seat (rotated for players across the table) — instead of over the whole half/quadrant. The track sits clean in the middle: no more zone outlines or fingers covering the road, and lap/time chips ride the outer edge of each band, out of the notch. One shared pause sits on the seam below the map. The map and every control center within the safe area on notched phones — only the band's tinted box bleeds to the screen edge.
+- **The stick follows your thumb to the edge.** Drag past the edge of the control stick and it slides along with your finger instead of pinning — so in a narrow control zone you can swing full-left to full-right without lifting off. Works for both Casual (aim) and Pro (d-pad).
+- **Two control schemes, named.** The prototype roster is down to the two that earned it: **Casual** (aim where you want to go, the game handles the drift) and **Pro** (direct steer + throttle, now drifting too). Slide, two-zone, one-touch, and split are gone — on a touchscreen they never beat these two.
+- **The d-pad drifts too now.** Hold a direction at speed and the body flips into the corner like the aim scheme does — no delicate countersteer to hold a slide. A light thumb still places the car precisely (the assist scales with how far you push), so analog fine control is intact; it's the full-lock holds (and the keyboard later) that get the drift. Tune it with the new "Flip" dial in the pause menu. The flip now stays gentle at low speed and only really bites once you're moving (for aim mode too), so slow maneuvering isn't twitchy.
+- **A "Grip" dial** for the drift's weight: turn it down and the car's motion lags where it's pointing longer — a heavier, slidier feel — up and it snaps to the nose. Plus the aim "Flip rate" now dials all the way to 0 for the light-touch end.
 
 ### build 4 — 2026-07-23
 
-- **Aim-to-drive now drifts like it means it.** Point off your nose at
-  speed and the car's **body flips toward the aim almost instantly** — the
-  faster you're going, the harder it whips around (handbrake inertia) —
-  while your momentum carries and catches up gradually. Stay a little
-  ahead of the corner and you hold a clean drift all the way around. And
-  drifting no longer costs speed: the slide **redirects** your momentum
-  along the nose instead of scrubbing it (it never adds any — top speed is
-  top speed). Reversing still works where it should: point behind you at
-  crawling speed to back up.
-- **A tuning playground for the drift**: flip rate, speed boost, drift
-  keep, reverse threshold, gas ease, and the classic schemes' turn rate —
-  all live dials in the pause menu's Tuning panel (physics dials apply on
-  Reset; hiscores only count on the stock setup, like Pace).
-- **The heading arrow moved out where you can see it** — a bold arrow
-  floating ahead of your car in your color, instead of a tiny dart glued
-  to the nose of an already-tiny car.
-- Old personal bests and their ghosts were set under the old physics, so
-  they won't match the new feel — new bests await.
+- **Aim-to-drive now drifts like it means it.** Point off your nose at speed and the car's **body flips toward the aim almost instantly** — the faster you're going, the harder it whips around (handbrake inertia) — while your momentum carries and catches up gradually. Stay a little ahead of the corner and you hold a clean drift all the way around. And drifting no longer costs speed: the slide **redirects** your momentum along the nose instead of scrubbing it (it never adds any — top speed is top speed). Reversing still works where it should: point behind you at crawling speed to back up.
+- **A tuning playground for the drift**: flip rate, speed boost, drift keep, reverse threshold, gas ease, and the classic schemes' turn rate — all live dials in the pause menu's Tuning panel (physics dials apply on Reset; hiscores only count on the stock setup, like Pace).
+- **The heading arrow moved out where you can see it** — a bold arrow floating ahead of your car in your color, instead of a tiny dart glued to the nose of an already-tiny car.
+- Old personal bests and their ghosts were set under the old physics, so they won't match the new feel — new bests await.
 
 ### build 3 — 2026-07-22
 
-- **Aim-to-drive**, a new control scheme in the switcher: a floating stick
-  like the d-pad, but you just point where you want to go — the car turns
-  toward it at a natural pace and backs up when you point behind it. No
-  separate gas and brake to juggle. The d-pad and the other schemes are
-  all still there to A/B against.
-- **Smoother corners on every track**: curves now bake at a fine, even
-  resolution, and the previously sharp chicane and figure-eight joins
-  flow instead of kinking — most visible on the Overpass's diagonals and
-  the Hairpin's tip. Under the hood, every track is now *data* (a design
-    of corner nodes the game compiles), the groundwork for a track editor.
-- **Friendlier controls, same skill ceiling**: the wheel now eases toward
-  your thumb instead of snapping, so a twitch no longer jerks the nose —
-  full lock is still just as quick to reach. Analog steering with a gentle
-  response curve is the new default (the on-thumb favorite); the Tuning
-  panel still lets you dial it back.
-- **A heading dart** ahead of each car's nose, in its color, so you can
-  see where you're actually pointing mid-drift — when the car is sliding
-  sideways, the nose and the travel direction part ways.
-- **Overpass, less brutal up top**: the bridge deck now has retaining
-  rails down its middle (only up on the deck — the road underneath passes
-  clean through), so reaching the mid-bridge checkpoint isn't a tightrope.
-  The ramp walls line up with the deck edge and no longer jut into the
-  road running beneath, and you can't clip onto the deck from the wrong
-  side any more.
-- **Hairpin actually has to be driven**: its apex checkpoint sits across
-  the tip now, so cutting straight across the neck to the return lane no
-  longer counts — you have to round the far end.
-- **The pause button has a home**: every track now has a "pit" — an
-  infield spot near the start/finish — and the pause button lives there,
-  always off the racing line instead of pinned to screen-center (where it
-  sometimes sat right on the road).
+- **Aim-to-drive**, a new control scheme in the switcher: a floating stick like the d-pad, but you just point where you want to go — the car turns toward it at a natural pace and backs up when you point behind it. No separate gas and brake to juggle. The d-pad and the other schemes are all still there to A/B against.
+- **Smoother corners on every track**: curves now bake at a fine, even resolution, and the previously sharp chicane and figure-eight joins flow instead of kinking — most visible on the Overpass's diagonals and the Hairpin's tip. Under the hood, every track is now *data* (a design of corner nodes the game compiles), the groundwork for a track editor.
+- **Friendlier controls, same skill ceiling**: the wheel now eases toward your thumb instead of snapping, so a twitch no longer jerks the nose — full lock is still just as quick to reach. Analog steering with a gentle response curve is the new default (the on-thumb favorite); the Tuning panel still lets you dial it back.
+- **A heading dart** ahead of each car's nose, in its color, so you can see where you're actually pointing mid-drift — when the car is sliding sideways, the nose and the travel direction part ways.
+- **Overpass, less brutal up top**: the bridge deck now has retaining rails down its middle (only up on the deck — the road underneath passes clean through), so reaching the mid-bridge checkpoint isn't a tightrope. The ramp walls line up with the deck edge and no longer jut into the road running beneath, and you can't clip onto the deck from the wrong side any more.
+- **Hairpin actually has to be driven**: its apex checkpoint sits across the tip now, so cutting straight across the neck to the return lane no longer counts — you have to round the far end.
+- **The pause button has a home**: every track now has a "pit" — an infield spot near the start/finish — and the pause button lives there, always off the racing line instead of pinned to screen-center (where it sometimes sat right on the road).
 
 ### build 2 — 2026-07-22
 
-- A **Tuning** panel in the pause menu, for finding the feel on real
-  thumbs: d-pad dead zone, travel, steps (including full analog), and a
-  response **curve** (softer near the center for smoother small
-  corrections) — all applied live mid-race — plus a **Pace** dial that
-  slows acceleration and top speed for learning (agility stays; applies
-  on Reset, and slowed runs never touch your hiscores). All remembered
-  across launches.
-- **Sound**, all synthesized live (no audio files, like the graphics):
-  an engine note that climbs with your speed, tire noise when you slide,
-  and thumps when you hit walls or each other. Respects the silent
-  switch and mixes politely with your own music.
-- **Haptics**: taps for impacts (harder hit, harder tap) and a success
-  buzz when you take the flag.
-- Sound and haptics toggles in the pause menu, remembered across
-  launches.
+- A **Tuning** panel in the pause menu, for finding the feel on real thumbs: d-pad dead zone, travel, steps (including full analog), and a response **curve** (softer near the center for smoother small corrections) — all applied live mid-race — plus a **Pace** dial that slows acceleration and top speed for learning (agility stays; applies on Reset, and slowed runs never touch your hiscores). All remembered across launches.
+- **Sound**, all synthesized live (no audio files, like the graphics): an engine note that climbs with your speed, tire noise when you slide, and thumps when you hit walls or each other. Respects the silent switch and mixes politely with your own music.
+- **Haptics**: taps for impacts (harder hit, harder tap) and a success buzz when you take the flag.
+- Sound and haptics toggles in the pause menu, remembered across launches.
 
-- **Overpass** — the figure-eight, and the two-layer system it rides on:
-  yellow-striped ramps lift you onto a **bridge** over the crossing (with
-  its own checkpoint — the overpass must be driven, not dodged), stray
-  off the edge and you drop back down. Cars under the bridge show
-  through as a colored bubble so nobody ever loses their car. Jump
-  ramps (full ballistic flight, no steering mid-air) are in the engine,
-  waiting for a track that dares to use them.
+- **Overpass** — the figure-eight, and the two-layer system it rides on: yellow-striped ramps lift you onto a **bridge** over the crossing (with its own checkpoint — the overpass must be driven, not dodged), stray off the edge and you drop back down. Cars under the bridge show through as a colored bubble so nobody ever loses their car. Jump ramps (full ballistic flight, no steering mid-air) are in the engine, waiting for a track that dares to use them.
 
-- **Two new tracks**, picked on the setup screen: **Gauntlet** — the
-  rectangle pinched on both straights, narrower road, mud filling the
-  bottom chicane — and **Hairpin** — a fast bowl feeding a tight 180°
-  peninsula with its own checkpoint at the apex. Hiscores, ghosts, and
-  time trial are all per-track. Every built-in track has to prove an AI
-  can lap it before it ships.
+- **Two new tracks**, picked on the setup screen: **Gauntlet** — the rectangle pinched on both straights, narrower road, mud filling the bottom chicane — and **Hairpin** — a fast bowl feeding a tight 180° peninsula with its own checkpoint at the apex. Hiscores, ghosts, and time trial are all per-track. Every built-in track has to prove an AI can lap it before it ships.
 
-- Race chrome that stays out of the way: each player's lap/time chip now
-  lives in their **own corner, facing them** (rotated for players across
-  the table), the countdown shows both ways in face-to-face games, and
-  the in-race buttons are gone — one small **pause** button on the center
-  seam opens a menu (resume / scheme / reset / setup) and actually
-  freezes the race. System edge swipes now need the deliberate
-  double-swipe, so a thumb at the edge doesn't summon Control Center
-  mid-corner.
+- Race chrome that stays out of the way: each player's lap/time chip now lives in their **own corner, facing them** (rotated for players across the table), the countdown shows both ways in face-to-face games, and the in-race buttons are gone — one small **pause** button on the center seam opens a menu (resume / scheme / reset / setup) and actually freezes the race. System edge swipes now need the deliberate double-swipe, so a thumb at the edge doesn't summon Control Center mid-corner.
 
-- **AI drivers**: fill the grid with up to 3 opponents from the setup
-  screen. They drive the same cars with the same physics (no
-  rubber-banding — a skill ladder of lookahead/caution instead), follow
-  the racing line, drift the corners, and recover when they hit a wall.
-- **Time trial**: lap forever against the clock — live lap timer,
-  session best, and your all-time **best lap** and **best race** are now
-  saved per track (survives relaunch). The best race also stores its
-  full replay…
-- **Personal-best ghost**: …which drives alongside you in time trial as
-  a translucent ghost car — race your own record. Never collides, never
-  leaves marks.
-- **Seating options**: 2-player picks side-by-side or face-to-face;
-  3-player picks which corner of the screen stays open — controls always
-  face the player.
+- **AI drivers**: fill the grid with up to 3 opponents from the setup screen. They drive the same cars with the same physics (no rubber-banding — a skill ladder of lookahead/caution instead), follow the racing line, drift the corners, and recover when they hit a wall.
+- **Time trial**: lap forever against the clock — live lap timer, session best, and your all-time **best lap** and **best race** are now saved per track (survives relaunch). The best race also stores its full replay…
+- **Personal-best ghost**: …which drives alongside you in time trial as a translucent ghost car — race your own record. Never collides, never leaves marks.
+- **Seating options**: 2-player picks side-by-side or face-to-face; 3-player picks which corner of the screen stays open — controls always face the player.
 
-- **Couch multiplayer**: 2–4 players on one device, one thumb each. A
-  setup screen picks player count, per-player car colors (tap to cycle),
-  and **Contact** (cars bump — derby chaos) vs **Ghost** (pass through —
-  pure speed) before each race. Every player gets their own control zone
-  (halves for two, quadrants for four — the top row's controls face
-  players sitting across the table), outlined in their color; touches
-  are routed by where they start, so thumbs never steal each other's
-  cars. Per-player lap chips in the HUD, next-checkpoint dots per player,
-  and a results card with standings and best laps when everyone's done.
-- New **Split** two-thumb scheme in the switcher: one thumb gas/brake,
-  the other steer, both in quantized steps.
+- **Couch multiplayer**: 2–4 players on one device, one thumb each. A setup screen picks player count, per-player car colors (tap to cycle), and **Contact** (cars bump — derby chaos) vs **Ghost** (pass through — pure speed) before each race. Every player gets their own control zone (halves for two, quadrants for four — the top row's controls face players sitting across the table), outlined in their color; touches are routed by where they start, so thumbs never steal each other's cars. Per-player lap chips in the HUD, next-checkpoint dots per player, and a results card with standings and best laps when everyone's done.
+- New **Split** two-thumb scheme in the switcher: one thumb gas/brake, the other steer, both in quantized steps.
 
-- Checkpoints you can see and can't unfairly miss: gates now span the
-  whole corridor (running wide over grass still counts — the grass is the
-  penalty), only gross cuts through the infield don't. Each checkpoint is
-  drawn like a physical gate — a faint line with a post at each road edge —
-  and a dot in **your car's color** lights up beside your next gate's
-  posts (each player gets their own dots); the start/finish keeps its
-  checkers.
-- It's a race now: three laps against the clock — 3-2-1-GO countdown
-  holding the car on the grid, lap counting through ordered directional
-  checkpoints (cutting the track or driving backwards never counts), and
-  a lap/time HUD with your best lap. After the flag the car rolls out and
-  the final time stays up; Reset starts a fresh race.
-- Hazards on the racing line: a mud bog pinching the bottom straight, a
-  water pool clipping the top-right exit, and an oil slick on the right
-  straight — each with its own grip/drag feel, and mud/water print tire
-  trails back onto the asphalt for a while after you drive through.
-- Every run is now recorded as seed + input stream (tiny, deterministic)
-  — the raw material for future replays, ghosts, and hiscores.
-- Two more control schemes in the switcher: **Two-zone** (hold = gas,
-  half of the screen picks the turn) and a real **One-touch** (permanent
-  gas; hold = turn, quick tap = flip turning direction).
-- Smooth marks on small phones: skid marks now render as a few batched
-  strokes instead of one per segment (choppy on iPhone 13 mini once they
-  piled up), record at half tick rate, and keep a smaller budget — oldest
-  marks still fade out first. D-pad gets a third step per axis for finer
-  throttle/steer modulation.
-- Controls, round two (first on-device feedback): a **virtual d-pad** is
-  the new default — it appears where the thumb lands (within the player's
-  control zone, tinted the car's color), steers while coasting, and
-  quantizes each axis to half/full steps instead of binary or full-analog;
-  pull back to brake/reverse. A button next to Reset switches schemes
-  in-run (D-pad / Slide / One-touch) for A/B on the device.
-- First drivable prototype: one car, one track, thumb-driven — drive laps
-  with the arcade touch-pad (thumb down = gas, slide sideways = steer,
-  release = coast) and feel the drift. Skid marks burn onto the asphalt in
-  hard slides and scuff the grass when you run wide.
-- Project scaffolding: XcodeGen project (iOS target), `SkidCore` package
-  with the deterministic fixed-timestep drift sim (surfaces, layer-aware
-  track model, checkpoint gates, wall bounce) and its tests, pinned
-  lint/format tooling, and CI (lint, tests + coverage, simulator build).
+- Checkpoints you can see and can't unfairly miss: gates now span the whole corridor (running wide over grass still counts — the grass is the penalty), only gross cuts through the infield don't. Each checkpoint is drawn like a physical gate — a faint line with a post at each road edge — and a dot in **your car's color** lights up beside your next gate's posts (each player gets their own dots); the start/finish keeps its checkers.
+- It's a race now: three laps against the clock — 3-2-1-GO countdown holding the car on the grid, lap counting through ordered directional checkpoints (cutting the track or driving backwards never counts), and a lap/time HUD with your best lap. After the flag the car rolls out and the final time stays up; Reset starts a fresh race.
+- Hazards on the racing line: a mud bog pinching the bottom straight, a water pool clipping the top-right exit, and an oil slick on the right straight — each with its own grip/drag feel, and mud/water print tire trails back onto the asphalt for a while after you drive through.
+- Every run is now recorded as seed + input stream (tiny, deterministic) — the raw material for future replays, ghosts, and hiscores.
+- Two more control schemes in the switcher: **Two-zone** (hold = gas, half of the screen picks the turn) and a real **One-touch** (permanent gas; hold = turn, quick tap = flip turning direction).
+- Smooth marks on small phones: skid marks now render as a few batched strokes instead of one per segment (choppy on iPhone 13 mini once they piled up), record at half tick rate, and keep a smaller budget — oldest marks still fade out first. D-pad gets a third step per axis for finer throttle/steer modulation.
+- Controls, round two (first on-device feedback): a **virtual d-pad** is the new default — it appears where the thumb lands (within the player's control zone, tinted the car's color), steers while coasting, and quantizes each axis to half/full steps instead of binary or full-analog; pull back to brake/reverse. A button next to Reset switches schemes in-run (D-pad / Slide / One-touch) for A/B on the device.
+- First drivable prototype: one car, one track, thumb-driven — drive laps with the arcade touch-pad (thumb down = gas, slide sideways = steer, release = coast) and feel the drift. Skid marks burn onto the asphalt in hard slides and scuff the grass when you run wide.
+- Project scaffolding: XcodeGen project (iOS target), `SkidCore` package with the deterministic fixed-timestep drift sim (surfaces, layer-aware track model, checkpoint gates, wall bounce) and its tests, pinned lint/format tooling, and CI (lint, tests + coverage, simulator build).
