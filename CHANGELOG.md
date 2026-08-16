@@ -31,9 +31,11 @@ its builds still filed under v0.7.0 because that step was forgotten.
 - **Step the selection along the track.** Arrows beside the piece tools move the
   selection to the next or previous piece, wrapping at the ends — so railing or marking
   a run of pieces no longer means re-aiming a tap at each one.
-- **The piece palette says what it is.** Pitch, corner radius and the railing toggle
-  all shape the next piece you lay; they now sit under one "next piece" label instead
-  of reading as scattered controls.
+- **The piece palette says what it is.** The three laying buttons run in driving
+  order — turn left, go straight, turn right — and read as raised keys. The settings
+  that shape the next piece (corner radius, pitch, railing) sit together under their
+  own names, with the current choice shown pressed-in, instead of radius hiding under
+  the corners and the rest scattered.
 - **Copying and pasting track codes moved into the track's own settings**, behind its
   name — with the signature seal, and a plain warning that pasting replaces the track.
 
