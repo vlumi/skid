@@ -115,7 +115,6 @@ struct EditorView: View {
     }
 
     /// Brief confirmation that the share code went to the clipboard.
-    @State var copiedCode = false
     /// Whether the rename prompt is up, and the name being typed.
     @State var renamingTrack = false
     /// Pieces a car could not drive through, recomputed off the render path.
@@ -145,7 +144,6 @@ struct EditorView: View {
         }
     }
     /// Brief warning that the clipboard didn't hold a readable share code.
-    @State var pasteFailed = false
 
     /// The cached "Close it" search result, recomputed only when the layout or
     /// the selected end actually changes. The search costs tens of milliseconds,
@@ -160,13 +158,54 @@ struct EditorView: View {
     }
 
     var body: some View {
+        let layout = game.editorLayout ?? TrackLayout(pieces: [PieceCatalog.startPieceID])
+        let walk = layout.walk()
+        // **The map owns a rect; the chrome owns the rest.** The bars used to be laid
+        // over a full-screen canvas, so the track — fitted to the whole screen — ran
+        // underneath them and was partly covered by default, on the screen where it is
+        // already at its smallest. Reported from device as the chrome's worst problem.
+        // A VStack gives the canvas exactly the space between the bars instead.
+        return ZStack {
+            Retro.ground.ignoresSafeArea()
+            VStack(spacing: 0) {
+                topBar
+                mapRegion(layout: layout, walk: walk)
+                paletteBar(walk: walk)
+            }
+        }
+        .sheet(isPresented: $renamingTrack) {
+            TrackPropertiesSheet(
+                game: game, onPasted: { resetView() },
+                close: { renamingTrack = false })
+        }
+        // Off the render path: the closing search costs tens of ms, so it
+        // runs when the layout or selection changes, not per frame.
+        .task(id: ClosingKey(pieces: layout.pieces, end: nil)) {
+            refreshClosingRun(walk)
+        }
+        .onChangeCompat(of: game.editorBuildEnd) { _ in refreshClosingRun(walk) }
+        // Same reasoning: the blockage check compiles the track.
+        .task(id: layout.pieces) { blockedPieces = layout.blockedPieces() }
+        // Long-pressing a hotbar slot opens its picker. A `sheet` rather than
+        // `fullScreenCover` (that one is iOS-only, and this package also builds
+        // for macOS), driven by `isPresented` rather than `item:` (iOS 17+,
+        // and the package targets 16).
+        .sheet(
+            isPresented: .init(
+                get: { configuring != nil }, set: { if !$0 { configuring = nil } }
+            )
+        ) {
+            configurationSheet
+        }
+        .statusBarHiddenIfAvailable()
+    }
+
+    /// The canvas and the chrome that is genuinely spatial (the close-loop chip,
+    /// anchored at the loose end it acts on). Everything else lives in the bars.
+    private func mapRegion(layout: TrackLayout, walk: WalkResult) -> some View {
         GeometryReader { geo in
-            let layout = game.editorLayout ?? TrackLayout(pieces: [PieceCatalog.startPieceID])
-            let walk = layout.walk()
             let transform = fitTransform(walk: walk, in: geo.size)
             ZStack {
-                Retro.ground.ignoresSafeArea()
-
                 Canvas { context, _ in
                     EditorRenderer.draw(
                         walk: walk, width: Double(PieceCatalog.width),
@@ -211,33 +250,12 @@ struct EditorView: View {
                 if game.editorMode == .build {
                     mapActions(walk: walk, transform: transform)
                 }
-                topBar
-                paletteBar(walk: walk)
             }
-            .sheet(isPresented: $renamingTrack) {
-                TrackPropertiesSheet(game: game) { renamingTrack = false }
-            }
-            // Off the render path: the closing search costs tens of ms, so it
-            // runs when the layout or selection changes, not per frame.
-            .task(id: ClosingKey(pieces: layout.pieces, end: nil)) {
-                refreshClosingRun(walk)
-            }
-            .onChangeCompat(of: game.editorBuildEnd) { _ in refreshClosingRun(walk) }
-            // Same reasoning: the blockage check compiles the track.
-            .task(id: layout.pieces) { blockedPieces = layout.blockedPieces() }
-            // Long-pressing a hotbar slot opens its picker. A `sheet` rather than
-            // `fullScreenCover` (that one is iOS-only, and this package also builds
-            // for macOS), driven by `isPresented` rather than `item:` (iOS 17+,
-            // and the package targets 16).
-            .sheet(
-                isPresented: .init(
-                    get: { configuring != nil }, set: { if !$0 { configuring = nil } }
-                )
-            ) {
-                configurationSheet
-            }
+            // The canvas does not clip itself, and the map zooms to 4× — without this
+            // a zoomed road draws straight over the bars it was just moved out from
+            // under.
+            .clipped()
         }
-        .statusBarHiddenIfAvailable()
     }
 
     // MARK: - Selection
@@ -315,33 +333,6 @@ struct EditorView: View {
     // MARK: - Bars
 
     /// A compact icon pill, for the view/layout tools. The label is the
-    /// Who signed the track that was pasted in. Absent for an unsigned one,
-    /// which is the norm — every built-in is unsigned, and saying so on each
-    /// would be noise. A signature that does not verify DOES show: it is the
-    /// only sign that a track was edited after signing.
-    ///
-    /// No name and no fingerprint yet; that arrives with profiles in v0.9.
-    @ViewBuilder
-    var attributionChip: some View {
-        let attribution = game.pastedAttribution
-        if attribution.isWorthShowing {
-            let broken = attribution == .broken
-            Image(systemName: broken ? "seal.slash" : "seal")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundColor(broken ? .orange : .white.opacity(0.85))
-                .accessibilityLabel(Text(attributionLabel(attribution), bundle: .module))
-        }
-    }
-
-    private func attributionLabel(_ attribution: TrackAttribution) -> LocalizedStringKey {
-        switch attribution {
-        case .mine: return "Signed by you"
-        case .other: return "Signed"
-        case .broken: return "Signature doesn't match"
-        case .unsigned: return "Not signed"
-        }
-    }
-
     /// accessibility name — the icon carries the meaning visually, but a
     /// glyph alone tells a screen reader nothing.
     func iconButton(

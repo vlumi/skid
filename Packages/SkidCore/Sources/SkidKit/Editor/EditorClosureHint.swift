@@ -120,42 +120,6 @@ extension EditorView {
         }
     }
 
-    /// Load a track from a share code on the clipboard — the interim way to keep
-    /// a handful of designs before there's a real track library. Shows a warning icon
-    /// briefly if the clipboard doesn't hold a readable one, rather than
-    /// silently doing nothing.
-    func pasteCode() {
-        #if canImport(UIKit)
-        guard let pasted = UIPasteboard.general.string,
-            game.loadCustomTrack(code: pasted)
-        else {
-            pasteFailed = true
-            return
-        }
-        pasteFailed = false
-        copiedCode = false
-        // No centering needed: a share code carries the NORMALIZED layout, so a
-        // pasted track arrives centered (see `TrackLayout.centerOnCanvas`).
-        resetView()
-        #endif
-    }
-
-    /// Put the track's share code on the clipboard — how a design leaves the
-    /// device to be pasted into the repo as a built-in (or shared). Copy only:
-    /// a button that also *loaded* a clipboard code could silently replace the
-    /// track you're working on.
-    /// `signed: false` copies the short code instead — a signature costs about
-    /// 135 characters, worth skipping for a link that is disposable. What each
-    /// is FOR is a question for closer to release; both exist so that decision
-    /// isn't blocked on the format.
-    func copyCode(signed: Bool = true) {
-        guard let code = game.shareCode(signed: signed) else { return }
-        #if canImport(UIKit)
-        UIPasteboard.general.string = code
-        #endif
-        copiedCode = true
-    }
-
     /// The ring has no loose end, so anything still unsaveable is a rule other
     /// than geometry — name it, instead of telling the author to extend an end
     /// that isn't there.
