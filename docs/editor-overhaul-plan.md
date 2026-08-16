@@ -1,7 +1,7 @@
 # Editor overhaul: plan
 
-> **Steps 1–6 shipped** (#95–#108, v0.6); only step 7, the chrome pass,
-> is left and it is explicitly decide-on-device. What the editor does *now*
+> **All seven steps shipped** — 1–6 in #95–#108 (v0.6), step 7's chrome pass in
+> #188, decided on device as intended. What the editor does *now*
 > is [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 Ordered steps for making the editor edit — both ends, the middle, closed rings
@@ -164,13 +164,27 @@ in place.
   keep the "close the loop again to refit" hint? Auto is smoother but silently
   reshapes road the author drew. Decide when step 2 makes it reachable.
 - **The construction marker** (step 4): possibly redundant next to the arrows.
-- **Where the closure control lands** (step 7): with the map actions, or near
-  the palette.
-- **The whole of step 7**, widened after device use. In the author's order of
-  annoyance: the chrome **covers the track**; the button layout is arbitrary and
-  space-hungry; **modes are invisible** (gate mode, rail-new-pieces, level
-  filter); and **rails have two controls** — a sticky "rail new pieces" toggle in
-  the palette and a per-piece checkbox in the properties sheet.
+**Step 7, as built.** One word per control decides where it goes and how it looks:
+
+| | is | looks |
+|---|---|---|
+| **Action** | do it now | raised button |
+| **Mode** | stays on until turned off | pressed-in + lit while on |
+| **Next-piece sticky** | shapes what you lay next | pressed-in + lit, under a named group |
+| **Property** | of the track, or of a piece | lives with its object, not in the bars |
+
+The map owns a rect between the bars (and is clipped — a 4x zoom would otherwise
+draw over them). Only the close-loop chip still floats, because it points at a
+place. Track properties sit behind the name chip; the selected piece's sit in a
+fixed strip that stays put when nothing is selected, since a row that comes and
+goes resizes the map and moves the piece you just tapped.
+
+**The two wall controls were not a duplicate.** One is a next-piece sticky, the
+other the selected piece's property — genuinely different things that looked
+alike. The grammar and the group labels fixed it; neither was removed.
+
+Left: where the closure control lands, and whether an unclosable track should say
+so somewhere better than the status chip.
 
   The question to answer per control: **action, mode, or property?** Rails are
   the clearest case of that being unmade — the same idea wearing two shapes.
