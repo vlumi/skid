@@ -50,6 +50,8 @@ let package = Package(
         .library(name: "SkidKit", targets: ["SkidKit"]),
         // Dev tool: renders the app icon from the game's own drawing code.
         .executable(name: "skid-icon", targets: ["SkidIcon"]),
+        // Dev tool: renders the engine voice to WAV, since the simulator has no audio.
+        .executable(name: "skid-audio", targets: ["SkidAudioProbe"]),
     ],
     targets: [
         .target(name: "SkidCore"),
@@ -61,6 +63,12 @@ let package = Package(
         ),
         .executableTarget(
             name: "SkidIcon",
+            dependencies: ["SkidKit"]
+        ),
+        // Renders the game's engine voice to WAV — the simulator has no audio, so this
+        // is the only way to hear (or measure) what the engine sounds like.
+        .executableTarget(
+            name: "SkidAudioProbe",
             dependencies: ["SkidKit"]
         ),
         .testTarget(
