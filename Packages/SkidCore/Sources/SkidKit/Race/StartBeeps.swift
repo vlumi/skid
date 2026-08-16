@@ -13,10 +13,20 @@ import SkidCore
 /// every frame it is near one.
 enum StartBeeps {
     /// The beep to play, given the countdown's whole seconds remaining before and after
-    /// this frame's tick. Nil on most frames — a beep only lands where the value drops.
+    /// this frame's tick. Nil on most frames — a beep lands only where the lights change.
+    ///
+    /// **One beep per light state, including the first.** `secondsBefore` is nil on the
+    /// frame the countdown begins, and treating that as "no change" left the opening
+    /// state silent: three light states, two beeps, and a countdown you could watch and
+    /// hear disagree. The lights and the beeps are the same countdown, so they change
+    /// together.
     ///
     /// - Returns: `true` for the final (lights-out) beep, `false` for a counting one.
     static func beep(secondsBefore: Int?, secondsAfter: Int?) -> Bool? {
+        // The countdown beginning: the first lights appear, so the first beep sounds.
+        if secondsBefore == nil, let after = secondsAfter, after > 0 {
+            return false
+        }
         // Counting down: 3→2, 2→1 are counting beeps.
         if let before = secondsBefore, let after = secondsAfter, after < before, after > 0 {
             return false

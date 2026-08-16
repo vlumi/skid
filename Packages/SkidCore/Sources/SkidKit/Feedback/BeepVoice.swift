@@ -53,10 +53,13 @@ public struct BeepVoice {
         }
     }
 
-    /// How long a beep sounds, in seconds. Long enough to be a tone rather than a click,
-    /// short enough that three of them fit inside a three-second countdown with silence
-    /// between — the silence is what makes them countable.
-    public static let duration = 0.18
+    /// How long a beep sounds, in seconds.
+    ///
+    /// Lengthened from 0.18 on the first listen: long enough now to read as a deliberate
+    /// tone rather than a blip, and still well inside the one-second gap between lights,
+    /// so the beeps stay separated — the silence between them is what makes four of them
+    /// countable rather than a warble.
+    public static let duration = 0.28
 
     /// Fraction of the beep spent fading in and out. A hard edge on a square-ish wave
     /// clicks; this is just enough ramp to avoid that without becoming a swell.
