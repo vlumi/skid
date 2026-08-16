@@ -21,7 +21,8 @@ extension EditorView {
             .padding(.horizontal, 11)
             .padding(.vertical, 7)
             .background(gating ? Retro.highlight : Retro.panel)
-            .overlay(RetroBevel(thickness: 2))
+            // A MODE: pressed-in while on, like the level filter.
+            .overlay(RetroBevel(inset: gating, thickness: 2))
             .contentShape(Rectangle())
         }
         .accessibilityLabel(Text(gating ? "Leave gate mode" : "Edit gates", bundle: .module))

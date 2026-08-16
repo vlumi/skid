@@ -255,6 +255,19 @@ extension CouchGame {
         editorBuildEnd = only
     }
 
+    /// **Step the selection along the ring**, wrapping at the ends.
+    ///
+    /// Exists for bulk property edits: railing a run of existing pieces used to mean
+    /// re-aiming a tap at every piece. With a step, it is toggle-step-toggle — two taps
+    /// per piece, but blind-repeatable. Steps only when something is selected: from
+    /// nothing, a step has no anchor to move from.
+    public func editorStepSelection(_ delta: Int) {
+        guard let current = editorSelectedPiece,
+            let count = editorLayout?.pieces.count, count > 0
+        else { return }
+        editorSelect(((current + delta) % count + count) % count)
+    }
+
     /// The piece that inherits the selection after a delete: at the head, whatever
     /// is now first; at the tail (and after a ring cut, which leaves the cut at the
     /// end), whatever is now last.
