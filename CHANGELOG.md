@@ -23,6 +23,13 @@ its builds still filed under v0.7.0 because that step was forgotten.
 
 ### Unreleased (next build)
 
+- **Start lights instead of a countdown.** Five lamps fill up as the seconds pass and
+  all go out at once when the race starts, the way a circuit start works. They also
+  solve something the numbers could not: a "3" upside down is not a 3, so the count had
+  to be drawn twice and mirrored — and the players sitting sideways in a four-way game
+  read neither copy. A row of lights is symmetric, so one gantry reads the same from
+  every seat.
+
 ### build 13 — 2026-08-15
 
 - **A new opening screen: say who is playing, then what to do.** The app used to

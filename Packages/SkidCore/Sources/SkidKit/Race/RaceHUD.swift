@@ -26,10 +26,6 @@ struct RaceHUD: View {
     @State private var pendingPlace: [Int: (place: Int, since: Tick)] = [:]
     private static let placeDebounceTicks: Tick = 24  // ~0.4s at 60 Hz
 
-    private var hasFlippedZone: Bool {
-        rig.players.contains { $0.up.y > 0 }
-    }
-
     var body: some View {
         ZStack {
             countdown
@@ -81,37 +77,30 @@ struct RaceHUD: View {
         }
     }
 
+    /// **The start gantry**, centered over the map.
+    ///
+    /// One copy, not two. The numbers this replaces had to be drawn twice and mirrored,
+    /// because a "3" upside down is not a 3 — and even then the players sitting sideways
+    /// in a four-way game read neither copy. A row of lights is symmetric, so one is
+    /// enough for every seat. See `StartLights`.
     @ViewBuilder private var countdown: some View {
-        let label: Text? = {
-            guard started else { return nil }  // not until the ready gate clears
-            if case .countdown(let remaining) = race.phase {
-                return Text(verbatim: "\((remaining + Race.tickRate - 1) / Race.tickRate)")
-            }
-            if race.phase == .running, race.raceTicks < Race.tickRate * 3 / 4 {
-                return Text("GO!", bundle: .module)
-            }
-            return nil
-        }()
-        if let label {
-            if hasFlippedZone {
-                // One for each side of the table.
-                bigLabel(label)
-                    .position(x: size.width / 2, y: size.height * 0.7)
-                bigLabel(label)
-                    .rotationEffect(.degrees(180))
-                    .position(x: size.width / 2, y: size.height * 0.3)
-            } else {
-                bigLabel(label)
+        if started {
+            let seconds: Int? = {
+                if case .countdown(let remaining) = race.phase {
+                    return (remaining + Race.tickRate - 1) / Race.tickRate
+                }
+                // Held briefly past the start with every lamp dark: the lights GOING OUT
+                // is the signal, so they have to still be there to go out.
+                if race.phase == .running, race.raceTicks < Race.tickRate * 3 / 4 {
+                    return 0
+                }
+                return nil
+            }()
+            if let seconds {
+                StartLights(secondsRemaining: seconds, started: seconds <= 0)
                     .position(x: size.width / 2, y: size.height / 2)
             }
         }
-    }
-
-    private func bigLabel(_ text: Text) -> some View {
-        text
-            .font(Retro.font(78, weight: .black))
-            .foregroundStyle(.white.opacity(0.9))
-            .shadow(radius: 4)
     }
 
     /// One chip per player, along the MAP-SIDE (inner) edge
