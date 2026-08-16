@@ -1,6 +1,7 @@
 import XCTest
 
 @testable import SkidCore
+@testable import SkidKit
 
 /// **A road style is a property of the whole track, not a mark on a piece.**
 ///
@@ -51,5 +52,66 @@ final class RoadStyleTests: XCTestCase {
         // What `decode` does with that nil, spelled out: the fallback, not a throw.
         let style = TrackLayout.RoadStyle(rawValue: 99) ?? .circuit
         XCTAssertEqual(style, .circuit)
+    }
+}
+
+/// **Setting the style from the editor**, which is where a track author meets it.
+@MainActor
+final class EditedRoadStyleTests: XCTestCase {
+    private func game() -> CouchGame {
+        let unique = UUID().uuidString
+        let game = CouchGame(
+            signingKeys: NoSigningKey(),
+            libraryFilename: "test-lib-\(unique).json",
+            profileFilename: "test-profiles-\(unique).json",
+            hiscoreFilename: "test-hiscores-\(unique).json")
+        game.editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID, 1, 1])
+        return game
+    }
+
+    override func tearDown() {
+        super.tearDown()
+        let base =
+            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first ?? FileManager.default.temporaryDirectory
+        let directory = base.appendingPathComponent("Skid", isDirectory: true)
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        for file in files where file.hasPrefix("test-") {
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(file))
+        }
+    }
+
+    /// **The style reaches the layout**, which is what the renderer reads.
+    func testSettingTheStyleUpdatesTheLayout() {
+        let game = self.game()
+        XCTAssertEqual(game.editorLayout?.roadStyle, .circuit)
+        game.setEditedRoadStyle(.road)
+        XCTAssertEqual(game.editorLayout?.roadStyle, .road)
+    }
+
+    /// **It survives the round trip through the share code**, which is how a track is
+    /// stored and passed on — a style that did not would be lost on reopening.
+    func testTheStyleSurvivesTheTracksOwnCode() throws {
+        let game = self.game()
+        game.setEditedRoadStyle(.road)
+        let layout = try XCTUnwrap(game.editorLayout)
+        let back = try XCTUnwrap(try? TrackCode.decode(TrackCode.encode(layout)))
+        XCTAssertEqual(back.roadStyle, .road)
+    }
+
+    /// Setting the style it already has changes nothing — no needless save.
+    func testSettingTheSameStyleIsANoOp() {
+        let game = self.game()
+        let before = game.editorLayout
+        game.setEditedRoadStyle(.circuit)
+        XCTAssertEqual(game.editorLayout, before)
+    }
+
+    /// With no track open there is nothing to set, and nothing crashes.
+    func testSettingWithNoLayoutIsHarmless() {
+        let game = self.game()
+        game.editorLayout = nil
+        game.setEditedRoadStyle(.road)
+        XCTAssertNil(game.editorLayout)
     }
 }

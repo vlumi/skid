@@ -62,7 +62,8 @@ extension EditorView {
         }
     }
 
-    /// The edited track's name, or a prompt when it has none yet.
+    /// The edited track's name, or a prompt when it has none yet — and the door to
+    /// everything else that belongs to the whole track (see `TrackPropertiesSheet`).
     ///
     /// A brand-new canvas has no library row — nothing is written until there is more than
     /// a start piece — so there is genuinely nothing to name yet. `renameEditedTrack`
@@ -71,7 +72,6 @@ extension EditorView {
     private var nameChip: some View {
         Button {
             renamingTrack = true
-            trackNameField = game.editedTrackName ?? ""
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "pencil.line").font(Retro.caption)
@@ -144,24 +144,3 @@ extension EditorView {
 ///
 /// A modifier rather than an inline `.alert` so `EditorView` stays inside its length
 /// budget, and it sits beside `nameChip` — the control it belongs to.
-struct TrackNameAlert: ViewModifier {
-    @ObservedObject var game: CouchGame
-    @Binding var showing: Bool
-    @Binding var name: String
-
-    func body(content: Content) -> some View {
-        content.alert(Text("Track name", bundle: .module), isPresented: $showing) {
-            TextField(String(localized: "Name", bundle: .module), text: $name)
-                .nameFieldStyle()
-            Button {
-                game.renameEditedTrack(to: name)
-            } label: {
-                Text("Save", bundle: .module)
-            }
-            Button(role: .cancel) {
-            } label: {
-                Text("Cancel", bundle: .module)
-            }
-        }
-    }
-}

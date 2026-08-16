@@ -118,7 +118,6 @@ struct EditorView: View {
     @State var copiedCode = false
     /// Whether the rename prompt is up, and the name being typed.
     @State var renamingTrack = false
-    @State var trackNameField = ""
     /// Pieces a car could not drive through, recomputed off the render path.
     @State var blockedPieces: Set<Int> = []
     /// Which storey the editor is working on, or nil for all of them.
@@ -215,7 +214,9 @@ struct EditorView: View {
                 topBar
                 paletteBar(walk: walk)
             }
-            .modifier(TrackNameAlert(game: game, showing: $renamingTrack, name: $trackNameField))
+            .sheet(isPresented: $renamingTrack) {
+                TrackPropertiesSheet(game: game) { renamingTrack = false }
+            }
             // Off the render path: the closing search costs tens of ms, so it
             // runs when the layout or selection changes, not per frame.
             .task(id: ClosingKey(pieces: layout.pieces, end: nil)) {
