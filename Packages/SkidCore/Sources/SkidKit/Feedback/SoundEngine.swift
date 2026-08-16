@@ -16,6 +16,7 @@ import SkidCore
 public final class SoundEngine {
     struct Mix {
         var engineHz: Double = 0
+        var engineDuty: Double = 0.3
         var engineGain: Double = 0
         var skidGain: Double = 0
         var thump: Double = 0
@@ -29,9 +30,12 @@ public final class SoundEngine {
         private let lock = NSLock()
         private var mix = Mix()
 
-        func set(engineHz: Double, engineGain: Double, skidGain: Double) {
+        func set(
+            engineHz: Double, engineDuty: Double, engineGain: Double, skidGain: Double
+        ) {
             lock.lock()
             mix.engineHz = engineHz
+            mix.engineDuty = engineDuty
             mix.engineGain = engineGain
             mix.skidGain = skidGain
             lock.unlock()
@@ -107,16 +111,23 @@ public final class SoundEngine {
     public func update(race: Race, humanCount: Int, paused: Bool) {
         guard running else { return }
         if paused {
-            state.set(engineHz: 0, engineGain: 0, skidGain: 0)
+            state.set(engineHz: 0, engineDuty: 0.3, engineGain: 0, skidGain: 0)
             return
         }
         let humans = race.cars.prefix(max(1, humanCount))
         let leadSpeed = humans.first?.state.velocity.length ?? 0
         let maxSlip = humans.map(\.state.slipSpeed).max() ?? 0
-        let engineHz = 55 + leadSpeed * 0.32
-        let engineGain = min(0.30, 0.10 + leadSpeed / 2400)
+        let engineHz = EngineVoice.hz(forSpeed: leadSpeed)
+        let engineDuty = EngineVoice.duty(forSpeed: leadSpeed)
+        // Raised after measuring: the old chain halved 0.10…0.30 again at the mix, so
+        // the engine rendered at 4–9% peak — inaudible against a countdown beep at 31%
+        // on a phone speaker. It is the constant bed, so it sits under the beeps, but
+        // it has to be there.
+        let engineGain = min(0.55, 0.22 + leadSpeed / 900)
         let skidGain = maxSlip > 90 ? min(0.22, (maxSlip - 90) / 900) : 0
-        state.set(engineHz: engineHz, engineGain: engineGain, skidGain: skidGain)
+        state.set(
+            engineHz: engineHz, engineDuty: engineDuty, engineGain: engineGain,
+            skidGain: skidGain)
         for event in race.lastEvents {
             switch event {
             case .wallImpact(let id, let speed) where id.rawValue < humanCount:
@@ -143,8 +154,9 @@ public final class SoundEngine {
     private func makeSourceNode(sampleRate: Double) -> AVAudioSourceNode {
         let state = self.state
         var phase1 = 0.0
-        var phase2 = 0.0
-        var smoothedHz = 55.0
+        var subPhase = 0.0
+        var smoothedHz = EngineVoice.idleHz
+        var smoothedDuty = 0.3
         var smoothedEngine = 0.0
         var smoothedSkid = 0.0
         var noiseFilter = 0.0
@@ -168,18 +180,20 @@ public final class SoundEngine {
             for frame in 0..<Int(frameCount) {
                 // Per-sample smoothing keeps pitch/gain changes click-free.
                 smoothedHz += (targets.engineHz - smoothedHz) * 0.0004
+                smoothedDuty += (targets.engineDuty - smoothedDuty) * 0.0004
                 smoothedEngine += (targets.engineGain - smoothedEngine) * 0.0008
                 smoothedSkid += (targets.skidGain - smoothedSkid) * 0.0015
                 thumpEnv *= 0.9996
                 // Faster decay than a thump: a countdown beep is a blip, not a boom.
                 beepEnv *= 0.99988
 
-                // Two detuned saws — a cheap, angry little engine.
+                // A pulse and a square an octave down — see `EngineVoice`.
                 phase1 += smoothedHz / sampleRate
-                phase2 += smoothedHz * 1.011 / sampleRate
+                subPhase += smoothedHz * 0.5 / sampleRate
                 phase1 -= phase1.rounded(.down)
-                phase2 -= phase2.rounded(.down)
-                let saws = (phase1 * 2 - 1) + (phase2 * 2 - 1) * 0.6
+                subPhase -= subPhase.rounded(.down)
+                let engine = EngineVoice.sample(
+                    phase: phase1, subPhase: subPhase, duty: smoothedDuty)
 
                 // xorshift noise, low-passed for skid, raw-ish for thumps.
                 seed ^= seed << 13
@@ -189,12 +203,17 @@ public final class SoundEngine {
                 noiseFilter += (white - noiseFilter) * 0.12
 
                 let sample =
-                    saws * smoothedEngine * 0.5
+                    engine * smoothedEngine * 0.5
                     + noiseFilter * smoothedSkid
                     + white * thumpEnv * 0.5
                     + SoundEngine.beepSample(phase: &beepPhase, hz: beepHz, rate: sampleRate)
                     * beepEnv
-                out[frame] = Float(max(-1, min(1, sample)))
+                // **Soft limit, not a hard clamp.** Measured: engine + skid + a thump
+                // sums to 0.995, and a countdown beep landing during a slide-and-hit
+                // pushes it to 1.31 — which `max(-1, min(1,))` turns into square-wave
+                // distortion at the loudest moment of the race. `tanh` bends the peaks
+                // instead, so a busy moment gets louder rather than broken.
+                out[frame] = Float(tanh(sample))
             }
             return noErr
         }

@@ -61,6 +61,10 @@ format:  ## Rewrite sources with swift-format
 	@swift format --in-place --recursive --configuration .swift-format \
 		Packages/SkidCore/Sources Packages/SkidCore/Tests Sources
 
+.PHONY: audio
+audio:  ## Render the engine + countdown to WAV (the simulator has no audio)
+	@swift run --package-path Packages/SkidCore skid-audio "$(or $(OUT),/tmp/skid-audio)"
+
 .PHONY: icon
 icon:  ## Regenerate the app icon from the game's own drawing code
 	@swift run --package-path Packages/SkidCore skid-icon \
