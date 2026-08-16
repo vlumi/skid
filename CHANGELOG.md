@@ -23,6 +23,12 @@ its builds still filed under v0.7.0 because that step was forgotten.
 
 ### Unreleased (next build)
 
+- **Roads, not just circuits.** A track can now be a public road closed off for a race:
+  a dashed centre line down the middle, marked out the way a real road is. It is a
+  property of the whole track rather than something you paint piece by piece, so it
+  covers pieces you add later without being placed again. Existing tracks are unchanged
+  — a circuit is still the default, and still has bare asphalt.
+
 - **The engine sounds like an engine.** It was two smooth sawtooth waves spanning about
   one octave, which came out as a synth pad that barely changed with speed. It is now a
   pulse wave — the buzzy, mechanical shape a 90s game would have used, matching the rest

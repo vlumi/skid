@@ -163,6 +163,46 @@ extension EditorRenderer {
     /// render turned every hairpin into a cluster of overlapping glyphs). Short
     /// pieces get a proportionally shorter arrow, and one too short to read is
     /// skipped rather than drawn as a blob.
+    /// **The centre line's dashes for one piece.**
+    ///
+    /// Self-contained: whole dashes fitted inside this piece, so nothing is clipped at a
+    /// join and the seam always lands in a gap. See `LaneDashPlan`.
+    static func drawLaneDashes(
+        _ placed: PlacedPiece, width: Double, paint: Color = kerbWhite,
+        transform t: Transform, into context: inout GraphicsContext
+    ) {
+        let samples = placed.centerlineSamples()
+        guard samples.count > 1 else { return }
+        let length = LaneDashPlan.polylineLength(samples)
+        let half = width * LaneDashPlan.widthFraction
+        for dash in LaneDashPlan.dashes(inPieceOfLength: length) {
+            let path = dashPath(
+                samples: samples, from: dash.from, to: dash.to, half: half, t: t)
+            context.fill(path, with: .color(paint))
+        }
+    }
+
+    /// One dash as a ribbon along the centerline, so it bends with a curve rather than
+    /// being a straight stick laid on a bend.
+    private static func dashPath(
+        samples: [Vec2], from: Double, to: Double, half: Double, t: Transform
+    ) -> Path {
+        var left: [CGPoint] = []
+        var right: [CGPoint] = []
+        let steps = 6
+        for step in 0...steps {
+            let fraction = from + (to - from) * Double(step) / Double(steps)
+            let (point, tangent) = pointOnPolyline(samples, atFraction: fraction)
+            let side = tangent.perpendicular
+            left.append(t.screen(point + side * half))
+            right.append(t.screen(point - side * half))
+        }
+        var path = Path()
+        path.addLines(left + right.reversed())
+        path.closeSubpath()
+        return path
+    }
+
     static func drawDirectionArrow(
         _ placed: PlacedPiece, width: Double, paint: Color = kerbWhite,
         transform t: Transform,

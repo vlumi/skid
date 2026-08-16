@@ -89,6 +89,9 @@ public enum TrackCode {
         /// A warp with no entry drops one level, so the common deck-to-ground jump
         /// costs nothing to encode.
         case warpDrops = 9
+        /// What kind of road this is (`TrackLayout.RoadStyle`), one byte. Omitted for
+        /// a circuit, so every existing code keeps its exact bytes.
+        case roadStyle = 10
         /// A 32-byte raw Ed25519 public key — who signed this. High on purpose:
         /// tags cost the same wherever they sit, so the low contiguous range
         /// stays for CONTENT and the top holds the envelope.
@@ -135,6 +138,9 @@ public enum TrackCode {
         appendSection(&body, .origin, encodeOrigin(layout.origin))
         if layout.theme != .normal {
             appendSection(&body, .theme, [UInt8(layout.theme.rawValue)])
+        }
+        if layout.roadStyle != .circuit {
+            appendSection(&body, .roadStyle, [UInt8(layout.roadStyle.rawValue)])
         }
         if !layout.fitters.isEmpty {
             appendSection(&body, .fitters, encodeFitters(layout.fitters))
@@ -206,6 +212,11 @@ public enum TrackCode {
         let origin = try decodeOrigin(originPayload)
         let themeByte = sections[.theme].flatMap { $0.first }
         let theme = themeByte.flatMap { TrackLayout.Theme(rawValue: Int($0)) } ?? .normal
+        // An unknown style decodes as a circuit rather than failing: a code from a later
+        // build should still be raceable, just plainer.
+        let styleByte = sections[.roadStyle].flatMap { $0.first }
+        let roadStyle =
+            styleByte.flatMap { TrackLayout.RoadStyle(rawValue: Int($0)) } ?? .circuit
         let baseHalves = sections[.baseHeight].flatMap { $0.first }.map {
             Int(Int8(bitPattern: $0))
         }
@@ -227,7 +238,8 @@ public enum TrackCode {
 
         return TrackLayout(
             pieces: pieces, pitches: pitches, origin: origin, originHeight: originHeight,
-            gateSeams: gates, theme: theme, fitters: fitters, decals: decals,
+            gateSeams: gates, theme: theme, roadStyle: roadStyle, fitters: fitters,
+            decals: decals,
             railed: railed, warpDrops: warpDrops)
     }
 

@@ -177,6 +177,7 @@ struct EditorView: View {
                         gateSeams: layout.gateSeams, gating: game.editorMode == .gate,
                         selectedPiece: game.editorMode == .gate ? nil : game.editorSelectedPiece,
                         decals: layout.decals, railed: layout.railed,
+                        roadStyle: layout.roadStyle,
                         blockedPieces: blockedPieces, showLevels: levelFilter.showsBadges,
                         dimmedExcept: levelFilter.storeyOnly,
                         transform: transform, into: &context)

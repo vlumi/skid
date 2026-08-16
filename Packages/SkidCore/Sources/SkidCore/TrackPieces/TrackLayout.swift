@@ -35,6 +35,26 @@ public struct TrackLayout: Equatable, Sendable, Codable {
         case normal = 0, snow = 1, sand = 2
     }
 
+    /// **What kind of road this is** — purpose-built, or a public one closed for a race.
+    ///
+    /// Separate from `Theme` because the two vary independently: a country road can run
+    /// through snow, a circuit can sit in a desert. Folding them into one enum would
+    /// need a case per combination (`snowRoad`, `sandCircuit`, …), which multiplies
+    /// where two values add.
+    ///
+    /// It is also not a `Decal`, which was the first idea and the wrong one. A decal is
+    /// something you *place*: sparse, per piece, index-keyed. Lane markings are what the
+    /// road *is* — they cover every piece, they must appear on pieces added later
+    /// without being placed again, and a piece inserted mid-track must not leave a gap.
+    /// One value for the whole track gives all three for free.
+    public enum RoadStyle: Int, Equatable, Sendable, Codable, CaseIterable {
+        /// Purpose-built: racing kerbs, bare asphalt. The default, so existing tracks
+        /// are unchanged.
+        case circuit = 0
+        /// A public road closed for a race: a dashed centre line down the middle.
+        case road = 1
+    }
+
     /// Pieces in ring order. The start-grid piece appears exactly once.
     public var pieces: [PieceID]
     /// Each piece's pitch, parallel to `pieces`. May run SHORT of it — direct
@@ -106,10 +126,12 @@ public struct TrackLayout: Equatable, Sendable, Codable {
     /// case — the deck-to-ground jump.
     public var warpDrops: [Int: Double]
     public var theme: Theme
+    public var roadStyle: RoadStyle
 
     public init(
         pieces: [PieceID], pitches: [Pitch] = [], origin: PiecePose = .origin,
         originHeight: Double = 0, gateSeams: [Int] = [0], theme: Theme = .normal,
+        roadStyle: RoadStyle = .circuit,
         fitters: [Int: Fitter] = [:], decals: [Int: Decal] = [:],
         railed: Set<Int> = [], warpDrops: [Int: Double] = [:]
     ) {
@@ -129,6 +151,7 @@ public struct TrackLayout: Equatable, Sendable, Codable {
         // which breaks the identity the share code is used for.
         self.gateSeams = gateSeams.sorted()
         self.theme = theme
+        self.roadStyle = roadStyle
     }
 
     /// The pitch of piece `index`; flat where the array runs short.
