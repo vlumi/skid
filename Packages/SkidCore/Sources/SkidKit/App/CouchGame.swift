@@ -206,6 +206,9 @@ public final class CouchGame: ObservableObject {
     /// layer only — the sim itself never touches wall-clock time) so grids
     /// differ across app runs instead of repeating from 1 each session.
     private var seed: UInt64 = UInt64(Date().timeIntervalSince1970.bitPattern)
+    /// The countdown second last seen by the audio frame, so a beep fires once per
+    /// boundary rather than once per rendered frame.
+    var notedCountdownSeconds: Int?
     var notedLapCount = 0
     var notedFinish = false
 
@@ -357,19 +360,7 @@ public final class CouchGame: ObservableObject {
 
     /// Called every frame by the race screen: audio lifecycle follows the
     /// toggles, and a paused race falls silent instead of droning.
-    public func audioFrame() {
-        guard let session else { return }
-        guard settings.soundOn, phase == .racing else {
-            sound.stop()
-            return
-        }
-        sound.start()
-        if session.paused || session.race.phase == .finished {
-            sound.update(race: session.race, humanCount: humanCount, paused: true)
-        }
-    }
-
-    private var humanCount: Int { rig?.players.count ?? 1 }
+    var humanCount: Int { rig?.players.count ?? 1 }
 
     /// The per-tick input tap: humans read their own control source, the rest
     /// come from the AI fleet.
@@ -413,6 +404,7 @@ public final class CouchGame: ObservableObject {
             : nil
         notedLapCount = 0
         notedFinish = false
+        notedCountdownSeconds = nil
         runRecords = .none
         let session = GameSession(
             track: track, players: players, config: config, seed: seed,
