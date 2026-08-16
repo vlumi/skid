@@ -23,6 +23,9 @@ its builds still filed under v0.7.0 because that step was forgotten.
 
 ### Unreleased (next build)
 
+- **Track properties.** Tapping the track's name in the editor now opens its settings —
+  the name, and whether it is a circuit or a road — rather than a bare rename box. It is
+  the home for anything that belongs to the whole track rather than to one piece.
 - **Roads, not just circuits.** A track can now be a public road closed off for a race:
   a dashed centre line down the middle, marked out the way a real road is. It is a
   property of the whole track rather than something you paint piece by piece, so it
