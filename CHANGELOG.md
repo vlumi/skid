@@ -14,6 +14,8 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+### build 14 — 2026-08-16
+
 - **Start lights instead of a countdown.** Five lamps fill up as the seconds pass and all go out at once when the race starts, the way a circuit start works. They also solve something numbers could not: a "3" upside down is not a 3, so the count had to be drawn twice and mirrored — and the players sitting sideways in a four-way game read neither copy. A row of lights is symmetric, so one gantry reads the same from every seat.
 - **The countdown beeps**, one beep per light: three as they fill, then a higher, louder one the moment they go out. The start is something you can hear with your eyes on the track, and "go" sounds unlike the counting rather than being a fourth identical tone.
 - **The engine sounds like an engine.** It was two smooth sawtooth waves spanning about one octave, which came out as a synth pad that barely changed with speed. It is now a pulse wave — the buzzy, mechanical shape a 90s game would have used, matching the rest of the look — spanning over two octaves, and the pulse widens as you accelerate so the engine audibly strains rather than just rising in pitch.
