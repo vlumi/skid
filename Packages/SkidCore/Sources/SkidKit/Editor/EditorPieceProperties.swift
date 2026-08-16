@@ -119,7 +119,7 @@ extension EditorView {
             Text(deeper ? "Drop the road a level" : "Raise the dropped road", bundle: .module))
     }
 
-    /// **Whether the next piece you lay gets a railing.** Sticky, beside the mode
+    /// **Whether the next piece you lay gets a wall.** Sticky, beside the mode
     /// toggle, because railing a bridge is a run of pieces — asking once beats
     /// toggling each one afterwards. The selected piece's own railing is toggled
     /// from its properties sheet instead.
@@ -138,7 +138,7 @@ extension EditorView {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
-            Text(on ? "Stop railing new pieces" : "Rail new pieces", bundle: .module))
+            Text(on ? "Stop walling new pieces" : "Wall new pieces", bundle: .module))
     }
 
     /// One markings option: no decal, or one of them. Applied in place — same

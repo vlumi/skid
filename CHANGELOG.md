@@ -33,7 +33,7 @@ its builds still filed under v0.7.0 because that step was forgotten.
   a run of pieces no longer means re-aiming a tap at each one.
 - **The piece palette says what it is.** The three laying buttons run in driving
   order — turn left, go straight, turn right — and read as raised keys. The settings
-  that shape the next piece (corner radius, pitch, railing) sit together under their
+  that shape the next piece (corner radius, pitch, wall) sit together under their
   own names, with the current choice shown pressed-in, instead of radius hiding under
   the corners and the rest scattered.
 - **Copying and pasting track codes moved into the track's own settings**, behind its
