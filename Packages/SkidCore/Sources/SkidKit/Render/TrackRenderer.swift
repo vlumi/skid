@@ -136,7 +136,8 @@ enum TrackRenderer {
                     t.contextScale = scale
                     EditorRenderer.drawTrack(
                         walk: layout.walk(), width: track.width, gateSeams: [],
-                        decals: layout.decals, railed: layout.railed, transform: t,
+                        decals: layout.decals, railed: layout.railed,
+                        roadStyle: layout.roadStyle, transform: t,
                         heightRange: band, into: &context)
                 } else {
                     // No layout (ad-hoc tracks built directly in tests): fall
