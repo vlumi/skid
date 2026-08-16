@@ -3,32 +3,49 @@ import XCTest
 @testable import SkidCore
 @testable import SkidKit
 
-/// **Whole dashes inside each piece, ending flush with its far edge.**
+/// **Whole dashes, centred in each piece with half a gap at each end.**
 ///
-/// The rule exists because the obvious alternative — one pattern round the ring, clipped
-/// at the joins — draws a straddling dash twice, once per piece, and the halves alias
-/// against each other at the seam. Ending every piece on a complete dash puts the join
-/// in a GAP instead, where nothing can show.
+/// Two neighbours then contribute half a gap each, so the seam carries exactly one
+/// normal gap: the rhythm is unbroken, and no dash goes near an edge. That last part is
+/// the bug being avoided — a piece's asphalt is drawn slightly past its own ends, so
+/// anything painted flush to a boundary is covered by the next piece's road.
 final class LaneDashPlanTests: XCTestCase {
-    /// **Every piece ends flush with a dash**, so the next one opens with a gap and the
-    /// seam falls in clear road. This is the whole rule.
-    func testEveryPieceEndsOnACompleteDash() {
+    /// **The run is symmetric**: the space before the first dash equals the space after
+    /// the last. This is the whole rule — it is what makes two neighbours add up to one
+    /// normal gap at the seam.
+    func testTheRunIsCentredInThePiece() {
         for length in [60.0, 120.0, 188.5, 240.0, 480.0, 47.0] {
             let dashes = LaneDashPlan.dashes(inPieceOfLength: length)
-            let last = try? XCTUnwrap(dashes.last)
+            guard let first = dashes.first, let last = dashes.last else {
+                return XCTFail("a \(length)-long piece got no dashes")
+            }
             XCTAssertEqual(
-                last?.to ?? 0, 1.0, accuracy: 1e-9,
-                "a \(length)-long piece does not end flush: \(String(describing: last))")
+                first.from, 1 - last.to, accuracy: 1e-9,
+                "a \(length)-long piece is not centred: leads \(first.from), "
+                    + "trails \(1 - last.to)")
         }
     }
 
-    /// **And begins with a gap**, for the same reason from the other side.
-    func testEveryPieceBeginsWithAGap() {
+    /// **Neither end is flush**, so the seam overlap cannot clip a dash.
+    func testNoDashTouchesAnEdge() {
         for length in [120.0, 188.5, 480.0] {
-            let first = LaneDashPlan.dashes(inPieceOfLength: length).first
-            XCTAssertGreaterThan(
-                first?.from ?? 0, 0, "a \(length)-long piece opens mid-dash")
+            let dashes = LaneDashPlan.dashes(inPieceOfLength: length)
+            XCTAssertGreaterThan(dashes.first?.from ?? 0, 0, "opens flush at \(length)")
+            XCTAssertLessThan(dashes.last?.to ?? 1, 1, "ends flush at \(length)")
         }
+    }
+
+    /// **Two neighbours make one normal gap.** Half a gap trailing plus half a gap
+    /// leading is a full one, so a join is indistinguishable from any other gap.
+    func testTwoNeighboursMakeOneNormalGap() {
+        let length = 120.0
+        let dashes = LaneDashPlan.dashes(inPieceOfLength: length)
+        let trailing = (1 - (dashes.last?.to ?? 1)) * length
+        let leading = (dashes.first?.from ?? 0) * length
+        let interior = ((dashes[1].from - dashes[0].to)) * length
+        XCTAssertEqual(
+            trailing + leading, interior, accuracy: 1e-9,
+            "the seam gap (\(trailing + leading)) differs from a normal one (\(interior))")
     }
 
     /// **No dash escapes its piece.** Nothing is clipped, so nothing may need clipping.
