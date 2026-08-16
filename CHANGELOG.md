@@ -23,6 +23,11 @@ its builds still filed under v0.7.0 because that step was forgotten.
 
 ### Unreleased (next build)
 
+- **The engine sounds like an engine.** It was two smooth sawtooth waves spanning about
+  one octave, which came out as a synth pad that barely changed with speed. It is now a
+  pulse wave — the buzzy, mechanical shape a 90s game would have used, matching the rest
+  of the look — spanning over two octaves, and the pulse widens as you accelerate so the
+  engine audibly strains rather than just rising in pitch.
 - **The countdown beeps.** Two blips as the lights fill, then a higher, louder one the
   moment they go out — so the start is something you can hear with your eyes on the
   track, and "go" sounds unlike the counting rather than being a fourth identical tone.
