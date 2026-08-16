@@ -31,6 +31,20 @@ extension EditorView {
             index.map { game.editorLayout?.pieces.indices.contains($0) ?? false }
             ?? false
         HStack(spacing: 6) {
+            // Step the selection along the ring, so a sweep of property edits
+            // (rail this run, mark these corners) needs no re-aiming between pieces.
+            mapAction(
+                "chevron.backward", tint: .white, label: "Previous piece",
+                enabled: hasPiece
+            ) {
+                game.editorStepSelection(-1)
+            }
+            mapAction(
+                "chevron.forward", tint: .white, label: "Next piece",
+                enabled: hasPiece
+            ) {
+                game.editorStepSelection(1)
+            }
             mapAction(
                 "trash", tint: .white, label: "Delete piece",
                 enabled: game.editorCanDeleteSelected
@@ -45,7 +59,7 @@ extension EditorView {
                 if let index { configuring = .piece(index) }
             }
             let railed = index.map { game.editorIsRailed(at: $0) } == true
-            mapAction(label: "Railings on this piece", enabled: hasPiece) {
+            mapAction(label: "Wall on this piece", enabled: hasPiece) {
                 if let index { game.editorToggleRail(at: index) }
             } glyph: {
                 RailGlyph(railed: railed)

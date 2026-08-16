@@ -37,7 +37,9 @@ extension EditorView {
             .padding(.horizontal, 11)
             .padding(.vertical, 7)
             .background(levelFilter == .off ? Retro.panel : Retro.highlight)
-            .overlay(RetroBevel(thickness: 2))
+            // A MODE, so it reads pressed-in while on — the retro language's way of
+            // saying "this stays on", against an action's raised face.
+            .overlay(RetroBevel(inset: levelFilter != .off, thickness: 2))
             .contentShape(Rectangle())
         }
         .accessibilityLabel(Text("Level filter", bundle: .module))
@@ -117,7 +119,7 @@ extension EditorView {
             Text(deeper ? "Drop the road a level" : "Raise the dropped road", bundle: .module))
     }
 
-    /// **Whether the next piece you lay gets a railing.** Sticky, beside the mode
+    /// **Whether the next piece you lay gets a wall.** Sticky, beside the mode
     /// toggle, because railing a bridge is a run of pieces — asking once beats
     /// toggling each one afterwards. The selected piece's own railing is toggled
     /// from its properties sheet instead.
@@ -126,51 +128,17 @@ extension EditorView {
         return Button {
             game.editorRailNewPieces.toggle()
         } label: {
-            RailGlyph(railed: on, road: on ? .black : .white)
+            RailGlyph(railed: on, road: on ? Retro.onHighlight : .white)
                 .frame(width: 34, height: 26)
-                .background(
-                    on ? Color.white : .black.opacity(0.4),
-                    in: RoundedRectangle(cornerRadius: 7)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 7)
-                        .stroke(.white.opacity(on ? 0.9 : 0.3), lineWidth: 1)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 7))
+                .background(on ? Retro.highlight : Retro.panel.opacity(0.35))
+                // A sticky setting for the NEXT piece, so it reads pressed-in while
+                // armed — same grammar as the mode toggles.
+                .overlay(RetroBevel(inset: on, thickness: 2))
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
-            Text(on ? "Stop railing new pieces" : "Rail new pieces", bundle: .module))
-    }
-
-    /// **The railing toggle.** A railing is per placed piece, not per shape, so a
-    /// bridge can have an open edge you drive off and a flat piece can be fenced.
-    /// The sheet stays open: railing is the kind of thing you flip and look at.
-    func railOption(at index: Int) -> some View {
-        let railed = game.editorIsRailed(at: index)
-        return Button {
-            game.editorToggleRail(at: index)
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: railed ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(railed ? EditorRenderer.bridgeRail : .white.opacity(0.6))
-                Text("Railings", bundle: .module)
-                    .font(Retro.caption)
-                    .foregroundStyle(.white)
-            }
-            .padding(.horizontal, 12)
-            .frame(height: 44)
-            .background(
-                .black.opacity(railed ? 0.5 : 0.22), in: RoundedRectangle(cornerRadius: 10)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(.white.opacity(railed ? 0.8 : 0.25), lineWidth: railed ? 2 : 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 10))
-        }
-        .buttonStyle(.plain)
+            Text(on ? "Stop walling new pieces" : "Wall new pieces", bundle: .module))
     }
 
     /// One markings option: no decal, or one of them. Applied in place — same

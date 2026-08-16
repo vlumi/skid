@@ -3,62 +3,70 @@ import SwiftUI
 
 /// The palette's buttons: the primitive set, and nothing else.
 extension EditorView {
-    /// **Left · right, then the straight.**
+    /// **Left · straight · right — the driving order.**
     ///
-    /// Left and right sit next to each other so they read as one mirrored pair, and
-    /// **swiping them changes radius** (tight → medium → sweep) — the one axis a
-    /// corner still has now that 45° is the only primitive angle. The straight has
-    /// no axis left to swipe, so it's a plain button.
+    /// The lay buttons read as the choice a driver faces at the loose end: turn left,
+    /// go straight, turn right. Radius used to sit UNDER the corner pair ("adjacency
+    /// implies scope"), but pitch — which scopes identically — sat elsewhere, so the
+    /// rule it claimed to follow was broken next to it. All the next-piece settings now
+    /// sit together below, each under its own name. Swiping a corner still changes
+    /// radius (tight → medium → sweep).
     func mainRow(walk: WalkResult) -> some View {
-        HStack(spacing: 12) {
-            // Adjacency implies scope, so position is meaning here. PITCH
-            // leads, set apart: it's the mode everything is laid in — trailing
-            // beside the straight, it read as a straight-only setting. The
-            // RADIUS picker sits against the corner pair, the one thing it
-            // modifies. Both pickers are direct: three fixed options, a tap
-            // beats a swipe.
-            VStack(spacing: 6) {
-                triStack(values: [Pitch.up, .flat, .down], current: buildPitch) {
-                    buildPitch = $0
-                } content: { value in
-                    pitchGlyph(value)
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
+                // The straight places the 1U short, but ICONS as the longer road:
+                // a 1U ribbon is as wide as it is long and reads as a stub tile.
+                pieceButton(
+                    straight, icon: PieceCatalog.ID.straight, walk: walk, big: true)
+                pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
+            }
+            HStack(alignment: .top, spacing: 12) {
+                settingGroup(Text("RADIUS", bundle: .module)) {
+                    triStack(values: CurveRadius.allCases, current: radius, horizontal: true) {
+                        radiusRaw = $0.rawValue
+                    } content: { value in
+                        radiusGlyph(value)
+                    }
                 }
-                // RAILS beside pitch, for the same reason pitch is here: both
-                // configure the NEXT PIECE LAID rather than changing what a tap
-                // means. It used to sit in the mode row, which made it look like a
-                // mode; adjacency implies scope, as the comment above says.
-                railBuildToggle
-                // WARP beside pitch: both are the vertical, and this is the one
-                // that steps rather than slopes. Experimental, so the whole stepper
-                // — arrows and height readout — goes with the Gap it exists to serve.
+                settingGroup(Text("PITCH", bundle: .module)) {
+                    triStack(
+                        values: [Pitch.up, .flat, .down], current: buildPitch, horizontal: true
+                    ) {
+                        buildPitch = $0
+                    } content: { value in
+                        pitchGlyph(value)
+                    }
+                }
+                settingGroup(Text("WALL", bundle: .module)) {
+                    railBuildToggle
+                }
+                // WARP with the settings: it also shapes the next piece (the one that
+                // steps rather than slopes). Experimental, so the whole stepper goes
+                // with the Gap it exists to serve.
                 if EditorView.experimentalGaps {
-                    warpStepper(height: appendHeight(walk))
+                    settingGroup(Text("WARP", bundle: .module)) {
+                        warpStepper(height: appendHeight(walk))
+                    }
                 }
             }
-            .padding(.trailing, 8)
-            // Radius UNDER the corner pair, exactly their width: the setting
-            // visually belongs to the buttons it sits beneath, and the whole
-            // group stands the same height as the pitch stack.
-            VStack(spacing: 6) {
-                HStack(spacing: 6) {
-                    pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
-                    pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
-                }
-                triStack(values: CurveRadius.allCases, current: radius, horizontal: true) {
-                    radiusRaw = $0.rawValue
-                } content: { value in
-                    radiusGlyph(value)
-                }
-            }
-            // The straight places the 1U short, but ICONS as the longer road:
-            // a 1U ribbon is as wide as it is long and reads as a stub tile.
-            pieceButton(straight, icon: PieceCatalog.ID.straight, walk: walk, big: true)
         }
     }
 
-    /// A three-option picker as ONE segmented control: a single body, rounded
-    /// on its outer corners only, hairline seams between the segments — so it
-    /// reads as a toggle with three positions, not three unrelated buttons.
+    /// One named group in the settings row — the label is most of the "better
+    /// language": an unlabelled tri-stack of glyphs names neither itself nor its
+    /// selected value.
+    private func settingGroup<Content: View>(
+        _ label: Text, @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(spacing: 4) {
+            label
+                .font(Retro.caption)
+                .foregroundStyle(Retro.onGroundSoft)
+            content()
+        }
+    }
+
     private func triStack<Value: Hashable, Content: View>(
         values: [Value], current: Value, horizontal: Bool = false,
         select: @escaping (Value) -> Void,
@@ -66,19 +74,22 @@ extension EditorView {
     ) -> some View {
         let layout =
             horizontal
-            ? AnyLayout(HStackLayout(spacing: 1)) : AnyLayout(VStackLayout(spacing: 1))
+            ? AnyLayout(HStackLayout(spacing: 2)) : AnyLayout(VStackLayout(spacing: 2))
         return layout {
             ForEach(values, id: \.self) { value in
                 Button {
                     select(value)
                 } label: {
                     ZStack {
+                        // The armed option is PRESSED-IN and lit, the same grammar as
+                        // the mode toggles: a sticky's current value looks held down.
                         Rectangle()
-                            .fill(.black.opacity(value == current ? 0.5 : 0))
+                            .fill(value == current ? Retro.highlight : .black.opacity(0.25))
                         content(value)
-                            .opacity(value == current ? 1 : 0.55)
+                            .opacity(value == current ? 1 : 0.6)
                     }
-                    .frame(width: horizontal ? 44 : 44, height: horizontal ? 28 : 32)
+                    .frame(width: horizontal ? 38 : 44, height: horizontal ? 28 : 32)
+                    .overlay(RetroBevel(inset: value == current, thickness: 2))
                     // A transparent fill is not hit-testable, so unselected
                     // segments were tappable only on their glyph strokes —
                     // which read as "the selected one hogs the touch area".
@@ -88,8 +99,6 @@ extension EditorView {
                 .buttonStyle(.plain)
             }
         }
-        .background(.black.opacity(0.2))
-        .clipShape(Rectangle())
     }
 
     /// One radius option, as how much turning the radius buys: a full circle
@@ -170,8 +179,12 @@ extension EditorView {
         let placeable = !empty && game.editorCanPlace(piece, pitch: buildPitch)
         let side: CGFloat = big ? 64 : 44
         ZStack {
+            // A raised key, not a flat tile — these are the editor's primary buttons
+            // and looked the least like ones. The icon keeps its dark face (the road
+            // drawing needs the contrast); the bevel is what says "press me". An empty
+            // hotbar slot is INSET instead: a socket awaiting a key.
             Rectangle()
-                .fill(.black.opacity(placeable ? 0.3 : 0.12))
+                .fill(.black.opacity(placeable ? 0.35 : 0.15))
             if !empty {
                 // At the HEAD the icon previews what will be DRAWN, which is the
                 // author's own direction — the road runs out of the head, so the
@@ -188,6 +201,8 @@ extension EditorView {
             }
         }
         .frame(width: side, height: side)
+        .overlay(RetroBevel(inset: empty, thickness: 2))
+        .opacity(empty || placeable ? 1 : 0.5)
         .contentShape(Rectangle())
         .gesture(placeGesture(piece: piece, placeable: placeable, target: target))
         .accessibilityLabel(Text(EditorView.pieceLabel(piece), bundle: .module))

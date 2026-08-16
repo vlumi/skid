@@ -9,57 +9,35 @@ import SwiftUI
 /// small screen.
 extension EditorView {
     var topBar: some View {
-        VStack {
-            HStack {
-                // EVERY top-bar button is an icon. Text pills wrapped to
-                // "Ce/nte/r" and "Co/pie/d" on a small phone, and adding more only
-                // made it worse — seven words never fit one row. Icons do, and the
-                // accessibility label carries the meaning.
-                iconButton("checkmark", "Done") {
-                    game.backToMenu()
-                }
-                Spacer()
-                // **Opens the shelf, rather than clearing the canvas.** It used to call
-                // `editorReset`, which wiped the current track as an undoable edit — the
-                // only "new" available when there was one slot. Now that the library can
-                // hold many, the honest action is to go and pick one (or start a new one
-                // there), leaving this track saved.
-                iconButton("square.grid.2x2", "My tracks") {
-                    game.shelfCameFromEditor = true
-                    game.showingTrackShelf = true
-                }
-                iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
-                    resetView()
-                }
-                // Copy the share code out — how a design becomes a built-in, or
-                // gets kept somewhere until there's a real track library. The icon
-                // flips to a tick to confirm, since there's no text to change.
-                iconButton(copiedCode ? "checkmark.circle.fill" : "doc.on.doc", "Copy code") {
-                    copyCode()
-                }
-                // Long-press copies the SHORT code, without a signature.
-                .simultaneousGesture(
-                    LongPressGesture().onEnded { _ in copyCode(signed: false) })
-                // …and paste one back in to load it. Separate buttons on purpose:
-                // one that did both could silently replace the track you're on.
-                // A failed paste shows a warning icon rather than "Bad code".
-                iconButton(
-                    pasteFailed ? "exclamationmark.triangle.fill" : "doc.on.clipboard",
-                    "Paste code"
-                ) {
-                    pasteCode()
-                }
-                attributionChip
+        HStack(spacing: 8) {
+            // EVERY top-bar button is an icon. Text pills wrapped to
+            // "Ce/nte/r" on a small phone; icons fit, and the accessibility
+            // label carries the meaning.
+            iconButton("checkmark", "Done") {
+                game.backToMenu()
             }
-            .padding()
-            // **The track's name, where you are looking at the track.**
-            //
-            // Renaming lived only behind a long press on a shelf tile, which is both
-            // hidden and the wrong place: you name a track when you have just finished
-            // building it, not when picking one to open. Tapping this renames.
+            Spacer(minLength: 4)
+            // **The track's name, where you are looking at the track** — and the door
+            // to its properties. Copy/paste of the share code moved into that sheet:
+            // they are track-level operations used rarely, and the two of them plus
+            // the attribution seal were most of a row this bar no longer spends.
             nameChip
-            Spacer()
+            Spacer(minLength: 4)
+            iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
+                resetView()
+            }
+            // **Opens the shelf, rather than clearing the canvas.** It used to call
+            // `editorReset`, which wiped the current track as an undoable edit — the
+            // only "new" available when there was one slot. Now that the library can
+            // hold many, the honest action is to go and pick one (or start a new one
+            // there), leaving this track saved.
+            iconButton("square.grid.2x2", "My tracks") {
+                game.shelfCameFromEditor = true
+                game.showingTrackShelf = true
+            }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 
     /// The edited track's name, or a prompt when it has none yet — and the door to
@@ -77,8 +55,11 @@ extension EditorView {
                 Image(systemName: "pencil.line").font(Retro.caption)
                 if let name = game.editedTrackName {
                     Text(verbatim: name)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 } else {
                     Text("Name this track", bundle: .module)
+                        .lineLimit(1)
                 }
             }
             .font(Retro.caption)
@@ -92,7 +73,6 @@ extension EditorView {
 
     func paletteBar(walk: WalkResult) -> some View {
         VStack {
-            Spacer()
             VStack(spacing: 10) {
                 // Whole-track transforms, on the row above the hint: LAID OUT
                 // rather than floated over the map, so they can't collide with
@@ -102,18 +82,26 @@ extension EditorView {
                 // the map: chrome on the road is what caused accidental deletes.
                 let building = game.editorMode == .build
                 if building {
-                    // The SELECTED PIECE, in a fixed place so the bin never moves.
+                    // The SELECTED PIECE's strip: steppers and its properties, in a
+                    // fixed place so the bin never moves. Always present (disabled
+                    // empty) rather than appearing on selection — a row that comes and
+                    // goes resizes the map, which moves the piece you just tapped.
                     HStack(spacing: 8) {
                         selectionRow
                         Spacer()
-                        levelsToggle
-                        modeToggle
                     }
                     .padding(.horizontal, 12)
-                    // The whole track, and the edit history.
+                    // Actions on the left, MODES on the right. A mode reads as a
+                    // pressed-in button while it is on — see `Retro`. Levels and Gates
+                    // stand down while the transforms are expanded, which wants the
+                    // whole row on an SE.
                     HStack(spacing: 8) {
                         transformPad
-                        Spacer()
+                        if !showTransforms {
+                            Spacer()
+                            levelsToggle
+                            modeToggle
+                        }
                     }
                     .padding(.horizontal, 12)
                 } else {
@@ -127,6 +115,14 @@ extension EditorView {
                     gateModeHint(walk)
                 } else {
                     buildStatus(walk: walk)
+                    // The label over the sticky cluster: pitch, radius and the rail
+                    // toggle all shape the NEXT piece laid, and nothing used to say
+                    // so — the rail toggle in particular read as an orphaned second
+                    // control for railings rather than a sibling of pitch.
+                    Text("NEXT PIECE", bundle: .module)
+                        .font(Retro.caption)
+                        .foregroundStyle(Retro.onGroundSoft)
+                        .frame(maxWidth: .infinity)
                     mainRow(walk: walk)
                     // The hotbar appears when it has something to hold; empty slots
                     // are dead space, and today its only entry is experimental.

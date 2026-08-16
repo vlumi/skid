@@ -23,6 +23,22 @@ its builds still filed under v0.7.0 because that step was forgotten.
 
 ### Unreleased (next build)
 
+- **The editor's chrome stopped covering the track.** The map now gets its own space
+  between the bars instead of running underneath them — on the screen where it is
+  already at its smallest. The top bar is one row, buttons are grouped by what they act
+  on, and a mode (Gates, Levels, rail-new-pieces) reads as a pressed-in button while it
+  is on, so you can see at a glance what state the editor is in.
+- **Step the selection along the track.** Arrows beside the piece tools move the
+  selection to the next or previous piece, wrapping at the ends — so railing or marking
+  a run of pieces no longer means re-aiming a tap at each one.
+- **The piece palette says what it is.** The three laying buttons run in driving
+  order — turn left, go straight, turn right — and read as raised keys. The settings
+  that shape the next piece (corner radius, pitch, wall) sit together under their
+  own names, with the current choice shown pressed-in, instead of radius hiding under
+  the corners and the rest scattered.
+- **Copying and pasting track codes moved into the track's own settings**, behind its
+  name — with the signature seal, and a plain warning that pasting replaces the track.
+
 - **Track properties.** Tapping the track's name in the editor now opens its settings —
   the name, and whether it is a circuit or a road — rather than a bare rename box. It is
   the home for anything that belongs to the whole track rather than to one piece.
