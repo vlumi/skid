@@ -19,6 +19,10 @@ public final class SoundEngine {
         var engineGain: Double = 0
         var skidGain: Double = 0
         var thump: Double = 0
+        /// A start beep to fire, as (pitch, loudness). Consumed by the render thread
+        /// like `thump`, so a beep sounds once however many buffers go by.
+        var beepHz: Double = 0
+        var beepGain: Double = 0
     }
 
     private final class State: @unchecked Sendable {
@@ -39,11 +43,19 @@ public final class SoundEngine {
             lock.unlock()
         }
 
+        func beep(hz: Double, gain: Double) {
+            lock.lock()
+            mix.beepHz = hz
+            mix.beepGain = gain
+            lock.unlock()
+        }
+
         func read() -> Mix {
             lock.lock()
             defer { lock.unlock() }
             let value = mix
             mix.thump = 0  // consumed by the render thread
+            mix.beepGain = 0  // ditto — a beep triggers once
             return value
         }
     }
@@ -84,6 +96,14 @@ public final class SoundEngine {
     }
 
     /// Feed the mix from the latest sim state (call once per tick).
+    /// **A start beep.** `final` is the lights-out one: higher and louder, so "go" is
+    /// audibly different from the counting rather than a fourth identical blip — the
+    /// moment you are listening for is the one that sounds unlike the others.
+    public func startBeep(final isFinal: Bool) {
+        guard running else { return }
+        state.beep(hz: isFinal ? 1320 : 660, gain: isFinal ? 0.9 : 0.5)
+    }
+
     public func update(race: Race, humanCount: Int, paused: Bool) {
         guard running else { return }
         if paused {
@@ -110,6 +130,16 @@ public final class SoundEngine {
         }
     }
 
+    /// One sample of the countdown beep: a clean sine, so it cuts through the engine's
+    /// saws rather than blending into them. Advances `phase` in place.
+    private nonisolated static func beepSample(
+        phase: inout Double, hz: Double, rate: Double
+    ) -> Double {
+        phase += hz / rate
+        phase -= phase.rounded(.down)
+        return sin(phase * 2 * .pi) * 0.35
+    }
+
     private func makeSourceNode(sampleRate: Double) -> AVAudioSourceNode {
         let state = self.state
         var phase1 = 0.0
@@ -119,10 +149,18 @@ public final class SoundEngine {
         var smoothedSkid = 0.0
         var noiseFilter = 0.0
         var thumpEnv = 0.0
+        var beepEnv = 0.0
+        var beepPhase = 0.0
+        var beepHz = 880.0
         var seed: UInt64 = 0x9E37_79B9
         return AVAudioSourceNode { _, _, frameCount, audioBufferList -> OSStatus in
             let targets = state.read()
             thumpEnv = min(1, thumpEnv + targets.thump)
+            if targets.beepGain > 0 {
+                beepEnv = targets.beepGain
+                beepHz = targets.beepHz
+                beepPhase = 0
+            }
             let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
             guard let out = buffers.first?.mData?.assumingMemoryBound(to: Float.self) else {
                 return noErr
@@ -133,6 +171,8 @@ public final class SoundEngine {
                 smoothedEngine += (targets.engineGain - smoothedEngine) * 0.0008
                 smoothedSkid += (targets.skidGain - smoothedSkid) * 0.0015
                 thumpEnv *= 0.9996
+                // Faster decay than a thump: a countdown beep is a blip, not a boom.
+                beepEnv *= 0.99988
 
                 // Two detuned saws — a cheap, angry little engine.
                 phase1 += smoothedHz / sampleRate
@@ -152,6 +192,8 @@ public final class SoundEngine {
                     saws * smoothedEngine * 0.5
                     + noiseFilter * smoothedSkid
                     + white * thumpEnv * 0.5
+                    + SoundEngine.beepSample(phase: &beepPhase, hz: beepHz, rate: sampleRate)
+                    * beepEnv
                 out[frame] = Float(max(-1, min(1, sample)))
             }
             return noErr
