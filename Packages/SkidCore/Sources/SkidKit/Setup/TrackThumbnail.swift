@@ -28,6 +28,7 @@ struct TrackThumbnail: View {
                     walk: walk, width: Double(PieceCatalog.width),
                     gateSeams: showsGates ? layout.gateSeams : [],
                     decals: layout.decals, railed: layout.railed,
+                    roadStyle: layout.roadStyle,
                     transform: transform, into: &context)
             }
         }

@@ -23,7 +23,8 @@ enum EditorRenderer {
     static func draw(
         walk: WalkResult, width: Double, selectedEnd: Int?, gateSeams: [Int] = [],
         gating: Bool = false, selectedPiece: Int? = nil, decals: [Int: Decal] = [:],
-        railed: Set<Int> = [], blockedPieces: Set<Int> = [], showLevels: Bool = false,
+        railed: Set<Int> = [], roadStyle: TrackLayout.RoadStyle = .circuit,
+        blockedPieces: Set<Int> = [], showLevels: Bool = false,
         dimmedExcept: Int? = nil, transform t: Transform,
         into context: inout GraphicsContext
     ) {
@@ -32,7 +33,7 @@ enum EditorRenderer {
         drawCanvasBounds(walk: walk, t: t, into: &context)
         drawTrack(
             walk: walk, width: width, gateSeams: gateSeams, gating: gating, decals: decals,
-            railed: railed, transform: t, into: &context)
+            railed: railed, roadStyle: roadStyle, transform: t, into: &context)
         // Above ALL road, so a higher deck cannot paint out a lower piece's badge.
         // Blocked pieces are always flagged; the level numbers are a mode, since on a
         // flat track they are noise.
@@ -118,7 +119,8 @@ enum EditorRenderer {
     /// once.
     static func drawTrack(
         walk: WalkResult, width: Double, gateSeams: [Int], gating: Bool = false,
-        decals: [Int: Decal] = [:], railed: Set<Int> = [], transform t: Transform,
+        decals: [Int: Decal] = [:], railed: Set<Int> = [],
+        roadStyle: TrackLayout.RoadStyle = .circuit, transform t: Transform,
         heightRange: ClosedRange<Double> = Track.everyStorey,
         into context: inout GraphicsContext
     ) {
@@ -161,6 +163,11 @@ enum EditorRenderer {
         for (index, placed) in ordered {
             drawPieceRibbon(
                 placed, width: width, railed: railed.contains(index), t: t, into: &context)
+            // The road's own markings go under any decal: an arrow is placed ON a road,
+            // so it reads as the later coat of paint.
+            if roadStyle == .road, LaneDashPlan.paints(placed) {
+                drawLaneDashes(placed, width: width, transform: t, into: &context)
+            }
             drawDecal(decals[index], on: placed, width: width, t: t, into: &context)
             // The start line and grid hashes are paint on the START piece's own
             // road, so they belong to that piece too. Drawn after every ribbon
