@@ -322,9 +322,35 @@ what a track can *be*, the rest are editor conveniences that can ride any build.
       the selection and the build end as a property of the selected end;
       in-place decal variants; and reversing the driving direction.
 
-      Left: **step 7**, the chrome — where the closure control lands, the "track
-      complete" chip out of the button column. Explicitly a decide-on-device
-      step, once everything above has been driven.
+      Left: **step 7, the chrome** — and it has grown from "where does the closure
+      control land" into a real pass, now that the editor has been used on device.
+      Reported, in the author's own order of annoyance:
+
+      - **The chrome covers the track.** Buttons overlap the map by default, on a
+        screen where the map is already the smallest it will ever be. Nothing else
+        here matters as much: the thing being edited is partly hidden.
+      - **The button organization is arbitrary and takes too much space.** Trash,
+        undo, redo, fit, copy, shelf, levels, gates, palette, radius and pitch are
+        all present at once, grouped by how they were added rather than by what
+        they are.
+      - **Modes are invisible.** Gate mode, rail-new-pieces and the level filter are
+        modes, but nothing says so at a glance — you cannot tell which are on, or
+        that they are the kind of thing that stays on.
+      - **Rails have TWO controls for one idea**: a sticky "rail new pieces" toggle
+        in the palette, and a per-piece checkbox in the properties sheet. Both are
+        defensible alone; together they are confusing, and they do not look alike.
+
+      The organizing question is one word per control: is it an **action** (do it
+      now), a **mode** (stays on until turned off), or a **property** (of the track,
+      or of the selected piece)? The rail pair is the clearest case of that
+      distinction being unmade.
+
+      Two things that already have homes and set the pattern: track-wide settings
+      live in the properties sheet behind the name chip (`TrackPropertiesSheet`),
+      and the retro pass reached most of the editor but **missed these controls** —
+      the rail toggles and the piece-properties rows are still rounded and native.
+
+      Still explicitly a decide-on-device step.
 - [ ] **The editor can only open ONE track.** The library already stores many —
       `TrackLibraryBook` keeps names, dates, signatures and an `isRaceable` flag — but
       `editorLayout` is a single buffer restored from a single slot, so every entry is
