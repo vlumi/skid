@@ -86,7 +86,13 @@ sed -i '' -E "s/(CURRENT_PROJECT_VERSION: *)\"[0-9]+\"/\1\"${new_build}\"/" "$PR
 
 # ── Stamp the changelog: Unreleased → build N (stages CHANGELOG.md if it had entries)
 say "Stamping the changelog…"
-promote_changelog_build "$new_build"
+# Pass the version ONLY when it changed: a new `## vX.Y.Z` heading belongs above the
+# first build of that version, and nowhere else.
+if [ "$new_version" != "$cur_version" ]; then
+    promote_changelog_build "$new_build" "$new_version"
+else
+    promote_changelog_build "$new_build"
+fi
 
 # ── Branch, commit, push, PR with auto-merge ──────────────────────────────────
 rel_branch="release/v${new_version}-${new_build}"
