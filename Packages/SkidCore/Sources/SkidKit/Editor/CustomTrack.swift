@@ -373,6 +373,18 @@ extension CouchGame {
     /// track started from a copy. So naming a brand-new track works the moment you think
     /// of the name, rather than only after it has been saved.
     @discardableResult
+    /// **Set the edited track's road style**, which is a property of the whole track
+    /// rather than of any piece — see `TrackLayout.RoadStyle`.
+    ///
+    /// Assigning `editorLayout` is what persists it: the property's observer saves the
+    /// custom slot and syncs the library row, exactly as a piece edit does.
+    public func setEditedRoadStyle(_ style: TrackLayout.RoadStyle) {
+        guard var layout = editorLayout, layout.roadStyle != style else { return }
+        layout.roadStyle = style
+        editorLayout = layout
+    }
+
+    @discardableResult
     public func renameEditedTrack(to name: String) -> Bool {
         guard let cleaned = TrackName.cleaned(name) else { return false }
         if let id = editedEntryID, library.entry(id: id) != nil {
