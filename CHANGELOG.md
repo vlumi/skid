@@ -13,11 +13,13 @@ Each version's top section, **Unreleased (next build)**, collects entries
 merged to `main` but not yet in a TestFlight build; cutting a release renames
 it to that build's heading and opens a fresh empty one. Keep that heading
 immediately followed by its list items (no prose between), so the release
-script can promote it with a one-line edit. A user-facing PR writes its own
-bullet here; the `## vX.Y.Z` marketing heading is hand-set when a milestone
-ships (see [AGENTS.md](AGENTS.md)).
+script can promote it. A user-facing PR writes its own bullet here.
 
-## v0.7.0
+The `## vX.Y.Z` heading is written by the release lane too, whenever a release
+cuts a new marketing version — it used to be hand-set, and v0.8.0 shipped with
+its builds still filed under v0.7.0 because that step was forgotten.
+
+## v0.8.0
 
 ### Unreleased (next build)
 
@@ -115,6 +117,8 @@ ships (see [AGENTS.md](AGENTS.md)).
   car quietly records no times, with no obvious way back.
 - **Reset all data** puts the app back to freshly-installed: every track, record,
   profile and dial, behind a confirmation.
+
+## v0.7.0
 
 ### build 12 — 2026-08-10
 

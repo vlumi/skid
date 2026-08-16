@@ -93,7 +93,9 @@ between them is the merged commit on the base — no state file:
    cutting it from a single-platform release is cutting the project's version —
    which is intended: a milestone that ships to one platform still moved the
    project on, and the version string is what a milestone is recorded as.
-   Stamps the changelog's *Unreleased (next build)* into `### build N`,
+   Stamps the changelog's *Unreleased (next build)* into `### build N` — and
+   opens a `## vX.Y.Z` section for it when the version changed, leaving the
+   previous heading over the builds it shipped.
    commits on a `release/vX.Y.Z-N` branch, opens a PR, sets **auto-merge**,
    and **blocks until CI passes and it merges**. Red CI stops here — PR left
    open, nothing tagged or built.
