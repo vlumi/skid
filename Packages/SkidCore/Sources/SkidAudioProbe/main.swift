@@ -60,17 +60,17 @@ func sweepSamples(seconds: Double) -> [Int16] {
 }
 
 /// The countdown: two blips and the higher start tone, spaced as they are heard.
+///
+/// Uses the game's own `BeepVoice`, so what this renders is what plays.
 func beepSamples() -> [Int16] {
     var out: [Int16] = []
     for (index, hz) in [660.0, 660.0, 1320.0].enumerated() {
-        let gain = index == 2 ? 0.9 : 0.5
-        var phase = 0.0
-        var envelope = gain
+        var beep = BeepVoice.Playing()
+        beep.start(hz: hz, gain: index == 2 ? 0.9 : 0.5, rate: rate)
+        // The beep itself, then silence out to one second — the gap is what makes three
+        // beeps countable rather than a warble.
         for _ in 0..<Int(rate) {
-            phase += hz / rate
-            phase -= phase.rounded(.down)
-            envelope *= 0.99988
-            out.append(Int16(sin(phase * 2 * .pi) * envelope * 0.35 * 32_767))
+            out.append(Int16(max(-1, min(1, beep.sample(rate: rate))) * 32_767))
         }
     }
     return out
