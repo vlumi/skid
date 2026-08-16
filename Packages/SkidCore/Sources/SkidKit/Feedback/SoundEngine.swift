@@ -150,16 +150,6 @@ public final class SoundEngine {
         return Double(Int64(bitPattern: seed % 2000) - 1000) / 1000
     }
 
-    /// One sample of the countdown beep: a clean sine, so it cuts through the engine's
-    /// saws rather than blending into them. Advances `phase` in place.
-    private nonisolated static func beepSample(
-        phase: inout Double, hz: Double, rate: Double
-    ) -> Double {
-        phase += hz / rate
-        phase -= phase.rounded(.down)
-        return sin(phase * 2 * .pi) * 0.35
-    }
-
     private func makeSourceNode(sampleRate: Double) -> AVAudioSourceNode {
         let state = self.state
         var phase1 = 0.0
@@ -170,17 +160,13 @@ public final class SoundEngine {
         var smoothedSkid = 0.0
         var noiseFilter = 0.0
         var thumpEnv = 0.0
-        var beepEnv = 0.0
-        var beepPhase = 0.0
-        var beepHz = 880.0
+        var beep = BeepVoice.Playing()
         var seed: UInt64 = 0x9E37_79B9
         return AVAudioSourceNode { _, _, frameCount, audioBufferList -> OSStatus in
             let targets = state.read()
             thumpEnv = min(1, thumpEnv + targets.thump)
             if targets.beepGain > 0 {
-                beepEnv = targets.beepGain
-                beepHz = targets.beepHz
-                beepPhase = 0
+                beep.start(hz: targets.beepHz, gain: targets.beepGain, rate: sampleRate)
             }
             let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
             guard let out = buffers.first?.mData?.assumingMemoryBound(to: Float.self) else {
@@ -193,8 +179,6 @@ public final class SoundEngine {
                 smoothedEngine += (targets.engineGain - smoothedEngine) * 0.0008
                 smoothedSkid += (targets.skidGain - smoothedSkid) * 0.0015
                 thumpEnv *= 0.9996
-                // Faster decay than a thump: a countdown beep is a blip, not a boom.
-                beepEnv *= 0.99988
 
                 // A pulse and a square an octave down — see `EngineVoice`.
                 phase1 += smoothedHz / sampleRate
@@ -211,8 +195,7 @@ public final class SoundEngine {
                     engine * smoothedEngine * 0.5
                     + noiseFilter * smoothedSkid
                     + white * thumpEnv * 0.5
-                    + SoundEngine.beepSample(phase: &beepPhase, hz: beepHz, rate: sampleRate)
-                    * beepEnv
+                    + beep.sample(rate: sampleRate)
                 // **Soft limit, not a hard clamp.** Measured: engine + skid + a thump
                 // sums to 0.995, and a countdown beep landing during a slide-and-hit
                 // pushes it to 1.31 — which `max(-1, min(1,))` turns into square-wave
