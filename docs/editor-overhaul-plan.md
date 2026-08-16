@@ -166,3 +166,15 @@ in place.
 - **The construction marker** (step 4): possibly redundant next to the arrows.
 - **Where the closure control lands** (step 7): with the map actions, or near
   the palette.
+- **The whole of step 7**, widened after device use. In the author's order of
+  annoyance: the chrome **covers the track**; the button layout is arbitrary and
+  space-hungry; **modes are invisible** (gate mode, rail-new-pieces, level
+  filter); and **rails have two controls** — a sticky "rail new pieces" toggle in
+  the palette and a per-piece checkbox in the properties sheet.
+
+  The question to answer per control: **action, mode, or property?** Rails are
+  the clearest case of that being unmade — the same idea wearing two shapes.
+
+  Note the retro pass missed these: the rail toggles and the piece-properties
+  rows are still rounded and native, so restyling rides along with whatever
+  reorganization happens.
