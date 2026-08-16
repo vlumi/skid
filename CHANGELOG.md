@@ -33,6 +33,7 @@ its builds still filed under v0.7.0 because that step was forgotten.
   track, and "go" sounds unlike the counting rather than being a fourth identical tone.
   They are held tones rather than the ringing bells the first version produced, and
   gentler than the engine: a countdown should not be as rough as the thing it counts in.
+  One beep per light, so what you hear and what you see are the same countdown.
 - **Start lights instead of a countdown.** Five lamps fill up as the seconds pass and
   all go out at once when the race starts, the way a circuit start works. They also
   solve something the numbers could not: a "3" upside down is not a 3, so the count had
