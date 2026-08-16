@@ -38,7 +38,7 @@ extension EditorView {
                         pitchGlyph(value)
                     }
                 }
-                settingGroup(Text("RAIL", bundle: .module)) {
+                settingGroup(Text("WALL", bundle: .module)) {
                     railBuildToggle
                 }
                 // WARP with the settings: it also shapes the next piece (the one that
