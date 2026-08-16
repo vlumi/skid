@@ -1,70 +1,27 @@
 # Changelog
 
-All notable changes to Skid are documented here.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to Skid are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Grouped by **marketing version** (a roadmap milestone), then by **build
-number** within it — the version stays steady while the build climbs each
-TestFlight upload (see [RELEASING.md](RELEASING.md)). The build heading is
-just `### build N — <date>`; the version comes from the `## vX.Y.Z` above it.
+Grouped by **marketing version** (a roadmap milestone), then by **build number** within it — the version stays steady while the build climbs each TestFlight upload (see [RELEASING.md](RELEASING.md)). The build heading is just `### build N — <date>`; the version comes from the `## vX.Y.Z` above it.
 
-Each version's top section, **Unreleased (next build)**, collects entries
-merged to `main` but not yet in a TestFlight build; cutting a release renames
-it to that build's heading and opens a fresh empty one. Keep that heading
-immediately followed by its list items (no prose between), so the release
-script can promote it. A user-facing PR writes its own bullet here.
+Each version's top section, **Unreleased (next build)**, collects entries merged to `main` but not yet in a TestFlight build; cutting a release renames it to that build's heading and opens a fresh empty one. Keep that heading immediately followed by its list items (no prose between), so the release script can promote it. A user-facing PR writes its own bullet here.
 
-The `## vX.Y.Z` heading is written by the release lane too, whenever a release
-cuts a new marketing version — it used to be hand-set, and v0.8.0 shipped with
-its builds still filed under v0.7.0 because that step was forgotten.
+The `## vX.Y.Z` heading is written by the release lane too, whenever a release cuts a new marketing version — it used to be hand-set, and v0.8.0 shipped with its builds still filed under v0.7.0 because that step was forgotten.
+
+**One bullet, one line — no hard wrapping.** Editors soft-wrap and rendered Markdown ignores the line breaks, while hard wraps make an edited entry re-flow into a diff nobody can read. **Order the unreleased list by what a player notices**, not by merge order, and fold entries that tell one story into one bullet.
 
 ## v0.8.0
 
 ### Unreleased (next build)
 
-- **The editor's chrome stopped covering the track.** The map now gets its own space
-  between the bars instead of running underneath them — on the screen where it is
-  already at its smallest. The top bar is one row, buttons are grouped by what they act
-  on, and a mode (Gates, Levels, rail-new-pieces) reads as a pressed-in button while it
-  is on, so you can see at a glance what state the editor is in.
-- **Step the selection along the track.** Arrows beside the piece tools move the
-  selection to the next or previous piece, wrapping at the ends — so railing or marking
-  a run of pieces no longer means re-aiming a tap at each one.
-- **The piece palette says what it is.** The three laying buttons run in driving
-  order — turn left, go straight, turn right — and read as raised keys. The settings
-  that shape the next piece (corner radius, pitch, wall) sit together under their
-  own names, with the current choice shown pressed-in, instead of radius hiding under
-  the corners and the rest scattered.
-- **Copying and pasting track codes moved into the track's own settings**, behind its
-  name — with the signature seal, and a plain warning that pasting replaces the track.
-
-- **Track properties.** Tapping the track's name in the editor now opens its settings —
-  the name, and whether it is a circuit or a road — rather than a bare rename box. It is
-  the home for anything that belongs to the whole track rather than to one piece.
-- **Roads, not just circuits.** A track can now be a public road closed off for a race:
-  a dashed centre line down the middle, marked out the way a real road is. It is a
-  property of the whole track rather than something you paint piece by piece, so it
-  covers pieces you add later without being placed again. Existing tracks are unchanged
-  — a circuit is still the default, and still has bare asphalt.
-
-- **The engine sounds like an engine.** It was two smooth sawtooth waves spanning about
-  one octave, which came out as a synth pad that barely changed with speed. It is now a
-  pulse wave — the buzzy, mechanical shape a 90s game would have used, matching the rest
-  of the look — spanning over two octaves, and the pulse widens as you accelerate so the
-  engine audibly strains rather than just rising in pitch.
-- **The countdown beeps.** Two blips as the lights fill, then a higher, louder one the
-  moment they go out — so the start is something you can hear with your eyes on the
-  track, and "go" sounds unlike the counting rather than being a fourth identical tone.
-  They are held tones rather than the ringing bells the first version produced, and
-  gentler than the engine: a countdown should not be as rough as the thing it counts in.
-  One beep per light, so what you hear and what you see are the same countdown.
-- **Start lights instead of a countdown.** Five lamps fill up as the seconds pass and
-  all go out at once when the race starts, the way a circuit start works. They also
-  solve something the numbers could not: a "3" upside down is not a 3, so the count had
-  to be drawn twice and mirrored — and the players sitting sideways in a four-way game
-  read neither copy. A row of lights is symmetric, so one gantry reads the same from
-  every seat.
+- **Start lights instead of a countdown.** Five lamps fill up as the seconds pass and all go out at once when the race starts, the way a circuit start works. They also solve something numbers could not: a "3" upside down is not a 3, so the count had to be drawn twice and mirrored — and the players sitting sideways in a four-way game read neither copy. A row of lights is symmetric, so one gantry reads the same from every seat.
+- **The countdown beeps**, one beep per light: three as they fill, then a higher, louder one the moment they go out. The start is something you can hear with your eyes on the track, and "go" sounds unlike the counting rather than being a fourth identical tone.
+- **The engine sounds like an engine.** It was two smooth sawtooth waves spanning about one octave, which came out as a synth pad that barely changed with speed. It is now a pulse wave — the buzzy, mechanical shape a 90s game would have used, matching the rest of the look — spanning over two octaves, and the pulse widens as you accelerate so the engine audibly strains rather than just rising in pitch.
+- **Roads, not just circuits.** A track can now be a public road closed off for a race: a dashed centre line down the middle, marked out the way a real road is. It is a property of the whole track rather than something you paint piece by piece, so it covers pieces you add later without being placed again. Existing tracks are unchanged — a circuit is still the default, and still has bare asphalt.
+- **Track properties.** Tapping the track's name in the editor opens its settings — the name, whether it is a circuit or a road, and its share code — rather than a bare rename box. It is the home for anything belonging to the whole track rather than to one piece, so copying and pasting codes moved there too, with the signature seal and a plain warning that pasting replaces the track.
+- **The editor's chrome stopped covering the track.** The map gets its own space between the bars instead of running underneath them — on the screen where it is already at its smallest. The top bar is one row, buttons are grouped by what they act on, and a mode (Gates, Levels, wall-on-new-pieces) reads as a pressed-in button while it is on, so the editor's state is visible at a glance.
+- **The piece palette says what it is.** The three laying buttons run in driving order — turn left, go straight, turn right — and read as raised keys. The settings that shape the next piece (corner radius, pitch, wall) sit together under their own names, with the current choice pressed-in, instead of radius hiding under the corners and the rest scattered.
+- **Step the selection along the track.** Arrows beside the piece tools move the selection to the next or previous piece, wrapping at the ends — so walling or marking a run of pieces no longer means re-aiming a tap at each one.
 
 ### build 13 — 2026-08-15
 
