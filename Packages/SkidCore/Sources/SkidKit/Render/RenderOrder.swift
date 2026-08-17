@@ -39,6 +39,12 @@ enum RenderOrder {
         /// under the ghost of the car beneath it.
         case window
         case car
+        /// **The headlight fans, above every road band.** A beam lights the road
+        /// ahead — including a ramp whose ribbon paints in a HIGHER band than its
+        /// driver — so no band's asphalt may paint over it; that was the old cone's
+        /// "lost under the ramp" bug. It never lands where a deck should cover it,
+        /// because `Headlight` cuts its rays at a covering deck's edge instead.
+        case beam
         /// Above every storey: a launched car is between levels by definition.
         case airborne
 

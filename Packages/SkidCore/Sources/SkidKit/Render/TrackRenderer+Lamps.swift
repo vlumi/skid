@@ -13,14 +13,31 @@ import SwiftUI
 /// to 4.6, against the old sheen's 3.7. Large colored areas spend the palette's
 /// separation budget; a pair of 3.8-unit dots does not.
 extension TrackRenderer {
-    /// The lamp dots at the nose tip — flavor at editor zoom, and the only white on
-    /// the body. Too small to wash out a palette the way a half-body gradient did.
-    static func paintLamps(length: Double, into livery: inout GraphicsContext) {
-        for side in [-1.0, 1.0] {
-            let lamp = CGRect(x: length / 2 - 6, y: side * 3.4 - 1.9, width: 3.8, height: 3.8)
-            livery.fill(
-                Path(ellipseIn: lamp), with: .color(Color(red: 1, green: 0.98, blue: 0.82)))
-        }
+    /// **The headlight fan — the facing cue.** In the car's own color, so it also
+    /// helps tell the cars apart; brightest at the nose, gone by the tip.
+    ///
+    /// This replaced the two white nose dots: at race zoom they were a couple of
+    /// pixels, and reading which end of a smudge carries the dots is not a glance
+    /// question. A colored wedge ahead of the car is.
+    ///
+    /// The fan arrives already clipped (see `Headlight`): walls the car cannot pass
+    /// stop it, a covering deck's edge ends it, and the road ahead — ramps included —
+    /// never touches it.
+    static func drawHeadlight(
+        car: CarState, color: Color, track: Track, scale: Double = 1,
+        into context: inout GraphicsContext
+    ) {
+        let fan = Headlight.fan(car: car, track: track, scale: scale)
+        guard fan.count > 2 else { return }
+        var path = Path()
+        path.addLines(fan.map { CGPoint(x: $0.x, y: $0.y) })
+        path.closeSubpath()
+        let nose = CGPoint(x: fan[0].x, y: fan[0].y)
+        context.fill(
+            path,
+            with: .radialGradient(
+                Gradient(colors: [color.opacity(0.5), color.opacity(0)]),
+                center: nose, startRadius: 0, endRadius: Headlight.reach * scale))
     }
 
     /// **Traveling backwards, which is not the same question as facing.**
