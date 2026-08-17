@@ -2,7 +2,7 @@ import XCTest
 
 @testable import SkidCore
 
-/// **The headlight fan, and the clipping that killed its predecessor.**
+/// **The headlight fans, and the clipping that killed their predecessor.**
 ///
 /// The old cone was a fixed shape clipped after the fact: it vanished under ramp edges
 /// and shone through walls. Each reported failure mode is a test here, phrased as
@@ -20,26 +20,35 @@ final class HeadlightTests: XCTestCase {
         CarState(position: .zero, heading: heading, height: height)
     }
 
-    // MARK: - The shape itself
-
-    /// **Shorter than the car, a bit wider than it** — the spec, pinned.
-    func testTheFanIsAFacingCueNotABeam() {
-        XCTAssertLessThan(Headlight.reach, CarGeometry.length)
-        XCTAssertGreaterThan(Headlight.tipHalfWidth * 2, CarGeometry.width)
-        XCTAssertLessThan(Headlight.tipHalfWidth * 2, CarGeometry.width * 1.6)
+    private func tips(_ fans: [[Vec2]]) -> [Vec2] {
+        fans.flatMap { $0.dropFirst() }
     }
 
-    /// Unobstructed, every ray reaches full length and the fan is symmetric about
-    /// the heading.
-    func testAnOpenFanIsFullAndSymmetric() {
-        let fan = Headlight.fan(car: car(), track: openTrack())
-        XCTAssertEqual(fan.count, Headlight.rayCount + 1)
-        let nose = fan[0]
-        for tip in fan.dropFirst() {
-            XCTAssertEqual(nose.distance(to: tip), Headlight.reach, accuracy: 1e-9)
+    // MARK: - The shape itself
+
+    /// **Shorter than the car, together a bit wider than it** — the spec, pinned. Two
+    /// lamps, so the light reads as headlights rather than a wedge at the nose center.
+    func testTheFansAreAFacingCueNotABeam() {
+        XCTAssertLessThan(Headlight.reach, CarGeometry.length)
+        let outerSpread = (Headlight.lampOffset + Headlight.lampHalfWidth) * 2
+        XCTAssertGreaterThan(outerSpread, CarGeometry.width)
+        XCTAssertLessThan(outerSpread, CarGeometry.width * 1.6)
+    }
+
+    /// Unobstructed, both lamps cast a full fan and the pair is symmetric about the
+    /// heading — each lamp mirrors the other.
+    func testOpenFansAreFullAndMirrored() {
+        let fans = Headlight.fans(car: car(), track: openTrack())
+        XCTAssertEqual(fans.count, 2)
+        for fan in fans {
+            XCTAssertEqual(fan.count, Headlight.rayCount + 1)
+            let lamp = fan[0]
+            for tip in fan.dropFirst() {
+                XCTAssertEqual(lamp.distance(to: tip), Headlight.reach, accuracy: 1e-9)
+            }
         }
-        for (near, far) in zip(fan.dropFirst(), fan.dropFirst().reversed()) {
-            XCTAssertEqual(near.y, -far.y, accuracy: 1e-9, "the fan is lopsided")
+        for (left, right) in zip(fans[0], fans[1].reversed().rotated()) {
+            XCTAssertEqual(left.y, -right.y, accuracy: 1e-9, "the pair is lopsided")
         }
     }
 
@@ -49,10 +58,25 @@ final class HeadlightTests: XCTestCase {
     /// the car's own level cuts the rays that meet it.
     func testARailAtOwnLevelBlocksTheLight() {
         let rail = Wall(from: Vec2(30, -40), to: Vec2(30, 40), height: 0, kind: .rail)
-        let fan = Headlight.fan(car: car(), track: openTrack(walls: [rail]))
-        // The nose sits 17 ahead of the center, so the wall is 13 past the nose.
-        for tip in fan.dropFirst() {
+        let fans = Headlight.fans(car: car(), track: openTrack(walls: [rail]))
+        // The nose sits 17 ahead of the center, so the wall is 13 past the lamps.
+        for tip in tips(fans) {
             XCTAssertLessThanOrEqual(tip.x, 30 + 1e-9, "light shone through the rail")
+        }
+    }
+
+    /// **A lamp shoved into a wall goes dark instead of shining beyond it.** Collision
+    /// stops the car's CENTER, not its body — pressed against a wall, the nose can sit
+    /// past the wall line, and a lamp past the line casts rays that never meet the
+    /// wall at all. Reported from device as light on the far side of the wall the car
+    /// was buried in.
+    func testALampInsideTheWallIsDark() {
+        let rail = Wall(from: Vec2(10, -40), to: Vec2(10, 40), height: 0, kind: .rail)
+        // Center legal at x=0; the lamps sit at the nose, x=17, past the wall.
+        let fans = Headlight.fans(car: car(), track: openTrack(walls: [rail]))
+        XCTAssertEqual(fans.count, 2)
+        for fan in fans {
+            XCTAssertTrue(fan.isEmpty, "a buried lamp lit the far side of its wall")
         }
     }
 
@@ -61,11 +85,13 @@ final class HeadlightTests: XCTestCase {
     /// what it already does for collision.
     func testADeckRailPassesTheGroundCarsLight() {
         let deckRail = Wall(from: Vec2(30, -40), to: Vec2(30, 40), height: 1, kind: .rail)
-        let fan = Headlight.fan(car: car(), track: openTrack(walls: [deckRail]))
-        for tip in fan.dropFirst() {
-            XCTAssertEqual(
-                Vec2(17, 0).distance(to: tip), Headlight.reach, accuracy: 1e-9,
-                "a deck rail dimmed the road under the bridge")
+        let fans = Headlight.fans(car: car(), track: openTrack(walls: [deckRail]))
+        for fan in fans {
+            for tip in fan.dropFirst() {
+                XCTAssertEqual(
+                    fan[0].distance(to: tip), Headlight.reach, accuracy: 1e-9,
+                    "a deck rail dimmed the road under the bridge")
+            }
         }
     }
 
@@ -78,8 +104,8 @@ final class HeadlightTests: XCTestCase {
             outward: Vec2(0, -1))
         let track = openTrack(walls: [flank])
         // From outside (below, facing up into the flank): blocked.
-        let outside = Headlight.fan(car: car(heading: .pi / 2), track: track)
-        for tip in outside.dropFirst() {
+        let outside = Headlight.fans(car: car(heading: .pi / 2), track: track)
+        for tip in tips(outside) {
             XCTAssertLessThanOrEqual(tip.y, 30 + 1e-9, "light shone through the earth")
         }
         // From the road it carries (above, at its height, facing down): passes — the
@@ -87,11 +113,13 @@ final class HeadlightTests: XCTestCase {
         var onRamp = car(heading: -.pi / 2)
         onRamp.position = Vec2(0, 60)
         onRamp.height = 0.5
-        let inside = Headlight.fan(car: onRamp, track: track)
-        let full = inside.dropFirst().filter {
-            abs(Vec2(0, 43).distance(to: $0) - Headlight.reach) < 1e-6
+        let inside = Headlight.fans(car: onRamp, track: track)
+        for fan in inside {
+            let full = fan.dropFirst().filter {
+                abs(fan[0].distance(to: $0) - Headlight.reach) < 1e-6
+            }
+            XCTAssertEqual(full.count, Headlight.rayCount, "the ramp blinded its own driver")
         }
-        XCTAssertEqual(full.count, Headlight.rayCount, "the ramp blinded its own driver")
     }
 
     /// **Invisible barriers cast no shadows.** The map boundary and the level seals
@@ -102,9 +130,12 @@ final class HeadlightTests: XCTestCase {
             Wall(from: Vec2(25, -40), to: Vec2(25, 40), height: 0, kind: .boundary),
             Wall(from: Vec2(30, -40), to: Vec2(30, 40), height: 1, kind: .gate),
         ]
-        let fan = Headlight.fan(car: car(), track: openTrack(walls: walls))
-        for tip in fan.dropFirst() {
-            XCTAssertEqual(Vec2(17, 0).distance(to: tip), Headlight.reach, accuracy: 1e-9)
+        let fans = Headlight.fans(car: car(), track: openTrack(walls: walls))
+        for fan in fans {
+            XCTAssertFalse(fan.isEmpty, "an invisible wall buried a lamp")
+            for tip in fan.dropFirst() {
+                XCTAssertEqual(fan[0].distance(to: tip), Headlight.reach, accuracy: 1e-9)
+            }
         }
     }
 
@@ -116,11 +147,13 @@ final class HeadlightTests: XCTestCase {
         let track = Track(
             centerline: [Vec2(20, 0), Vec2(200, 0)],
             width: 120, heights: [0.4, 0.4], size: Vec2(2_000, 2_000))
-        let fan = Headlight.fan(car: car(), track: track)
-        for tip in fan.dropFirst() {
-            XCTAssertEqual(
-                Vec2(17, 0).distance(to: tip), Headlight.reach, accuracy: 1e-9,
-                "the beam was clipped by road the car can drive onto")
+        let fans = Headlight.fans(car: car(), track: track)
+        for fan in fans {
+            for tip in fan.dropFirst() {
+                XCTAssertEqual(
+                    fan[0].distance(to: tip), Headlight.reach, accuracy: 1e-9,
+                    "the beam was clipped by road the car can drive onto")
+            }
         }
     }
 
@@ -137,37 +170,48 @@ final class HeadlightTests: XCTestCase {
         XCTAssertTrue(
             (nose + 2..<nose + Headlight.reach).contains(footprintEdge),
             "the fixture must put the deck edge inside the beam; it is at \(footprintEdge)")
-        let fan = Headlight.fan(car: car(), track: track)
-        for tip in fan.dropFirst() {
+        let fans = Headlight.fans(car: car(), track: track)
+        for tip in tips(fans) {
             XCTAssertLessThanOrEqual(
                 tip.x, footprintEdge + 1e-9,
                 "the beam reached under (and would paint over) the deck")
         }
         // And a deck car's own light up there is NOT cut by its own road.
-        let onDeck = Headlight.fan(
+        let onDeck = Headlight.fans(
             car: CarState(position: Vec2(120, 0), heading: .pi / 2, height: 1),
             track: track)
-        for tip in onDeck.dropFirst() {
-            XCTAssertEqual(
-                Vec2(120, 17).distance(to: tip), Headlight.reach, accuracy: 1e-9)
+        for fan in onDeck {
+            for tip in fan.dropFirst() {
+                XCTAssertEqual(fan[0].distance(to: tip), Headlight.reach, accuracy: 1e-9)
+            }
         }
     }
 
     // MARK: - Cost
 
-    /// The fan at a busy spot on the worst real track, timed — the number the design
+    /// The fans at a busy spot on the worst real track, timed — the number the design
     /// promised to measure rather than assume. Clover carries 866 walls.
-    func testTheFanIsCheapOnTheWorstTrack() {
+    func testTheFansAreCheapOnTheWorstTrack() {
         let track = TrackLibrary.track(id: "clover")
         let slot = track.startSlots.first ?? .zero
         let state = CarState(position: slot, heading: 1.2)
         let start = Date()
         var points = 0
         for _ in 0..<1_000 {
-            points += Headlight.fan(car: state, track: track).count
+            points += Headlight.fans(car: state, track: track).reduce(0) { $0 + $1.count }
         }
-        let perFan = Date().timeIntervalSince(start) / 1_000
-        print("PROBE fan cost on clover: \(Int(perFan * 1_000_000)) µs (\(points / 1_000) points)")
-        XCTAssertLessThan(perFan, 0.002, "a fan costs \(perFan * 1000) ms — too slow for 4/frame")
+        let perCar = Date().timeIntervalSince(start) / 1_000
+        print("PROBE fans cost on clover: \(Int(perCar * 1_000_000)) µs (\(points / 1_000) points)")
+        XCTAssertLessThan(
+            perCar, 0.002, "a car's fans cost \(perCar * 1000) ms — too slow for 4/frame")
+    }
+}
+
+extension ReversedCollection where Base == [Vec2] {
+    /// The mirrored lamp's fan, reordered so index i faces the other lamp's index i:
+    /// reversing puts the lamp point last, so bring it back to the front.
+    fileprivate func rotated() -> [Vec2] {
+        guard let last = self.last else { return [] }
+        return [last] + dropLast()
     }
 }
