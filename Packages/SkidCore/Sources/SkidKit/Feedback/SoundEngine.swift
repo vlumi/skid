@@ -124,7 +124,14 @@ public final class SoundEngine {
         // on a phone speaker. It is the constant bed, so it sits under the beeps, but
         // it has to be there.
         let engineGain = min(0.55, 0.22 + leadSpeed / 900)
-        let skidGain = maxSlip > 90 ? min(0.22, (maxSlip - 90) / 900) : 0
+        // **The skid was already here and inaudible.** Measured on a clover lap: 948 of
+        // 2400 frames slip past the old 90 threshold — you are drifting 40% of the time —
+        // but the gain reached only 0.13 at the 90th-percentile slip, against an engine at
+        // 0.55. Reported as a missing skid sound; it was a buried one.
+        //
+        // Starts earlier (a drift you can feel should be one you can hear) and reaches a
+        // level that sits ON the engine rather than under it.
+        let skidGain = maxSlip > 55 ? min(0.34, (maxSlip - 55) / 380) : 0
         state.set(
             engineHz: engineHz, engineDuty: engineDuty, engineGain: engineGain,
             skidGain: skidGain)
