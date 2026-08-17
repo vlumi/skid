@@ -120,3 +120,73 @@ final class StartBeepTests: XCTestCase {
         XCTAssertEqual(StartBeeps.secondsRemaining(in: race), 3)
     }
 }
+
+/// **No countdown sound before the race starts.**
+///
+/// Reported from device: the first beep played the instant the race screen appeared,
+/// before pressing Play. The sim sits frozen at tick 0 in `.countdown` while the ready
+/// gate holds — three seconds showing, nothing moving — so the frame callback saw
+/// "the countdown just began" on the very first frame.
+@MainActor
+final class CountdownBeepGateTests: XCTestCase {
+    private func game() -> CouchGame {
+        let unique = UUID().uuidString
+        return CouchGame(
+            signingKeys: NoSigningKey(),
+            libraryFilename: "test-lib-\(unique).json",
+            profileFilename: "test-profiles-\(unique).json",
+            hiscoreFilename: "test-hiscores-\(unique).json")
+    }
+
+    override func tearDown() {
+        super.tearDown()
+        let base =
+            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first ?? FileManager.default.temporaryDirectory
+        let directory = base.appendingPathComponent("Skid", isDirectory: true)
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        for file in files where file.hasPrefix("test-") {
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(file))
+        }
+    }
+
+    /// A session waiting on the ready gate, exactly as the race screen makes one.
+    private func waiting(_ game: CouchGame) -> GameSession {
+        let track = TrackLibrary.track(id: "clover")
+        let session = GameSession(
+            track: track, players: [PlayerID(0)],
+            config: RaceConfig(laps: 3, countdownTicks: 3 * Race.tickRate), seed: 42,
+            inputFor: { _, _ in .coast })
+        game.session = session
+        game.rig = CouchRig(colorIndices: [0])
+        game.phase = .racing
+        return session
+    }
+
+    /// **Frames before Play make no sound.** The countdown is showing 3, but it has not
+    /// begun — nothing has changed yet, so nothing should be heard.
+    func testNoBeepWhileWaitingOnTheReadyGate() {
+        let game = self.game()
+        let session = waiting(game)
+        XCTAssertFalse(session.started)
+        for _ in 0..<30 {
+            game.audioFrame()
+        }
+        XCTAssertNil(
+            game.notedCountdownSeconds,
+            "the countdown was tracked before it began, so its first beep already fired")
+    }
+
+    /// **And pressing Play still gives the opening beep.** Suppressing the early frames
+    /// must not cost the first sound — the lights appear on that frame too.
+    func testTheOpeningBeepSurvivesTheGate() {
+        let game = self.game()
+        let session = waiting(game)
+        for _ in 0..<10 { game.audioFrame() }  // waiting: nothing tracked
+        session.started = true
+        game.audioFrame()  // the frame Play lands on
+        XCTAssertEqual(
+            game.notedCountdownSeconds, 3,
+            "the countdown should start being tracked the moment the race does")
+    }
+}

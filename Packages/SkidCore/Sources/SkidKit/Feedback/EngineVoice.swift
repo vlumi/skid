@@ -1,4 +1,5 @@
 import Foundation
+import SkidCore
 
 /// **The engine's voice: one sample at a time, and nothing else.**
 ///
@@ -19,23 +20,47 @@ import Foundation
 ///   which is most of what "revving" sounds like.
 /// - **Range.** The old mapping spanned 55→119 Hz over the whole speed range — barely an
 ///   octave, so nothing ever changed much. This spans over two.
+///
+/// **Scaled against the car's real top speed, and curved.** The first version mapped its
+/// whole range over 0…200 units/s while `CarTuning.maxSpeed` is **520** — measured on a
+/// clover lap, the median speed is 482, so the engine sat pinned at redline with the duty
+/// cycle wide open for most of a lap and never sounded like it climbed. Reported from
+/// device as "it enters the high revs too early".
+///
+/// The curve is the other half. Linear against 520 would still spend the middle of the
+/// range on speeds a lap barely visits; an exponent above 1 keeps the top of the rev
+/// range for the top of the speed range — half speed reaches under a third of the pitch
+/// climb, and the last stretch to flat out is where it screams.
 public struct EngineVoice {
     /// Where the pulse sits at rest, in Hz.
     public static let idleHz = 55.0
     /// …and flat out. Two-plus octaves up, so the climb is audible.
     public static let redlineHz = 260.0
 
-    /// Engine pitch for a car's speed. `speed` is world units per second, as the sim
-    /// reports it; ~200 is roughly flat out on the stock car.
-    public static func hz(forSpeed speed: Double) -> Double {
-        let fraction = min(1, max(0, speed / 200))
-        return idleHz + (redlineHz - idleHz) * fraction
+    /// How late the revs arrive. Above 1, so the top of the rev range belongs to the top
+    /// of the speed range rather than to the middle of it.
+    private static let curve = 1.7
+
+    /// How far up the rev range a speed sits, 0…1 — the shared curve, so pitch and duty
+    /// cannot drift apart.
+    static func revs(forSpeed speed: Double, topSpeed: Double = CarTuning().maxSpeed) -> Double {
+        guard topSpeed > 0 else { return 0 }
+        let fraction = min(1, max(0, speed / topSpeed))
+        return pow(fraction, curve)
+    }
+
+    /// Engine pitch for a car's speed, in world units per second.
+    public static func hz(forSpeed speed: Double, topSpeed: Double = CarTuning().maxSpeed)
+        -> Double
+    {
+        idleHz + (redlineHz - idleHz) * revs(forSpeed: speed, topSpeed: topSpeed)
     }
 
     /// Pulse width for a car's speed, 0…1. Narrow and nasal at idle, square at full.
-    public static func duty(forSpeed speed: Double) -> Double {
-        let fraction = min(1, max(0, speed / 200))
-        return 0.12 + 0.38 * fraction
+    public static func duty(forSpeed speed: Double, topSpeed: Double = CarTuning().maxSpeed)
+        -> Double
+    {
+        0.12 + 0.38 * revs(forSpeed: speed, topSpeed: topSpeed)
     }
 
     /// One sample of the engine at `phase`, given its duty cycle.
