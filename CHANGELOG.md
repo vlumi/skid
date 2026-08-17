@@ -14,6 +14,10 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **The countdown no longer beeps before you press Play.** The race screen showed three lights and played the first beep while still waiting on the ready gate, because the countdown clock reads 3 from the moment the screen appears even though nothing has started moving.
+- **The engine keeps its high revs for high speed.** It was mapped over a fraction of the car's actual top speed, so a normal lap sat pinned at the top of the rev range and the engine never sounded like it was climbing. It now spans the real range, and rises late — half speed is well under half the climb, so the last stretch to flat out is where it screams.
+- **You can hear yourself drifting.** The skid was in the mix all along but far too quiet to notice under the engine — measured, a lap spends 40% of its time sliding, so it now starts earlier in a slide and sits at a level you can actually hear.
+
 ### build 14 — 2026-08-16
 
 - **Start lights instead of a countdown.** Five lamps fill up as the seconds pass and all go out at once when the race starts, the way a circuit start works. They also solve something numbers could not: a "3" upside down is not a 3, so the count had to be drawn twice and mirrored — and the players sitting sideways in a four-way game read neither copy. A row of lights is symmetric, so one gantry reads the same from every seat.

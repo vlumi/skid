@@ -15,7 +15,18 @@ extension CouchGame {
             return
         }
         sound.start()
-        noteCountdownBeep(in: session.race)
+        // **Not until the ready gate clears.** The sim sits frozen at tick 0 in
+        // `.countdown` while `!started` — three seconds showing, nothing moving — so the
+        // "countdown begins" beep fired the instant the race screen appeared, before
+        // anyone pressed Play. Reported from device. `RaceHUD` already gates the lights
+        // on exactly this; the audio was the half that did not.
+        if session.started {
+            noteCountdownBeep(in: session.race)
+        } else {
+            // Cleared, so pressing Play still counts nil → 3 as the opening beep
+            // rather than "no change" — the lights appear on that frame too.
+            notedCountdownSeconds = nil
+        }
         if session.paused || session.race.phase == .finished {
             sound.update(race: session.race, humanCount: humanCount, paused: true)
         }
