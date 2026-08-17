@@ -1,6 +1,6 @@
 import Foundation
 
-/// **The headlight cone: a fan of rays, born already clipped.**
+/// **The headlight cones: two fans of rays, born already clipped.**
 ///
 /// The first attempt at a headlight was a fixed cone shape clipped after the fact, and
 /// the clipping is where it died: clipped against storey polygons it vanished at ramp
@@ -18,25 +18,37 @@ import Foundation
 /// there is simply no wall across a mouth you may drive into. Anything future that
 /// blocks cars — buildings, barriers — occludes light with no new code here.
 ///
+/// **A lamp shoved into a wall goes dark.** Collision stops the car's CENTER from
+/// crossing a wall, but the body around it can overlap — and a lamp past the wall line
+/// casts rays that never meet the wall at all, which put the light on the far side of a
+/// wall the car was pressed against. So each lamp first checks the segment from the
+/// center to itself: if a blocking wall crosses it, the lamp is inside the wall and
+/// its fan is empty. The center is the one point the sim guarantees stays legal, which
+/// is what makes it the anchor.
+///
 /// The one exception road makes: a deck a full level above the beam *covers* it (the
 /// bridge's shadow), so rays stop at a covering deck's edge. Without that cut, the
 /// beam — drawn above every road band so the ramp ahead cannot paint over it — would
 /// land on top of the bridge instead of under it.
 ///
-/// **Short on purpose.** The cone's job is to make the car's facing readable, not to
-/// illuminate: shorter than the car itself, a bit wider at the tip, drawn in the
-/// player's color.
+/// **Short on purpose.** The cones' job is to make the car's facing readable, not to
+/// illuminate: shorter than the car itself, together a bit wider at the tips, drawn in
+/// the player's color. Two lamps rather than one center cone, so the light reads as
+/// headlights and not as a stray wedge floating at the nose.
 public enum Headlight {
     /// How far the light reaches past the nose. Under a car length: it is a facing
     /// cue, not a beam.
     public static let reach = CarGeometry.length * 0.85
-    /// Half the fan's width at full reach — a bit wider than the car's own half-width.
-    public static let tipHalfWidth = CarGeometry.width * 0.65
-    /// The fan's half-angle, derived so the tip lands at `tipHalfWidth`.
-    public static var halfAngle: Double { atan2(tipHalfWidth, reach) }
-    /// Rays across the fan. At this reach the gap between neighbouring ray tips is
-    /// about a unit, so a wall tip's shadow is sharp to within that.
-    public static let rayCount = 24
+    /// Each lamp's sideways offset from the nose center — where the old lamp dots sat.
+    public static let lampOffset = CarGeometry.width * 0.17
+    /// Half of one lamp's fan at full reach, sized so the pair's outer edge lands a
+    /// bit wider than the car's own half-width.
+    public static let lampHalfWidth = CarGeometry.width * 0.65 - lampOffset
+    /// One lamp's half-angle, derived so its tip lands at `lampHalfWidth`.
+    public static var halfAngle: Double { atan2(lampHalfWidth, reach) }
+    /// Rays across one lamp's fan. At this reach the gap between neighbouring ray tips
+    /// is near a unit, so a wall tip's shadow is sharp to within that.
+    public static let rayCount = 16
 
     /// A deck this far above the beam covers it — the same clearance rule the
     /// under-bridge car windows use, and for the same reason: a curved ramp climbs
@@ -46,21 +58,22 @@ public enum Headlight {
     /// the deck's true edge — at a 29-unit reach, a five-sample ray.
     static let coverSampleStep = 6.0
 
-    /// **The lit fan for a car**, as a closed polygon: the nose, then one point per
-    /// ray. `scale` is the elevation scale the car itself is drawn at, so the light
-    /// grows with its car on a climb.
-    public static func fan(car: CarState, track: Track, scale: Double = 1) -> [Vec2] {
+    /// **The lit fans for a car**, one closed polygon per lamp: the lamp, then one
+    /// point per ray — or empty for a lamp buried in a wall. `scale` is the elevation
+    /// scale the car itself is drawn at, so the light grows with its car on a climb.
+    public static func fans(car: CarState, track: Track, scale: Double = 1) -> [[Vec2]] {
         let direction = Vec2(cos(car.heading), sin(car.heading))
+        let sideways = Vec2(-direction.y, direction.x)
         let nose = car.position + direction * (CarGeometry.length / 2 * scale)
         let range = reach * scale
 
-        // Occluders once per fan, not per ray. Walls: only visible structures — the
+        // Occluders once per car, not per ray. Walls: only visible structures — the
         // map boundary and the level seals are enforced but never drawn, and light
-        // dying at a line drawn as nothing reads as a bug. Culled to the fan's disc.
+        // dying at a line drawn as nothing reads as a bug. Culled to the lamps' reach.
         let walls = track.walls.filter { wall in
             (wall.kind == .rail || wall.kind == .embankment)
                 && wall.stops(car: car, movedFrom: car.position)
-                && nose.distance(toSegment: wall.a, wall.b) <= range
+                && nose.distance(toSegment: wall.a, wall.b) <= range + lampOffset * scale
         }
         // Covering decks: centerline segments a full level above the beam whose
         // footprint could reach it. Usually empty, so the per-ray sampling below
@@ -74,7 +87,41 @@ public enum Headlight {
             return nose.distance(toSegment: a, b) <= reachOut
         }
 
-        var points = [nose]
+        let blockers = Blockers(walls: walls, covers: covers)
+        return [-1.0, 1.0].map { side in
+            fan(
+                from: nose + sideways * (side * lampOffset * scale), of: car,
+                range: range, blockers: blockers, track: track)
+        }
+    }
+
+    /// The occluders gathered once per car: the walls that stop it, and the deck
+    /// segments that cover its beam.
+    private struct Blockers {
+        var walls: [Wall]
+        var covers: [Int]
+    }
+
+    /// One lamp's fan — or nothing, when the lamp itself is past a wall.
+    private static func fan(
+        from lamp: Vec2, of car: CarState, range: Double,
+        blockers: Blockers, track: Track
+    ) -> [Vec2] {
+        let walls = blockers.walls
+        let covers = blockers.covers
+        let anchor = car.position  // the sim keeps the center legal; the body can overlap
+        let toLamp = lamp - anchor
+        let lampDistance = toLamp.length
+        for wall in walls {
+            if let hit = intersect(
+                from: anchor, direction: toLamp * (1 / lampDistance), a: wall.a, b: wall.b),
+                hit <= lampDistance
+            {
+                return []  // the lamp is inside the wall — dark, not shining beyond it
+            }
+        }
+
+        var points = [lamp]
         for ray in 0..<rayCount {
             let angle =
                 car.heading - halfAngle
@@ -82,16 +129,16 @@ public enum Headlight {
             let rayDirection = Vec2(cos(angle), sin(angle))
             var tip = range
             for wall in walls {
-                if let hit = intersect(from: nose, direction: rayDirection, a: wall.a, b: wall.b),
+                if let hit = intersect(from: lamp, direction: rayDirection, a: wall.a, b: wall.b),
                     hit < tip
                 {
                     tip = hit
                 }
             }
             tip = cutAtCoveringDeck(
-                from: nose, direction: rayDirection, limit: tip, covers: covers,
+                from: lamp, direction: rayDirection, limit: tip, covers: covers,
                 track: track)
-            points.append(nose + rayDirection * tip)
+            points.append(lamp + rayDirection * tip)
         }
         return points
     }

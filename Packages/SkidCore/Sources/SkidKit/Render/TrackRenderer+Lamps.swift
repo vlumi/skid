@@ -13,31 +13,32 @@ import SwiftUI
 /// to 4.6, against the old sheen's 3.7. Large colored areas spend the palette's
 /// separation budget; a pair of 3.8-unit dots does not.
 extension TrackRenderer {
-    /// **The headlight fan — the facing cue.** In the car's own color, so it also
-    /// helps tell the cars apart; brightest at the nose, gone by the tip.
+    /// **The headlight fans — the facing cue.** In the car's own color, so they also
+    /// help tell the cars apart; brightest at each lamp, gone by the tips.
     ///
-    /// This replaced the two white nose dots: at race zoom they were a couple of
+    /// These replaced the two white nose dots: at race zoom they were a couple of
     /// pixels, and reading which end of a smudge carries the dots is not a glance
-    /// question. A colored wedge ahead of the car is.
+    /// question. A pair of colored beams ahead of the car is.
     ///
-    /// The fan arrives already clipped (see `Headlight`): walls the car cannot pass
-    /// stop it, a covering deck's edge ends it, and the road ahead — ramps included —
-    /// never touches it.
+    /// The fans arrive already clipped (see `Headlight`): walls the car cannot pass
+    /// stop them, a covering deck's edge ends them, the road ahead — ramps included —
+    /// never touches them, and a lamp shoved into a wall arrives empty.
     static func drawHeadlight(
         car: CarState, color: Color, track: Track, scale: Double = 1,
         into context: inout GraphicsContext
     ) {
-        let fan = Headlight.fan(car: car, track: track, scale: scale)
-        guard fan.count > 2 else { return }
-        var path = Path()
-        path.addLines(fan.map { CGPoint(x: $0.x, y: $0.y) })
-        path.closeSubpath()
-        let nose = CGPoint(x: fan[0].x, y: fan[0].y)
-        context.fill(
-            path,
-            with: .radialGradient(
-                Gradient(colors: [color.opacity(0.5), color.opacity(0)]),
-                center: nose, startRadius: 0, endRadius: Headlight.reach * scale))
+        for fan in Headlight.fans(car: car, track: track, scale: scale) {
+            guard fan.count > 2 else { continue }
+            var path = Path()
+            path.addLines(fan.map { CGPoint(x: $0.x, y: $0.y) })
+            path.closeSubpath()
+            let lamp = CGPoint(x: fan[0].x, y: fan[0].y)
+            context.fill(
+                path,
+                with: .radialGradient(
+                    Gradient(colors: [color.opacity(0.5), color.opacity(0)]),
+                    center: lamp, startRadius: 0, endRadius: Headlight.reach * scale))
+        }
     }
 
     /// **Traveling backwards, which is not the same question as facing.**
