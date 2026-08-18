@@ -89,10 +89,17 @@ extension EditorRenderer {
 
     /// The middle of the piece's own road, in screen space — so a badge sits on the
     /// piece it describes rather than at a seam it shares with a neighbor.
+    ///
+    /// The true middle: with an EVEN sample count, `samples[count / 2]` is past the
+    /// midpoint — for a straight's two samples it is the EXIT, which put the lone
+    /// start piece's badge on its finish-line seam, where the seam chrome painted
+    /// over it (reported: a raised start "doesn't show the level").
     private static func badgeAnchor(_ placed: PlacedPiece, t: Transform) -> CGPoint? {
         let samples = placed.centerlineSamples(degreesPerSample: 20)
         guard !samples.isEmpty else { return nil }
-        return t.screen(samples[samples.count / 2])
+        let middle =
+            (samples[(samples.count - 1) / 2] + samples[samples.count / 2]) * 0.5
+        return t.screen(middle)
     }
 
     private static func drawLevelBadge(

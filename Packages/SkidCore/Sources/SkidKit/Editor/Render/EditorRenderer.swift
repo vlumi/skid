@@ -42,6 +42,13 @@ enum EditorRenderer {
         if let dimmedExcept {
             drawOtherStoreyVeil(walk: walk, keeping: dimmedExcept, t: t, into: &context)
         }
+        // Over the road, under the end markers: the selected piece is a thing you
+        // act on, so it should read on top of the asphalt but not hide the chrome.
+        if let selectedPiece, walk.placed.indices.contains(selectedPiece) {
+            drawSelection(walk.placed[selectedPiece], width: width, t: t, into: &context)
+        }
+        // Badges AFTER the selection tint: selecting a piece must not wash out its
+        // own level number — on a one-piece track the tint covered the only badge.
         if showLevels || !blockedPieces.isEmpty {
             drawLevelBadges(
                 walk: walk,
@@ -49,11 +56,6 @@ enum EditorRenderer {
                     blockedPieces: blockedPieces, showLevels: showLevels,
                     onlyLevel: dimmedExcept),
                 transform: t, into: &context)
-        }
-        // Over the road, under the end markers: the selected piece is a thing you
-        // act on, so it should read on top of the asphalt but not hide the chrome.
-        if let selectedPiece, walk.placed.indices.contains(selectedPiece) {
-            drawSelection(walk.placed[selectedPiece], width: width, t: t, into: &context)
         }
 
         // Loose (unbuilt) ends get a construction treatment. That's every
