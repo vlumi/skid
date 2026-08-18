@@ -19,11 +19,15 @@ import SwiftUI
 /// nothing covers anything, however dense the grid. A faint tint of the painted
 /// grid box was considered too — the box is barely bigger than the car, so a
 /// tint that fits inside it is too subtle to spot.
+///
+/// Everything here is in WORLD coordinates: the markers ride `WorldScene` into
+/// the ordered render (`RenderOrder.Kind.halo`), which is what puts the cars
+/// genuinely on top of them.
 struct GridMarker {
-    /// The car's position, in screen points — the halo's center.
+    /// The car's position — the halo's center.
     var position: Vec2
     /// Where the leader line leaves the player's control band: the middle of the
-    /// band's map-side edge.
+    /// band's map-side edge, converted into the world.
     var leaderStart: Vec2
     var color: Color
 }
@@ -40,12 +44,11 @@ enum GridMarkers {
             guard let car = race.cars.first(where: { $0.id == controls.player }) else {
                 return nil
             }
-            let position = Vec2(
-                mapRect.minX + car.state.position.x * scale,
-                mapRect.minY + car.state.position.y * scale)
+            let edge = mapEdge(of: controls)
             return GridMarker(
-                position: position,
-                leaderStart: mapEdge(of: controls),
+                position: car.state.position,
+                leaderStart: Vec2(
+                    (edge.x - mapRect.minX) / scale, (edge.y - mapRect.minY) / scale),
                 color: palette[controls.colorIndex % palette.count])
         }
     }
