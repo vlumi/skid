@@ -57,6 +57,9 @@ struct RaceScreen: View {
                 let pads = padOverlays()
                 let aims = aimOverlays()
                 let zones = zoneChrome(safeInsets: insets)
+                let markers = GridMarkers.markers(
+                    race: race, players: rig.players, mapRect: mapRect,
+                    palette: CouchGame.palette)
                 ZStack {
                     Canvas { context, size in
                         var world = context
@@ -69,6 +72,9 @@ struct RaceScreen: View {
                         }
                         for aim in aims {
                             OverlayRenderer.drawAim(aim, into: &context)
+                        }
+                        for marker in markers {
+                            OverlayRenderer.drawGridMarker(marker, into: &context)
                         }
                         // Screen-space, so it stays legible however the map scales.
                         if game.settings.debugOverlay {
@@ -162,31 +168,38 @@ struct RaceScreen: View {
         game.audioFrame()
     }
 
-    /// Every active floating d-pad (Pro players), in its owner's color.
+    /// Every Pro player's floating d-pad, in its owner's color — always
+    /// present (resting where the thumb left it, or at the zone center before
+    /// any touch), so the control is visible before it is touched.
     private func padOverlays() -> [DPadOverlay] {
         rig.players.compactMap { controls in
-            guard controls.scheme == .pro, let origin = controls.pro.origin else { return nil }
+            guard controls.scheme == .pro, let origin = controls.pro.displayOrigin else {
+                return nil
+            }
             return DPadOverlay(
                 origin: origin,
                 up: controls.pro.up,
                 radius: controls.pro.radius,
                 input: controls.pro.input(for: controls.player, at: session.race.tick),
-                color: CouchGame.palette[controls.colorIndex]
+                color: CouchGame.palette[controls.colorIndex],
+                engaged: controls.pro.touching
             )
         }
     }
 
-    /// Every active floating aim stick (Casual players), in its owner's color.
+    /// Every Casual player's floating aim stick, in its owner's color —
+    /// always present, like the d-pad above.
     private func aimOverlays() -> [AimOverlay] {
         rig.players.compactMap { controls in
-            guard controls.scheme == .casual, let origin = controls.casual.origin else {
+            guard controls.scheme == .casual, let origin = controls.casual.displayOrigin else {
                 return nil
             }
             return AimOverlay(
                 origin: origin,
                 knob: controls.casual.knob,
                 radius: controls.casual.radius,
-                color: CouchGame.palette[controls.colorIndex]
+                color: CouchGame.palette[controls.colorIndex],
+                engaged: controls.casual.touching
             )
         }
     }
@@ -266,6 +279,8 @@ struct DPadOverlay {
     var radius: Double
     var input: CarInput
     var color: Color
+    /// Whether a thumb is down — a resting pad draws dimmed.
+    var engaged: Bool
 }
 
 /// The floating aim stick's screen state: where it landed, the current
@@ -275,6 +290,8 @@ struct AimOverlay {
     var knob: Vec2
     var radius: Double
     var color: Color
+    /// Whether a thumb is down — a resting stick draws dimmed.
+    var engaged: Bool
 }
 
 /// A player's control zone, drawn as faint chrome so everyone knows whose
