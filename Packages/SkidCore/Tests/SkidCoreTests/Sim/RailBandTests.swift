@@ -69,13 +69,21 @@ final class RailBandTests: XCTestCase {
             "and must end up clear of the collision line")
     }
 
-    /// **No wall may ever move a car further than it was from that wall.** The
-    /// invariant the warp violated: a correction closes a gap, it cannot open one.
-    func testNoPushExceedsTheSeparation() {
+    /// **A correction never exceeds the overlap with the DRAWN wall.** The
+    /// invariant the warp violated: a push closes a gap to the visible railing,
+    /// it cannot open one. Measured against the collision SPAN — the segment
+    /// translated to the painted edge (see `collisionSpan`) — since that is the
+    /// wall the car actually meets; the 42-unit off-end shove stays impossible
+    /// because reach never exceeds the car's radius plus the kerb band.
+    func testNoPushExceedsTheOverlap() {
         var race = Race(track: track(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
         let rail = Wall(
             from: Vec2(0, 0), to: Vec2(0, 6), height: 1, kind: .rail,
             outward: Vec2(-1, 0), onClimb: true)
+        let widening = race.track.halfWidth(atHeight: 1) - race.track.width / 2
+        let spanA = rail.a + rail.outward * widening
+        let spanB = rail.b + rail.outward * widening
+        let maxReach = CarGeometry.radius + Double(PieceCatalog.kerbBand)
         for dx in [-40.0, -30, -20, -13, -6] {
             for dy in [-40.0, -20, 0, 20, 40] {
                 var car = race.cars[0].state
@@ -83,13 +91,14 @@ final class RailBandTests: XCTestCase {
                 car.height = 1
                 car.velocity = Vec2(100, 0)
                 let from = car.position - Vec2(2, 2)
-                let closest = car.position.closestPoint(onSegment: rail.a, rail.b)
+                let closest = car.position.closestPoint(onSegment: spanA, spanB)
                 let separation = (car.position - closest).length
+                let allowed = max(0, maxReach - separation)
                 let before = car.position
                 _ = race.collideWithWalls(car: &car, movedFrom: from, walls: [rail])
                 XCTAssertLessThan(
-                    (car.position - before).length, separation + 1,
-                    "at (\(dx),\(dy)) the push must not exceed the \(Int(separation))u separation")
+                    (car.position - before).length, allowed + 1,
+                    "at (\(dx),\(dy)) the push exceeded the overlap with the drawn face")
             }
         }
     }
