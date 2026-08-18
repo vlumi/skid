@@ -68,13 +68,17 @@ public struct MarkStore {
         let state = car.state
         // Mid-air prints nothing; everything else marks its own level — the
         // elevated bucket draws after the bridge ribbon, so deck rubber shows.
-        // Same split as the cars: anything off the ground can't have road above
-        // it, so only true ground marks need to go under the bridge's paint.
         guard !state.isAirborne else {
             lastTirePositions[car.id] = nil
             return
         }
-        let elevated = state.height > Track.surfaceTolerance
+        // **A mark belongs to the storey its road PAINTS at, not to the car's raw
+        // height** — the same rule that stacks the cars (`carStorey`), for the same
+        // reason: a ramp's ribbon paints whole at the level of its highest end, so a
+        // mark laid on the ramp's low beginning (where the car is still at ground
+        // height) went into the ground bank and the ramp's own asphalt painted over
+        // it. Reported from device: tire marks stop dead at the beginning of a ramp.
+        let elevated = TrackRenderer.carStorey(of: state, on: track) > 0
         let tires = state.tirePositions
         defer { lastTirePositions[car.id] = tires }
         guard let previous = lastTirePositions[car.id], previous.count == tires.count else {
