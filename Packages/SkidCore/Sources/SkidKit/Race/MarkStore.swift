@@ -24,10 +24,14 @@ public struct MarkStore {
         public var count = 0
     }
 
-    public private(set) var chunks: [Bucket: [Chunk]] = [:]
-    /// Marks laid above ground level, drawn after the elevated ribbon so they
-    /// sit ON the bridge instead of vanishing underneath it.
-    public private(set) var elevatedChunks: [Bucket: [Chunk]] = [:]
+    /// The marks, banked BY STOREY — each storey's rubber draws in that
+    /// storey's own render band, after its road and before the next band's.
+    /// This used to be two banks (ground and "elevated"), and every elevated
+    /// band re-drew the one elevated bank: on a three-storey track, rubber
+    /// laid on the first deck was painted again on top of the bridges crossing
+    /// above it (reported from device as tire tracks from below the bridge
+    /// visible on the bridge and its railing).
+    public private(set) var chunks: [Int: [Bucket: [Chunk]]] = [:]
 
     private var lastTirePositions: [PlayerID: [Vec2]] = [:]
     /// Mud/water clinging to a car's tires: what it drove through and for
@@ -56,7 +60,6 @@ public struct MarkStore {
 
     public mutating func reset() {
         chunks.removeAll()
-        elevatedChunks.removeAll()
         lastTirePositions.removeAll()
         carryover.removeAll()
     }
@@ -66,8 +69,8 @@ public struct MarkStore {
     public mutating func record(car: Car, on track: Track, tick: Tick) {
         guard tick % Self.recordEvery == 0 else { return }
         let state = car.state
-        // Mid-air prints nothing; everything else marks its own level — the
-        // elevated bucket draws after the bridge ribbon, so deck rubber shows.
+        // Mid-air prints nothing; everything else marks its own level — a
+        // storey's bucket draws after that storey's ribbon, so deck rubber shows.
         guard !state.isAirborne else {
             lastTirePositions[car.id] = nil
             return
@@ -78,7 +81,7 @@ public struct MarkStore {
         // mark laid on the ramp's low beginning (where the car is still at ground
         // height) went into the ground bank and the ramp's own asphalt painted over
         // it. Reported from device: tire marks stop dead at the beginning of a ramp.
-        let elevated = TrackRenderer.carStorey(of: state, on: track) > 0
+        let storey = TrackRenderer.carStorey(of: state, on: track)
         let tires = state.tirePositions
         defer { lastTirePositions[car.id] = tires }
         guard let previous = lastTirePositions[car.id], previous.count == tires.count else {
@@ -117,13 +120,13 @@ public struct MarkStore {
         }
 
         for i in tireRange {
-            append(from: previous[i], to: tires[i], in: bucket, elevated: elevated)
+            append(from: previous[i], to: tires[i], in: bucket, storey: storey)
         }
     }
 
-    private mutating func append(from a: Vec2, to b: Vec2, in bucket: Bucket, elevated: Bool) {
+    private mutating func append(from a: Vec2, to b: Vec2, in bucket: Bucket, storey: Int) {
         guard (b - a).lengthSquared >= Self.minSegmentLengthSquared else { return }
-        var list = (elevated ? elevatedChunks : chunks)[bucket] ?? []
+        var list = chunks[storey]?[bucket] ?? []
         if list.isEmpty || list[list.count - 1].count >= Self.chunkSegments {
             list.append(Chunk())
             if list.count > Self.maxChunksPerBucket {
@@ -133,10 +136,6 @@ public struct MarkStore {
         list[list.count - 1].path.move(to: CGPoint(x: a.x, y: a.y))
         list[list.count - 1].path.addLine(to: CGPoint(x: b.x, y: b.y))
         list[list.count - 1].count += 1
-        if elevated {
-            elevatedChunks[bucket] = list
-        } else {
-            chunks[bucket] = list
-        }
+        chunks[storey, default: [:]][bucket] = list
     }
 }
