@@ -52,14 +52,14 @@ struct RaceScreen: View {
                 let scene = WorldScene(
                     race: race, marks: session.marks, gateSpans: session.gateSpans,
                     colors: colors, mapRect: mapRect, ghosts: session.ghost?.cars ?? [],
-                    gridMarkers: GridMarkers.markers(
-                        race: race, players: rig.players, mapRect: mapRect,
-                        palette: CouchGame.palette),
                     debug: game.settings.debugOverlay
                 )
                 let pads = padOverlays()
                 let aims = aimOverlays()
                 let zones = zoneChrome(safeInsets: insets)
+                let markers = GridMarkers.markers(
+                    race: race, players: rig.players, mapRect: mapRect,
+                    palette: CouchGame.palette)
                 ZStack {
                     Canvas { context, size in
                         var world = context
@@ -73,6 +73,7 @@ struct RaceScreen: View {
                         for aim in aims {
                             OverlayRenderer.drawAim(aim, into: &context)
                         }
+                        OverlayRenderer.drawGridMarkers(markers, into: &context)
                         // Screen-space, so it stays legible however the map scales.
                         if game.settings.debugOverlay {
                             DebugOverlay.drawWallReadout(race, in: size, into: &context)

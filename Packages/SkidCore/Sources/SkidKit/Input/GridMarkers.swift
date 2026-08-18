@@ -20,14 +20,17 @@ import SwiftUI
 /// grid box was considered too — the box is barely bigger than the car, so a
 /// tint that fits inside it is too subtle to spot.
 ///
-/// Everything here is in WORLD coordinates: the markers ride `WorldScene` into
-/// the ordered render (`RenderOrder.Kind.halo`), which is what puts the cars
-/// genuinely on top of them.
+/// **The halo is small enough to wear.** Earlier rounds drew it under the car in
+/// the ordered world render, which dragged the leader line into storey questions
+/// (dive under a bridge? gap at the deck's edge?). A halo smaller than the car
+/// simply sits ON it in the screen overlay — which also shows it in the
+/// under-deck window bubbles when a start line is beneath a bridge. The thin
+/// line may graze a neighbouring car; judged acceptable over any gap.
 struct GridMarker {
-    /// The car's position — the halo's center.
+    /// The car's position, in screen points — the halo's center.
     var position: Vec2
     /// Where the leader line leaves the player's control band: the middle of the
-    /// band's map-side edge, converted into the world.
+    /// band's map-side edge.
     var leaderStart: Vec2
     var color: Color
 }
@@ -44,11 +47,11 @@ enum GridMarkers {
             guard let car = race.cars.first(where: { $0.id == controls.player }) else {
                 return nil
             }
-            let edge = mapEdge(of: controls)
             return GridMarker(
-                position: car.state.position,
-                leaderStart: Vec2(
-                    (edge.x - mapRect.minX) / scale, (edge.y - mapRect.minY) / scale),
+                position: Vec2(
+                    mapRect.minX + car.state.position.x * scale,
+                    mapRect.minY + car.state.position.y * scale),
+                leaderStart: mapEdge(of: controls),
                 color: palette[controls.colorIndex % palette.count])
         }
     }
@@ -62,4 +65,5 @@ enum GridMarkers {
         let halfSpan = controls.up.y != 0 ? zone.height / 2 : zone.width / 2
         return center + controls.up * halfSpan
     }
+
 }
