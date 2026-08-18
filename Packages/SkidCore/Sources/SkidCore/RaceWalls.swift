@@ -29,26 +29,11 @@ extension Race {
         held.speedLost = 0
         car.wallContact = held
         for wall in walls ?? track.walls where blocks(wall, car: car, movedFrom: from) {
-            // **Collide with the wall where it is DRAWN.** Rails are compiled at
-            // the road's NOMINAL edge, but an elevated road draws wider, so the
-            // visible railing stands the widening past the stored segment — the
-            // car hit an invisible wall in the middle of visible asphalt
-            // (reported on a rising curve's inner rail as a weird bounce back).
-            // The whole SEGMENT translates to the drawn face, rather than the
-            // face shifting per approach: a shifted face let the car sit past
-            // the stored line, where the side test flips at a curved wall's
-            // seams and the next segment ejects the car through the railing
-            // (reported as warping through walls at the seams). With the
-            // segment itself moved, "the car is never past the wall" stays an
-            // invariant, exactly as on the ground.
-            let span = collisionSpan(of: wall)
             // Nearest approach of the car's PATH to the wall, so a fast car is
             // caught mid-span rather than only where it happened to stop.
-            let closest = nearestPoint(
-                onSegment: span.a, span.b, toPathFrom: from, to: car.position)
+            let closest = nearestPoint(on: wall, toPathFrom: from, to: car.position)
             let reach =
-                CarGeometry.radius
-                + outboardThickness(of: wall, span: span, approachedFrom: from)
+                CarGeometry.radius + outboardThickness(of: wall, approachedFrom: from)
             // **Which side the car came FROM decides where it is put back.**
             //
             // Using the direction to where it ENDED UP is wrong the moment a step
@@ -59,8 +44,8 @@ extension Race {
             // The approach side is the honest answer, and it also handles the
             // crossing case below: a car that swapped sides is put back on the one
             // it started on.
-            let crossed = crosses(span.a, span.b, from: from, to: car.position)
-            let approach = sideNormal(of: wall, span: span, at: closest, from: from)
+            let crossed = crosses(wall, from: from, to: car.position)
+            let approach = sideNormal(of: wall, at: closest, from: from)
             let offset = car.position - closest
             let dist = offset.length
             guard crossed || (dist < reach && dist > 0) else { continue }
@@ -69,10 +54,11 @@ extension Race {
             // Physics resolves against the wall's FACE, not the approach direction:
             // the latter is diagonal on a long wall, and a graze resolved against a
             // slanted normal came off harder than it went in.
-            let wallFace = faceNormal(span: span, towards: approachSide)
-            // Remove only the overlap. Assigning an absolute position recomputed
-            // each tick made a car held against a rail lose ALL its travel, not
-            // just the into-wall part (device: glued in place at speed 300+).
+            let wallFace = faceNormal(of: wall, towards: approachSide)
+            // Remove only the overlap. Assigning `closest + approachSide * reach` is
+            // an absolute position recomputed each tick, and `closest` tracks the
+            // car's PATH — so a car held against a rail lost ALL its travel, not just
+            // the into-wall part (device: glued in place while the overlay read 300+).
             let overlap = reach - (car.position - closest).dot(wallFace)
             if overlap > 0 { car.position += wallFace * overlap }
             let intoWall = car.velocity.dot(wallFace)
@@ -128,8 +114,8 @@ extension Race {
     /// The wall's own outward face, signed to the side the car is on. Perpendicular
     /// to the wall, unlike the approach direction, so contact is resolved against
     /// the barrier rather than against the line back to where the car came from.
-    private func faceNormal(span: (a: Vec2, b: Vec2), towards side: Vec2) -> Vec2 {
-        let run = span.b - span.a
+    private func faceNormal(of wall: Wall, towards side: Vec2) -> Vec2 {
+        let run = wall.b - wall.a
         guard run.length > 0.001 else { return side }
         let face = run.perpendicular.normalized
         return face.dot(side) >= 0 ? face : face * -1
@@ -215,23 +201,21 @@ extension Race {
     /// reach and the wall is missed entirely — 60 units through the map fence
     /// registered nothing at all. A segment-crossing test does not care how fast
     /// the car was going.
-    private func crosses(_ a: Vec2, _ b: Vec2, from: Vec2, to: Vec2) -> Bool {
+    private func crosses(_ wall: Wall, from: Vec2, to: Vec2) -> Bool {
         func side(_ p: Vec2, _ a: Vec2, _ b: Vec2) -> Double {
             (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
         }
-        let d1 = side(from, a, b)
-        let d2 = side(to, a, b)
+        let d1 = side(from, wall.a, wall.b)
+        let d2 = side(to, wall.a, wall.b)
         guard (d1 < 0) != (d2 < 0) else { return false }  // same side of the line
-        let d3 = side(a, from, to)
-        let d4 = side(b, from, to)
+        let d3 = side(wall.a, from, to)
+        let d4 = side(wall.b, from, to)
         return (d3 < 0) != (d4 < 0)  // and the wall spans the path
     }
 
     /// A unit normal pointing from the wall toward the side `from` is on — the side
     /// the car came from, and so the side it belongs on.
-    private func sideNormal(
-        of wall: Wall, span: (a: Vec2, b: Vec2), at closest: Vec2, from: Vec2
-    ) -> Vec2 {
+    private func sideNormal(of wall: Wall, at closest: Vec2, from: Vec2) -> Vec2 {
         let offset = from - closest
         if offset.length > 0.001 { return offset.normalized }
         // Started exactly on the wall: fall back to its own outward face if it has
@@ -245,29 +229,6 @@ extension Race {
     /// asks the same question the sim does, rather than a copy of it that drifts.
     func blocks(_ wall: Wall, car: CarState, movedFrom from: Vec2 = .zero) -> Bool {
         wall.stops(car: car, movedFrom: from)
-    }
-
-    /// **Where the collision line actually is: at the DRAWN face.** Rails are
-    /// stored at the road's NOMINAL edge (deliberately — scaling the stored
-    /// segments per sample made mid-ramp rails drift, see
-    /// `PieceCompilerWalls.deckRails`), and the drawn road reaches
-    /// `halfWidth(atHeight:)`, so the collision segment translates outward by
-    /// the widening. Zero at ground height: flat tracks are bit-identical.
-    ///
-    /// Translated as a whole, on BOTH approach sides — not a per-approach face
-    /// shift, which let the car sit past the stored line where the side test
-    /// flips at curved-wall seams (the warp-through). The translated polyline
-    /// of an inner curve overlaps itself at the seams; an outer curve opens
-    /// corner wedges of `widening x tan(joint/2)` — a few units, well inside
-    /// the car's radius of either endpoint, so the corner still stops the car.
-    private func collisionSpan(of wall: Wall) -> (a: Vec2, b: Vec2) {
-        guard wall.kind == .rail, wall.outward.length > 0.001 else {
-            return (wall.a, wall.b)
-        }
-        let widening = max(0, track.halfWidth(atHeight: wall.height) - track.width / 2)
-        guard widening > 0 else { return (wall.a, wall.b) }
-        let shift = wall.outward.normalized * widening
-        return (wall.a + shift, wall.b + shift)
     }
 
     /// How far a wall's **structure** stands proud of its collision segment on
@@ -290,9 +251,7 @@ extension Race {
     /// (the map boundary, a level seal, a ramp's end cap) has no bulk to stand
     /// clear of and adds nothing.
 
-    private func outboardThickness(
-        of wall: Wall, span: (a: Vec2, b: Vec2), approachedFrom from: Vec2
-    ) -> Double {
+    private func outboardThickness(of wall: Wall, approachedFrom from: Vec2) -> Double {
         guard wall.kind == .rail, wall.outward.length > 0.001 else { return 0 }
         // **Only beside the wall, not off its end.**
         //
@@ -309,30 +268,44 @@ extension Race {
         // Anchoring the side test at the nearest point also fixes a second error:
         // `(from - wall.a)` measured the distance to the segment's END rather than
         // which side of it the car was on, so a car 600 units away read as outboard.
-        let closest = from.closestPoint(onSegment: span.a, span.b)
-        let alongWall = (span.b - span.a)
+        let closest = from.closestPoint(onSegment: wall.a, wall.b)
+        let alongWall = (wall.b - wall.a)
         let beside =
             alongWall.length > 0.001
-            && (closest - span.a).dot(alongWall) > 0
-            && (closest - span.b).dot(alongWall) < 0
+            && (closest - wall.a).dot(alongWall) > 0
+            && (closest - wall.b).dot(alongWall) < 0
         guard beside, (from - closest).dot(wall.outward) > 0 else { return 0 }
-        // With the span translated to the painted edge, the outboard extra is
-        // the kerb band itself, at every height — the same absolute face the
-        // old nominal-segment + full-band arithmetic produced.
-        return Double(PieceCatalog.kerbBand)
+        return railThickness(atHeight: wall.height)
+    }
+
+    /// How far a rail's band stands outboard of its collision segment, at the
+    /// height that rail guards.
+    ///
+    /// Per rail, not one constant, because the segment does not track the band:
+    /// rails are generated at the NOMINAL road edge (deliberately — see
+    /// `PieceCompilerWalls.deckRails`, where scaling them per sample made
+    /// mid-ramp rails drift outboard) while the band is drawn at the PAINTED
+    /// edge, which grows with height. So the gap between line and band grows
+    /// too: 15 units at a ground rail, 27 at a deck rail.
+    ///
+    /// Taking the deck's figure for every rail — the first version of this —
+    /// gave the low rails 12 units of reach they are not drawn with, which is
+    /// an invisible wall to lean against at a ramp's root. Each rail knows its
+    /// own height, so it uses it.
+    private func railThickness(atHeight height: Double) -> Double {
+        let face = track.halfWidth(atHeight: height) + Double(PieceCatalog.kerbBand)
+        return max(0, face - track.width / 2)
     }
 
     /// The point on `wall` nearest the car's swept path this tick — treating the
     /// movement as a segment rather than a point, so fast cars can't tunnel.
-    private func nearestPoint(
-        onSegment a: Vec2, _ b: Vec2, toPathFrom from: Vec2, to end: Vec2
-    ) -> Vec2 {
+    private func nearestPoint(on wall: Wall, toPathFrom from: Vec2, to end: Vec2) -> Vec2 {
         // Cheap and good enough at tick scale: test both ends of the movement and
         // its midpoint against the wall, and keep whichever came closest.
-        var best = end.closestPoint(onSegment: a, b)
+        var best = end.closestPoint(onSegment: wall.a, wall.b)
         var bestDistance = end.distance(to: best)
         for sample in [from, (from + end) * 0.5] {
-            let candidate = sample.closestPoint(onSegment: a, b)
+            let candidate = sample.closestPoint(onSegment: wall.a, wall.b)
             let distance = sample.distance(to: candidate)
             if distance < bestDistance {
                 bestDistance = distance
