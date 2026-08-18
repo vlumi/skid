@@ -14,6 +14,7 @@ import SwiftUI
 ///     -skid-setup            open the race options
 ///     -skid-shelf            open the editor's track list
 ///     -skid-edit             open the editor canvas
+///     -skid-levels           start the editor's Levels mode on (with -skid-edit)
 ///     -skid-autostart        start the race, past the ready gate
 ///     -skid-tuning           open the tuning panel (simctl cannot shake)
 ///     -skid-settings         open the settings sheet
