@@ -131,12 +131,22 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     /// The player's control zone; the pad is clamped to stay fully inside.
     public var bounds: Rect?
 
-    /// Where the pad materialized; nil while not touching.
+    /// Where the pad sits. **It survives the thumb lifting** — the pad stays
+    /// visible where the player left it, and the next touch-down moves it —
+    /// because a control that only exists while touched appears exactly one
+    /// press too late to show a new player where to press. nil only before
+    /// the first touch (see `displayOrigin` for the resting default).
     public private(set) var origin: Vec2?
     /// Clamped offset of the thumb from `origin`.
     public private(set) var knob = Vec2.zero
 
     private var activeTouch: TouchID?
+
+    /// Whether a thumb is currently down on this pad.
+    public var touching: Bool { activeTouch != nil }
+    /// Where to DRAW the pad: where the last touch left it, or resting at the
+    /// zone's center before any touch. nil only before the zone is laid out.
+    public var displayOrigin: Vec2? { origin ?? bounds?.center }
 
     public init() {}
 
@@ -161,7 +171,9 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
 
     public func touchEnded(id: TouchID) {
         guard id == activeTouch else { return }
-        releaseAll()
+        // The origin stays: the pad rests where the thumb left it.
+        activeTouch = nil
+        knob = .zero
     }
 
     public func releaseAll() {
@@ -171,7 +183,7 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     }
 
     public func input(for player: PlayerID, at tick: Tick) -> CarInput {
-        guard origin != nil else { return .coast }
+        guard touching else { return .coast }
         return CarInput(
             steer: quantizedAxis(
                 knob.dot(up.perpendicular), deadzone: deadzone, travel: radius,
@@ -221,12 +233,21 @@ public final class AimControlSource: HeadingAwareControlSource {
     /// The player's control zone; the stick is clamped to stay inside.
     public var bounds: Rect?
 
-    /// Where the stick materialized; nil while not touching.
+    /// Where the stick sits. **It survives the thumb lifting** — the stick
+    /// stays visible where the player left it, and the next touch-down moves
+    /// it (see the d-pad's `origin` for why). nil only before the first touch.
     public private(set) var origin: Vec2?
     /// Clamped offset of the thumb from `origin`.
     public private(set) var knob = Vec2.zero
 
     private var activeTouch: TouchID?
+
+    /// Whether a thumb is currently down on this stick.
+    public var touching: Bool { activeTouch != nil }
+    /// Where to DRAW the stick: where the last touch left it, or resting at
+    /// the zone's center before any touch. nil only before layout.
+    public var displayOrigin: Vec2? { origin ?? bounds?.center }
+
     private var carHeading = 0.0
     private var carSpeed = 0.0
     private var carForwardSpeed = 0.0
@@ -257,7 +278,10 @@ public final class AimControlSource: HeadingAwareControlSource {
 
     public func touchEnded(id: TouchID) {
         guard id == activeTouch else { return }
-        releaseAll()
+        // The origin stays: the stick rests where the thumb left it.
+        activeTouch = nil
+        knob = .zero
+        isReversing = false
     }
 
     public func releaseAll() {
