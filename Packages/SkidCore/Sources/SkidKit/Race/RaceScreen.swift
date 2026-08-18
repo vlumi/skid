@@ -34,9 +34,20 @@ struct RaceScreen: View {
             let fullSize = CGSize(
                 width: geo.size.width + insets.leading + insets.trailing,
                 height: geo.size.height + insets.top + insets.bottom)
-            let mapRect = TrackRenderer.fittedMapRect(
-                trackSize: session.race.track.size, in: fullSize,
-                safeInsets: insets)
+            // Fit once to learn the scale, then refit with room for the drawn
+            // overflow (widened decks, shadows) so a tall track's paint stays
+            // out of the control bands and on screen.
+            let track = session.race.track
+            let base = TrackRenderer.fittedMapRect(
+                trackSize: track.size, in: fullSize, safeInsets: insets)
+            let overhang = TrackRenderer.drawnOverhang(
+                track: track, scale: base.width / track.size.x)
+            let mapRect =
+                overhang > 0
+                ? TrackRenderer.fittedMapRect(
+                    trackSize: track.size, in: fullSize, safeInsets: insets,
+                    screenPadding: overhang)
+                : base
             TimelineView(.animation) { timeline in
                 // Step the sim on the main actor, then hand the Canvas
                 // plain value copies — its renderer closure is not
@@ -161,7 +172,13 @@ struct RaceScreen: View {
     }
 
     private func step(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets, time: TimeInterval) {
-        rig.layout(size: size, mapRect: mapRect, safeInsets: safeInsets)
+        // The bands abut the OUTER rect — the map plus its drawn overflow — so
+        // a widened deck's edge or shadow never pokes into a control band.
+        let overhang = TrackRenderer.drawnOverhang(
+            track: session.race.track, scale: mapRect.width / session.race.track.size.x)
+        rig.layout(
+            size: size, mapRect: mapRect.insetBy(dx: -overhang, dy: -overhang),
+            safeInsets: safeInsets)
         game.applyControlTuning()
         session.advance(to: time)
         game.noteProgress()
