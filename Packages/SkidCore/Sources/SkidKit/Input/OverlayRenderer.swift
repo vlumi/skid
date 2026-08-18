@@ -102,30 +102,31 @@ enum OverlayRenderer {
         context.fill(head, with: .color(aim.color.opacity(0.9)))
     }
 
-    /// The countdown's "this one is yours": a chunky arrow in the player's
-    /// color, tilted from its own spot on the shared base line to point at its
-    /// car. Just the arrow — a ring around each car plus a numbered chip was
-    /// four overlapping boxes on a packed grid, covering the very cars they
-    /// pointed at.
-    static func drawGridMarker(_ marker: GridMarker, into context: inout GraphicsContext) {
-        let aim = marker.position - marker.anchor
-        guard aim.length > 1 else { return }
-        let direction = aim.normalized
-        // Local frame: origin at the arrow's TIP (just short of the car),
-        // pointing local screen-up; the shaft runs back toward the anchor.
-        let tip = marker.position - direction * 15
-        let shaft = max(24, tip.distance(to: marker.anchor))
-        var arrow = context
-        arrow.translateBy(x: tip.x, y: tip.y)
-        arrow.rotate(by: Angle(radians: atan2(direction.x, -direction.y)))
-        var path = Path()
-        path.addLines([
-            CGPoint(x: 0, y: 0), CGPoint(x: 13, y: 15), CGPoint(x: 6, y: 15),
-            CGPoint(x: 6, y: shaft), CGPoint(x: -6, y: shaft), CGPoint(x: -6, y: 15),
-            CGPoint(x: -13, y: 15),
-        ])
-        path.closeSubpath()
-        arrow.fill(path, with: .color(marker.color))
-        arrow.stroke(path, with: .color(.black.opacity(0.7)), lineWidth: 2)
+    /// The countdown's "this one is yours": a round highlight of the player's
+    /// color under their car, tethered by a thin leader line to their control
+    /// band. Drawn in TWO passes — every line, then every halo — so a line
+    /// crossing the packed grid to reach a far car passes UNDER the other
+    /// players' halos, never over them. The halo is a translucent disc plus a
+    /// ring, so the car (drawn beneath this overlay) still reads as sitting on
+    /// it, and the line stops at the ring.
+    static func drawGridMarkers(_ markers: [GridMarker], into context: inout GraphicsContext) {
+        let radius = 11.0
+        for marker in markers {
+            let toCar = marker.position - marker.leaderStart
+            guard toCar.length > radius + 1 else { continue }
+            let end = marker.position - toCar.normalized * radius
+            var line = Path()
+            line.move(to: CGPoint(x: marker.leaderStart.x, y: marker.leaderStart.y))
+            line.addLine(to: CGPoint(x: end.x, y: end.y))
+            context.stroke(line, with: .color(marker.color.opacity(0.55)), lineWidth: 2)
+        }
+        for marker in markers {
+            let disc = CGRect(
+                x: marker.position.x - radius, y: marker.position.y - radius,
+                width: radius * 2, height: radius * 2)
+            context.fill(Path(ellipseIn: disc), with: .color(marker.color.opacity(0.25)))
+            context.stroke(
+                Path(ellipseIn: disc), with: .color(marker.color.opacity(0.85)), lineWidth: 2)
+        }
     }
 }

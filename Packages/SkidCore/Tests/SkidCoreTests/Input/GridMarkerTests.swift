@@ -6,8 +6,8 @@ import XCTest
 
 /// **"Which car is mine" exists exactly while it is needed** — the countdown,
 /// where identical silhouettes sit still on the grid — and each marker carries
-/// what the drawing needs: the car's SCREEN position, its tail's spot on the
-/// shared base line, and the color.
+/// what the drawing needs: the car's SCREEN position (the halo's center), where
+/// its leader line leaves the player's own band, and the color.
 @MainActor
 final class GridMarkerTests: XCTestCase {
     private let mapRect = CGRect(x: 0, y: 300, width: 800, height: 600)
@@ -46,8 +46,10 @@ final class GridMarkerTests: XCTestCase {
             ).isEmpty, "the marker outlived the countdown")
     }
 
-    /// Each marker sits on its own car.
-    func testMarkersSitOnTheirCars() {
+    /// Each halo sits on its own car, and each leader line leaves its OWN
+    /// player's band by the map-side edge — a line from the wrong edge would tie
+    /// the car to the wrong corner of the table.
+    func testHalosSitOnTheirCarsAndLeadersLeaveTheirOwnBand() {
         let track = TrackLibrary.track(id: "oval")
         let race = Race(
             track: track, players: [PlayerID(0), PlayerID(1)],
@@ -61,45 +63,14 @@ final class GridMarkerTests: XCTestCase {
         let expected = race.cars[0].state.position * scale + Vec2(mapRect.minX, mapRect.minY)
         XCTAssertEqual(markers[0].position.x, expected.x, accuracy: 1e-9)
         XCTAssertEqual(markers[0].position.y, expected.y, accuracy: 1e-9)
-    }
-
-    /// **The arrows come in from the roomiest map edge**, so a grid parked against
-    /// an edge keeps every arrow over the map — the reported constraint.
-    func testArrowsApproachFromTheRoomiestSide() {
-        let map = CGRect(x: 0, y: 0, width: 800, height: 800)
-        // A grid hugging the TOP edge: the arrows must come from below, pointing up.
-        XCTAssertEqual(
-            GridMarkers.roomiestApproach(
-                grid: CGRect(x: 300, y: 10, width: 200, height: 40), mapRect: map),
-            Vec2(0, -1))
-        // Hugging the RIGHT edge: in from the left, pointing right.
-        XCTAssertEqual(
-            GridMarkers.roomiestApproach(
-                grid: CGRect(x: 700, y: 300, width: 60, height: 200), mapRect: map),
-            Vec2(1, 0))
-    }
-
-    /// **The tails spread along one base line, one arrow-width apart** — four
-    /// arrows aimed straight at a two-by-two grid landed on top of each other
-    /// (reported from device). Order follows the cars, so no arrow crosses
-    /// another's.
-    func testTailsSpreadAlongOneBaseLineWithoutOverlap() {
-        // A tight two-by-two grid, approached from below.
-        let positions = [Vec2(400, 400), Vec2(412, 400), Vec2(400, 384), Vec2(412, 384)]
-        let anchors = GridMarkers.spreadAnchors(positions: positions, direction: Vec2(0, -1))
-        for anchor in anchors {
+        for (marker, controls) in zip(markers, rig.players) {
+            let zone = controls.zone
+            let edge = Vec2(zone.midX, zone.midY) + controls.up * (zone.height / 2)
+            XCTAssertEqual(marker.leaderStart.x, edge.x, accuracy: 1e-9)
             XCTAssertEqual(
-                anchor.y, 400 + GridMarkers.anchorSetback, accuracy: 1e-9,
-                "every tail sits on the one base line behind the rearmost car")
+                marker.leaderStart.y, edge.y, accuracy: 1e-9,
+                "the leader must leave the band's map-side edge")
         }
-        let xs = anchors.map(\.x).sorted()
-        for (near, far) in zip(xs, xs.dropFirst()) {
-            XCTAssertGreaterThanOrEqual(
-                far - near, GridMarkers.anchorSpacing - 1e-9, "two tails overlap")
-        }
-        // Order preserved: the left car keeps the left tail.
-        XCTAssertLessThan(anchors[0].x, anchors[1].x)
-        XCTAssertLessThan(anchors[2].x, anchors[3].x)
     }
 
     /// A networked guest drives global seats (say 2 and 3) — the markers must

@@ -73,9 +73,7 @@ struct RaceScreen: View {
                         for aim in aims {
                             OverlayRenderer.drawAim(aim, into: &context)
                         }
-                        for marker in markers {
-                            OverlayRenderer.drawGridMarker(marker, into: &context)
-                        }
+                        OverlayRenderer.drawGridMarkers(markers, into: &context)
                         // Screen-space, so it stays legible however the map scales.
                         if game.settings.debugOverlay {
                             DebugOverlay.drawWallReadout(race, in: size, into: &context)
