@@ -45,23 +45,13 @@ extension EditorView {
         .accessibilityLabel(Text("Level filter", bundle: .module))
     }
 
-    /// The next filter in the cycle, listing only storeys the track uses — offering
-    /// "level 2" on a flat track is a state that selects nothing.
+    /// The next filter in the cycle, from the storeys the track actually uses.
     private func nextLevelFilter() -> LevelFilter {
         let used = Set(
             (game.editorLayout?.walk().placed ?? [])
                 .map { Track.level(of: max($0.entryHeight, $0.exitHeight)) }
         ).sorted()
-        switch levelFilter {
-        case .off:
-            // A flat track has one storey, so filtering by it is the same as `all`.
-            return used.count > 1 ? .all : .off
-        case .all:
-            return used.first.map { .storey($0) } ?? .off
-        case .storey(let level):
-            guard let at = used.firstIndex(of: level), at + 1 < used.count else { return .off }
-            return .storey(used[at + 1])
-        }
+        return levelFilter.next(usedLevels: used)
     }
 
     /// **Step the road down a level, where it stands.**
