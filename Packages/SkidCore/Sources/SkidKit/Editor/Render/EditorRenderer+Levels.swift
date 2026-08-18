@@ -9,30 +9,82 @@ import SwiftUI
 /// only thing validation gates is whether a track appears in the picker, and making
 /// it vanish with no explanation is worse than driving into the wall and seeing it.
 extension EditorRenderer {
-    /// A level badge on every piece that is off the ground, plus a warning on any
-    /// piece a car could not drive through.
-    ///
-    /// Drawn in its own pass ABOVE all road: per-piece, a deck crossing over a lower
-    /// piece would paint out that piece's badge — the same fault the decals and the
-    /// start line both had.
-    ///
-    /// Only off-ground pieces are badged. Labeling every piece "0" on a flat track
-    /// is noise, and the ground is the case you can already see.
+    /// What the badge pass is asked to show — the mode, the focus, the warnings.
+    struct BadgeQuery {
+        var blockedPieces: Set<Int>
+        var showLevels: Bool
+        var onlyLevel: Int?
+    }
+
+    /// One badge on the plan (see `levelBadges`), with the drawing split by kind.
     static func drawLevelBadges(
-        walk: WalkResult, blockedPieces: Set<Int>, transform t: Transform,
+        walk: WalkResult, query: BadgeQuery, transform t: Transform,
         into context: inout GraphicsContext
     ) {
-        for (index, placed) in walk.placed.enumerated() {
-            let level = Track.level(of: max(placed.entryHeight, placed.exitHeight))
-            let blocked = blockedPieces.contains(index)
-            guard level != 0 || blocked else { continue }
-            guard let at = badgeAnchor(placed, t: t) else { continue }
-            if blocked {
-                drawBlockedBadge(at: at, level: level, t: t, into: &context)
+        for badge in levelBadges(walk: walk, query: query, transform: t) {
+            if badge.blocked {
+                drawBlockedBadge(at: badge.at, level: badge.level, t: t, into: &context)
             } else {
-                drawLevelBadge(at: at, level: level, t: t, into: &context)
+                drawLevelBadge(at: badge.at, level: badge.level, t: t, into: &context)
             }
         }
+    }
+
+    /// One planned badge — split from the drawing so the plan is testable.
+    struct LevelBadge: Equatable {
+        var at: CGPoint
+        var level: Int
+        var blocked: Bool
+    }
+
+    /// **Which pieces get a badge, and where** — a warning on any piece a car could
+    /// not drive through, plus (in Levels mode) a level number on EVERY piece.
+    ///
+    /// Level 0 is badged too. It used to be skipped as noise, but the mode is
+    /// something you keep on while building a multi-level track — reported: turn it
+    /// on from the start, before the first climb exists, and it showed nothing.
+    ///
+    /// With a single storey chosen (`onlyLevel`), the other storeys' numbers are
+    /// dropped so the chosen one can be read alone; the blocked warnings stay, since
+    /// they show even with the mode off.
+    ///
+    /// **A badge covered by a higher badge is dropped.** Where pieces stack (a deck
+    /// over a road), both badges landed on the same spot and read as neither
+    /// (reported from device); the top-most piece's number is the one you can act
+    /// on. Warnings are never dropped and cover anything under them.
+    static func levelBadges(
+        walk: WalkResult, query: BadgeQuery, transform t: Transform
+    ) -> [LevelBadge] {
+        var badges: [LevelBadge] = []
+        for (index, placed) in walk.placed.enumerated() {
+            let level = Track.level(of: max(placed.entryHeight, placed.exitHeight))
+            let blocked = query.blockedPieces.contains(index)
+            guard blocked || query.showLevels else { continue }
+            if !blocked, let onlyLevel = query.onlyLevel, level != onlyLevel { continue }
+            guard let at = badgeAnchor(placed, t: t) else { continue }
+            badges.append(LevelBadge(at: at, level: level, blocked: blocked))
+        }
+        return dropCovered(badges, minDistance: max(7, 11 * t.scale) * 2.1)
+    }
+
+    /// The greedy cover pass: warnings first, then higher levels; anything landing
+    /// within `minDistance` of an already-kept badge is dropped (warnings never are).
+    static func dropCovered(_ badges: [LevelBadge], minDistance: Double) -> [LevelBadge] {
+        let ordered = badges.enumerated().sorted { a, b in
+            if a.element.blocked != b.element.blocked { return a.element.blocked }
+            if a.element.level != b.element.level { return a.element.level > b.element.level }
+            return a.offset < b.offset
+        }.map(\.element)
+        var kept: [LevelBadge] = []
+        for badge in ordered {
+            let covered = kept.contains { keep in
+                hypot(keep.at.x - badge.at.x, keep.at.y - badge.at.y) < minDistance
+            }
+            if badge.blocked || !covered {
+                kept.append(badge)
+            }
+        }
+        return kept
     }
 
     /// The middle of the piece's own road, in screen space — so a badge sits on the

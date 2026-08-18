@@ -128,21 +128,11 @@ struct EditorView: View {
     /// Whether the whole-track transforms are expanded beside the undo pair. In place
     /// rather than a sheet: they change the map, so the map has to stay visible.
     @State var showTransforms = false
-    @State var levelFilter: LevelFilter = .off
+    // `-skid-levels` starts the mode on — the launch-argument family exists
+    // because simctl cannot tap, and a Levels screenshot needs the mode on.
+    @State var levelFilter: LevelFilter =
+        ProcessInfo.processInfo.arguments.contains("-skid-levels") ? .all : .off
 
-    /// `off` shows no badges and selects anything; `all` badges everything; a storey
-    /// badges everything and selects only that one.
-    enum LevelFilter: Equatable {
-        case off
-        case all
-        case storey(Int)
-
-        var showsBadges: Bool { self != .off }
-        var storeyOnly: Int? {
-            if case .storey(let level) = self { return level }
-            return nil
-        }
-    }
     /// Brief warning that the clipboard didn't hold a readable share code.
 
     /// The cached "Close it" search result, recomputed only when the layout or
