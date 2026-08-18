@@ -76,6 +76,24 @@ This also settles the migration question that was open here: existing device
 records become the **first profile's**, because today's records were made by
 whoever owns the phone. Guests never inherit them, and never write to them.
 
+**How records actually shipped (v0.7.x) — superseding two calls above.** Records
+stayed per TRACK, with **attribution**: a board stores the holder's NAME as a
+snapshot rather than a profile id (deleting or renaming a profile must not
+rewrite who drove a time), so it reads "best lap 0:42.1 — Ada" with no second
+axis of storage — and a guest's time IS kept, just with no name, which is honest
+rather than a hole. Per-profile record books stay a when-it-comes-up feature;
+attribution does not block them. Two boundaries worth keeping on purpose:
+
+- **A record is a SOLO time, and a nearby race sets none.** A networked client
+  renders host snapshots rather than simulating, so a time it showed is a number
+  it cannot reproduce — and a record's ghost is a lap of *inputs replayed
+  locally*, which a client does not have. And a lap in traffic (contact,
+  slipstream, being held up) is incomparable with a time trial anyway, which
+  catches the host too.
+- **Ghost storage is a solved worry**: one lap packed at four bytes a tick is
+  ~5 KB per track whatever the race length, so every track keeps its ghost
+  forever.
+
 Not accounts, not sign-in, no server. The cost is bounded: a `PlayerProfile` book
 on disk (the `HiscoreBook`/`TrackLibraryBook` shape, already twice-proven), a
 seat-to-identity mapping, and threading it through the places that say `P1`.
