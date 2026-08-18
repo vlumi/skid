@@ -146,8 +146,11 @@ enum EditorRenderer {
         // elevated piece's offset shadow lands on a neighbor's already-drawn
         // road (e.g. the down-ramp getting a dark smear from the deck's
         // shadow). Shadows under everything; surfaces on top, low-to-high.
-        for (_, placed) in ordered {
-            drawPieceShadow(placed, width: width, t: t, into: &context)
+        for (index, placed) in ordered {
+            drawPieceShadow(
+                placed, width: width,
+                neighbors: ringNeighbors(of: index, in: walk, width: width, t: t),
+                t: t, into: &context)
         }
         // Edge decoration (the white line, and kerbs where a corner earns one)
         // goes down BEFORE any asphalt, for two reasons that are really one:
@@ -244,20 +247,35 @@ enum EditorRenderer {
             if railed {
                 strokeDeckRails(left: e.left, right: e.right, t: t, into: &context)
             }
-            fillRoad(outline, placed: placed, samples: e.samples, t: t, into: &context)
+            fillRoad(outline, placed: placed, ribbon: e, t: t, into: &context)
         }
     }
 
     /// The elevated piece's drop shadow — offset scales with the height at each
     /// point, so a ramp casts a growing shadow (near-zero at the ground end,
     /// full at the deck). Drawn in a pass BEFORE any road surface so it never
-    /// smears onto a neighboring piece's road.
+    /// smears onto a neighboring piece's road — within one drawTrack call.
+    ///
+    /// **Never onto its own road's continuation.** The ring is continuous by
+    /// construction, so past a cut lies the SAME road one piece on — but the race
+    /// view draws by storey band, and where a climbing loop's pieces straddle a
+    /// band boundary, the upper band's shadow pass runs after the lower band's
+    /// roads and rails are already painted. Unclipped, the shadow's offset spilled
+    /// past the cut and landed on them as a hard grey bar (reported from device,
+    /// with the bar also reading as a gap in the wall it crossed). The shadow is
+    /// clipped OUT of the nearby ring-neighbours' ribbons — cutting it at the
+    /// piece's own span was tried first and trimmed legitimate offset shadow on
+    /// curves, leaving gaps in the shadow ring around a loop.
     private static func drawPieceShadow(
-        _ placed: PlacedPiece, width: Double, t: Transform,
+        _ placed: PlacedPiece, width: Double, neighbors: Path, t: Transform,
         into context: inout GraphicsContext
     ) {
         guard Track.isOffGround(placed.entryHeight) || Track.isOffGround(placed.exitHeight)
         else { return }
+        var clipped = context
+        if !neighbors.isEmpty {
+            clipped.clip(to: neighbors, options: .inverse)
+        }
         // Per solid run, so a raised jump casts no shadow across its own gap —
         // there is no deck there to cast one.
         for e in ribbons(placed, width: width, t: t) {
@@ -271,8 +289,33 @@ enum EditorRenderer {
             var shadow = Path()
             shadow.addLines(shLeft + shRight.reversed())
             shadow.closeSubpath()
-            context.fill(shadow, with: .color(.black.opacity(0.3)))
+            clipped.fill(shadow, with: .color(.black.opacity(0.3)))
         }
+    }
+
+    /// The ribbons of the pieces within two ring steps either way — near enough
+    /// that a tall piece's shadow offset (up to ~35 screen points) can reach them.
+    /// A genuine bridge over an unrelated road is never this close in RING order
+    /// (even a tight spiral is a full loop of pieces away), so its shadow on that
+    /// road survives.
+    private static func ringNeighbors(
+        of index: Int, in walk: WalkResult, width: Double, t: Transform
+    ) -> Path {
+        var path = Path()
+        let count = walk.placed.count
+        guard count > 1 else { return path }
+        for step in [-2, -1, 1, 2] where count > abs(step) {
+            let neighbor = walk.placed[(index + step + count * 2) % count]
+            for e in ribbons(neighbor, width: width, t: t) {
+                // Extended a hair, so the antialiased sliver along the exact
+                // seam cannot let the shadow peek through.
+                let overlap = seamOverlap / t.contextScale
+                path.addLines(
+                    extendEnds(e.left, by: overlap) + extendEnds(e.right, by: overlap).reversed())
+                path.closeSubpath()
+            }
+        }
+        return path
     }
 
     /// The deck's guard rails — real barriers, not paint, so unlike ground edge
@@ -329,7 +372,7 @@ enum EditorRenderer {
     /// (the race view — see `contextScale`).
     static let seamOverlap: CGFloat = 1
 
-    private static func extendEnds(_ pts: [CGPoint], by d: CGFloat) -> [CGPoint] {
+    static func extendEnds(_ pts: [CGPoint], by d: CGFloat) -> [CGPoint] {
         guard pts.count >= 2 else { return pts }
         var out = pts
         func unit(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
@@ -344,69 +387,6 @@ enum EditorRenderer {
         let un = unit(pts[n], pts[n - 1])
         out[n] = CGPoint(x: pts[n].x + un.x * d, y: pts[n].y + un.y * d)
         return out
-    }
-
-    private static let deckGray = Color(white: 0.72)
-
-    /// Fill the road surface: flat pieces solid (deck lighter), a ramp shaded
-    /// dark(ground)→light(deck) so the slope reads.
-    private static func fillRoad(
-        _ outline: Path, placed: PlacedPiece,
-        samples: [(point: Vec2, height: Double)], t: Transform,
-        into context: inout GraphicsContext
-    ) {
-        // Shade follows HEIGHT, at both ends of every piece — not a binary
-        // ground/deck pick from the entry. A half-climb blends from its entry
-        // shade to its exit shade, and a road resting at 0.5 takes the matching
-        // mid shade, so a split climb reads as one continuous surface instead
-        // of banding at each seam.
-        guard placed.climb != 0 else {
-            context.fill(outline, with: .color(roadShade(at: placed.entryHeight)))
-            return
-        }
-        context.fill(
-            outline,
-            with: .linearGradient(
-                Gradient(colors: [
-                    roadShade(at: placed.entryHeight), roadShade(at: placed.exitHeight),
-                ]),
-                startPoint: t.screen(samples.first!.point), endPoint: t.screen(samples.last!.point))
-        )
-    }
-
-    /// Ground asphalt at the bottom storey, lightest at the top one, blended
-    /// between — so height reads as brightness at EVERY level.
-    ///
-    /// This used to divide by `levelHeight` and clamp at 1, which meant the shade
-    /// topped out at the first deck: with three storeys, heights 1, 2 and 3 were
-    /// all the same gray and the only cue left was the car's size. Spanning the
-    /// world's actual range keeps each storey distinguishable however many there
-    /// are, and is unchanged for a two-level track (0…1 spans the same 0…1).
-    private static func roadShade(at height: Double) -> Color {
-        Color(white: roadShadeWhite(at: height))
-    }
-
-    /// The shade's white value, exposed so a test can assert the storeys are
-    /// distinguishable without reading pixels.
-    static func roadShadeWhite(at height: Double) -> Double {
-        let span = Double(Track.highestLevel - Track.lowestLevel) * Track.levelHeight
-        let above = height - Double(Track.lowestLevel) * Track.levelHeight
-        let f = span > 0 ? min(1, max(0, above / span)) : 0
-        // The spread is 0.10 per LEVEL rather than across the whole world, so
-        // adding storeys keeps each one as distinguishable as ground-vs-deck was
-        // instead of dividing one narrow band ever more finely (three storeys
-        // would have been 0.033 apart, which reads as one gray).
-        let levels = max(1.0, span / Track.levelHeight)
-        return 0.62 + 0.10 * levels * f
-    }
-
-    /// The brightest a road gets, so callers that need the range agree with the
-    /// shading rather than guessing it.
-    static var roadShadeCeiling: Double {
-        let levels = max(
-            1.0,
-            Double(Track.highestLevel - Track.lowestLevel))
-        return 0.62 + 0.10 * levels
     }
 
 }
