@@ -61,6 +61,34 @@ enum OverlayRenderer {
         }
     }
 
+    /// The countdown's "this one is yours": a small halo of the player's color
+    /// worn ON their car, tethered by a thin leader line to their control band.
+    /// The halo is smaller than the car, so overlaying it hides nothing — and it
+    /// shows through anywhere the car itself shows, the under-deck window
+    /// bubbles included. The line runs unbroken to the halo's rim: at 2 points
+    /// and half opacity it may graze a neighbouring car, which was judged better
+    /// than a gap — and being one overlay stroke it neither dives under bridges
+    /// nor gaps at a deck's edge (both were built and reverted; see history).
+    static func drawGridMarkers(_ markers: [GridMarker], into context: inout GraphicsContext) {
+        let radius = 7.0
+        for marker in markers {
+            let toCar = marker.position - marker.leaderStart
+            if toCar.length > radius + 1 {
+                let end = marker.position - toCar.normalized * radius
+                var line = Path()
+                line.move(to: CGPoint(x: marker.leaderStart.x, y: marker.leaderStart.y))
+                line.addLine(to: CGPoint(x: end.x, y: end.y))
+                context.stroke(line, with: .color(marker.color.opacity(0.55)), lineWidth: 2)
+            }
+            let disc = CGRect(
+                x: marker.position.x - radius, y: marker.position.y - radius,
+                width: radius * 2, height: radius * 2)
+            context.fill(Path(ellipseIn: disc), with: .color(marker.color.opacity(0.3)))
+            context.stroke(
+                Path(ellipseIn: disc), with: .color(marker.color.opacity(0.9)), lineWidth: 2)
+        }
+    }
+
     /// The floating aim stick: a faint disc plus a single pointer from the
     /// origin toward the aimed direction, in the owning player's color —
     /// where you point is where the car heads. **Always visible** — at rest
