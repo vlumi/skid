@@ -4,7 +4,7 @@ import SwiftUI
 extension EditorView {
     /// `off` shows no badges and selects anything; `all` badges everything; a storey
     /// badges everything and selects only that one.
-    enum LevelFilter: Equatable {
+    enum LevelFilter: Equatable, Hashable {
         case off
         case all
         case storey(Int)
@@ -13,6 +13,15 @@ extension EditorView {
         var storeyOnly: Int? {
             if case .storey(let level) = self { return level }
             return nil
+        }
+
+        /// Every state the long-press jump list offers: off, all, then each
+        /// storey the track uses — the same states the cycle walks, so the two
+        /// entrances can never disagree. A flat track's single storey is
+        /// skipped, exactly as the cycle skips it: filtering by the only
+        /// storey adds nothing over `all`.
+        static func pickerOptions(usedLevels used: [Int]) -> [LevelFilter] {
+            [.off, .all] + (used.count > 1 ? used.map { .storey($0) } : [])
         }
 
         /// The next filter in the cycle, given the storeys the track uses —
