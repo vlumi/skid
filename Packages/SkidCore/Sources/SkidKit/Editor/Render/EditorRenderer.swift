@@ -306,7 +306,11 @@ enum EditorRenderer {
         guard count > 1 else { return path }
         for step in [-2, -1, 1, 2] where count > abs(step) {
             let neighbor = walk.placed[(index + step + count * 2) % count]
-            for e in ribbons(neighbor, width: width, t: t) {
+            // Widened by the rail band: the rail straddles the ribbon edge, so
+            // clipping to the bare ribbon left the rail's outer half exposed —
+            // reported as shadow artifacts on a ramp's railing.
+            let railedWidth = width + Double(PieceCatalog.kerbBand) * 2
+            for e in ribbons(neighbor, width: railedWidth, t: t) {
                 // Extended a hair, so the antialiased sliver along the exact
                 // seam cannot let the shadow peek through.
                 let overlap = seamOverlap / t.contextScale

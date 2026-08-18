@@ -41,13 +41,20 @@ extension EditorRenderer {
             context.fill(outline, with: .color(shade))
             return
         }
-        context.stroke(
-            outline,
-            with: .color(roadShade(at: (placed.entryHeight + placed.exitHeight) / 2)),
-            lineWidth: seal)
-        context.fill(
-            outline,
-            with: .color(roadShade(at: (placed.entryHeight + placed.exitHeight) / 2)))
+        // The base coat under the segment quads: entry->exit gradient, NOT the
+        // mid shade — it only ever shows as the 1pt seal at the edges and the
+        // seam overhangs, and a mid-shade overhang past the cut differed from
+        // the neighbour's local shade by half the climb (reported as aliasing
+        // lines at ramp seams). Along the chord is exact AT the cuts, which is
+        // the only place this coat peeks out lengthwise.
+        let coat = GraphicsContext.Shading.linearGradient(
+            Gradient(colors: [
+                roadShade(at: placed.entryHeight), roadShade(at: placed.exitHeight),
+            ]),
+            startPoint: edges.left.first ?? .zero,
+            endPoint: edges.left.last ?? .zero)
+        context.stroke(outline, with: coat, lineWidth: seal)
+        context.fill(outline, with: coat)
         let count = min(edges.left.count, edges.right.count, samples.count)
         guard count > 1 else { return }
         // The run's first and last quads reach past their cuts (the same

@@ -24,8 +24,8 @@ final class MarkStoreTests: XCTestCase {
         store.record(car: car, on: track, tick: 2)
     }
 
-    private func segments(in bank: [MarkStore.Bucket: [MarkStore.Chunk]]) -> Int {
-        bank.values.flatMap { $0 }.reduce(0) { $0 + $1.count }
+    private func segments(in store: MarkStore, storey: Int) -> Int {
+        (store.chunks[storey] ?? [:]).values.flatMap { $0 }.reduce(0) { $0 + $1.count }
     }
 
     /// On flat ground, rubber lands in the ground bank — under any bridge's paint.
@@ -35,8 +35,8 @@ final class MarkStoreTests: XCTestCase {
             width: 120, size: Vec2(2_000, 2_000))
         var store = MarkStore()
         slide(at: Vec2(0, 0), on: track, store: &store)
-        XCTAssertGreaterThan(segments(in: store.chunks), 0)
-        XCTAssertEqual(segments(in: store.elevatedChunks), 0)
+        XCTAssertGreaterThan(segments(in: store, storey: 0), 0)
+        XCTAssertEqual(store.chunks.keys.sorted(), [0])
     }
 
     /// **At a climbing ramp's low beginning the car is still at ground height, but
@@ -54,8 +54,26 @@ final class MarkStoreTests: XCTestCase {
         var store = MarkStore()
         slide(at: toe, on: track, store: &store)
         XCTAssertEqual(
-            segments(in: store.chunks), 0,
+            segments(in: store, storey: 0), 0,
             "a ground-bank mark here is painted over by the ramp's own ribbon")
-        XCTAssertGreaterThan(segments(in: store.elevatedChunks), 0)
+        XCTAssertGreaterThan(segments(in: store, storey: 1), 0)
+    }
+
+    /// **Each storey keeps its own bank** — with one shared "elevated" bank,
+    /// every elevated render pass re-drew it all, so rubber laid on the first
+    /// deck was painted onto the bridges crossing above it (reported from
+    /// device as tire tracks from below the bridge showing on the bridge).
+    func testMarksBankByStoreyNotJustElevated() {
+        // A road resting at level 2: its marks must live in bank 2, not in a
+        // shared bank that bank 3's pass would re-draw.
+        let track = Track(
+            centerline: [Vec2(0, -400), Vec2(0, 400)],
+            width: 120, heights: [2, 2], size: Vec2(2_000, 2_000))
+        var store = MarkStore()
+        slide(at: Vec2(0, 0), on: track, store: &store)
+        XCTAssertGreaterThan(segments(in: store, storey: 2), 0)
+        XCTAssertEqual(
+            store.chunks.keys.sorted(), [2],
+            "the deck's rubber leaked into other storeys' banks")
     }
 }

@@ -41,9 +41,15 @@ enum TrackRenderer {
     /// map and bands). Works off the **safe-area** usable rect, so the notch
     /// and home indicator never eat into the reserved minimum. The grass is
     /// still drawn full-bleed; only this positioning respects the insets.
+    /// `screenPadding` reserves extra room on every side of the fitted rect for
+    /// paint that reaches PAST the track's world bounds — a top-storey road is
+    /// drawn wider than its nominal width and casts an offset shadow, and both
+    /// leaked into the control bands (and off-screen) on a tall track whose
+    /// road hugs its canvas edge. The returned rect is still the world mapping;
+    /// the padding just guarantees the overflow lands on visible grass.
     static func fittedMapRect(
         trackSize: Vec2, in screen: CGSize, safeInsets: EdgeInsets = EdgeInsets(),
-        minBand: CGFloat = 150
+        minBand: CGFloat = 150, screenPadding: CGFloat = 0
     ) -> CGRect {
         // Usable region: the screen minus the safe-area insets.
         let usable = CGRect(
@@ -58,14 +64,32 @@ enum TrackRenderer {
         let portrait = usable.height >= usable.width
         let box =
             portrait
-            ? CGSize(width: usable.width, height: max(1, usable.height - 2 * minBand))
-            : CGSize(width: max(1, usable.width - 2 * minBand), height: usable.height)
+            ? CGSize(
+                width: max(1, usable.width - 2 * screenPadding),
+                height: max(1, usable.height - 2 * minBand - 2 * screenPadding))
+            : CGSize(
+                width: max(1, usable.width - 2 * minBand - 2 * screenPadding),
+                height: max(1, usable.height - 2 * screenPadding))
         let scale = min(box.width / trackSize.x, box.height / trackSize.y)
         let fitted = CGSize(width: trackSize.x * scale, height: trackSize.y * scale)
         return CGRect(
             x: usable.minX + (usable.width - fitted.width) / 2,
             y: usable.minY + (usable.height - fitted.height) / 2,
             width: fitted.width, height: fitted.height)
+    }
+
+    /// How far the DRAWN track can reach past its world bounds, in screen
+    /// points at `scale`: the top storey's widened road plus its rail beyond
+    /// the nominal edge, and the drop shadow's fixed screen offset. Zero for a
+    /// flat track, so nothing changes where nothing overflows.
+    static func drawnOverhang(track: Track, scale: Double) -> CGFloat {
+        let maxHeight = track.deckTops.max() ?? 0
+        guard maxHeight > 0 else { return 0 }
+        let widened =
+            Double(track.width) / 2 * (Elevation.scale(atHeight: maxHeight) - 1)
+        let rail = Double(PieceCatalog.kerbBand)
+        let shadow = 11.0 * maxHeight  // screen offset; see drawPieceShadow
+        return CGFloat((widened + rail) * scale + shadow + 2)
     }
 
     // The palette. Deliberately close to the classic top-down look.
@@ -149,7 +173,7 @@ enum TrackRenderer {
                 drawGates(gateChrome, storey: storey, into: &context)
             }
             order.add(storey: storey, kind: .mark) { context in
-                drawMarks(marks, elevated: storey > 0, into: &context)
+                drawMarks(marks, storey: storey, into: &context)
             }
         }
         // Surface patches are ground paint.
@@ -392,13 +416,15 @@ enum TrackRenderer {
     }
 
     static func drawMarks(
-        _ marks: MarkStore, elevated: Bool = false, into context: inout GraphicsContext
+        _ marks: MarkStore, storey: Int = 0, into context: inout GraphicsContext
     ) {
         // Marks arrive pre-batched into chunked paths — a few dozen stroke
-        // calls total, whatever the segment count.
+        // calls total, whatever the segment count. Only THIS storey's bank:
+        // redrawing every elevated bank per band painted a lower deck's rubber
+        // onto the bridges above it.
         let style = StrokeStyle(lineWidth: 4, lineCap: .round)
         for bucket in MarkStore.Bucket.allCases {
-            guard let chunkList = (elevated ? marks.elevatedChunks : marks.chunks)[bucket]
+            guard let chunkList = marks.chunks[storey]?[bucket]
             else { continue }
             let color: Color
             switch bucket {
