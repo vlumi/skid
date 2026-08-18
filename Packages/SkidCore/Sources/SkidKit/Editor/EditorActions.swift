@@ -102,8 +102,10 @@ extension CouchGame {
     /// without validating on every SwiftUI render.
     public func editorCanPrepend(_ id: PieceID, pitch: Pitch = .flat) -> Bool {
         guard let layout = editorLayout else { return false }
-        if prependVerdicts.pieces != layout.pieces {
-            prependVerdicts = (layout.pieces, [:])
+        if prependVerdicts.pieces != layout.pieces
+            || prependVerdicts.height != layout.originHeight
+        {
+            prependVerdicts = VerdictMemo(pieces: layout.pieces, height: layout.originHeight)
         }
         let key = VerdictKey(id: id, pitch: pitch)
         if let verdict = prependVerdicts.byPiece[key] { return verdict }
@@ -212,31 +214,6 @@ extension CouchGame {
         editorBuildEnd = .tail
         if (editorLayout?.gateSeams.count ?? 0) < 2 { editorSeedGates() }
         centerOnCanvas()
-    }
-
-    /// Whether a palette piece can be placed right now — so the editor can gray
-    /// out the ones that would break the track instead of letting you tap them.
-    ///
-    /// Memoised per layout: SwiftUI re-renders the palette on ANY state change —
-    /// every frame of a carousel drag included — and each render asks this for
-    /// every button. The verdicts only change when the pieces do, so answering
-    /// from the memo keeps drag frames free of validation work.
-    public func editorCanAppend(_ id: PieceID, pitch: Pitch = .flat) -> Bool {
-        guard let layout = editorLayout else { return false }
-        if appendVerdicts.pieces != layout.pieces {
-            appendVerdicts = (layout.pieces, [:])
-        }
-        let key = VerdictKey(id: id, pitch: pitch)
-        if let verdict = appendVerdicts.byPiece[key] { return verdict }
-        let verdict = TrackValidator.canAppend(id, pitch: pitch, to: layout)
-        appendVerdicts.byPiece[key] = verdict
-        return verdict
-    }
-
-    /// One placement question: which piece, at what pitch.
-    struct VerdictKey: Hashable {
-        var id: PieceID
-        var pitch: Pitch
     }
 
     /// Move the whole layout so it sits centered on the canvas, by shifting the
