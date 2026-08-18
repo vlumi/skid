@@ -71,11 +71,15 @@ struct EditorView: View {
         /// A LAID piece's variants — decals, and the start line's facing. Applied
         /// in place: same geometry, different markings.
         case piece(Int)
+        /// The level filter's jump list — a long-press on the Levels button, so a
+        /// deep filter is one gesture instead of cycling the whole ring.
+        case levels
 
         var id: String {
             switch self {
             case .hotbar(let slot): return "hotbar\(slot)"
             case .piece(let index): return "piece\(index)"
+            case .levels: return "levels"
             }
         }
     }

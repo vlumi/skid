@@ -92,6 +92,24 @@ final class LevelBadgeTests: XCTestCase {
         XCTAssertEqual(Filter.storey(2).next(usedLevels: [0, 1, 2]), .off)
     }
 
+    /// **The long-press jump list offers every state the cycle walks** — off,
+    /// all, then each used storey — and skips the single storey of a flat track
+    /// exactly as the cycle does, so the two entrances can never disagree.
+    func testTheJumpListMatchesTheCycle() {
+        typealias Filter = EditorView.LevelFilter
+        XCTAssertEqual(Filter.pickerOptions(usedLevels: [0]), [.off, .all])
+        XCTAssertEqual(
+            Filter.pickerOptions(usedLevels: [0, 1, 3]),
+            [.off, .all, .storey(0), .storey(1), .storey(3)])
+        // Agreement, mechanically: from every option, cycling stays inside the list.
+        let used = [0, 1, 2]
+        for option in Filter.pickerOptions(usedLevels: used) {
+            XCTAssertTrue(
+                Filter.pickerOptions(usedLevels: used).contains(option.next(usedLevels: used)),
+                "the cycle left the jump list from \(option)")
+        }
+    }
+
     /// Where badges land on one spot, only the top-most level survives; warnings
     /// are never dropped and cover plain numbers under them.
     func testACoveredBadgeIsDropped() {
