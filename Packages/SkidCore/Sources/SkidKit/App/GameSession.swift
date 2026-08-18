@@ -20,6 +20,12 @@ public final class GameSession: ObservableObject {
     /// The whole run as seed + inputs — replay/ghost currency, recorded
     /// from the first lap-capable build because it can't be retrofitted.
     public private(set) var recording: RaceRecording
+    /// The whole field's pose at each lap boundary of the first car, captured as
+    /// the boundary passes — what lets the finish-line ghost cut be a SLICE of
+    /// the recording instead of a replay of the race (which took seconds on the
+    /// frame the finish line was crossed, felt as a hitch).
+    public private(set) var lapStartPoses: [Tick: LapGhost.Start] = [:]
+    private var posedLapCount = 0
     /// Where each gate paints its checkpoint line on the road.
     public let gateSpans: [(a: Vec2, b: Vec2)?]
     /// The seed this race was built from — part of `raceKey`, so two races differ
@@ -211,11 +217,29 @@ public final class GameSession: ObservableObject {
     private func step(with inputs: [PlayerID: CarInput]) {
         recording.append(inputs)
         race.advance(inputs: inputs)
+        captureLapStart()
         ghost?.advanceTick()
         for car in race.cars {
             marks.record(car: car, on: race.track, tick: race.tick)
         }
         onTick?(race)
+    }
+
+    /// Snapshot the field at a lap boundary of the FIRST car — the one records
+    /// are kept for. The first boundary is the countdown's end (lap 1's start);
+    /// each completed lap marks the start of the next. `race.tick` at these
+    /// moments equals `RaceRecording.bestLapRange`'s lower bound arithmetic, so
+    /// the cut can look its pose up by tick.
+    private func captureLapStart() {
+        guard let car = race.cars.first else { return }
+        let boundary =
+            (race.tick == race.config.countdownTicks && lapStartPoses.isEmpty)
+            || car.progress.lapTimes.count > posedLapCount
+        guard boundary else { return }
+        posedLapCount = car.progress.lapTimes.count
+        lapStartPoses[race.tick] = LapGhost.Start(
+            tick: race.tick,
+            cars: race.cars.map { LapGhost.CarPose(seat: $0.id, state: $0.state) })
     }
 }
 
