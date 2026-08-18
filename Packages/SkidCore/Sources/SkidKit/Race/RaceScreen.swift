@@ -84,7 +84,9 @@ struct RaceScreen: View {
                     InputSurface(rig: rig)
                     RaceHUD(
                         race: race, colors: colors, rig: rig, size: fullSize,
-                        records: game.runRecords, started: session.started)
+                        records: game.runRecords, started: session.started,
+                        gantryCenter: StartLights.gantryCenter(
+                            race: race, mapRect: mapRect, size: fullSize))
 
                     // Only in a networked race, and only when something is wrong:
                     // a stall that names who it waits for, or a desync. Both are

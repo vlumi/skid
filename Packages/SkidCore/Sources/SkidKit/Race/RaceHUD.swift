@@ -16,6 +16,9 @@ struct RaceHUD: View {
     /// suppressed — the sim sits frozen at tick 0 (phase `.countdown`), which
     /// would otherwise flash a "3" behind the Play button.
     var started: Bool = true
+    /// Where the start gantry sits — computed by `StartLights.gantryCenter`, so
+    /// it can dodge a grid parked at the screen center.
+    var gantryCenter: CGPoint = .zero
 
     /// Debounced finishing position per car index (P1 = 1). Recomputed from
     /// `race.standings` each tick, but a change is only shown after it has
@@ -77,7 +80,8 @@ struct RaceHUD: View {
         }
     }
 
-    /// **The start gantry**, centered over the map.
+    /// **The start gantry**, over the map — at the screen center unless the grid
+    /// is there, in which case it dodges (see `StartLights.gantryCenter`).
     ///
     /// One copy, not two. The numbers this replaces had to be drawn twice and mirrored,
     /// because a "3" upside down is not a 3 — and even then the players sitting sideways
@@ -98,7 +102,7 @@ struct RaceHUD: View {
             }()
             if let seconds {
                 StartLights(secondsRemaining: seconds, started: seconds <= 0)
-                    .position(x: size.width / 2, y: size.height / 2)
+                    .position(gantryCenter)
             }
         }
     }
