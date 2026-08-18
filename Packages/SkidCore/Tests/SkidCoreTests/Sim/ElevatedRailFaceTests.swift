@@ -56,6 +56,47 @@ final class ElevatedRailFaceTests: XCTestCase {
             "the car ended inside the drawn railing")
     }
 
+    /// **No warp-through at a curved wall's seams.** The first fix shifted the
+    /// FACE per approach instead of the segment: a car legitimately sitting
+    /// past the stored line had its side test flip at the joint between two
+    /// rail segments, and the next segment ejected it through the railing
+    /// (reported from device, with the car ending on the grass outside). With
+    /// the whole segment translated, the car is never past the wall — sweep a
+    /// car hard into the joint of an outer curve and it must stay inside.
+    func testNoEscapeAtACurvedWallSeam() {
+        let track = Track(
+            centerline: [Vec2(0, -400), Vec2(0, 400)],
+            width: 120, heights: [3, 3], size: Vec2(4_000, 4_000))
+        let race = Race(
+            track: track, players: [PlayerID(0)],
+            config: RaceConfig(laps: 3, countdownTicks: 0))
+        // Two rail segments meeting at a 22.5-degree joint, outward away from
+        // the road — an outer curve's corner, where the translated spans open
+        // a small wedge.
+        let joint = Vec2(120, 0)
+        let turn = 22.5 * Double.pi / 180
+        let rails = [
+            Wall(
+                from: joint - Vec2(0, 1) * 200, to: joint, height: 3, kind: .rail,
+                outward: Vec2(1, 0)),
+            Wall(
+                from: joint, to: joint + Vec2(sin(turn), cos(turn)) * 200,
+                height: 3, kind: .rail, outward: Vec2(cos(turn), -sin(turn))),
+        ]
+        let widening = track.halfWidth(atHeight: 3) - track.width / 2
+        // Drive straight at the joint's corner wedge from inside, fast enough
+        // to cross the whole widening in one tick.
+        var car = CarState(
+            position: Vec2(joint.x + widening + 30, 2), velocity: Vec2(600, 0),
+            height: 3)
+        let impact = race.collideWithWalls(
+            car: &car, movedFrom: Vec2(joint.x - 40, 2), walls: rails)
+        XCTAssertGreaterThan(impact, 0, "the seam let the car through")
+        XCTAssertLessThanOrEqual(
+            car.position.x, joint.x + widening + CarGeometry.radius,
+            "the car ended outside the railing")
+    }
+
     /// At ground height there is no widening, so the face IS the segment —
     /// flat-track collisions are bit-identical to before.
     func testGroundRailsAreUntouched() {
