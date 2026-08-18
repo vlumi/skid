@@ -21,37 +21,44 @@ extension EditorView {
         case .all: label = "All"
         case .storey(let level): label = "\(level)"
         }
-        return Button {
-            levelFilter = nextLevelFilter()
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "square.3.layers.3d")
-                if label.isEmpty {
-                    Text("Levels", bundle: .module)
-                } else {
-                    Text(verbatim: label)
-                }
+        return HStack(spacing: 5) {
+            Image(systemName: "square.3.layers.3d")
+            if label.isEmpty {
+                Text("Levels", bundle: .module)
+            } else {
+                Text(verbatim: label)
             }
-            .font(Retro.caption)
-            .foregroundStyle(levelFilter == .off ? Retro.ink : Retro.onHighlight)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 7)
-            .background(levelFilter == .off ? Retro.panel : Retro.highlight)
-            // A MODE, so it reads pressed-in while on — the retro language's way of
-            // saying "this stays on", against an action's raised face.
-            .overlay(RetroBevel(inset: levelFilter != .off, thickness: 2))
-            .contentShape(Rectangle())
         }
+        .font(Retro.caption)
+        .foregroundStyle(levelFilter == .off ? Retro.ink : Retro.onHighlight)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 7)
+        .background(levelFilter == .off ? Retro.panel : Retro.highlight)
+        // A MODE, so it reads pressed-in while on — the retro language's way of
+        // saying "this stays on", against an action's raised face.
+        .overlay(RetroBevel(inset: levelFilter != .off, thickness: 2))
+        .contentShape(Rectangle())
+        // Tap cycles; long-press opens the jump list — one gesture to a deep
+        // storey instead of walking the ring. One declared gesture, so the
+        // precedence is defined (a Button plus a long press competed and only
+        // fired sometimes — the hotbar hit this first).
+        .gesture(
+            LongPressGesture(minimumDuration: 0.4)
+                .onEnded { _ in configuring = .levels }
+                .exclusively(
+                    before: TapGesture().onEnded {
+                        levelFilter = levelFilter.next(usedLevels: usedLevels())
+                    })
+        )
         .accessibilityLabel(Text("Level filter", bundle: .module))
     }
 
-    /// The next filter in the cycle, from the storeys the track actually uses.
-    private func nextLevelFilter() -> LevelFilter {
-        let used = Set(
+    /// The storeys the track actually uses, ascending.
+    func usedLevels() -> [Int] {
+        Set(
             (game.editorLayout?.walk().placed ?? [])
                 .map { Track.level(of: max($0.entryHeight, $0.exitHeight)) }
         ).sorted()
-        return levelFilter.next(usedLevels: used)
     }
 
     /// **Step the road down a level, where it stands.**
