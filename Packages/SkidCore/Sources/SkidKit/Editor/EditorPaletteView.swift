@@ -259,6 +259,10 @@ extension EditorView {
                     }
                 }
             }
+        case .levels:
+            configurationBody(Text("Level filter", bundle: .module)) {
+                levelPickerGrid
+            }
         // Railings are NOT here any more: they moved to the fixed selection row, so
         // toggling one is a single tap rather than select-open-check-close. This sheet
         // is only for the things that genuinely need a picker.
