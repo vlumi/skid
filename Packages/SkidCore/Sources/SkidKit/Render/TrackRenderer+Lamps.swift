@@ -13,6 +13,40 @@ import SwiftUI
 /// to 4.6, against the old sheen's 3.7. Large colored areas spend the palette's
 /// separation budget; a pair of 3.8-unit dots does not.
 extension TrackRenderer {
+    /// The countdown's "this one is yours": a round highlight of the player's
+    /// color under their car, tethered by a thin leader line to their control
+    /// band. Registered as `.halo`, so the CARS genuinely paint on top — the
+    /// first cut drew these in the screen-space overlay, where translucency only
+    /// faked "under". Two passes — every line, then every halo — so a line
+    /// crossing the packed grid to a far car passes beneath the other players'
+    /// halos too. `pixelScale` is the world→screen factor: sizes divide by it,
+    /// so a halo is 11 SCREEN points on every track.
+    static func drawGridMarkers(
+        _ markers: [GridMarker], pixelScale: Double, into context: inout GraphicsContext
+    ) {
+        let radius = 11.0 / pixelScale
+        for marker in markers {
+            let toCar = marker.position - marker.leaderStart
+            guard toCar.length > radius + 1 else { continue }
+            let end = marker.position - toCar.normalized * radius
+            var line = Path()
+            line.move(to: CGPoint(x: marker.leaderStart.x, y: marker.leaderStart.y))
+            line.addLine(to: CGPoint(x: end.x, y: end.y))
+            context.stroke(
+                line, with: .color(marker.color.opacity(0.55)),
+                lineWidth: 2.0 / pixelScale)
+        }
+        for marker in markers {
+            let disc = CGRect(
+                x: marker.position.x - radius, y: marker.position.y - radius,
+                width: radius * 2, height: radius * 2)
+            context.fill(Path(ellipseIn: disc), with: .color(marker.color.opacity(0.3)))
+            context.stroke(
+                Path(ellipseIn: disc), with: .color(marker.color.opacity(0.9)),
+                lineWidth: 2.0 / pixelScale)
+        }
+    }
+
     /// **The headlight cone — the facing cue.** In the car's own color, so it also
     /// helps tell the cars apart; brightest where it leaves the nose, gone by the tip.
     ///

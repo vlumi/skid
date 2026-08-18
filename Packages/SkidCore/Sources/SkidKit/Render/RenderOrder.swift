@@ -37,6 +37,10 @@ enum RenderOrder {
         /// The under-deck window: a hole showing a covered car. Below `car`
         /// so a real car DRIVING on this deck passes over the hole, never
         /// under the ghost of the car beneath it.
+        /// The countdown's grid-claim chrome — each local player's halo and its
+        /// leader line — under the cars (a halo is something a car SITS ON) and
+        /// above the road and its paint.
+        case halo
         case window
         case car
         /// **The headlight fans, above every road band.** A beam lights the road

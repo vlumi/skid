@@ -14,6 +14,9 @@ struct WorldScene {
     var mapRect: CGRect
     /// PB-ghost cars to draw translucently (time trial), if any.
     var ghosts: [CarState] = []
+    /// Countdown grid claims (world space) — drawn UNDER the cars, which is why
+    /// they ride the scene into the ordered render instead of the overlay pass.
+    var gridMarkers: [GridMarker] = []
     /// Draw the sim's own view of the world on top (see `DebugOverlay`).
     var debug = false
 }
@@ -157,12 +160,30 @@ enum TrackRenderer {
             drawPatches(track: track, into: &context)
         }
 
+        addGridMarkers(scene: scene, pixelScale: scale, to: &order)
         addCars(scene: scene, gateChrome: gateChrome, colorAt: color, to: &order)
         order.paint(into: &context)
 
         // Last, so it sits over everything it's describing.
         if scene.debug {
             DebugOverlay.draw(scene: scene, into: &context)
+        }
+    }
+
+    /// The countdown's grid claims, at the grid's own storey: above its road,
+    /// below its cars — and below any bridge deck a leader line crosses, which
+    /// is the same under-the-deck rule the cars, the tire marks and the
+    /// headlight all follow. During the countdown every car still sits on the
+    /// start grid, so the marked cars share one paint storey by construction.
+    private static func addGridMarkers(
+        scene: WorldScene, pixelScale: Double, to order: inout RenderOrder.Builder
+    ) {
+        guard !scene.gridMarkers.isEmpty else { return }
+        let track = scene.race.track
+        let storey =
+            scene.race.cars.map { carStorey(of: $0.state, on: track) }.max() ?? 0
+        order.add(storey: storey, kind: .halo) { context in
+            drawGridMarkers(scene.gridMarkers, pixelScale: pixelScale, into: &context)
         }
     }
 
