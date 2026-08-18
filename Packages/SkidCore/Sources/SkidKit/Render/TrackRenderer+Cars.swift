@@ -277,8 +277,7 @@ extension TrackRenderer {
         // ghost. So the drawn body is deliberately its own number — 0.62 of the nominal
         // width rather than the old 0.5 — and the corners are square.
         let bodyHeight = width * 0.62
-        let body = CGRect(x: -length / 2, y: -bodyHeight / 2, width: length, height: bodyHeight)
-        let bodyPath = Path(body)
+        let bodyPath = CarBody.path(length: length, bodyHeight: bodyHeight)
         // The glow: the dark rim drawn into a layer with TWO stacked white
         // shadow filters, so a soft light aura bleeds out around the whole
         // silhouette. Stacking compounds the light so it stays visible even at
@@ -310,12 +309,10 @@ extension TrackRenderer {
         // is impossible at nine — which makes it a job for the color picker, where
         // the field size can bound the choices, not for arithmetic here.
         //
-        // So facing rests on the nose lamps and the tucked-back cockpit until the
-        // projected cone returns — and the cone is the *right* answer precisely
-        // because a beam adds no color to the body, spending nothing from the
-        // palette's budget. It stays parked pending an occlusion query: an extended
-        // beam binned at its origin's storey gets sliced at ramp feet, and it must
-        // not shine through walls.
+        // So facing rests on shapes that spend nothing from the palette's budget:
+        // the headlight cone (a beam adds no color to the body), the tapered nose
+        // (the silhouette itself points forward — see `CarBody`), and the
+        // tucked-back cockpit.
         var livery = car2D
         livery.clip(to: bodyPath)
         paintReverseLamps(car: car, length: length, into: &livery)
