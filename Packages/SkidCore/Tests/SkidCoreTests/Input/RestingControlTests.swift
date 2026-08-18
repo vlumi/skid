@@ -37,8 +37,10 @@ final class RestingControlTests: XCTestCase {
         let aim = AimControlSource()
         aim.bounds = bounds
         aim.touchBegan(id: 2, at: Vec2(600, 400))
+        XCTAssertTrue(aim.touching)
         let aimLanded = aim.origin
         aim.touchEnded(id: 2)
+        XCTAssertFalse(aim.touching)
         XCTAssertEqual(aim.displayOrigin, aimLanded, "the stick snapped away on lift")
     }
 

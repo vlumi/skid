@@ -35,6 +35,52 @@ struct StartLights: View {
     /// Five, like a real gantry, and odd so there is a middle to fill last.
     static let count = 5
 
+    /// The panel's screen footprint: five 16pt lamps, 6pt gaps, padding and bevel.
+    static let panelSize = CGSize(width: 124, height: 32)
+    /// Clearance around the grid cars before the panel counts as "in the way" —
+    /// covers the car itself plus its ownership arrow.
+    static let gridClearance = 62.0
+
+    /// **Where the gantry goes: the screen center, unless the grid is there.**
+    ///
+    /// The gantry used to sit at the screen center unconditionally, which is exactly
+    /// where a track like the eight puts its start line — the lights landed on top of
+    /// the cars and their ownership arrows (reported from device). If the panel would
+    /// overlap the grid (cars grown by `gridClearance`), it dodges vertically into the
+    /// roomier gap between the grid and the map's edge, staying over the map. The x
+    /// stays centered: the panel must read the same from every seat, and sideways it
+    /// already does.
+    static func gantryCenter(race: Race, mapRect: CGRect, size: CGSize) -> CGPoint {
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let scale = mapRect.width / race.track.size.x
+        let cars = race.cars.map { car in
+            CGPoint(
+                x: mapRect.minX + car.state.position.x * scale,
+                y: mapRect.minY + car.state.position.y * scale)
+        }
+        guard let first = cars.first else { return center }
+        var grid = CGRect(origin: first, size: .zero)
+        for car in cars.dropFirst() {
+            grid = grid.union(CGRect(origin: car, size: .zero))
+        }
+        grid = grid.insetBy(dx: -gridClearance, dy: -gridClearance)
+        let panel = CGRect(
+            x: center.x - panelSize.width / 2, y: center.y - panelSize.height / 2,
+            width: panelSize.width, height: panelSize.height)
+        guard panel.intersects(grid) else { return center }
+        let roomAbove = grid.minY - mapRect.minY
+        let roomBelow = mapRect.maxY - grid.maxY
+        let dodged =
+            roomAbove > roomBelow
+            ? grid.minY - panelSize.height / 2 - 6
+            : grid.maxY + panelSize.height / 2 + 6
+        // Clamped over the map: past its edge the panel would sit on a control band.
+        let y = min(
+            max(dodged, mapRect.minY + panelSize.height / 2),
+            mapRect.maxY - panelSize.height / 2)
+        return CGPoint(x: center.x, y: y)
+    }
+
     /// **Which lamps are lit with `seconds` left** — the pattern, without the view, so
     /// the suite can hold the property the whole design rests on: every state reads the
     /// same upside down.

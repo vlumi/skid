@@ -102,31 +102,30 @@ enum OverlayRenderer {
         context.fill(head, with: .color(aim.color.opacity(0.9)))
     }
 
-    /// The countdown's "this one is yours": a square ring around the player's
-    /// car and a numbered chip on their side of it, the number rotated to face
-    /// them. Square, like every other marker in the game. The chip is dark with
-    /// a colored rim and a white number — white-on-dark stays readable whatever
-    /// the player's color, and the ring already shouts the color itself.
+    /// The countdown's "this one is yours": a chunky arrow in the player's
+    /// color, tilted from its own spot on the shared base line to point at its
+    /// car. Just the arrow — a ring around each car plus a numbered chip was
+    /// four overlapping boxes on a packed grid, covering the very cars they
+    /// pointed at.
     static func drawGridMarker(_ marker: GridMarker, into context: inout GraphicsContext) {
-        let radius: CGFloat = 22
-        let ring = CGRect(
-            x: marker.position.x - radius, y: marker.position.y - radius,
-            width: radius * 2, height: radius * 2)
-        context.stroke(Path(ring), with: .color(marker.color.opacity(0.9)), lineWidth: 3)
-
-        // The chip sits on the player's side of the ring (their edge is where
-        // `up` points FROM), rotated so its top is the player's up.
-        let center = marker.position - marker.up * (Double(radius) + 20)
-        var chip = context
-        chip.translateBy(x: center.x, y: center.y)
-        chip.rotate(by: Angle(radians: atan2(marker.up.x, -marker.up.y)))
-        let box = CGRect(x: -13, y: -13, width: 26, height: 26)
-        chip.fill(Path(box), with: .color(.black.opacity(0.7)))
-        chip.stroke(Path(box), with: .color(marker.color.opacity(0.9)), lineWidth: 2)
-        chip.draw(
-            Text(verbatim: "\(marker.number)")
-                .font(.system(size: 17, weight: .bold, design: .monospaced))
-                .foregroundColor(.white),
-            at: .zero)
+        let aim = marker.position - marker.anchor
+        guard aim.length > 1 else { return }
+        let direction = aim.normalized
+        // Local frame: origin at the arrow's TIP (just short of the car),
+        // pointing local screen-up; the shaft runs back toward the anchor.
+        let tip = marker.position - direction * 15
+        let shaft = max(24, tip.distance(to: marker.anchor))
+        var arrow = context
+        arrow.translateBy(x: tip.x, y: tip.y)
+        arrow.rotate(by: Angle(radians: atan2(direction.x, -direction.y)))
+        var path = Path()
+        path.addLines([
+            CGPoint(x: 0, y: 0), CGPoint(x: 13, y: 15), CGPoint(x: 6, y: 15),
+            CGPoint(x: 6, y: shaft), CGPoint(x: -6, y: shaft), CGPoint(x: -6, y: 15),
+            CGPoint(x: -13, y: 15),
+        ])
+        path.closeSubpath()
+        arrow.fill(path, with: .color(marker.color))
+        arrow.stroke(path, with: .color(.black.opacity(0.7)), lineWidth: 2)
     }
 }
