@@ -275,26 +275,7 @@ extension Race {
             && (closest - wall.a).dot(alongWall) > 0
             && (closest - wall.b).dot(alongWall) < 0
         guard beside, (from - closest).dot(wall.outward) > 0 else { return 0 }
-        return railThickness(atHeight: wall.height)
-    }
-
-    /// How far a rail's band stands outboard of its collision segment, at the
-    /// height that rail guards.
-    ///
-    /// Per rail, not one constant, because the segment does not track the band:
-    /// rails are generated at the NOMINAL road edge (deliberately — see
-    /// `PieceCompilerWalls.deckRails`, where scaling them per sample made
-    /// mid-ramp rails drift outboard) while the band is drawn at the PAINTED
-    /// edge, which grows with height. So the gap between line and band grows
-    /// too: 15 units at a ground rail, 27 at a deck rail.
-    ///
-    /// Taking the deck's figure for every rail — the first version of this —
-    /// gave the low rails 12 units of reach they are not drawn with, which is
-    /// an invisible wall to lean against at a ramp's root. Each rail knows its
-    /// own height, so it uses it.
-    private func railThickness(atHeight height: Double) -> Double {
-        let face = track.halfWidth(atHeight: height) + Double(PieceCatalog.kerbBand)
-        return max(0, face - track.width / 2)
+        return Double(PieceCatalog.kerbBand)
     }
 
     /// The point on `wall` nearest the car's swept path this tick — treating the
