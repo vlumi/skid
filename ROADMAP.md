@@ -6,7 +6,7 @@ The implementation plan, as **named milestones in rough order** — and *only op
 
 **Milestones are not version numbers.** A version is assigned when a milestone is *cut*, not when it is planned — some of these will be reordered, split, or dropped outright, and renumbering the rest each time is the churn that stops a roadmap being updated at all.
 
-Guiding order: **the drift is the game**, and **what comes early is whatever answers a question that changes the plan**. One sequencing fact worth naming because it is easy to miss when items are scattered: **the front end blocks more than it looks like** — color picking, records screens and a track browser all need surfaces that do not exist yet, so they queue behind one redesign rather than being independent tasks.
+Guiding order: **the drift is the game**, and **what comes early is whatever answers a question that changes the plan**.
 
 ## Release grouping
 
@@ -14,12 +14,12 @@ Rough, and expected to churn — the point is which themes are worth shipping *t
 
 | next | then | later | 1.0 | parked |
 | --- | --- | --- | --- | --- |
-| The front end | Tournaments & sharing | More to build with | Polish & submission | Surfaces & hazards |
-| First ten seconds: the tail | Networked play: the tail | Platforms & input | | |
+| Tournaments & sharing | Networked play: the tail | More to build with | Polish & submission | Surfaces & hazards |
+| First ten seconds: the tail | The front end: the tail | Platforms & input | | |
 
 The **track library** sits inside *Tournaments & sharing* but depends on nothing — it is design work, not code, and can start at any time. It gates tournaments.
 
-**Why that order.** The racing works; the *game* around it is undesigned, and the front end is where that gets decided rather than merely drawn. A menu cannot be built without answering what a player picks, in what order, and what survives between sessions — and those answers are the game. So the menu comes first, tournaments follow (the only genuinely new mode, and the one that gives a five-second lap a reason to be driven forty times), and the structure is set out in [docs/game-shape-plan.md](docs/game-shape-plan.md).
+**Why that order.** The front end shipped in v0.8 — the opening screen answers who is playing and what to do, profiles and record boards keep results, and settings/about/results all have homes — which unblocks what queued behind it. Tournaments are the next genuinely new thing: the one mode that gives a five-second lap a reason to be driven forty times, gated by the track library. The structure is in [docs/game-shape-plan.md](docs/game-shape-plan.md).
 
 ## Surfaces & hazards — *PARKED*
 
@@ -35,7 +35,6 @@ One exception survives, and it belongs to the library rather than here: *some* d
 
 All small, and two of them are *measurements* rather than features — do not build before they are taken.
 
-- [ ] **Choose your color in the lobby**, from the measured accessible nine (see [docs/first-glance-plan.md](docs/first-glance-plan.md) — the palette work is done, the picker is not). Under networking a color must be agreed centrally, since "local" is a per-screen property.
 - [ ] **Judge the client's input latency on a real link.** Your thumb reaches the host and the result comes back a snapshot later; the on-screen `gap · lag` readout is the number. If it feels bad, the fix is **client-side prediction of the own car with reconciliation** — measured feasible (0.37 ms/tick for 4 cars, so a 20-tick re-simulation is single-digit milliseconds) and explicitly NOT worth building until the feel demands it.
 - [ ] **Three or more devices, on hardware.** The logic is proven under simulated 20% loss; what tests cannot measure is the radio — MultipeerConnectivity's practical ceiling is around eight peers and the packet budget grows with the field — so this wants a third phone in the room, not more tests.
 - [ ] **Host pause.** Deliberately unresolved: a per-device pause would freeze one screen of a shared race, so today the map tap does nothing when networked. Host-only, a vote, or no pause at all is a design question, not a bug.
@@ -44,13 +43,9 @@ All small, and two of them are *measurements* rather than features — do not bu
 
 Nothing on screen should need explaining when it matters. Most of this shipped (the accessible palette, the reversing mark, the headlight cone, the tapered nose); measured and planned in [docs/first-glance-plan.md](docs/first-glance-plan.md). What remains:
 
-- [ ] **Pick your own color.** Decided: duplicates prevented by **first-come claiming** in the lobby rather than a rule about taste, and local-vs-remote marked with a **ring or seat number** — not desaturation, which is measured to wreck the palette (worst pair 24.7 → 6.5 at 55%). Waits on the front end.
+- [ ] **Pick your own color**, from the measured accessible nine. Decided: duplicates prevented by **first-come claiming** in the lobby rather than a rule about taste, and local-vs-remote marked with a **ring or seat number** — not desaturation, which is measured to wreck the palette (worst pair 24.7 → 6.5 at 55%). Under networking the claim is agreed centrally, since "local" is a per-screen property. The surface exists now (the player list and its profile sheet); the palette work is done, the claim rule is not.
 
       **Two-tone belongs here, and its cost is measured.** A second body color only works as a genuinely distinct hue — a light/dark shade of the base was tried and reverted (worst cross-car patch pair fell to ΔE 4.6, against 24.7 for one tone). The budget is **tones, not cars**: two hues per car needs 2N mutually-distinct tones and nine is already the edge of color-blind-safe spread, so **4 cars two-toned is fine (26.3), 9 is impossible** — a picker feature where field size bounds the selectable pairs, not arithmetic in the renderer. `CarLiveryRenderTests.testCarsStayDistinctAcrossEveryToneTheyWear` has the one-line hook to extend and will hold whatever lands to the same floor.
-
-- [ ] **Two more, both small.**
-      - **Which car is mine, on the grid.** A number bubble and a ring during the countdown, the number **rotated to face its own player** — the rig already knows that vector (`ZoneChrome.up`), and `Race.Phase.countdown` already exists to hang it on.
-      - **The control pad should be visible before it is touched.** `origin` is nil until touch-down, so the control appears only once you already know where to press. Give it a dimmed resting position at the center of its own zone; the default scheme is *casual*, so this is the aim stick first.
 
 ## More to build with — *the editor's tail*
 
@@ -68,13 +63,11 @@ The first two change what a track can *be*; the rest are conveniences that can r
 - [ ] **Height readout on the map.** A tiny label on each piece showing its height, behind a show/hide toggle — building in three dimensions from a top-down view means the numbers are otherwise only inferable from shading.
 - [ ] **Import a track by link or QR.** The clipboard works today; a tapped link or a scanned code is the version a player would use. Measured: a signed code is 120–140 bytes, which fits QR V8/V9 comfortably. The settled encoding decisions are in [docs/track-pieces.md](docs/track-pieces.md), including why a track's *name* stays local and rides as an unsigned URL parameter.
 
-## The front end — *the app around the race*
+## The front end: the tail — *what the v0.8 redesign left open*
 
-**The current UI is a harness, not a design**, and it is the gate in front of several other features: a color picker, records screens and a track browser all need surfaces that do not exist. That is why they are one milestone rather than four.
+The redesign itself shipped: the opening screen (who is playing, then what to do), profiles, settings and about homes, the results card, record boards in the track picker, and the dev tuning dials moved out of the player's pause menu behind the shake gesture. The track browser is its own item under *More to build with*. What is left:
 
-**And it is where the game gets designed, not just drawn.** A menu cannot be built without deciding what a player picks and in what order, so this milestone carries the questions the prototype never had to answer — the structure, including the open tournament rules, is in [docs/game-shape-plan.md](docs/game-shape-plan.md). Two facts that size the job: the setup screen is **351 lines with every knob flat on it**, and of 28 persisted settings **25 are developer tuning dials**.
-
-- [ ] **UI and menu redesign — the whole surface.** The app is three phases (setup → racing → editing) with a single flat setup screen, no results screen, no menu hierarchy, no track browser, and settings scattered between setup and a pause-menu Tuning panel only ever meant for on-device A/B tests. Redesign it as a product — a real front end, a track browser (needs the library work above), results and records screens, a settings home, and the editor as a first-class destination. **This is the bulk of the milestone**, and the natural home for the deferred **pause-menu cleanup** (including per-player scheme changes mid-race) and for splitting the dev-only Tuning dials out of the player-facing settings.
+- [ ] **Per-player scheme changes mid-race.** A seat picks Casual or Pro in setup but cannot change once racing — the deferred remainder of the pause-menu cleanup. Per player, not global: one couch mixes schemes.
 
 ## Tournaments & sharing — *a reason to keep playing*
 
