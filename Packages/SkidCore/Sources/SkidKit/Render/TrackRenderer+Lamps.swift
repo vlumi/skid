@@ -13,14 +13,39 @@ import SwiftUI
 /// to 4.6, against the old sheen's 3.7. Large colored areas spend the palette's
 /// separation budget; a pair of 3.8-unit dots does not.
 extension TrackRenderer {
-    /// The lamp dots at the nose tip — flavor at editor zoom, and the only white on
-    /// the body. Too small to wash out a palette the way a half-body gradient did.
-    static func paintLamps(length: Double, into livery: inout GraphicsContext) {
-        for side in [-1.0, 1.0] {
-            let lamp = CGRect(x: length / 2 - 6, y: side * 3.4 - 1.9, width: 3.8, height: 3.8)
-            livery.fill(
-                Path(ellipseIn: lamp), with: .color(Color(red: 1, green: 0.98, blue: 0.82)))
-        }
+    /// **The headlight cone — the facing cue.** In the car's own color, so it also
+    /// helps tell the cars apart; brightest where it leaves the nose, gone by the tip.
+    ///
+    /// It replaced the two white nose dots: at race zoom they were a couple of pixels,
+    /// and reading which end of a smudge carries the dots is not a glance question. A
+    /// colored cone the car's own width is.
+    ///
+    /// The cone arrives already clipped (see `Headlight`): walls the car cannot pass
+    /// stop it — a nose shoved into a wall included — a covering deck's edge ends it,
+    /// and the road ahead, ramps included, never touches it. The polygon is the near
+    /// points out and the tips back, so the stretch inside the car is never painted.
+    static func drawHeadlight(
+        car: CarState, color: Color, track: Track, scale: Double = 1,
+        into context: inout GraphicsContext
+    ) {
+        let rays = Headlight.rays(car: car, track: track, scale: scale)
+        guard rays.contains(where: { $0.near.distance(to: $0.tip) > 0.5 }) else { return }
+        // One ring: out along the nose line, back along the tips. A second addLines
+        // call would START A NEW SUBPATH — measured on device as no cone at all, the
+        // fill reduced to the sliver between the tip arc and its chord.
+        let ring =
+            rays.map { CGPoint(x: $0.near.x, y: $0.near.y) }
+            + rays.reversed().map { CGPoint(x: $0.tip.x, y: $0.tip.y) }
+        var path = Path()
+        path.addLines(ring)
+        path.closeSubpath()
+        context.fill(
+            path,
+            with: .radialGradient(
+                Gradient(colors: [color.opacity(0.5), color.opacity(0)]),
+                center: CGPoint(x: car.position.x, y: car.position.y),
+                startRadius: Headlight.apexDepth * scale,
+                endRadius: (Headlight.apexDepth + Headlight.reach) * scale))
     }
 
     /// **Traveling backwards, which is not the same question as facing.**

@@ -42,6 +42,15 @@ extension TrackRenderer {
                     car: state, color: colorAt(index),
                     scale: Elevation.scale(atHeight: state.height), into: &context)
             }
+            // The headlight fan, in the car's own color — the facing cue that
+            // replaced the nose lamps. Registered with the airborne pass's storey so
+            // it paints above every road band (see `RenderOrder.Kind.beam`); ghosts
+            // carry none, being colorless and translucent by design.
+            order.add(storey: Track.highestLevel + 1, kind: .beam) { context in
+                drawHeadlight(
+                    car: state, color: colorAt(index), track: track,
+                    scale: Elevation.scale(atHeight: state.height), into: &context)
+            }
             // Never-invisible rule: a car with road a full level above it is
             // hidden by that road, so the deck gets a WINDOW — a dimmed hole
             // at the car's position with the car itself visible through it.
@@ -309,7 +318,6 @@ extension TrackRenderer {
         // not shine through walls.
         var livery = car2D
         livery.clip(to: bodyPath)
-        paintLamps(length: length, into: &livery)
         paintReverseLamps(car: car, length: length, into: &livery)
         car2D.stroke(bodyPath, with: .color(.black.opacity(0.7)), lineWidth: 2)
         // The driver sits near the back, like the classic single-seaters.
