@@ -44,7 +44,11 @@ enum EditorRenderer {
         }
         if showLevels || !blockedPieces.isEmpty {
             drawLevelBadges(
-                walk: walk, blockedPieces: blockedPieces, transform: t, into: &context)
+                walk: walk,
+                query: BadgeQuery(
+                    blockedPieces: blockedPieces, showLevels: showLevels,
+                    onlyLevel: dimmedExcept),
+                transform: t, into: &context)
         }
         // Over the road, under the end markers: the selected piece is a thing you
         // act on, so it should read on top of the asphalt but not hide the chrome.
