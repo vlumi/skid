@@ -55,12 +55,22 @@ extension Race {
             // the latter is diagonal on a long wall, and a graze resolved against a
             // slanted normal came off harder than it went in.
             let wallFace = faceNormal(of: wall, towards: approachSide)
-            // Remove only the overlap. Assigning `closest + approachSide * reach` is
-            // an absolute position recomputed each tick, and `closest` tracks the
-            // car's PATH — so a car held against a rail lost ALL its travel, not just
-            // the into-wall part (device: glued in place while the overlay read 300+).
-            let overlap = reach - (car.position - closest).dot(wallFace)
-            if overlap > 0 { car.position += wallFace * overlap }
+            // **The face the car meets is the DRAWN face.** Rails are compiled at
+            // the road's NOMINAL edge, but an elevated road is drawn wider — so on
+            // the inboard side the visible railing stands up to a road-width's
+            // widening PAST the segment, and stopping at the segment slammed the
+            // car into an invisible wall in the middle of visible asphalt (reported
+            // on a rising curve's inner rail as a weird bounce back). The face
+            // shifts inboard by the widening; zero at ground height, so flat
+            // tracks are bit-identical.
+            let inboard = inboardAllowance(of: wall, approachedFrom: from)
+            let face = closest - wallFace * inboard
+            // Remove only the overlap. Assigning an absolute position recomputed
+            // each tick made a car held against a rail lose ALL its travel, not
+            // just the into-wall part (device: glued in place at speed 300+).
+            let overlap = reach - (car.position - face).dot(wallFace)
+            guard overlap > 0 else { continue }  // crossed the segment, not the face
+            car.position += wallFace * overlap
             let intoWall = car.velocity.dot(wallFace)
             guard intoWall < 0 else { continue }
             respond(car: &car, normal: wallFace, intoWall: intoWall)
@@ -295,6 +305,19 @@ extension Race {
     private func railThickness(atHeight height: Double) -> Double {
         let face = track.halfWidth(atHeight: height) + Double(PieceCatalog.kerbBand)
         return max(0, face - track.width / 2)
+    }
+
+    /// How far PAST a rail's collision segment the car may go when approaching
+    /// from the road side, before it meets the drawn railing: the elevated
+    /// road's widening. The segment sits at the nominal edge (see
+    /// `railThickness` for why it deliberately does not track the paint); the
+    /// drawn asphalt — and so the railing's inner face — reaches
+    /// `halfWidth(atHeight:)`. Zero at ground height and for every non-rail.
+    private func inboardAllowance(of wall: Wall, approachedFrom from: Vec2) -> Double {
+        guard wall.kind == .rail, wall.outward.length > 0.001 else { return 0 }
+        let closest = from.closestPoint(onSegment: wall.a, wall.b)
+        guard (from - closest).dot(wall.outward) < 0 else { return 0 }
+        return max(0, track.halfWidth(atHeight: wall.height) - track.width / 2)
     }
 
     /// The point on `wall` nearest the car's swept path this tick — treating the
