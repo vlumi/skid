@@ -31,13 +31,14 @@ public final class CouchGame: ObservableObject {
         }
     }
 
-    /// Placement verdicts memoised for the current piece list — see
-    /// `editorCanAppend`. Not `@Published` on purpose: it's a cache, and
-    /// invalidating views over it would defeat its point.
-    var appendVerdicts: (pieces: [PieceID], byPiece: [VerdictKey: Bool]) = ([], [:])
+    /// Placement verdicts memoised per layout fingerprint — see `editorCanAppend`
+    /// and `VerdictMemo` for why the fingerprint includes the origin height. Not
+    /// `@Published` on purpose: it's a cache, and invalidating views over it
+    /// would defeat its point.
+    var appendVerdicts = VerdictMemo()
     /// The same cache for the head end (`editorCanPrepend`). Kept separate
     /// because the two ends give different verdicts on the same piece.
-    var prependVerdicts: (pieces: [PieceID], byPiece: [VerdictKey: Bool]) = ([], [:])
+    var prependVerdicts = VerdictMemo()
 
     /// Undo/redo history as encoded snapshots — see `EditorUndo`. `@Published`
     /// because the buttons' enabled state reads off them.
