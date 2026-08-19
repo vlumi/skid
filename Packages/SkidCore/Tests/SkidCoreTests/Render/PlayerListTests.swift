@@ -15,7 +15,8 @@ final class PlayerListTests: XCTestCase {
         return CouchGame(
             signingKeys: NoSigningKey(),
             libraryFilename: "test-lib-\(unique).json",
-            profileFilename: "test-profiles-\(unique).json")
+            profileFilename: "test-profiles-\(unique).json",
+            setupFilename: "test-\(UUID().uuidString).json")
     }
 
     /// **Choosing a player must change the ROW**, not just a parallel seat array.

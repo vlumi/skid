@@ -17,7 +17,7 @@ final class EditorUndoTests: XCTestCase {
     /// A fresh editor with an empty history — `editorReset` is itself an undoable
     /// edit now, so tests that want a clean slate must not go through it.
     private func editing() -> CouchGame {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorReset()
         game.clearUndoHistory()
         return game
@@ -207,7 +207,7 @@ final class EditorUndoTests: XCTestCase {
     /// "New track" is undoable — it throws away everything built, so it's the edit
     /// that most needs taking back.
     func testResetIsUndoable() throws {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorLayout = try TrackCode.decode(
             TestTracks.Code.bridgeRing)
         game.clearUndoHistory()

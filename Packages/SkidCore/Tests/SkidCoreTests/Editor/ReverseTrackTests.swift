@@ -17,7 +17,7 @@ final class ReverseTrackTests: XCTestCase {
     private typealias Catalog = PieceCatalog.ID
 
     private func ring() throws -> CouchGame {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorLayout = try TrackCode.decode(
             TestTracks.Code.bridgeRing)
         game.clearUndoHistory()
@@ -146,7 +146,7 @@ final class ReverseTrackTests: XCTestCase {
     /// An OPEN chain has no driving direction to speak of yet — refuse rather than
     /// half-reverse something the author is still drawing.
     func testAnOpenChainIsNotReversed() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorReset()
         game.clearUndoHistory()
         for _ in 0..<3 { _ = game.editorAppend(Catalog.shortStraight) }
@@ -156,7 +156,7 @@ final class ReverseTrackTests: XCTestCase {
     /// The button's enabled state must agree with what the action actually does,
     /// so it greys out instead of taking a tap and refusing it.
     func testTheButtonIsOnlyOfferedWhenReversingWorks() throws {
-        let open = CouchGame()
+        let open = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         open.editorReset()
         for _ in 0..<3 { _ = open.editorAppend(Catalog.shortStraight) }
         XCTAssertFalse(open.editorCanReverseDirection)

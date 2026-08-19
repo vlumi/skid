@@ -135,7 +135,8 @@ final class CountdownBeepGateTests: XCTestCase {
             signingKeys: NoSigningKey(),
             libraryFilename: "test-lib-\(unique).json",
             profileFilename: "test-profiles-\(unique).json",
-            hiscoreFilename: "test-hiscores-\(unique).json")
+            hiscoreFilename: "test-hiscores-\(unique).json",
+            setupFilename: "test-\(UUID().uuidString).json")
     }
 
     override func tearDown() {

@@ -40,6 +40,15 @@ extension CouchGame {
         seatIdentities = Array(repeating: .guest, count: CouchGame.maxLocalPlayers)
         rememberedProfiles = [:]
         runRecords = .none
+        // The remembered setup goes back to stock with everything else. Setting
+        // the fields (rather than deleting the file) also re-saves the defaults,
+        // so a relaunch after a reset starts clean instead of restoring a setup
+        // that referred to the data just wiped.
+        mode = .race
+        trackID = TrackLibrary.builtins[0].id
+        schemes = [.casual, .casual, .casual, .casual]
+        fillWithAI = true
+        aiDifficulty = .medium
         // Then the disk, including every `skid.` default — which is what puts the dials,
         // the d-pad shape and the legacy custom-track slot back to their stock values.
         ResetAllData.wipe()
