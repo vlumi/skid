@@ -112,8 +112,17 @@ extension RaceRecording {
     ///
     /// Nil when the run completed no laps, or when the recording is shorter than the lap it
     /// claims — an abandoned run has nothing worth keeping.
+    ///
+    /// `startPoses` lets the caller hand over lap-boundary states it captured during
+    /// the LIVE run (the sim is deterministic, so those ARE the replay's states) —
+    /// then the cut is a slice, with no replay at all. The replay fallback stays for
+    /// callers without poses, but it is far from free: measured at 3.4 seconds for a
+    /// four-car three-lap race in a debug build, which was a visible hitch on the
+    /// frame the finish line was crossed — the opposite of the "costs nothing a
+    /// player notices" this comment used to claim.
     public func bestLapGhost(
-        on track: Track, lapTimes: [Tick], config: RaceConfig, tuning: CarTuning = CarTuning()
+        on track: Track, lapTimes: [Tick], config: RaceConfig, tuning: CarTuning = CarTuning(),
+        startPoses: [Tick: LapGhost.Start] = [:]
     ) -> LapGhost? {
         guard
             let range = RaceRecording.bestLapRange(
@@ -125,6 +134,11 @@ extension RaceRecording {
         // return a stub claiming to be a lap — a ghost that stops a third of the way round
         // and a `ticks` value that lies about the time. An abandoned run has no ghost.
         guard first < last, last <= inputs.count else { return nil }
+        if let start = startPoses[Tick(first)], start.tick == Tick(first) {
+            return LapGhost(
+                start: start, seed: seed, players: players,
+                inputs: Array(inputs[first..<last]), ticks: Tick(last - first))
+        }
 
         var race = Race(track: track, players: players, tuning: tuning, seed: seed, config: config)
         for tickInputs in inputs[..<first] {

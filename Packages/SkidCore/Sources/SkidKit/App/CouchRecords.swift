@@ -41,21 +41,28 @@ extension CouchGame {
             notedFinish = true
             let previousRace = hiscores.best(for: trackID).raceTicks
             let raceTicks = finished - session.race.config.countdownTicks
-            let setRace = hiscores.recordRace(
-                ticks: raceTicks,
-                // Cut here, where the finished race still knows where its laps fell.
-                ghost: session.recording.bestLapGhost(
-                    on: session.race.track, lapTimes: car.progress.lapTimes,
-                    config: session.race.config),
-                config: session.race.config,
-                track: trackID,
-                holder: holder
-            )
-            if setRace {
-                runRecords.raceRecord = RunRecords.Improvement(
-                    ticks: raceTicks, previous: previousRace)
+            // Cut the ghost ONLY when this run can actually take the record —
+            // it used to be cut on every finish, before recordRace decided.
+            if raceTicks < (previousRace ?? .max) {
+                let setRace = hiscores.recordRace(
+                    ticks: raceTicks,
+                    // Cut here, where the finished race still knows where its laps
+                    // fell — from the poses captured during the run, so this is a
+                    // slice, not a replay (the replay was the finish-line hitch).
+                    ghost: session.recording.bestLapGhost(
+                        on: session.race.track, lapTimes: car.progress.lapTimes,
+                        config: session.race.config,
+                        startPoses: session.lapStartPoses),
+                    config: session.race.config,
+                    track: trackID,
+                    holder: holder
+                )
+                if setRace {
+                    runRecords.raceRecord = RunRecords.Improvement(
+                        ticks: raceTicks, previous: previousRace)
+                }
+                improved = setRace || improved
             }
-            improved = setRace || improved
         }
         if improved {
             hiscoreFile.save(hiscores)
