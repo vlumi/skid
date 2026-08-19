@@ -18,7 +18,7 @@ final class HeadBuildTests: XCTestCase {
     private typealias Catalog = PieceCatalog.ID
 
     private func chain() -> CouchGame {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorReset()
         game.clearUndoHistory()
         for _ in 0..<3 { _ = game.editorAppend(Catalog.shortStraight) }

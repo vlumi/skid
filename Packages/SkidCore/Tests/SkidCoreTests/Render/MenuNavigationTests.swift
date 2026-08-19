@@ -13,7 +13,7 @@ import XCTest
 final class MenuNavigationTests: XCTestCase {
     /// The app opens at the front door, not in the middle of a race setup.
     func testTheAppStartsAtTheMenu() {
-        XCTAssertEqual(CouchGame().phase, .menu)
+        XCTAssertEqual(CouchGame(setupFilename: "test-\(UUID().uuidString).json").phase, .menu)
     }
 
     /// **Solo means one seat, and the setup screen must not contradict it.**
@@ -22,7 +22,7 @@ final class MenuNavigationTests: XCTestCase {
     /// after never has to ask. Pinning it here because the two halves live in
     /// different files and a change to either could silently disagree.
     func testSoloSeatsOnePlayer() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.playerCount = 3  // whatever a previous session left behind
         game.playerCount = 1  // what HomeView's Solo button does
         game.openSetup()
@@ -37,7 +37,7 @@ final class MenuNavigationTests: XCTestCase {
     /// Solo, the count must be lifted, or Couch would seat one and the label would
     /// be a lie.
     func testCouchLiftsASoloSeatCountToTwo() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.playerCount = 1
         game.playerCount = max(2, game.playerCount)  // what HomeView's Couch button does
         XCTAssertEqual(game.playerCount, 2)
@@ -45,7 +45,7 @@ final class MenuNavigationTests: XCTestCase {
 
     /// …and does not clobber a bigger couch.
     func testCouchKeepsAnExistingSeatCount() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.playerCount = 4
         game.playerCount = max(2, game.playerCount)
         XCTAssertEqual(game.playerCount, 4)
@@ -59,7 +59,7 @@ final class MenuNavigationTests: XCTestCase {
     /// dropping out of the lobby into somebody else's race-setup screen would be a
     /// non-sequitur.
     func testTheTwoBacksGoToDifferentPlaces() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.openSetup()
 
         game.backToSetup()
@@ -77,7 +77,7 @@ final class MenuNavigationTests: XCTestCase {
             ("networking", { game in game.openNetworking() }),
             ("editor", { game in game.openEditor() }),
         ] {
-            let game = CouchGame()
+            let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
             XCTAssertEqual(game.phase, .menu)
             open(game)
             XCTAssertNotEqual(game.phase, .menu, "the \(name) door did not go anywhere")

@@ -91,6 +91,13 @@ extension CouchGame {
     /// A track that is already in the library keeps the row it has — including
     /// the name you gave it. Arriving again is not a reason to rename it.
     private func importIntoLibrary(code: String, layout: TrackLayout) {
+        // The editor now works on the ARRIVING track's row — whether it is
+        // filed fresh below or already had one. This used to be set only on
+        // the fresh path, so pasting a code the library already held left the
+        // editor still claiming its PREVIOUS row: the next edit then replaced
+        // that row — keeping the old row's name and deleting its track.
+        // Reported as a renamed track showing up as "My track" again.
+        defer { editedEntryID = TrackCode.contentCode(of: code) }
         guard !library.contains(code: code) else { return }
         let signature = TrackCode.signature(of: code)
         var book = library
@@ -103,9 +110,6 @@ extension CouchGame {
                 isRaceable: (try? PieceCompiler.compile(layout)) != nil,
                 createdAt: Date(), importedAt: Date(), updatedAt: Date()))
         library = book
-        // The editor now works on the imported row, so the first edit replaces
-        // it rather than leaving the import behind as a stray.
-        editedEntryID = TrackCode.contentCode(of: code)
         saveLibrary()
     }
 

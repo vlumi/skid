@@ -70,7 +70,7 @@ public final class CouchGame: ObservableObject {
     /// `TrackLayout.railed`.
     @Published public var editorRailNewPieces = false
 
-    public enum Mode: CaseIterable {
+    public enum Mode: String, CaseIterable, Codable {
         case race
         case timeTrial
     }
@@ -78,7 +78,9 @@ public final class CouchGame: ObservableObject {
     static let palette: [Color] = TrackRenderer.carPalette
 
     @Published public internal(set) var phase: Phase = .menu
-    @Published public var mode: Mode = .race
+    @Published public var mode: Mode = .race {
+        didSet { saveSetupMemory() }
+    }
     /// **What a race is allowed to hold today: four cars.**
     ///
     /// A **soft cap**, not a limit of the game. The grid seats nine
@@ -127,19 +129,27 @@ public final class CouchGame: ObservableObject {
     ///
     /// Local only — a nearby field is built by whoever hosts it, and the protocol has no
     /// AI seat at all. `aiCount` enforces that rather than this flag being reset.
-    @Published public var fillWithAI = true
+    @Published public var fillWithAI = true {
+        didSet { saveSetupMemory() }
+    }
 
     /// How well the AI drives.
-    @Published public var aiDifficulty: AIDriver.Difficulty = .medium
+    @Published public var aiDifficulty: AIDriver.Difficulty = .medium {
+        didSet { saveSetupMemory() }
+    }
     /// Default color per seat, in palette order — which is separation order, so a
     /// 1–4 player game gets the four furthest-apart colors. Sized to the whole
     /// field rather than to four seats, since the AI fills the rest.
-    @Published public private(set) var colorIndices = Array(0..<PieceCompiler.Grid.slots)
+    @Published public internal(set) var colorIndices = Array(0..<PieceCompiler.Grid.slots)
     /// Each human player's control scheme, chosen in setup (Casual/Pro). One
     /// entry per seat; only the first `playerCount` are used.
-    @Published public var schemes: [ControlScheme] = [.casual, .casual, .casual, .casual]
+    @Published public var schemes: [ControlScheme] = [.casual, .casual, .casual, .casual] {
+        didSet { saveSetupMemory() }
+    }
     /// The chosen circuit (a `Track.id` from `TrackLibrary.all`).
-    @Published public var trackID = TrackLibrary.builtins[0].id
+    @Published public var trackID = TrackLibrary.builtins[0].id {
+        didSet { saveSetupMemory() }
+    }
     /// 2P seating: face-to-face (default) vs side-by-side.
     ///
     /// Face-to-face is what two people do with a phone flat on a table — full-width
@@ -156,6 +166,7 @@ public final class CouchGame: ObservableObject {
     public let settings = GameSettings()
 
     let hiscoreFile: HiscoreFile
+    let setupFile: SetupFile
     let profileFile: ProfileFile
     private let libraryFile: TrackLibraryFile
 
@@ -174,7 +185,9 @@ public final class CouchGame: ObservableObject {
     /// **The field as one list** — every car, and who drives it. The single source of
     /// truth: `playerCount` and `aiCount` are both derived from it, where they used to be
     /// independent steppers that could disagree with each other and with the grid.
-    @Published public internal(set) var entrants: [RaceEntrant] = [.guest]
+    @Published public internal(set) var entrants: [RaceEntrant] = [.guest] {
+        didSet { saveSetupMemory() }
+    }
 
     /// **Which profile each row last held**, so the three-way toggle is sticky: switch a
     /// row to AI and back and the same person returns rather than being asked again.
@@ -228,12 +241,14 @@ public final class CouchGame: ObservableObject {
         signingKeys: SigningKeyStore = KeychainSigningKeyStore(),
         libraryFilename: String = "tracks.json",
         profileFilename: String = "profiles.json",
-        hiscoreFilename: String = "hiscores.json"
+        hiscoreFilename: String = "hiscores.json",
+        setupFilename: String = "setup.json"
     ) {
         self.signingKeys = signingKeys
         self.libraryFile = TrackLibraryFile(filename: libraryFilename)
         self.profileFile = ProfileFile(filename: profileFilename)
         self.hiscoreFile = HiscoreFile(filename: hiscoreFilename)
+        self.setupFile = SetupFile(filename: setupFilename)
         hiscores = hiscoreFile.load()
         profiles = profileFile.load()
         // The custom track slot survives quitting: restore it before anything
@@ -246,24 +261,10 @@ public final class CouchGame: ObservableObject {
         // Push persisted render knobs (elevation feel) into their globals
         // before the first frame draws.
         settings.applyRenderTuning()
+        // The setup (who races, which track, which mode) survives quitting —
+        // restored before the launch arguments so a test's arguments still win.
+        restoreSetupMemory()
         applyLaunchArguments()
-    }
-
-    /// Toggle one player's control scheme (Casual ↔ Pro).
-    public func toggleScheme(slot: Int) {
-        guard schemes.indices.contains(slot) else { return }
-        schemes[slot] = schemes[slot] == .casual ? .pro : .casual
-    }
-
-    /// Cycle one player's color to the next not taken by anyone else.
-    public func cycleColor(slot: Int) {
-        guard colorIndices.indices.contains(slot) else { return }
-        let taken = Set(colorIndices.enumerated().filter { $0.offset != slot }.map(\.element))
-        var next = colorIndices[slot]
-        repeat {
-            next = (next + 1) % Self.palette.count
-        } while taken.contains(next)
-        colorIndices[slot] = next
     }
 
     public func startRace() {

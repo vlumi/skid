@@ -9,7 +9,7 @@ import XCTest
 @MainActor
 final class RailToggleTests: XCTestCase {
     private func ring() throws -> CouchGame {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorLayout = try TrackCode.decode(TestTracks.Code.bridgeRing)
         game.clearUndoHistory()
         return game
@@ -22,7 +22,7 @@ final class RailToggleTests: XCTestCase {
     /// are silent, which is what made the first version of these tests pass while
     /// covering nothing — hence the explicit assertions that a piece was laid.
     private func openChain() -> CouchGame {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorLayout = TrackLayout(
             pieces: [PieceCatalog.startPieceID, PieceCatalog.ID.straight], gateSeams: [0])
         game.clearUndoHistory()

@@ -11,7 +11,7 @@ final class EditorSelectionTests: XCTestCase {
     private typealias Catalog = PieceCatalog.ID
 
     private func chain() -> CouchGame {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorReset()
         game.clearUndoHistory()
         for _ in 0..<3 { _ = game.editorAppend(Catalog.shortStraight) }
@@ -21,7 +21,7 @@ final class EditorSelectionTests: XCTestCase {
     }
 
     private func closedRing() throws -> CouchGame {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorLayout = try TrackCode.decode(
             TestTracks.Code.bridgeRing)
         game.clearUndoHistory()
@@ -110,7 +110,7 @@ final class EditorSelectionTests: XCTestCase {
     /// Opening the editor leaves the growing end selected, so the palette is live
     /// immediately rather than greyed out until the author taps something.
     func testOpeningTheEditorSelectsTheGrowingEnd() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorReset()
         game.clearUndoHistory()
         for _ in 0..<2 { _ = game.editorAppend(Catalog.shortStraight) }
@@ -284,7 +284,7 @@ final class EditorSelectionTests: XCTestCase {
         // A NON-canonical closed ring, which is what a ring built in some other
         // order looks like in memory. (A code is always canonical, so this has to
         // be respelled by hand rather than decoded.)
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         var respelled = try TrackCode.decode(TestTracks.Code.bridgeRing)
         respelled.rotate(to: 6)
         XCTAssertNotEqual(
@@ -312,7 +312,7 @@ final class EditorSelectionTests: XCTestCase {
     /// A ring closed by BUILDING (not loaded from a code) is canonical too — that
     /// is where `finishIfClosed` normalizes.
     func testClosingALoopByBuildingMakesItCanonical() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorReset()
         game.clearUndoHistory()
         for _ in 0..<4 { _ = game.editorAppend(Catalog.curve90MediumRight) }
@@ -329,7 +329,7 @@ final class EditorSelectionTests: XCTestCase {
     /// index would silently land on whatever piece took that slot, which is how the
     /// same piece ended up selected wherever the loop was closed.
     func testClosingALoopDeselects() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorReset()
         game.clearUndoHistory()
         for _ in 0..<3 { _ = game.editorAppend(Catalog.curve90MediumRight) }
@@ -355,7 +355,7 @@ final class EditorSelectionTests: XCTestCase {
         ]
         for build in builds {
             func closed(from end: CouchGame.BuildEnd) -> String? {
-                let game = CouchGame()
+                let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
                 game.editorReset()
                 game.clearUndoHistory()
                 for piece in build { _ = game.editorAppend(piece) }

@@ -64,7 +64,8 @@ final class EditedRoadStyleTests: XCTestCase {
             signingKeys: NoSigningKey(),
             libraryFilename: "test-lib-\(unique).json",
             profileFilename: "test-profiles-\(unique).json",
-            hiscoreFilename: "test-hiscores-\(unique).json")
+            hiscoreFilename: "test-hiscores-\(unique).json",
+            setupFilename: "test-\(UUID().uuidString).json")
         game.editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID, 1, 1])
         return game
     }

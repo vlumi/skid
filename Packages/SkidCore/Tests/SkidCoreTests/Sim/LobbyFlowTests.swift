@@ -81,7 +81,9 @@ final class LobbyFlowTests: XCTestCase {
         // side, each with a full-width band and their own "up". Side-by-side halves
         // each player's control room — cramped on an iPhone — and exists to cram
         // three or four players onto one screen, not because two players want it.
-        XCTAssertTrue(CouchGame().faceToFace, "two players default to side-by-side")
+        XCTAssertTrue(
+            CouchGame(setupFilename: "test-\(UUID().uuidString).json").faceToFace,
+            "two players default to side-by-side")
     }
 
     @MainActor
@@ -89,7 +91,7 @@ final class LobbyFlowTests: XCTestCase {
         // The whole hand-off, which two device sessions never got through: the
         // lobby's start message must produce a session, a rig with one band per
         // LOCAL seat, and a racing phase.
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         var roster = RaceRoster()
         let me = "hostPhone#aaaa"
         try? roster.join(me, seats: 2)
@@ -147,7 +149,7 @@ final class LobbyFlowTests: XCTestCase {
         //
         // The rule: anything the SIMULATION reads comes from the host's start message.
         // Local settings stay local to things only this screen sees.
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         // A device with deliberately unusual local settings — the state that broke it.
         // **The device's own tuning must not reach the sim.** Rather than mutate the
         // live `@AppStorage` settings — which are one shared `UserDefaults` and leaked

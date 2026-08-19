@@ -22,7 +22,7 @@ public protocol TouchDrivenControlSource: ControlSource, AnyObject {
 /// The two control schemes. **Casual** is aim-to-drive (point where you
 /// want to go, the game handles the drift); **Pro** is the direct
 /// steer/throttle d-pad (with flip-assist — and the scheme keyboard reuses).
-public enum ControlScheme: CaseIterable, Sendable {
+public enum ControlScheme: String, CaseIterable, Sendable, Codable {
     case casual
     case pro
 }
