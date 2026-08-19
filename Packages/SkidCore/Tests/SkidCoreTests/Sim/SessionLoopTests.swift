@@ -301,7 +301,7 @@ final class SessionLoopTests: XCTestCase {
         pair.host.approve(guestKey)
         pair.settle()
 
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         pair.guest.onStart { start in game.startNetworkedRace(start, driver: pair.guest) }
 
         pair.host.startRace(course: .builtin("small"), seed: 1, laps: 3)
@@ -341,7 +341,7 @@ final class SessionLoopTests: XCTestCase {
         pair.settle()
         pair.host.approve(guestKey)
         pair.settle()
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         pair.guest.onStart { start in game.startNetworkedRace(start, driver: pair.guest) }
 
         var keys: [String] = []

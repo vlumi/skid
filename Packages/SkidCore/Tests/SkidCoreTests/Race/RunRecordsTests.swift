@@ -25,7 +25,8 @@ final class RunRecordsTests: XCTestCase {
             signingKeys: NoSigningKey(),
             libraryFilename: "test-lib-\(unique).json",
             profileFilename: "test-profiles-\(unique).json",
-            hiscoreFilename: hiscores)
+            hiscoreFilename: hiscores,
+            setupFilename: "test-\(UUID().uuidString).json")
         return game
     }
 

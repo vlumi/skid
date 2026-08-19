@@ -15,7 +15,7 @@ final class RaisedStartTests: XCTestCase {
     /// grey button), and a climb allowed at the ground stayed allowed at the
     /// ceiling (an enabled button whose tap did nothing).
     func testARaiseRefreshesThePlacementVerdicts() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorLayout = TrackLayout(pieces: [PieceCatalog.startPieceID])
         game.editorSelect(0)
         let short = PieceCatalog.ID.shortStraight

@@ -18,7 +18,7 @@ final class AttributionTests: XCTestCase {
         CouchGame(signingKeys: FixedStore(key: mine), libraryFilename: "test-\(UUID()).json")
     }
 
-    /// `CouchGame()` reads the REAL UserDefaults, so a slot left by another test
+    /// `CouchGame(setupFilename: "test-\(UUID().uuidString).json")` reads the REAL UserDefaults, so a slot left by another test
     /// migrates into the library at init and the counts here become whatever ran
     /// first. Same hazard `TuningWireTests` documents for `@AppStorage`.
     override func setUp() {

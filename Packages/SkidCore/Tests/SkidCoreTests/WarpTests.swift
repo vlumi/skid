@@ -137,7 +137,7 @@ struct WarpTests {
 @MainActor
 struct WarpBuildEndTests {
     private func gameWithARamp() -> CouchGame {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorLayout = TrackLayout(
             pieces: [PieceCatalog.ID.startGrid, PieceCatalog.ID.shortStraight],
             pitches: [.flat, .up])
@@ -196,7 +196,7 @@ struct WarpBuildEndTests {
 @MainActor
 struct WarpIsInvisibleTests {
     private func rampedGame() -> CouchGame {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.editorLayout = TrackLayout(
             pieces: [
                 PieceCatalog.ID.startGrid, PieceCatalog.ID.shortStraight,

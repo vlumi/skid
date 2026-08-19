@@ -20,7 +20,7 @@ struct FullFieldTests {
         // AI is a toggle now, not a count: filling means "the rest of the grid", so the
         // expected field is the cap when filling and the human count when not.
         for (humans, fill) in [(1, true), (2, true), (cap, true), (1, false), (2, false)] {
-            let game = CouchGame()
+            let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
             game.playerCount = humans
             game.fillWithAI = fill
             game.startRace()
@@ -34,7 +34,7 @@ struct FullFieldTests {
 
     /// A solo player can face a **full** field — the case that was broken.
     @Test func oneHumanCanFillTheFieldWithAI() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.playerCount = 1
         game.fillWithAI = true
         game.startRace()
@@ -43,7 +43,7 @@ struct FullFieldTests {
 
     /// Every car gets its own color, so the field is legible at the flag.
     @Test func aFullFieldHasNoRepeatedColors() {
-        let game = CouchGame()
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         game.playerCount = 1
         game.fillWithAI = true
         game.startRace()
@@ -95,7 +95,7 @@ struct FullFieldTests {
     /// is no value to clamp and nothing to disagree about.
     @Test func fillingTakesExactlyTheFreeSeats() {
         for humans in 1...CouchGame.maxLocalPlayers {
-            let game = CouchGame()
+            let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
             game.playerCount = humans
             game.fillWithAI = true
             #expect(
