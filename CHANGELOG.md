@@ -14,6 +14,8 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+### build 15 — 2026-08-19
+
 - **The setup survives quitting.** Who is racing, the chosen track, the mode, control schemes, AI on/off and difficulty all come back on the next launch instead of resetting to defaults. A remembered track that was deleted falls back gracefully, and a player whose profile is gone races as a guest. "Reset all data" clears the memory with everything else.
 - **Pasting a track you already have keeps its name.** Pasting a code the library already held left the editor secretly still attached to whatever it edited BEFORE the paste — the next edit then replaced that entry, taking over its name and deleting its own track. Reported as a renamed track showing up as "My track" again.
 - **No more hitch at the finish line.** Crossing the line used to freeze the game for a moment: saving the best-lap ghost re-simulated the whole race up to that lap's start, on the spot (measured at over three seconds for a four-car race). The game now snapshots each lap's start as you pass it, so the ghost is cut instantly — and it isn't cut at all unless the run actually sets a record.
