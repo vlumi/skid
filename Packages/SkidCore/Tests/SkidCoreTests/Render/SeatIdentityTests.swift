@@ -16,7 +16,8 @@ final class SeatIdentityTests: XCTestCase {
         return CouchGame(
             signingKeys: NoSigningKey(),
             libraryFilename: "test-lib-\(unique).json",
-            profileFilename: "test-profiles-\(unique).json")
+            profileFilename: "test-profiles-\(unique).json",
+            setupFilename: "test-\(UUID().uuidString).json")
     }
 
     override func tearDown() {
@@ -119,12 +120,14 @@ final class SeatIdentityTests: XCTestCase {
         let filename = "test-profiles-relaunch-\(UUID().uuidString).json"
         let first = CouchGame(
             signingKeys: NoSigningKey(),
-            libraryFilename: "test-lib-relaunch.json", profileFilename: filename)
+            libraryFilename: "test-lib-relaunch.json", profileFilename: filename,
+            setupFilename: "test-\(UUID().uuidString).json")
         let sam = try XCTUnwrap(first.createProfile(named: "Sam", colorIndex: 4, forSeat: 0))
 
         let second = CouchGame(
             signingKeys: NoSigningKey(),
-            libraryFilename: "test-lib-relaunch.json", profileFilename: filename)
+            libraryFilename: "test-lib-relaunch.json", profileFilename: filename,
+            setupFilename: "test-\(UUID().uuidString).json")
         XCTAssertEqual(second.profiles.profile(id: sam.id)?.name, "Sam")
         XCTAssertEqual(second.profiles.profile(id: sam.id)?.colorIndex, 4)
         // Seats are NOT persisted, deliberately: who is sitting where is a property of
