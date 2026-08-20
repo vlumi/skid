@@ -50,6 +50,11 @@ public final class GameSession: ObservableObject {
     /// countdown moves. It stuck at "3" on two phones. The host's "Start race" in
     /// the lobby IS the shared ready gate, and it is the only one there can be.
     @Published public var started = false
+    /// Networked only: each seat's palette index, resolved by the host's roster
+    /// (first-come claiming) — every peer renders off the same map, so every
+    /// screen paints the same field. Empty locally, where `CouchGame`'s own
+    /// `colorIndices` are the truth.
+    public var seatColorIndices: [PlayerID: Int] = [:]
     /// Called after every sim tick with the fresh race — the event stream
     /// consumer seam (sound, haptics). Events from intermediate ticks in a
     /// frame are never skipped.

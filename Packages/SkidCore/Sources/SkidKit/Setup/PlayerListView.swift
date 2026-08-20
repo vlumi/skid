@@ -51,11 +51,18 @@ struct PlayerListView: View {
     /// "Guest", so it already covers both answers. One tap, one surface.
     private func row(index: Int, entrant: RaceEntrant) -> some View {
         HStack(spacing: 12) {
-            // The car's color, so the list reads as the grid rather than as settings.
-            Circle()
-                .fill(CouchGame.palette[game.colorIndices[index % game.colorIndices.count]])
-                .frame(width: 26, height: 26)
-                .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 2))
+            // The car's color — and the place to pick it: each tap cycles to the
+            // next color nobody else at this screen holds. A profile row also
+            // remembers the pick as its preference, which is what travels to a
+            // networked lobby (where the host's roster resolves claims).
+            Button {
+                game.cycleColor(slot: index)
+            } label: {
+                Circle()
+                    .fill(CouchGame.palette[game.colorIndices[index % game.colorIndices.count]])
+                    .frame(width: 26, height: 26)
+                    .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 2))
+            }
 
             Button {
                 pickingFor = index

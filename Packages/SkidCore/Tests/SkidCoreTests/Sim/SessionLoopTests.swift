@@ -364,6 +364,41 @@ final class SessionLoopTests: XCTestCase {
             "two races shared a view identity, so one kept the other's controls: \(keys)")
     }
 
+    /// **Colors travel with the join and come back resolved** — end to end
+    /// through two real games: the host's picks hold, a guest wanting the same
+    /// color is bumped (only the guest), and BOTH devices hold the same claims
+    /// after the roster push, which is what makes the two screens paint alike.
+    func testColorClaimsTravelTheLobbyEndToEnd() {
+        let host = NetworkedGame(displayName: hostKey)
+        let guest = NetworkedGame(displayName: guestKey)
+        host.captureSendsForTesting()
+        guest.captureSendsForTesting()
+        // The guest prefers a FREE color that is NOT its seat-number default —
+        // the one case that proves the preference traveled: a dropped color
+        // lands on the default, a conflict-bump lands elsewhere, and both would
+        // slip past a mere "not the host's color" assertion.
+        host.host(seats: 1, colors: [5])
+        guest.join(seats: 1, colors: [7])
+        guest.transport(peerJoined: hostKey)
+        host.transport(peerJoined: guestKey)
+        let pair = Pair(host: host, guest: guest)
+        pair.guest.askToJoin(hostKey)
+        pair.settle()
+        pair.host.approve(guestKey)
+        pair.settle()
+
+        XCTAssertEqual(pair.host.roster.entries.count, 2)
+        XCTAssertEqual(
+            pair.host.roster.entries[0].colors, [5],
+            "the host's own claim did not hold")
+        XCTAssertEqual(
+            pair.host.roster.entries[1].colors, [7],
+            "the guest's free pick did not arrive intact")
+        XCTAssertEqual(
+            pair.guest.roster, pair.host.roster,
+            "the two devices hold different claims — the screens would disagree")
+    }
+
     func testARaceKeyChangesForALocalRaceToo() {
         // A local `raceAgain` builds a fresh session as well, and `generation` is only
         // set by networking — so the key must not rely on it alone.

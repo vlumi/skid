@@ -16,6 +16,9 @@ struct SetupMemory: Codable {
     var schemes: [ControlScheme]
     var fillWithAI: Bool
     var aiDifficulty: AIDriver.Difficulty
+    /// Per-slot palette picks. Optional so a file written before colors were
+    /// remembered still restores everything else.
+    var colorIndices: [Int]?
 }
 
 /// Loads/saves the setup memory as JSON in Application Support, beside the
@@ -50,7 +53,8 @@ extension CouchGame {
         setupFile.save(
             SetupMemory(
                 mode: mode, trackID: trackID, entrants: entrants, schemes: schemes,
-                fillWithAI: fillWithAI, aiDifficulty: aiDifficulty))
+                fillWithAI: fillWithAI, aiDifficulty: aiDifficulty,
+                colorIndices: colorIndices))
     }
 
     /// Restore what was saved, dropping anything that no longer exists: a
@@ -74,6 +78,15 @@ extension CouchGame {
         }
         fillWithAI = memory.fillWithAI
         aiDifficulty = memory.aiDifficulty
+        // Colors restore only as the permutation the pickers maintain — a file
+        // with duplicates or stray indices (hand-edited, or from a future
+        // palette) would break the "no two seats alike" invariant every picker
+        // assumes, so it is ignored rather than half-applied.
+        if let colors = memory.colorIndices, colors.count == colorIndices.count,
+            Set(colors) == Set(0..<Self.palette.count)
+        {
+            colorIndices = colors
+        }
         syncSeatIdentities()
     }
 }

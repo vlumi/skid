@@ -226,6 +226,11 @@ extension CouchGame {
         }
         entrants = RaceField.nonEmpty(RaceField.capped(next, to: Self.maxCars))
         syncSeatIdentities()
+        // The person brings their color: seed the seat from the profile's
+        // preference, first-come against the seats already racing.
+        if let id = entrant.profileID {
+            seedColor(fromProfile: id, at: index)
+        }
     }
 
     /// Whether another person would be accepted, so a view can disable a button rather

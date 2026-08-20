@@ -108,6 +108,32 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertEqual(game.session?.started, true, "a networked race must not wait for a tap")
     }
 
+    /// **The race paints the roster's claims** — the rig's bands AND the car
+    /// colors, on host and guest alike. Colors used to hang off the raw seat
+    /// number, which is exactly what this start message distinguishes them from.
+    @MainActor
+    func testTheStartPathPaintsTheRostersColorClaims() {
+        let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
+        var roster = RaceRoster()
+        let me = "hostPhone#aaaa"
+        try? roster.join(me, seats: 2, colors: [8, 4])
+        try? roster.join("guest#bbbb", seats: 1, colors: [2])
+        let start = RaceStart(
+            course: .builtin(game.trackID), seed: 9, roster: roster, laps: 3)
+
+        game.startNetworkedRace(start, driver: StubDriver(roster.seats(for: me)))
+
+        XCTAssertEqual(
+            game.rig?.players.map(\.colorIndex), [8, 4],
+            "this device's bands are not painted with its claims")
+        XCTAssertEqual(
+            game.session?.seatColorIndices, [PlayerID(0): 8, PlayerID(1): 4, PlayerID(2): 2],
+            "the field's colors are not the roster's claims")
+        XCTAssertEqual(
+            game.carColors[2], CouchGame.palette[2],
+            "the renderer paints seat numbers, not claims")
+    }
+
     private final class StubDriver: NetworkedRaceDriver {
         private let seats: [PlayerID]
         let isRaceHost: Bool

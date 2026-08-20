@@ -139,8 +139,12 @@ public final class CouchGame: ObservableObject {
     }
     /// Default color per seat, in palette order — which is separation order, so a
     /// 1–4 player game gets the four furthest-apart colors. Sized to the whole
-    /// field rather than to four seats, since the AI fills the rest.
-    @Published public internal(set) var colorIndices = Array(0..<PieceCompiler.Grid.slots)
+    /// field rather than to four seats, since the AI fills the rest. Always a
+    /// PERMUTATION of the palette — the pickers swap rather than overwrite, so no
+    /// two seats can end up alike (see `assignColor`).
+    @Published public internal(set) var colorIndices = Array(0..<PieceCompiler.Grid.slots) {
+        didSet { saveSetupMemory() }
+    }
     /// Each human player's control scheme, chosen in setup (Casual/Pro). One
     /// entry per seat; only the first `playerCount` are used.
     @Published public var schemes: [ControlScheme] = [.casual, .casual, .casual, .casual] {
