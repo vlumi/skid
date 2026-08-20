@@ -216,8 +216,15 @@ public final class GameSession: ObservableObject {
     /// local race whose remote seats read from the network.
     private func step(with inputs: [PlayerID: CarInput]) {
         recording.append(inputs)
+        // The state BEFORE this advance, in case it completes a lap: the race
+        // detects a crossing before it increments its tick, so a completed lap's
+        // boundary (its successor's `lapStartTick`) is the PRE-advance tick, and
+        // the pose the cut's replay would reconstruct there is this one — not
+        // the post-advance state, which is one tick past it.
+        let preTick = race.tick
+        let prePoses = race.cars.map { LapGhost.CarPose(seat: $0.id, state: $0.state) }
         race.advance(inputs: inputs)
-        captureLapStart()
+        captureLapStart(preTick: preTick, prePoses: prePoses)
         ghost?.advanceTick()
         for car in race.cars {
             marks.record(car: car, on: race.track, tick: race.tick)
@@ -227,19 +234,27 @@ public final class GameSession: ObservableObject {
 
     /// Snapshot the field at a lap boundary of the FIRST car — the one records
     /// are kept for. The first boundary is the countdown's end (lap 1's start);
-    /// each completed lap marks the start of the next. `race.tick` at these
-    /// moments equals `RaceRecording.bestLapRange`'s lower bound arithmetic, so
-    /// the cut can look its pose up by tick.
-    private func captureLapStart() {
+    /// each completed lap marks the start of the next.
+    ///
+    /// **Two different clocks, deliberately.** The countdown boundary is the
+    /// post-advance state at `countdownTicks` — the replay reaches it after
+    /// exactly that many advances. A LAP boundary is the PRE-advance state: the
+    /// race detects a crossing before it increments its tick, so the sum of
+    /// `lapTimes` lands on the tick before the detecting advance finished.
+    /// Keying the post-advance state here missed the lookup by one tick, and the
+    /// cut silently fell back to the replay — the finish-line hitch, back again,
+    /// on any run whose best lap wasn't lap 1 (lap 1's key is the countdown
+    /// boundary, which was right, so short records hid the miss).
+    private func captureLapStart(preTick: Tick, prePoses: [LapGhost.CarPose]) {
         guard let car = race.cars.first else { return }
-        let boundary =
-            (race.tick == race.config.countdownTicks && lapStartPoses.isEmpty)
-            || car.progress.lapTimes.count > posedLapCount
-        guard boundary else { return }
+        if race.tick == race.config.countdownTicks, lapStartPoses.isEmpty {
+            lapStartPoses[race.tick] = LapGhost.Start(
+                tick: race.tick,
+                cars: race.cars.map { LapGhost.CarPose(seat: $0.id, state: $0.state) })
+        }
+        guard car.progress.lapTimes.count > posedLapCount else { return }
         posedLapCount = car.progress.lapTimes.count
-        lapStartPoses[race.tick] = LapGhost.Start(
-            tick: race.tick,
-            cars: race.cars.map { LapGhost.CarPose(seat: $0.id, state: $0.state) })
+        lapStartPoses[preTick] = LapGhost.Start(tick: preTick, cars: prePoses)
     }
 }
 
