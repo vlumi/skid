@@ -15,6 +15,7 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 ### Unreleased (next build)
 
 - **The finish-line pause is really gone this time.** The build 15 fix sliced the record ghost from poses captured during the run, but the poses were keyed one tick late, so any run whose best lap wasn't lap 1 silently fell back to the seconds-long replay it was meant to replace — felt on every finish of a fresh track, where each run sets a record.
+- **Multi-storey tracks no longer stutter.** The race redrew every ribbon, kerb, rail and shadow of every storey 60 times a second — most of the frame budget on tracks with bridges. The road now renders once per race into per-storey layers (built while the race waits on the ready gate) and each frame just paints them, cutting the frame's draw time by more than half; marks, gates and cars still draw live between the layers, so bridges cover cars exactly as before.
 
 ### build 15 — 2026-08-19
 
