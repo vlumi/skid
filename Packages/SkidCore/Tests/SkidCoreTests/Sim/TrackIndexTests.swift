@@ -267,6 +267,36 @@ struct TrackIndexTests {
         }
     }
 
+    /// **A centerline too short to have a segment still has to answer.**
+    ///
+    /// `Track` accepts any centerline, and the queries are called before anything
+    /// validates one — the editor asks about a track mid-build, and a test can
+    /// construct a single point. The index has no cells to fill there, so every
+    /// index goes in the always-tested list instead; the queries must then behave
+    /// exactly as the old scan did rather than crash on the `(i + 1) % 0` a
+    /// bucketed path would reach, or silently answer "no road" for a track that
+    /// has one point of it.
+    @Test func aDegenerateCenterlineStillAnswers() {
+        let empty = Track(centerline: [], width: 120, size: Vec2(1_000, 1_000))
+        #expect(empty.distanceToCenterline(Vec2(500, 500)) == .greatestFiniteMagnitude)
+        #expect(empty.surface(at: Vec2(500, 500)) == .grass)
+        #expect(empty.height(at: Vec2(500, 500)) == 0)
+        #expect(empty.isOnRamp(Vec2(500, 500)) == false)
+
+        // One point: a zero-length segment from it to itself, so distance is the
+        // distance to the point and anything within half a width is "road".
+        let dot = Track(centerline: [Vec2(400, 400)], width: 120, size: Vec2(1_000, 1_000))
+        #expect(dot.distanceToCenterline(Vec2(400, 400)) == 0)
+        #expect(dot.surface(at: Vec2(400, 400)) == .asphalt)
+        #expect(dot.distanceToCenterline(Vec2(700, 400)) == 300)
+        #expect(dot.surface(at: Vec2(700, 400)) == .grass)
+        #expect(dot.closestCenterlinePoint(to: Vec2(700, 400)).segment == 0)
+        // And the index itself reports it, rather than an empty bucket.
+        #expect(
+            dot.segmentIndex.nearest(to: Vec2(700, 400), centerline: dot.centerline)
+                != nil)
+    }
+
     /// A track that shares an id with another (ad-hoc test tracks all use "")
     /// must not read the wrong index.
     @Test func twoTracksSharingAnIdKeepTheirOwnIndex() {

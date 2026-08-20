@@ -11,12 +11,13 @@ import Foundation
 /// after the render cache, and most of an SE's frame.
 ///
 /// **Bucketed by EXTENT, searched by RING.** The first cut bucketed each segment
-/// into every cell within `queryReach` of it, so that one cell lookup would hold
-/// everything relevant. That inflates rather than reduces: with a reach of 216
-/// units on a 192-unit cell every segment lands in ~9 cells, and a bucket held
-/// 101 of 303 segments — a third of the scan, for none of the savings. A segment
-/// now occupies only the cells it actually crosses, and a query walks out ring by
-/// ring until the nearest hit is provably closer than the next ring can reach.
+/// into every cell within the road's widest reach of it, so that one cell lookup
+/// would hold everything relevant. That inflates rather than reduces: with a
+/// reach of 216 units on a 192-unit cell every segment lands in ~9 cells, and a
+/// bucket held 101 of 303 segments — a third of the scan, for none of the
+/// savings. A segment now occupies only the cells it actually crosses, and a
+/// query walks out ring by ring until the nearest hit is provably closer than the
+/// next ring can reach.
 ///
 /// **Deliberately not part of `Track`'s stored state.** `Track` is `Codable` and
 /// `Equatable`, and an index is derived data: encoding it would bloat every
@@ -183,14 +184,6 @@ extension Track {
     /// a test's ad-hoc one built under the same id — never reads a stale index.
     var segmentIndex: TrackSegmentIndex {
         TrackIndexCache.shared.index(for: self)
-    }
-
-    /// How far off a segment a proximity query can still care about: the widest
-    /// the road gets, plus the tolerance callers allow. Erring high only costs a
-    /// few extra candidates; erring low would lose road.
-    var queryReach: Double {
-        halfWidth(atHeight: max(heights.max() ?? 0, deckTops.max() ?? 0))
-            + Self.surfaceTolerance
     }
 }
 
