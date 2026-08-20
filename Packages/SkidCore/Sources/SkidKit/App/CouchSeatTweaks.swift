@@ -10,19 +10,11 @@ extension CouchGame {
         schemes[slot] = schemes[slot] == .casual ? .pro : .casual
     }
 
-    /// Cycle one player's color to the next not held by another RACING seat.
-    ///
-    /// Only the seats actually in the race block a color. The slots array covers
-    /// the whole grid and defaults to all nine palette colors, so counting every
-    /// slot as taken left exactly one "free" color — the tapper's own — and the
-    /// button cycled in place. Reported as friction: the picker existed and did
-    /// nothing.
+    /// Cycle one player's color to the next not held by another RACING seat —
+    /// the fast gesture. `chooseColor` is the deliberate one.
     public func cycleColor(slot: Int) {
         guard colorIndices.indices.contains(slot) else { return }
-        let racing = max(1, playerCount)
-        let taken = Set(
-            colorIndices.prefix(racing).enumerated()
-                .filter { $0.offset != slot }.map(\.element))
+        let taken = colorsTaken(besides: slot)
         var next = colorIndices[slot]
         repeat {
             next = (next + 1) % Self.palette.count
@@ -32,6 +24,33 @@ extension CouchGame {
         // come through here — a preference bumped by one crowded race must not
         // overwrite what the player actually chose.
         rememberColorPreference(slot: slot)
+    }
+
+    /// Take a color outright — the palette sheet's pick, where the player can
+    /// see the whole nine and choose across the ring instead of walking it.
+    ///
+    /// Refuses a color another racing seat holds, rather than trusting the view
+    /// to have disabled that chip: the invariant is "no two racing seats alike",
+    /// and a rule enforced only in a view is a rule the next view breaks.
+    public func chooseColor(_ color: Int, slot: Int) {
+        guard colorIndices.indices.contains(slot), (0..<Self.palette.count).contains(color),
+            !colorsTaken(besides: slot).contains(color)
+        else { return }
+        assignColor(color, to: slot)
+        rememberColorPreference(slot: slot)
+    }
+
+    /// The colors the RACING seats hold, excluding one seat's own.
+    ///
+    /// Only the seats actually in the race block a color. `colorIndices` covers
+    /// the whole nine-slot grid and defaults to all nine palette colors, so
+    /// counting every slot left exactly one "free" color — the asking seat's own
+    /// — and cycling stood still. Reported as friction: the picker existed and
+    /// did nothing.
+    func colorsTaken(besides slot: Int) -> Set<Int> {
+        Set(
+            colorIndices.prefix(max(1, playerCount)).enumerated()
+                .filter { $0.offset != slot }.map(\.element))
     }
 
     /// Give a seat a color, keeping `colorIndices` a permutation of the palette:
@@ -68,10 +87,8 @@ extension CouchGame {
         guard let preferred = profiles.profile(id: id)?.colorIndex,
             colorIndices.indices.contains(slot)
         else { return }
-        let racing = max(1, playerCount)
-        let taken = Set(
-            colorIndices.prefix(racing).enumerated()
-                .filter { $0.offset != slot }.map(\.element))
-        assignColor(CarPalette.claim(preferred: preferred, taken: taken), to: slot)
+        assignColor(
+            CarPalette.claim(preferred: preferred, taken: colorsTaken(besides: slot)),
+            to: slot)
     }
 }

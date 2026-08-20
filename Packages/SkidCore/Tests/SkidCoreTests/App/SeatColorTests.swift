@@ -3,8 +3,9 @@ import XCTest
 @testable import SkidCore
 @testable import SkidKit
 
-/// **Picking a color at the couch** — the tap that cycles a seat, the profile
-/// preference it remembers, and the permutation that keeps every seat distinct.
+/// **Picking a color at the couch** — the tap that cycles a seat, the palette
+/// pick that takes one outright, the profile preference either remembers, and
+/// the permutation that keeps every seat distinct.
 @MainActor
 final class SeatColorTests: XCTestCase {
     private func game() -> CouchGame {
@@ -50,6 +51,72 @@ final class SeatColorTests: XCTestCase {
         XCTAssertEqual(
             Set(couch.colorIndices), Set(0..<CarPalette.count),
             "a pick broke the permutation: \(couch.colorIndices)")
+    }
+
+    // MARK: - Taking a color from the palette
+
+    /// The palette's pick takes a free color outright — across the ring, which
+    /// is the whole reason it exists beside cycling.
+    func testThePaletteTakesAFreeColorOutright() {
+        let couch = game()
+        couch.chooseColor(6, slot: 0)
+        XCTAssertEqual(couch.colorIndices[0], 6)
+        XCTAssertEqual(Set(couch.colorIndices), Set(0..<CarPalette.count))
+    }
+
+    /// **A taken color is refused by the MODEL, not just greyed in the view.**
+    /// The invariant is "no two racing seats alike"; a rule enforced only in a
+    /// view is a rule the next view breaks.
+    func testThePaletteRefusesAColorAnotherRacingSeatHolds() {
+        let couch = game()
+        couch.addEntrant(.guest)
+        let neighbor = couch.colorIndices[1]
+        let mine = couch.colorIndices[0]
+        couch.chooseColor(neighbor, slot: 0)
+        XCTAssertEqual(couch.colorIndices[0], mine, "took a racing seat's color")
+        XCTAssertEqual(couch.colorIndices[1], neighbor)
+    }
+
+    /// An IDLE slot's color is free to take — only racing seats block one, and
+    /// the swap keeps the array a permutation.
+    func testThePaletteTakesAnIdleSlotsColor() {
+        let couch = game()
+        let idle = couch.colorIndices[5]
+        let mine = couch.colorIndices[0]
+        couch.chooseColor(idle, slot: 0)
+        XCTAssertEqual(couch.colorIndices[0], idle)
+        XCTAssertEqual(couch.colorIndices[5], mine, "the idle slot did not take the old color")
+        XCTAssertEqual(Set(couch.colorIndices), Set(0..<CarPalette.count))
+    }
+
+    /// Out-of-range indices are refused rather than trapping or wrapping — the
+    /// sheet is built from the palette's own count, but a stale view is not a
+    /// reason to corrupt the array.
+    func testThePaletteRefusesAColorOutsideThePalette() {
+        let couch = game()
+        let before = couch.colorIndices
+        couch.chooseColor(CarPalette.count, slot: 0)
+        couch.chooseColor(-1, slot: 0)
+        XCTAssertEqual(couch.colorIndices, before)
+    }
+
+    /// A palette pick is explicit, so it is remembered like a cycle is.
+    func testAPalettePickBecomesThePreference() throws {
+        let couch = game()
+        let sam = try XCTUnwrap(couch.createProfile(named: "Sam", colorIndex: 0, forSeat: 0))
+        couch.chooseColor(6, slot: 0)
+        XCTAssertEqual(couch.profiles.profile(id: sam.id)?.colorIndex, 6)
+    }
+
+    /// What the sheet draws as unavailable: the colors the OTHER racing seats
+    /// hold. Never the asking seat's own — that one is selected, not taken.
+    func testTakenColorsAreTheOtherRacingSeatsOnly() {
+        let couch = game()
+        couch.addEntrant(.guest)
+        let taken = couch.colorsTaken(besides: 0)
+        XCTAssertEqual(taken, [couch.colorIndices[1]])
+        XCTAssertFalse(taken.contains(couch.colorIndices[0]), "a seat blocked its own color")
+        XCTAssertFalse(taken.contains(couch.colorIndices[2]), "an idle slot blocked a color")
     }
 
     /// A profile placed in a seat brings its preferred color along.
