@@ -26,6 +26,8 @@ struct PlayerListView: View {
     @ObservedObject var game: CouchGame
     /// Which row's player picker is open.
     @State private var pickingFor: Int?
+    /// Which row's color palette is open — a long press on its swatch.
+    @State private var coloringFor: Int?
 
     var body: some View {
         VStack(spacing: 10) {
@@ -41,6 +43,13 @@ struct PlayerListView: View {
         ) {
             SeatProfileSheet(game: game, seat: pickingFor ?? 0) { pickingFor = nil }
         }
+        .sheet(
+            isPresented: Binding(
+                get: { coloringFor != nil },
+                set: { if !$0 { coloringFor = nil } })
+        ) {
+            ColorPaletteSheet(game: game, slot: coloringFor ?? 0) { coloringFor = nil }
+        }
     }
 
     /// **The whole row is one button, and it opens the picker.**
@@ -51,11 +60,11 @@ struct PlayerListView: View {
     /// "Guest", so it already covers both answers. One tap, one surface.
     private func row(index: Int, entrant: RaceEntrant) -> some View {
         HStack(spacing: 12) {
-            // The car's color, so the list reads as the grid rather than as settings.
-            Circle()
-                .fill(CouchGame.palette[game.colorIndices[index % game.colorIndices.count]])
-                .frame(width: 26, height: 26)
-                .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 2))
+            // The car's color — and the place to pick it: tap cycles, long-press
+            // opens the whole palette. A profile row also remembers the pick as
+            // its preference, which is what travels to a networked lobby (where
+            // the host's roster resolves claims).
+            SeatColorSwatch(game: game, slot: index) { coloringFor = index }
 
             Button {
                 pickingFor = index

@@ -65,6 +65,38 @@ public enum CarPalette {
     /// How many cars a race can hold — the palette's own limit, which is also the
     /// grid's (`PieceCompiler.Grid.slots`). Kept in step by a test.
     public static var count: Int { paints.count }
+
+    /// **First-come claiming**: the preferred color if nobody holds it, otherwise
+    /// a suitable replacement — deterministically, so every device that resolves
+    /// the same claims in the same order lands on the same answer.
+    ///
+    /// The replacement is NOT the nearest look-alike: that would hand the bumped
+    /// player the one color most confusable with the winner of the conflict. It
+    /// is the free paint that stays furthest from everything already claimed —
+    /// worst pair across all vision types, the palette's own metric — with ties
+    /// broken by seat order, which is itself separation order.
+    public static func claim(preferred: Int, taken: Set<Int>) -> Int {
+        let wanted = ((preferred % count) + count) % count
+        guard taken.contains(wanted) else { return wanted }
+        let free = (0..<count).filter { !taken.contains($0) }
+        guard !free.isEmpty else { return wanted }
+        func worstSeparation(_ candidate: Int) -> Double {
+            taken.reduce(.infinity) { nearest, held in
+                Paint.Vision.allCases.reduce(nearest) { worst, vision in
+                    min(
+                        worst,
+                        paints[candidate].seen(with: vision)
+                            .distance(to: paints[held % count].seen(with: vision)))
+                }
+            }
+        }
+        return free.max { a, b in
+            let (sa, sb) = (worstSeparation(a), worstSeparation(b))
+            // max(by:) keeps the LAST of equals; compare indices on ties so the
+            // FIRST (best-separated by palette order) wins instead.
+            return sa == sb ? a > b : sa < sb
+        } ?? wanted
+    }
 }
 
 // MARK: - Perceptual measurement
