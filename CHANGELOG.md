@@ -14,7 +14,7 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
-- **Pick your own color.** Tap the color disc next to a player to cycle through the palette — the button on the race options screen now actually works too (it used to count the empty seats' colors as taken and cycle in place). A profile remembers its pick and brings it to any seat; the picks survive a relaunch with the rest of the setup.
+- **Pick your own color.** Tap the color disc next to a player to cycle through the palette, or hold it to open the whole palette and take one directly — the colors other players hold are marked with who has them, and cannot be picked. Both the front screen's player list and the race options screen carry the same control (the options one used to count the empty seats' colors as taken and cycle in place, doing nothing). A profile remembers its pick and brings it to any seat; the picks survive a relaunch with the rest of the setup.
 - **Colors carry into nearby races.** Each device's picks travel with its join, and the host grants them first-come: the host's colors always hold, an earlier joiner keeps a contested color, and only the later claimant moves — to the free color that stays most distinct from everyone's, so the field stays legible in every vision type. Both phones paint the same field, and cars no longer default to seat-number colors.
 
 - **The finish-line pause is really gone this time.** The build 15 fix sliced the record ghost from poses captured during the run, but the poses were keyed one tick late, so any run whose best lap wasn't lap 1 silently fell back to the seconds-long replay it was meant to replace — felt on every finish of a fresh track, where each run sets a record.
