@@ -14,6 +14,9 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Pick your own color.** Tap the color disc next to a player to cycle through the palette — the button on the race options screen now actually works too (it used to count the empty seats' colors as taken and cycle in place). A profile remembers its pick and brings it to any seat; the picks survive a relaunch with the rest of the setup.
+- **Colors carry into nearby races.** Each device's picks travel with its join, and the host grants them first-come: the host's colors always hold, an earlier joiner keeps a contested color, and only the later claimant moves — to the free color that stays most distinct from everyone's, so the field stays legible in every vision type. Both phones paint the same field, and cars no longer default to seat-number colors.
+
 - **The finish-line pause is really gone this time.** The build 15 fix sliced the record ghost from poses captured during the run, but the poses were keyed one tick late, so any run whose best lap wasn't lap 1 silently fell back to the seconds-long replay it was meant to replace — felt on every finish of a fresh track, where each run sets a record.
 - **Multi-storey tracks no longer stutter.** The race redrew every ribbon, kerb, rail and shadow of every storey 60 times a second — most of the frame budget on tracks with bridges. The road now renders once per race into per-storey layers (built while the race waits on the ready gate) and each frame just paints them, cutting the frame's draw time by more than half; marks, gates and cars still draw live between the layers, so bridges cover cars exactly as before.
 

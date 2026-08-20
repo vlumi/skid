@@ -57,6 +57,10 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
 
     /// How many players this device brings.
     public var localSeats: Int = 1
+    /// The colors those players picked at home (palette indices, local seat
+    /// order) — sent as PREFERENCES with the join; the roster answers with the
+    /// resolved claims.
+    public var localColors: [Int] = []
     /// The host this guest chose, so a second advertiser's traffic is ignored.
     var chosenHost: RaceRoster.PeerName?
 
@@ -69,10 +73,13 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     /// Why the race ended, when it ended for a reason worth naming.
     @Published public internal(set) var endedReason: String?
 
-    /// A guest asking in, and how many seats it brings.
+    /// A guest asking in: how many seats it brings, and the colors they want.
     public struct PendingJoin: Equatable, Identifiable {
         public let peer: RaceRoster.PeerName
         public let seats: Int
+        /// Preferred palette indices, held with the request so approval claims
+        /// exactly what was asked for.
+        public var colors: [Int] = []
         public var id: RaceRoster.PeerName { peer }
         /// What the host's lobby shows on the button.
         public var display: String { DeviceName.display(peer) }
@@ -105,19 +112,22 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
 
     // MARK: - Lobby
 
-    /// Host a race: seat ourselves first, so the host is always seat 0.
-    public func host(seats: Int) {
+    /// Host a race: seat ourselves first, so the host is always seat 0 — and
+    /// first in the color claims, so the host's picks always hold.
+    public func host(seats: Int, colors: [Int] = []) {
         localSeats = seats
+        localColors = colors
         roster = RaceRoster()
         resetSession()
-        try? roster.join(transport.me, seats: seats)
+        try? roster.join(transport.me, seats: seats, colors: colors)
         phase = .hosting
         note("hosting as \(DeviceName.display(transport.me))")
         transport.startHosting()
     }
 
-    public func join(seats: Int) {
+    public func join(seats: Int, colors: [Int] = []) {
         localSeats = seats
+        localColors = colors
         roster = RaceRoster()
         resetSession()
         phase = .joining
@@ -374,7 +384,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         }
     }
 
-    func seat(_ peer: RaceRoster.PeerName, seats: Int) {
+    func seat(_ peer: RaceRoster.PeerName, seats: Int, colors: [Int] = []) {
         // **Out of a race, whatever the lobby phase is.** This used to demand
         // `.hosting`, which was true when seating happened automatically on
         // connect — but the host also sits in `.lobby` between races now, and
@@ -393,7 +403,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         // disabled and no explanation. Unique peer keys fix the collision; this
         // makes any future refusal say so.
         do {
-            try roster.join(peer, seats: seats)
+            try roster.join(peer, seats: seats, colors: colors)
             joinNote = nil
             note("seated \(DeviceName.display(peer)) (\(seats)) -> \(roster.seatCount) cars")
         } catch {

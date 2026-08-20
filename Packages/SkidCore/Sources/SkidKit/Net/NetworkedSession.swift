@@ -75,7 +75,7 @@ extension NetworkedGame {
         chosenHost = host
         phase = .awaitingApproval
         note("asking \(DeviceName.display(host)) to join")
-        transmit(JoinRequest(seats: localSeats).encoded, reliable: true)
+        transmit(JoinRequest(seats: localSeats, colors: localColors).encoded, reliable: true)
     }
 
     /// Host: yes. The roster is the gate that can still refuse (a full field), and
@@ -83,7 +83,7 @@ extension NetworkedGame {
     public func approve(_ peer: RaceRoster.PeerName) {
         guard isHost, let pending = pendingJoins.first(where: { $0.peer == peer }) else { return }
         pendingJoins.removeAll { $0.peer == peer }
-        seat(pending.peer, seats: pending.seats)
+        seat(pending.peer, seats: pending.seats, colors: pending.colors)
     }
 
     /// Host: no. Deliberately not a security feature — the field cap already bounds
@@ -106,7 +106,8 @@ extension NetworkedGame {
             // must not rewrite the field mid-race.
             guard isHost, start == nil, !pendingJoins.contains(where: { $0.peer == peer })
             else { return true }
-            pendingJoins.append(PendingJoin(peer: peer, seats: request.seats))
+            pendingJoins.append(
+                PendingJoin(peer: peer, seats: request.seats, colors: request.colors))
             note("join request from \(DeviceName.display(peer)) (\(request.seats))")
             return true
         }
