@@ -97,7 +97,20 @@ final class GhostCutTests: XCTestCase {
         XCTAssertNotNil(car.progress.finishedAt, "the AI never finished — fixture issue")
         // One pose per boundary: the countdown's end plus each completed lap.
         XCTAssertEqual(session.lapStartPoses.count, 1 + car.progress.lapTimes.count)
-        // And the cut finds the one it needs: same ghost with and without them.
+        // **Every boundary key must be EXACTLY where the lap arithmetic points** —
+        // asserting only the count (as this test used to) stayed green when the
+        // poses were keyed one tick late, because the cut silently replayed and
+        // produced an equal ghost. That was the finish-line hitch, shipped twice.
+        var boundary = session.race.config.countdownTicks
+        XCTAssertNotNil(session.lapStartPoses[boundary], "lap 1's start pose missing")
+        for (lap, ticks) in car.progress.lapTimes.enumerated() {
+            boundary += ticks
+            XCTAssertNotNil(
+                session.lapStartPoses[boundary],
+                "lap \(lap + 2)'s start pose missing at tick \(boundary): "
+                    + "captured \(session.lapStartPoses.keys.sorted())")
+        }
+        // And the sliced cut is bit-identical to the replayed one.
         let withPoses = session.recording.bestLapGhost(
             on: track, lapTimes: car.progress.lapTimes, config: session.race.config,
             startPoses: session.lapStartPoses)

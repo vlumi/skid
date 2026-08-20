@@ -14,6 +14,8 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **The finish-line pause is really gone this time.** The build 15 fix sliced the record ghost from poses captured during the run, but the poses were keyed one tick late, so any run whose best lap wasn't lap 1 silently fell back to the seconds-long replay it was meant to replace — felt on every finish of a fresh track, where each run sets a record.
+
 ### build 15 — 2026-08-19
 
 - **The setup survives quitting.** Who is racing, the chosen track, the mode, control schemes, AI on/off and difficulty all come back on the next launch instead of resetting to defaults. A remembered track that was deleted falls back gracefully, and a player whose profile is gone races as a guest. "Reset all data" clears the memory with everything else.
