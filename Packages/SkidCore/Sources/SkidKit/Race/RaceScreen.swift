@@ -15,6 +15,11 @@ struct RaceScreen: View {
     /// them would invalidate this view from inside its own render pass. The values
     /// are read fresh each frame instead, which `TimelineView` already guarantees.
     let net: NetworkedGame
+    /// Pre-rendered road layers (one image per storey) — built once behind the
+    /// ready gate and blitted each frame, instead of re-shading every ribbon
+    /// polygon 60 times a second. See `TrackLayerCache`.
+    @State private var trackLayers = TrackLayerCache()
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         // The GeometryReader must NOT ignore the safe area, or its
@@ -63,6 +68,7 @@ struct RaceScreen: View {
                 let scene = WorldScene(
                     race: race, marks: session.marks, gateSpans: session.gateSpans,
                     colors: colors, mapRect: mapRect, ghosts: session.ghost?.cars ?? [],
+                    roadLayers: trackLayers.images, roadLayersRect: trackLayers.screenRect,
                     debug: game.settings.debugOverlay
                 )
                 let pads = padOverlays()
@@ -179,6 +185,10 @@ struct RaceScreen: View {
         rig.layout(
             size: size, mapRect: mapRect.insetBy(dx: -overhang, dy: -overhang),
             safeInsets: safeInsets)
+        // A no-op every frame after the first: the build happens once, while
+        // the race is frozen on the ready gate, so it can never hitch a frame.
+        trackLayers.prepare(
+            track: session.race.track, mapRect: mapRect, displayScale: displayScale)
         game.applyControlTuning()
         session.advance(to: time)
         game.noteProgress()
