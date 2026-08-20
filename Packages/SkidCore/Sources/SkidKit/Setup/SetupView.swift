@@ -13,6 +13,13 @@ struct SetupView: View {
     /// screenshot of it is otherwise unreachable.
     @State private var browsingTracks = ProcessInfo.processInfo.arguments
         .contains("-skid-tracks")
+    /// Which seat's color palette is open — a long press on its swatch.
+    ///
+    /// Opens on seat 0 under `-skid-colors`, for the same reason `-skid-tracks`
+    /// exists: `simctl` cannot long-press, so a screenshot of this sheet is
+    /// otherwise unreachable.
+    @State private var coloringFor: Int? =
+        ProcessInfo.processInfo.arguments.contains("-skid-colors") ? 0 : nil
 
     var body: some View {
         ZStack {
@@ -33,6 +40,13 @@ struct SetupView: View {
         }
         .sheet(isPresented: $browsingTracks) {
             TrackBrowserView(game: game) { browsingTracks = false }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { coloringFor != nil },
+                set: { if !$0 { coloringFor = nil } })
+        ) {
+            ColorPaletteSheet(game: game, slot: coloringFor ?? 0) { coloringFor = nil }
         }
     }
 
@@ -199,13 +213,14 @@ struct SetupView: View {
             let humans = game.mode == .timeTrial ? 1 : game.playerCount
             ForEach(0..<humans, id: \.self) { slot in
                 VStack(spacing: 6) {
-                    Button {
-                        game.cycleColor(slot: slot)
-                    } label: {
-                        Circle()
-                            .fill(CouchGame.palette[game.colorIndices[slot]])
-                            .frame(width: 46, height: 46)
-                            .overlay(Circle().stroke(Retro.ink.opacity(0.7), lineWidth: 2))
+                    // Tap cycles, long-press opens the whole palette — the same
+                    // control the player list carries, so the gesture is learned
+                    // once.
+                    SeatColorSwatch(
+                        game: game, slot: slot, diameter: 46,
+                        ring: Retro.ink.opacity(0.7)
+                    ) {
+                        coloringFor = slot
                     }
                     // **Read-only here.** Who is in a seat is chosen on the front screen
                     // now; showing a second way in would be two controls for one

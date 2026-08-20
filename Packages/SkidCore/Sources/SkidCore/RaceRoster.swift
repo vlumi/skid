@@ -19,16 +19,33 @@ public struct RaceRoster: Equatable, Sendable, Codable {
     /// Whatever the transport calls a device. Opaque here on purpose.
     public typealias PeerName = String
 
-    /// One device's claim: the peer, and how many seats it brings.
+    /// One device's claim: the peer, how many seats it brings, and the colors
+    /// the host resolved for them.
     public struct Entry: Equatable, Sendable, Codable {
         public let peer: PeerName
         /// Global seat numbers this device drives, in its own local order — so
         /// entry.seats[0] is that device's first control band.
         public let seats: [PlayerID]
+        /// Palette indices parallel to `seats` — RESOLVED by the host at join
+        /// (first-come claiming, see `join`), never a raw preference. Empty on
+        /// an entry from a build that predates color claims; readers fall back
+        /// to seat-number colors then.
+        public let colors: [Int]
 
-        public init(peer: PeerName, seats: [PlayerID]) {
+        public init(peer: PeerName, seats: [PlayerID], colors: [Int] = []) {
             self.peer = peer
             self.seats = seats
+            self.colors = colors
+        }
+
+        /// Tolerant of the field's absence, so a roster encoded by an older
+        /// build still decodes — a mixed-version lobby degrades to seat-number
+        /// colors instead of refusing to form.
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            peer = try container.decode(PeerName.self, forKey: .peer)
+            seats = try container.decode([PlayerID].self, forKey: .seats)
+            colors = try container.decodeIfPresent([Int].self, forKey: .colors) ?? []
         }
     }
 
@@ -74,8 +91,19 @@ public struct RaceRoster: Equatable, Sendable, Codable {
     ///
     /// **Seats are appended, never reused.** A device that leaves does not free its
     /// numbers for the next joiner mid-race — see `remove(peer:)` for why.
+    ///
+    /// `colors` are the joiner's PREFERRED palette indices, in its local seat
+    /// order; what lands in the entry is the RESOLVED claim. First-come wins:
+    /// the host joined first, so its picks always hold, and between two guests
+    /// wanting the same color the earlier joiner keeps it — only the later one
+    /// is moved, to the free color that stays most distinct from every claim
+    /// already made (`CarPalette.claim`). Deterministic on purpose: the host
+    /// resolves once and the roster carries the answer, so no device rolls its
+    /// own dice.
     @discardableResult
-    public mutating func join(_ peer: PeerName, seats requested: Int) throws -> [PlayerID] {
+    public mutating func join(
+        _ peer: PeerName, seats requested: Int, colors: [Int] = []
+    ) throws -> [PlayerID] {
         guard requested >= 1, requested <= Self.maxSeatsPerDevice else {
             throw JoinError.seatCountOutOfRange(requested: requested, max: Self.maxSeatsPerDevice)
         }
@@ -93,7 +121,17 @@ public struct RaceRoster: Equatable, Sendable, Codable {
         // Exactly the two-thumbs-one-car bug the roster exists to prevent, and it
         // took the round-trip test to surface it.
         let assigned = (0..<requested).map { PlayerID(nextSeatNumber + $0) }
-        entries.append(Entry(peer: peer, seats: assigned))
+        var taken = Set(entries.flatMap(\.colors))
+        let resolved = assigned.enumerated().map { index, seat in
+            // No stated preference (an older build, or fewer picks than seats):
+            // the seat-number color, which is what those builds show anyway.
+            let preferred =
+                index < colors.count ? colors[index] : seat.rawValue % CarPalette.count
+            let claim = CarPalette.claim(preferred: preferred, taken: taken)
+            taken.insert(claim)
+            return claim
+        }
+        entries.append(Entry(peer: peer, seats: assigned, colors: resolved))
         nextSeatNumber += requested
         return assigned
     }
@@ -117,6 +155,18 @@ public struct RaceRoster: Equatable, Sendable, Codable {
     /// The device driving a seat, for "waiting for Ville's phone" chrome.
     public func peer(driving seat: PlayerID) -> PeerName? {
         entries.first { $0.seats.contains(seat) }?.peer
+    }
+
+    /// The color a seat races in — the resolved claim, or the seat-number color
+    /// for an entry from a build that predates claims. Every peer renders off
+    /// the same roster, so every screen paints the same field.
+    public func colorIndex(forSeat seat: PlayerID) -> Int {
+        for entry in entries {
+            if let index = entry.seats.firstIndex(of: seat), index < entry.colors.count {
+                return entry.colors[index]
+            }
+        }
+        return seat.rawValue % CarPalette.count
     }
 
     // MARK: - Caps

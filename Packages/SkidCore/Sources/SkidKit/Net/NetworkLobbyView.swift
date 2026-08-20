@@ -63,12 +63,18 @@ struct NetworkLobbyView: View {
         VStack(spacing: 18) {
             seatPicker
             Button {
-                net.host(seats: game.playerCount)
+                // The colors these players picked at home ride along as
+                // preferences; the roster's first-come claims are the answer.
+                net.host(
+                    seats: game.playerCount,
+                    colors: Array(game.colorIndices.prefix(game.playerCount)))
             } label: {
                 label(Text("Host a race", bundle: .module), filled: true)
             }
             Button {
-                net.join(seats: game.playerCount)
+                net.join(
+                    seats: game.playerCount,
+                    colors: Array(game.colorIndices.prefix(game.playerCount)))
             } label: {
                 label(Text("Join a race", bundle: .module), filled: false)
             }

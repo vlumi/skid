@@ -110,12 +110,28 @@ public struct RaceStart: Equatable, Sendable, Codable {
     static let tag: UInt8 = 200
 }
 
-/// A guest's answer to "how many of you are there?", sent on joining.
+/// A guest's answer to "how many of you are there?", sent on joining — plus the
+/// colors those players picked at home, which the host resolves first-come
+/// (`RaceRoster.join`). Preferences, not reservations: what comes back in the
+/// roster is the claim the host granted.
 public struct JoinRequest: Equatable, Sendable, Codable {
     public var seats: Int
+    /// Preferred palette indices in local seat order. May be shorter than
+    /// `seats` (or empty, from a build that predates color claims) — missing
+    /// picks default to seat-number colors on the host.
+    public var colors: [Int]
 
-    public init(seats: Int) {
+    public init(seats: Int, colors: [Int] = []) {
         self.seats = seats
+        self.colors = colors
+    }
+
+    /// Tolerant of the field's absence, so an older build's request still seats
+    /// its players in a newer host's lobby.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        seats = try container.decode(Int.self, forKey: .seats)
+        colors = try container.decodeIfPresent([Int].self, forKey: .colors) ?? []
     }
 
     public var encoded: [UInt8] {

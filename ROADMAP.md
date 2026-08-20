@@ -41,11 +41,9 @@ All small, and two of them are *measurements* rather than features — do not bu
 
 ## The first ten seconds — *what a new player sees*
 
-Nothing on screen should need explaining when it matters. Most of this shipped (the accessible palette, the reversing mark, the headlight cone, the tapered nose); measured and planned in [docs/first-glance-plan.md](docs/first-glance-plan.md). What remains:
+Nothing on screen should need explaining when it matters. Most of this shipped (the accessible palette, pick-your-own-color with first-come claiming that also holds under networking, the reversing mark, the headlight cone, the tapered nose); measured and planned in [docs/first-glance-plan.md](docs/first-glance-plan.md). What remains:
 
-- [ ] **Pick your own color**, from the measured accessible nine. Decided: duplicates prevented by **first-come claiming** in the lobby rather than a rule about taste, and local-vs-remote marked with a **ring or seat number** — not desaturation, which is measured to wreck the palette (worst pair 24.7 → 6.5 at 55%). Under networking the claim is agreed centrally, since "local" is a per-screen property. The surface exists now (the player list and its profile sheet); the palette work is done, the claim rule is not.
-
-      **Two-tone belongs here, and its cost is measured.** A second body color only works as a genuinely distinct hue — a light/dark shade of the base was tried and reverted (worst cross-car patch pair fell to ΔE 4.6, against 24.7 for one tone). The budget is **tones, not cars**: two hues per car needs 2N mutually-distinct tones and nine is already the edge of color-blind-safe spread, so **4 cars two-toned is fine (26.3), 9 is impossible** — a picker feature where field size bounds the selectable pairs, not arithmetic in the renderer. `CarLiveryRenderTests.testCarsStayDistinctAcrossEveryToneTheyWear` has the one-line hook to extend and will hold whatever lands to the same floor.
+- [ ] **Two-tone cars — the cost is measured.** A second body color only works as a genuinely distinct hue — a light/dark shade of the base was tried and reverted (worst cross-car patch pair fell to ΔE 4.6, against 24.7 for one tone). The budget is **tones, not cars**: two hues per car needs 2N mutually-distinct tones and nine is already the edge of color-blind-safe spread, so **4 cars two-toned is fine (26.3), 9 is impossible** — a picker feature where field size bounds the selectable pairs, not arithmetic in the renderer. `CarLiveryRenderTests.testCarsStayDistinctAcrossEveryToneTheyWear` has the one-line hook to extend and will hold whatever lands to the same floor.
 
 ## More to build with — *the editor's tail*
 

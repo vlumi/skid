@@ -47,6 +47,7 @@ extension CouchGame {
         mode = .race
         trackID = TrackLibrary.builtins[0].id
         schemes = [.casual, .casual, .casual, .casual]
+        colorIndices = Array(0..<PieceCompiler.Grid.slots)
         fillWithAI = true
         aiDifficulty = .medium
         // Then the disk, including every `skid.` default — which is what puts the dials,

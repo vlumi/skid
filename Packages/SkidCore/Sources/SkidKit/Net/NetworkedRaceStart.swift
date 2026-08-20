@@ -67,13 +67,15 @@ extension CouchGame {
         }
         let mySeats = driver.mySeats
         aiFleet.drivers = [:]
-        // **Color by GLOBAL seat, so both devices agree.** Taking the first N of
+        // **Color from the ROSTER, so both devices agree.** Taking the first N of
         // this device's own picks gave every device the same first two colors —
         // both phones showed blue and orange, and no player could tell which car
-        // was theirs. A seat number is the one thing every peer agrees on, so it is
-        // what the color hangs off.
+        // was theirs. The roster's resolved claims (first-come, host first; see
+        // `RaceRoster.join`) are the one color story every peer holds, so they are
+        // what the color hangs off — falling back to seat-number colors for a
+        // roster from a build that predates claims.
         let rig = CouchRig(
-            colorIndices: mySeats.map { $0.rawValue % Self.palette.count },
+            colorIndices: mySeats.map { start.roster.colorIndex(forSeat: $0) },
             schemes: Array(schemes.prefix(mySeats.count)),
             seating: SeatingConfig(faceToFace: faceToFace, openCorner: openCorner),
             // The seats these bands actually drive. Without this every device
@@ -83,6 +85,12 @@ extension CouchGame {
         let session = makeNetworkedSession(
             track: track, start: start, localSeats: mySeats, driver: driver)
         session.isNetworked = true
+        // The whole field's colors, for the renderer + HUD (`carColors`) — same
+        // source as the rig's, so this device's pads match its cars.
+        session.seatColorIndices = Dictionary(
+            uniqueKeysWithValues: start.roster.seats.map {
+                ($0, start.roster.colorIndex(forSeat: $0))
+            })
         // Stamped with the race it belongs to, so a session left on screen by a
         // rematch stops driving the shared client view.
         session.generation = driver.generation
@@ -166,14 +174,18 @@ extension CouchGame {
 
     /// Car colors in car order (humans first, then AI), for renderer + HUD.
     ///
-    /// **Networked, color comes from the seat.** This built the list from the LOCAL
-    /// players, so on a guest driving seats 2–3 the array's first entry was seat 2's
-    /// color and every car on screen was painted as somebody else. A seat number is
-    /// the one thing all peers agree on, so it is what the color hangs off — and
-    /// that also makes the two screens match, which is the point.
+    /// **Networked, color comes from the roster's claims** (via the session's
+    /// seat map). This built the list from the LOCAL players, so on a guest
+    /// driving seats 2–3 the array's first entry was seat 2's color and every
+    /// car on screen was painted as somebody else. The roster is the one color
+    /// story all peers hold, so it is what the color hangs off — and that also
+    /// makes the two screens match, which is the point.
     public var carColors: [Color] {
         if let session, session.isNetworked {
-            return session.race.cars.map { Self.palette[$0.id.rawValue % Self.palette.count] }
+            return session.race.cars.map {
+                Self.palette[
+                    session.seatColorIndices[$0.id] ?? $0.id.rawValue % Self.palette.count]
+            }
         }
         let humanColors = rig?.players.map(\.colorIndex) ?? Array(colorIndices.prefix(playerCount))
         return (humanColors + aiColorIndices).map { Self.palette[$0] }
