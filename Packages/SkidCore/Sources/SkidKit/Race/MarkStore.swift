@@ -75,19 +75,24 @@ public struct MarkStore {
             lastTirePositions[car.id] = nil
             return
         }
-        // **A mark belongs to the storey its road PAINTS at, not to the car's raw
-        // height** — the same rule that stacks the cars (`carStorey`), for the same
-        // reason: a ramp's ribbon paints whole at the level of its highest end, so a
-        // mark laid on the ramp's low beginning (where the car is still at ground
-        // height) went into the ground bank and the ramp's own asphalt painted over
-        // it. Reported from device: tire marks stop dead at the beginning of a ramp.
-        let storey = TrackRenderer.carStorey(of: state, on: track)
         let tires = state.tirePositions
         defer { lastTirePositions[car.id] = tires }
         guard let previous = lastTirePositions[car.id], previous.count == tires.count else {
             return
         }
 
+        // **A mark belongs to the storey its road PAINTS at, not to the car's raw
+        // height** — the same rule that stacks the cars (`carStorey`), for the same
+        // reason: a ramp's ribbon paints whole at the level of its highest end, so a
+        // mark laid on the ramp's low beginning (where the car is still at ground
+        // height) went into the ground bank and the ramp's own asphalt painted over
+        // it. Reported from device: tire marks stop dead at the beginning of a ramp.
+        //
+        // Computed AFTER the guard above: it is five centerline queries (the car's
+        // centre plus its corners), and on the first recorded tick of a car — and
+        // every tick after a spell airborne — there is no previous tire set to draw
+        // from, so the answer was thrown away.
+        let storey = TrackRenderer.carStorey(of: state, on: track)
         let surface = track.surface(at: state.position, height: state.height)
         let slip = state.slipSpeed
         let speed = state.velocity.length

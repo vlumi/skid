@@ -22,6 +22,42 @@ extension Track {
     public func distanceToCenterline(
         _ p: Vec2, height: Double? = nil, heightTolerance: Double = Self.surfaceTolerance
     ) -> Double {
+        // **Only the segments that could be the answer** — the index searches
+        // outward by cell ring, so this touches a handful instead of all ~300
+        // (measured: this and `surface(at:)` on top of it were the largest single
+        // cost in the sim tick, which ran 4.8 ms against a 16.7 ms frame).
+        //
+        // **Exact, not approximate.** The result is used two ways: every sim
+        // caller compares it against a half-width, but the debug overlay PRINTS
+        // the magnitude, so "further than I looked" is not an acceptable answer.
+        // The ring search therefore keeps going until the nearest hit is provably
+        // closer than the next ring can reach — the same value the full scan
+        // gives, found without visiting the whole track.
+        let index = segmentIndex
+        // The gap rules make a segment's contribution more than plain distance,
+        // so gapped tracks keep the exhaustive path: they are rare, and being
+        // wrong at a gap edge is what lets a car drive on air.
+        guard !gaps.contains(true) else {
+            return nearestSegmentDistance(
+                to: p, over: Array(centerline.indices), height: height,
+                heightTolerance: heightTolerance)
+        }
+        guard
+            let nearest = index.nearest(
+                to: p, centerline: centerline,
+                accept: { i in
+                    guard let height else { return true }
+                    return segment(i, isAt: height, tolerance: heightTolerance)
+                })
+        else { return .greatestFiniteMagnitude }
+        return nearest.distance
+    }
+
+    /// The shared body of `distanceToCenterline`, over whichever segments the
+    /// caller decided are worth testing.
+    private func nearestSegmentDistance(
+        to p: Vec2, over candidates: [Int], height: Double?, heightTolerance: Double
+    ) -> Double {
         var best = Double.greatestFiniteMagnitude
         let count = centerline.count
         // **The gap work is skipped entirely on a track with no gaps**, which is
@@ -30,7 +66,7 @@ extension Track {
         // segment made it 2.7× slower (0.086 → 0.230 ms on the clover's 351
         // points), which at nine cars was most of a 16.7 ms frame.
         let anyGaps = gaps.contains(true)
-        for i in centerline.indices {
+        for i in candidates {
             if let height, !segment(i, isAt: height, tolerance: heightTolerance) { continue }
             let a = centerline[i]
             let b = centerline[(i + 1) % count]
@@ -112,35 +148,70 @@ extension Track {
     public func closestCenterlinePoint(
         to p: Vec2, preferHeight: Double? = nil, preferHeading: Double? = nil
     ) -> (segment: Int, t: Double) {
-        var best = (segment: 0, t: 0.0)
-        var bestScore = Double.greatestFiniteMagnitude
+        // **The index cannot simply replace this scan.** It buckets segments by
+        // the area each one COVERS; this function asks which segment scores best
+        // ANYWHERE, and the two differ — a point 248 units off the road sits in a
+        // cell some segment reaches while the nearest segment lives in the next
+        // cell, and the `preferHeading` penalty can favour a segment no nearby
+        // cell contains. Both were caught by comparing against the scan, and this
+        // answer feeds `arcPosition`, so being wrong swings the standings.
+        //
+        // **Bounding it by the index was tried and MEASURED SLOWER — 42 µs to
+        // 328 µs — so this stays a full scan.** The reasoning was sound (both
+        // penalties are bounded by `width`, so once the nearest segment is known
+        // every possible winner lies within `nearest + 2 * width`), but a road
+        // 120 units wide makes that radius 240: two cell rings in every
+        // direction, on top of a ring search to find `nearest` at all, plus the
+        // uniquing a multi-cell gather needs. That is more work than testing 300
+        // segments with no allocation.
+        //
+        // The lesson for anything similar: an index pays when the query's answer
+        // is LOCAL, and this query's answer is only local in distance, not in
+        // score. `distanceToCenterline` and `isOnRamp` — pure proximity, radius
+        // known up front — are indexed and did get faster.
+        var best = Candidate()
         for i in centerline.indices {
-            let a = centerline[i]
-            let b = centerline[(i + 1) % centerline.count]
-            let closest = p.closestPoint(onSegment: a, b)
-            var score = p.distance(to: closest)
-            if let preferHeight, !segment(i, isAt: preferHeight) {
-                score += width  // road at another height loses ties decisively
-            }
-            if let preferHeading {
-                // Undirected: driving a stretch either way is driving that
-                // stretch, so only the LINE's alignment matters. Scaled by the
-                // road width so a perpendicular road pays about what a
-                // wrong-height road pays, and an aligned one pays nothing.
-                let along = b - a
-                if along.length > 0 {
-                    let travel = Vec2(angle: preferHeading)
-                    let alignment = abs(along.normalized.dot(travel))
-                    score += width * (1 - alignment)
-                }
-            }
-            if score < bestScore {
-                bestScore = score
-                let length = (b - a).length
-                let t = length > 0 ? (closest - a).length / length : 0
-                best = (i, t)
+            score(
+                segment: i, at: p, preferHeight: preferHeight,
+                preferHeading: preferHeading, into: &best)
+        }
+        return (best.segment, best.t)
+    }
+
+    /// The running winner of `closestCenterlinePoint`'s search.
+    private struct Candidate {
+        var segment = 0
+        var t = 0.0
+        var score = Double.greatestFiniteMagnitude
+    }
+
+    /// Score one segment for `closestCenterlinePoint` and keep it if it wins.
+    private func score(
+        segment i: Int, at p: Vec2, preferHeight: Double?, preferHeading: Double?,
+        into best: inout Candidate
+    ) {
+        let a = centerline[i]
+        let b = centerline[(i + 1) % centerline.count]
+        let closest = p.closestPoint(onSegment: a, b)
+        var score = p.distance(to: closest)
+        if let preferHeight, !segment(i, isAt: preferHeight) {
+            score += width  // road at another height loses ties decisively
+        }
+        if let preferHeading {
+            // Undirected: driving a stretch either way is driving that
+            // stretch, so only the LINE's alignment matters. Scaled by the
+            // road width so a perpendicular road pays about what a
+            // wrong-height road pays, and an aligned one pays nothing.
+            let along = b - a
+            if along.length > 0 {
+                let travel = Vec2(angle: preferHeading)
+                let alignment = abs(along.normalized.dot(travel))
+                score += width * (1 - alignment)
             }
         }
-        return best
+        guard score < best.score else { return }
+        let length = (b - a).length
+        best = Candidate(
+            segment: i, t: length > 0 ? (closest - a).length / length : 0, score: score)
     }
 }
