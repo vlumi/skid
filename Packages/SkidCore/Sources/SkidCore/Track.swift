@@ -310,7 +310,12 @@ public struct Track: Equatable, Sendable, Codable {
     /// bridge while the sim had it on the grass at height 0 — visible in the debug
     /// overlay as a car reading "h 0.00 / grass / off road" while drawn on the deck.
     public func isOnRamp(_ p: Vec2, height: Double? = nil, near tolerance: Double = 10) -> Bool {
-        for i in centerline.indices {
+        // Indexed, and the radius is stated rather than assumed: a segment can
+        // answer true here from up to its own half-width plus `tolerance` away,
+        // so that is exactly what the index is asked for. Anything outside it
+        // cannot qualify, so the short list is exact.
+        let reach = halfWidth(atHeight: max(heights.max() ?? 0, deckTops.max() ?? 0))
+        for i in segmentIndex.candidates(near: p, within: reach + tolerance) {
             let next = (i + 1) % centerline.count
             let low = self.height(ofPoint: i)
             let high = self.height(ofPoint: next)
