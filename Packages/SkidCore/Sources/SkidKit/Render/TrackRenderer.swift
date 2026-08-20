@@ -1,33 +1,6 @@
 import SkidCore
 import SwiftUI
 
-/// Everything one frame of the world needs, as plain values (the Canvas
-/// renderer closure is not MainActor, so it gets copies, not the session).
-struct WorldScene {
-    var race: Race
-    var marks: MarkStore
-    var gateSpans: [(a: Vec2, b: Vec2)?]
-    var colors: [Color]
-    /// Where the map is placed on screen (the allocator's result). The
-    /// bands + pause key off the same rect, so the map is drawn exactly
-    /// where the layout expects it.
-    var mapRect: CGRect
-    /// PB-ghost cars to draw translucently (time trial), if any.
-    var ghosts: [CarState] = []
-    /// Draw the sim's own view of the world on top (see `DebugOverlay`).
-    var debug = false
-}
-
-extension Track {
-    /// The transform that puts layout-space drawing where the compiled geometry
-    /// actually is. The race context is already scaled to world units, so this is
-    /// a pure translation by `layoutOffset`.
-    var layoutTransform: EditorRenderer.Transform {
-        EditorRenderer.Transform(
-            scale: 1, offset: CGSize(width: layoutOffset.x, height: layoutOffset.y))
-    }
-}
-
 /// Draws the whole world procedurally into a `Canvas` context — grass,
 /// kerbed asphalt ribbon, start line, marks, cars. No image assets anywhere.
 enum TrackRenderer {
@@ -152,22 +125,7 @@ enum TrackRenderer {
         for storey in storeys {
             let band = storeyBand(storey)
             order.add(storey: storey, kind: .road) { context in
-                if let layout = track.layout {
-                    // The race context scales world → screen AFTER the
-                    // transform; the transform must know, so true-screen-point
-                    // quantities (the seam overlap) hold on screen.
-                    var t = track.layoutTransform
-                    t.contextScale = scale
-                    EditorRenderer.drawTrack(
-                        walk: layout.walk(), width: track.width, gateSeams: [],
-                        decals: layout.decals, railed: layout.railed,
-                        roadStyle: layout.roadStyle, transform: t,
-                        heightRange: band, into: &context)
-                } else {
-                    // No layout (ad-hoc tracks built directly in tests): fall
-                    // back to the centerline stroke, which needs no piece model.
-                    drawRibbon(track: track, elevated: storey > 0, into: &context)
-                }
+                drawRoad(scene: scene, storey: storey, band: band, scale: scale, into: &context)
             }
             order.add(storey: storey, kind: .gate) { context in
                 drawGates(gateChrome, storey: storey, into: &context)
@@ -187,6 +145,42 @@ enum TrackRenderer {
         // Last, so it sits over everything it's describing.
         if scene.debug {
             DebugOverlay.draw(scene: scene, into: &context)
+        }
+    }
+
+    /// One storey's road, into a world-scaled context: the cached layer when the
+    /// scene carries one, otherwise the live pass.
+    private static func drawRoad(
+        scene: WorldScene, storey: Int, band: ClosedRange<Double>, scale: Double,
+        into context: inout GraphicsContext
+    ) {
+        let track = scene.race.track
+        if let image = scene.roadLayers[storey] {
+            // Pre-rendered by `TrackLayerCache` at exactly this scale; the blit
+            // lands it back on the same screen pixels. The context here is
+            // world-scaled, so the target rect maps the cache's screen rect
+            // back through the map transform.
+            let screen = scene.roadLayersRect
+            let world = CGRect(
+                x: (screen.minX - scene.mapRect.minX) / scale,
+                y: (screen.minY - scene.mapRect.minY) / scale,
+                width: screen.width / scale, height: screen.height / scale)
+            context.draw(Image(decorative: image, scale: 1), in: world)
+        } else if let layout = track.layout {
+            // The race context scales world → screen AFTER the transform; the
+            // transform must know, so true-screen-point quantities (the seam
+            // overlap) hold on screen.
+            var t = track.layoutTransform
+            t.contextScale = scale
+            EditorRenderer.drawTrack(
+                walk: layout.walk(), width: track.width, gateSeams: [],
+                decals: layout.decals, railed: layout.railed,
+                roadStyle: layout.roadStyle, transform: t,
+                heightRange: band, into: &context)
+        } else {
+            // No layout (ad-hoc tracks built directly in tests): fall back to
+            // the centerline stroke, which needs no piece model.
+            drawRibbon(track: track, elevated: storey > 0, into: &context)
         }
     }
 
