@@ -33,17 +33,17 @@ extension Track {
         // The ring search therefore keeps going until the nearest hit is provably
         // closer than the next ring can reach — the same value the full scan
         // gives, found without visiting the whole track.
-        let index = segmentIndex
-        // The gap rules make a segment's contribution more than plain distance,
-        // so gapped tracks keep the exhaustive path: they are rare, and being
-        // wrong at a gap edge is what lets a car drive on air.
+        // **A gapped track keeps the exhaustive path.** A gap makes a segment's
+        // contribution more than plain distance — its ends are cut square, and
+        // the segments themselves drop out — so the index's "nearest by distance"
+        // is the wrong question there. Jumps are rare, and being wrong at a gap
+        // edge is what lets a car drive on air.
         guard !gaps.contains(true) else {
-            return nearestSegmentDistance(
-                to: p, over: Array(centerline.indices), height: height,
-                heightTolerance: heightTolerance)
+            return gappedDistanceToCenterline(
+                p, height: height, heightTolerance: heightTolerance)
         }
         guard
-            let nearest = index.nearest(
+            let nearest = segmentIndex.nearest(
                 to: p, centerline: centerline,
                 accept: { i in
                     guard let height else { return true }
@@ -53,28 +53,23 @@ extension Track {
         return nearest.distance
     }
 
-    /// The shared body of `distanceToCenterline`, over whichever segments the
-    /// caller decided are worth testing.
-    private func nearestSegmentDistance(
-        to p: Vec2, over candidates: [Int], height: Double?, heightTolerance: Double
+    /// `distanceToCenterline` on a track WITH gaps — the full scan, and the gap
+    /// rules with it.
+    ///
+    /// Split out rather than branching inside one loop: the branch left the
+    /// no-gaps arm unreachable once the index took that path (Codecov found it),
+    /// and a dead arm in the hottest loop in the sim is exactly the kind of thing
+    /// that gets "fixed" later by someone who assumes it still runs.
+    private func gappedDistanceToCenterline(
+        _ p: Vec2, height: Double?, heightTolerance: Double
     ) -> Double {
         var best = Double.greatestFiniteMagnitude
         let count = centerline.count
-        // **The gap work is skipped entirely on a track with no gaps**, which is
-        // almost all of them. This is the hottest loop in the sim — every car asks
-        // it several times a tick — and doing three `segmentIsGap` lookups per
-        // segment made it 2.7× slower (0.086 → 0.230 ms on the clover's 351
-        // points), which at nine cars was most of a 16.7 ms frame.
-        let anyGaps = gaps.contains(true)
-        for i in candidates {
+        for i in centerline.indices {
             if let height, !segment(i, isAt: height, tolerance: heightTolerance) { continue }
+            if segmentIsGap(i) { continue }
             let a = centerline[i]
             let b = centerline[(i + 1) % count]
-            guard anyGaps else {
-                best = min(best, p.distance(toSegment: a, b))
-                continue
-            }
-            if segmentIsGap(i) { continue }
             // **Asphalt does not overhang a gap.** Distance-to-segment clamps at the
             // endpoints, so a segment's end cap bulges a half-width PAST the last
             // solid point — which paves the first 60 units of any gap from each
