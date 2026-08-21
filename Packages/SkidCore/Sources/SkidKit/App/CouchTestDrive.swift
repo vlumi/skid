@@ -40,7 +40,12 @@ extension CouchGame {
             uniqueKeysWithValues: (0..<cars).map {
                 (PlayerID($0), AIDriver.make(aiDifficulty, gridIndex: $0))
             })
-        rig = nil
+        // **An EMPTY rig, not a nil one.** A test drive has no human seats, but
+        // `GameView` shows the race only when there is both a session and a rig,
+        // so nil rendered a blank white screen — the whole feature, invisible.
+        // Reported from device. An empty rig is the honest object: a valid rig
+        // with no control bands, which is exactly what a spectator view is.
+        rig = CouchRig(colorIndices: [])
         seed += 1
         testDrivePeakSpeed = 0
         session = makeTestDriveSession(track: track, cars: cars)
