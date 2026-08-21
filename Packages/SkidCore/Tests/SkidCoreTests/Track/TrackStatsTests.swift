@@ -137,6 +137,46 @@ struct TrackStatsTests {
         #expect(small.cornersPerKilounit > oval.cornersPerKilounit)
     }
 
+    // MARK: - The pieces no built-in uses yet
+
+    /// **A gap interrupts a straight**, which is the whole point of one: the run
+    /// before it and the run after it are two straights, not one long one with a
+    /// hole. No built-in has a jump yet, so this branch is only reachable from a
+    /// hand-built layout — and it is exactly the case an author testing jumps
+    /// would hit first.
+    @Test func aGapBreaksAStraightInTwo() throws {
+        let straight = PieceCatalog.ID.straight
+        let solid = try stats([PieceCatalog.startPieceID, straight, straight])
+        #expect(solid.straightCount == 1, "an unbroken run is one straight")
+
+        let jumped = try stats([PieceCatalog.startPieceID, straight, PieceCatalog.ID.gap, straight])
+        #expect(jumped.straightCount == 2, "the gap did not break the run")
+        // The gap itself is not road, so it adds no corners and no turn.
+        #expect(jumped.corners == 0)
+        #expect(jumped.totalTurnDegrees == 0)
+    }
+
+    /// **A fitter's length counts; its bends do not.** The piece exists to close
+    /// a gap the catalog cannot, and its curvature is a consequence of that
+    /// rather than a corner somebody designed — calling it one would inflate the
+    /// count on any track that used a fitter to join up.
+    @Test func aFittersLengthCountsButItsBendsAreNotCorners() throws {
+        var layout = TrackLayout(pieces: [PieceCatalog.startPieceID, PieceCatalog.ID.straight])
+        let withoutFitter = try #require(TrackStats.of(layout: layout))
+
+        layout.pieces.append(PieceCatalog.fitterPieceID)
+        layout.fitters[layout.pieces.count - 1] = Fitter(
+            radius: 120, angle: 0.4, length: 240, stepsLeft: true)
+        let withFitter = try #require(TrackStats.of(layout: layout))
+
+        #expect(
+            withFitter.length > withoutFitter.length,
+            "the fitter contributed no length")
+        #expect(
+            withFitter.corners == withoutFitter.corners,
+            "a fitter's bend was counted as a corner")
+    }
+
     /// A partial track is still worth measuring — the editor shows these while
     /// the road has a loose end.
     @Test func anUnfinishedTrackStillMeasures() throws {
