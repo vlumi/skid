@@ -113,7 +113,9 @@ struct TrackBrowserView: View {
     /// climbs. Assembled as a string rather than a row of views so it can shrink
     /// to fit a narrow tile as one piece.
     private func tileSummary(_ stats: TrackStats) -> String {
-        var parts = ["\(Int(stats.length)) long", "\(stats.corners) corners"]
+        var parts = [
+            WorldScale.distanceLabel(units: stats.length), "\(stats.corners) corners",
+        ]
         if stats.topLevel > 0 { parts.append("\(stats.topLevel) up") }
         return parts.joined(separator: " · ")
     }
