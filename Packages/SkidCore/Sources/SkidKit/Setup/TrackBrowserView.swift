@@ -97,17 +97,25 @@ struct TrackBrowserView: View {
     /// makes a deliberate spread across the library visible.
     @ViewBuilder private func statsLine(layout: TrackLayout?, selected: Bool) -> some View {
         if let layout, let stats = TrackStats.of(layout: layout) {
-            HStack(spacing: 5) {
-                Text(verbatim: "\(Int(stats.length))u")
-                Text(verbatim: "\(stats.corners)⌒")
-                if stats.topLevel > 0 {
-                    Text(verbatim: "▲\(stats.topLevel)")
-                }
-            }
-            .font(.system(size: 9).monospacedDigit())
-            .lineLimit(1)
-            .foregroundStyle(selected ? Retro.onHighlight.opacity(0.8) : Retro.inkSoft)
+            // A tile is narrow, so this is the short form — but still words
+            // rather than glyphs: "4 corners" needs no legend, where "4⌒" does.
+            // The climb is named only when there is one, which is the whole
+            // point of showing it.
+            Text(verbatim: tileSummary(stats))
+                .font(.system(size: 9).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(selected ? Retro.onHighlight.opacity(0.8) : Retro.inkSoft)
         }
+    }
+
+    /// The tile's one-line summary: how long, how many corners, and whether it
+    /// climbs. Assembled as a string rather than a row of views so it can shrink
+    /// to fit a narrow tile as one piece.
+    private func tileSummary(_ stats: TrackStats) -> String {
+        var parts = ["\(Int(stats.length)) long", "\(stats.corners) corners"]
+        if stats.topLevel > 0 { parts.append("\(stats.topLevel) up") }
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder private func recordLine(for id: String, selected: Bool) -> some View {

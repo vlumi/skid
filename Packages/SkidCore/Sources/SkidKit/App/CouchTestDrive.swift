@@ -13,10 +13,17 @@ import SwiftUI
 /// is watching the line, and a control band under their thumb would only get in
 /// the way of that. The AI's own difficulty setting decides how hard it tries.
 extension CouchGame {
-    /// How many cars go out. Three is enough to see them interact — a single car
-    /// takes an unobstructed line, which flatters a track that a field would
-    /// find awkward — and few enough that a small layout is not a pile-up.
-    public static let testDriveCars = 3
+    /// **One car, lapping until you stop watching.**
+    ///
+    /// A field of three was tried first, and it made the author wait: three cars
+    /// over three laps before any number appeared. A test drive is a question
+    /// asked repeatedly while building, so the answer has to arrive on the first
+    /// lap — and it keeps lapping, because "is this corner right" is watched for
+    /// as long as it takes rather than for a fixed distance.
+    ///
+    /// The cost is that nothing shows how a FIELD behaves here. That is what
+    /// racing the track properly is for; this is a stopwatch, not a race.
+    public static let testDriveCars = 1
 
     /// **Race the editor's layout, remembering where to come back to.**
     ///
@@ -75,22 +82,6 @@ extension CouchGame {
     /// can offer "Back to editor" instead of "Race again".
     public var isTestDriving: Bool { testDriveReturn != nil }
 
-    /// Restart the drive on the same track: the author changed nothing, they
-    /// just want to watch it again (or with a different AI skill).
-    public func testDriveAgain() {
-        guard let layout = testDriveReturn?.layout,
-            let track = try? PieceCompiler.compile(layout, id: Self.testDriveTrackID)
-        else { return }
-        let cars = Self.testDriveCars
-        aiFleet.drivers = Dictionary(
-            uniqueKeysWithValues: (0..<cars).map {
-                (PlayerID($0), AIDriver.make(aiDifficulty, gridIndex: $0))
-            })
-        seed += 1
-        testDrivePeakSpeed = 0
-        session = makeTestDriveSession(track: track, cars: cars)
-    }
-
     /// The id a test-driven track carries. Deliberately not a library id and not
     /// `customTrackID`: nothing should file a record against a track that exists
     /// only for the next two minutes (`noteProgress` also refuses, since a test
@@ -106,10 +97,15 @@ extension CouchGame {
         let fleet = aiFleet
         let session = GameSession(
             track: track, players: players,
-            // **Three laps, like a race.** A single lap would be all standing
-            // start and no representative pace; the author wants to see a
-            // settled lap, which is the second one onward.
-            config: RaceConfig(laps: 3, countdownTicks: 3 * Race.tickRate),
+            // **No finish line — lap until the author leaves**, exactly as a
+            // time trial does. A lap count would mean waiting for it to end
+            // before reading anything, and the first flying lap is already the
+            // answer; every lap after it is a chance at a better one.
+            //
+            // **And no countdown**, because there is nobody to get ready: three
+            // seconds of a stationary car is three seconds of the author waiting
+            // to see the thing they asked to see.
+            config: RaceConfig(laps: nil, countdownTicks: 0),
             seed: seed, tuning: settings.carTuning,
             inputFor: { player, race in fleet.input(for: player, in: race) })
         session.onTick = { [weak self] race in
