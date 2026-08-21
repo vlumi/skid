@@ -157,19 +157,37 @@ struct RaceHUD: View {
                 .fill(index < colors.count ? colors[index] : .white)
                 .frame(width: 11, height: 11)
             if let laps = race.config.laps {
-                HStack(spacing: 5) {
-                    if let place = shownPlace[index] {
-                        Text(verbatim: ordinal(place))
-                            .font(Retro.font(15))
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 5) {
+                        if let place = shownPlace[index] {
+                            Text(verbatim: ordinal(place))
+                                .font(Retro.font(15))
+                        }
+                        Text("Lap \(min(car.progress.lap + 1, laps))/\(laps)", bundle: .module)
+                            .font(Retro.font(15, weight: .regular))
                     }
-                    Text("Lap \(min(car.progress.lap + 1, laps))/\(laps)", bundle: .module)
-                        .font(Retro.font(15, weight: .regular))
+                    speedLine(car: car)
                 }
             } else {
                 // Time trial: the running clock over the laps already driven.
                 timeTrialLines(car: car)
             }
         }
+    }
+
+    /// **How fast you are going, in km/h.**
+    ///
+    /// The sim thinks in units per second, which means nothing to a player and
+    /// makes "is this fast?" unanswerable — `WorldScale` is the one place that
+    /// decides how a unit reads (chosen so the numbers sound fast, since the
+    /// world has no true scale to be accurate about).
+    ///
+    /// Smaller and dimmer than the lap line: a speedometer is glanced at, not
+    /// read, and the lap counter is what a player is actually racing against.
+    private func speedLine(car: Car) -> some View {
+        Text(verbatim: WorldScale.speedLabel(unitsPerSecond: car.state.velocity.length))
+            .font(Retro.font(11, weight: .regular).monospacedDigit())
+            .opacity(0.75)
     }
 
     /// The finish state, centered in the band: a bold final position, then the

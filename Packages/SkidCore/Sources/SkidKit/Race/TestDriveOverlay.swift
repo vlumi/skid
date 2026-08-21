@@ -51,7 +51,9 @@ struct TestDriveOverlay: View {
             if let last = laps.last, laps.count > 1 {
                 line(Text("Last", bundle: .module), formatTicks(last))
             }
-            line(Text("Top speed", bundle: .module), "\(Int(game.testDrivePeakSpeed))")
+            line(
+                Text("Top speed", bundle: .module),
+                WorldScale.speedLabel(unitsPerSecond: game.testDrivePeakSpeed))
             if laps.isEmpty {
                 // The first lap is from a standing start, so its time is not a
                 // lap time — say so rather than letting it read as one.

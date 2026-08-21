@@ -30,7 +30,9 @@ extension EditorView {
     private func trackStatsLine(walk: WalkResult) -> some View {
         let stats = TrackStats.of(walk: walk)
         HStack(spacing: 14) {
-            figure(value: "\(Int(stats.length))", label: Text("long", bundle: .module))
+            figure(
+                value: WorldScale.distanceLabel(units: stats.length),
+                label: Text("lap", bundle: .module))
             // Left/right on the corner count, so a track that only turns one way
             // is visible while it is still cheap to fix. Spelled "3 left, 1 right"
             // rather than "3L/1R" for the same reason as everything else here.
