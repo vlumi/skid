@@ -26,16 +26,19 @@ struct SetupView: View {
             Retro.ground.ignoresSafeArea()
             // Scrollable, because the lobby has outgrown the smallest screens
             // (an SE can't show mode + track + race options + colors + both
-            // buttons at once). `minHeight` at the viewport height keeps the
-            // content CENTERED wherever it does fit, so roomy screens look
-            // exactly as before and only a cramped one scrolls. A proper
-            // redesign comes when the game is closer to feature-complete.
-            GeometryReader { proxy in
-                ScrollView(.vertical, showsIndicators: false) {
-                    lobby
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: proxy.size.height)
-                }
+            // buttons at once). A proper redesign comes when the game is closer
+            // to feature-complete.
+            //
+            // **Pinned to the TOP, not centred.** Centring (`minHeight` at the
+            // viewport height with no alignment) made the whole screen drift as
+            // the content changed height: a time trial has no AI options and no
+            // line-up, so picking it slid the title and the mode buttons DOWN,
+            // and the buttons you were aiming at moved out from under your
+            // thumb. The title and the mode row now hold still whatever mode is
+            // chosen, and only what is below them changes.
+            ScrollView(.vertical, showsIndicators: false) {
+                lobby
+                    .frame(maxWidth: .infinity)
             }
         }
         // **A line-up whenever the mode needs one**, however the mode was set —
@@ -118,14 +121,17 @@ struct SetupView: View {
                 hiscoreLine
             }
 
+            // **Time trial first**, then a single race, then a series — shortest
+            // commitment to longest, which is also the order somebody picking up
+            // the game tries them in.
             HStack(spacing: 10) {
-                choice(Text("Race", bundle: .module), selected: game.mode == .race) {
-                    game.mode = .race
-                }
                 choice(
                     Text("Time trial", bundle: .module), selected: game.mode == .timeTrial
                 ) {
                     game.mode = .timeTrial
+                }
+                choice(Text("Race", bundle: .module), selected: game.mode == .race) {
+                    game.mode = .race
                 }
                 choice(
                     Text("Tournament", bundle: .module), selected: game.mode == .tournament
