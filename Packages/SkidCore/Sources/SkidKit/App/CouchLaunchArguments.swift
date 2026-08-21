@@ -17,6 +17,7 @@ import SwiftUI
 ///     -skid-shelf            open the editor's track list
 ///     -skid-edit             open the editor canvas
 ///     -skid-levels           start the editor's Levels mode on (with -skid-edit)
+///     -skid-testdrive        go straight into an editor test drive (with -skid-edit)
 ///     -skid-autostart        start the race, past the ready gate
 ///     -skid-tuning           open the tuning panel (simctl cannot shake)
 ///     -skid-settings         open the settings sheet
@@ -61,6 +62,13 @@ extension CouchGame {
             phase = .editing
             showingTrackShelf = true
             shelfCameFromEditor = false
+        }
+        // Straight into a test drive, for the same reason the rest of these
+        // exist: `simctl` cannot tap the editor's play button, so a screenshot
+        // of the drive — the thing that came out blank — is otherwise
+        // unreachable. Last, so the editor layout it drives is already restored.
+        if arguments.contains("-skid-testdrive") {
+            testDriveEditorTrack()
         }
         if arguments.contains("-skid-autostart") {
             startRace()

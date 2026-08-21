@@ -26,11 +26,11 @@ final class TestDriveTests: XCTestCase {
 
     func testATestDriveRacesTheEditorsTrackWithAIOnly() throws {
         let couch = game()
-        // **Race first, so there IS a rig to clear.** Without this the assertion
-        // below passes vacuously — the editor leaves `rig` nil anyway, so
-        // removing the clear changed nothing and the sabotage went green.
+        // Race first, so the drive is replacing a real human rig rather than
+        // building one from nothing — the case that has to end up with zero
+        // bands rather than the previous race's four.
         couch.startRace()
-        XCTAssertNotNil(couch.rig, "fixture: a race should have left a rig")
+        XCTAssertEqual(couch.rig?.players.count, 1, "fixture: a race seats its player")
         couch.editorLayout = try drivableLayout()
         couch.openEditor()
         couch.testDriveEditorTrack()
@@ -39,8 +39,15 @@ final class TestDriveTests: XCTestCase {
         XCTAssertTrue(couch.isTestDriving)
         let session = try XCTUnwrap(couch.session)
         XCTAssertEqual(session.race.cars.count, CouchGame.testDriveCars)
-        // **No human seats**: the author is watching the line, not driving.
-        XCTAssertNil(couch.rig)
+        // **The race must be PRESENTABLE, not merely started.** `GameView` shows
+        // it only when there is both a session and a rig, so a nil rig rendered
+        // a blank white screen and the whole feature was invisible — reported
+        // from device. Asserting `rig == nil` (as this did) was asserting the
+        // bug: what a test drive needs is a rig with no control bands.
+        XCTAssertNotNil(couch.rig, "no rig — GameView would render nothing")
+        XCTAssertEqual(
+            couch.rig?.players.count, 0,
+            "a test drive has no human seats: the author is watching the line")
         XCTAssertEqual(couch.aiFleet.drivers.count, CouchGame.testDriveCars)
         // And no ready gate — there are no thumbs to position.
         XCTAssertTrue(session.started)
