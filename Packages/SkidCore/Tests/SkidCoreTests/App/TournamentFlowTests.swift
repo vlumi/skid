@@ -178,6 +178,39 @@ final class TournamentFlowTests: XCTestCase {
         XCTAssertEqual(couch.pendingTournamentTracks, before)
     }
 
+    /// **Starting without drawing first still races.** The setup screen draws a
+    /// line-up on arrival, but nothing guarantees it — a launch argument or a
+    /// restored setup can reach Start with an empty one, and the series has to
+    /// deal itself tracks rather than refusing.
+    func testStartingWithoutALineUpDrawsOne() {
+        let couch = game()
+        couch.mode = .tournament
+        XCTAssertTrue(couch.pendingTournamentTracks.isEmpty, "fixture: nothing drawn yet")
+        couch.startTournament()
+        XCTAssertEqual(couch.tournament?.raceCount, CouchGame.tournamentRaces)
+        XCTAssertEqual(couch.phase, .racing)
+    }
+
+    /// Track names come from wherever the track lives — a built-in, the library,
+    /// or nowhere at all (a series whose track was deleted mid-lookup).
+    func testTrackNamesResolveFromEitherSource() throws {
+        let couch = game()
+        let builtin = try XCTUnwrap(TrackLibrary.builtins.first)
+        XCTAssertEqual(couch.trackName(forID: builtin.id), builtin.name)
+
+        var book = couch.library
+        book.put(
+            TrackLibraryBook.Entry(
+                name: "Mine", code: builtin.code, isRaceable: true, createdAt: Date(),
+                updatedAt: Date()))
+        couch.library = book
+        let mine = try XCTUnwrap(couch.library.tracks.first)
+        XCTAssertEqual(couch.trackName(forID: mine.id), "Mine")
+
+        // An unknown id gets a placeholder rather than an empty row or a crash.
+        XCTAssertFalse(couch.trackName(forID: "no-such-track").isEmpty)
+    }
+
     /// "Reset all data" clears a series with everything else, so a relaunch
     /// after a reset is not still mid-tournament.
     func testResetAllDataClearsTheSeries() {
