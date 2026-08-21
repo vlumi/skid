@@ -25,6 +25,7 @@ struct SettingsView: View {
                 VStack(spacing: 14) {
                     RetroTitle(Text("Settings", bundle: .module))
                     audioPanel
+                    unitsPanel
                     seatingPanel
                     dangerPanel
                 }
@@ -43,6 +44,41 @@ struct SettingsView: View {
             RetroToggle(label: Text("Haptics", bundle: .module), isOn: $settings.hapticsOn)
         }
         .retroPanel()
+    }
+
+    /// **Which units the numbers are in.**
+    ///
+    /// Metric by default, because most of the world is — and a preference rather
+    /// than a locale guess: somebody who thinks in mph wants mph on holiday too,
+    /// and a game that guesses from the region setting cannot be argued with.
+    ///
+    /// The examples are the stock car's top speed in each system, so the choice
+    /// shows what it does instead of describing it.
+    private var unitsPanel: some View {
+        VStack(spacing: 10) {
+            RetroHeading(Text("UNITS", bundle: .module))
+            RetroChoice(
+                label: Text("Metric", bundle: .module),
+                detail: Text(
+                    "Metres and km/h — top speed \(metricTopSpeed)", bundle: .module),
+                selected: settings.units == .metric
+            ) { settings.unitsRaw = WorldScale.Units.metric.rawValue }
+            RetroChoice(
+                label: Text("Imperial", bundle: .module),
+                detail: Text(
+                    "Feet and mph — top speed \(imperialTopSpeed)", bundle: .module),
+                selected: settings.units == .imperial
+            ) { settings.unitsRaw = WorldScale.Units.imperial.rawValue }
+        }
+        .retroPanel()
+    }
+
+    private var metricTopSpeed: String {
+        WorldScale.speedLabel(unitsPerSecond: CarTuning().maxSpeed, in: .metric)
+    }
+
+    private var imperialTopSpeed: String {
+        WorldScale.speedLabel(unitsPerSecond: CarTuning().maxSpeed, in: .imperial)
     }
 
     /// **Where the two-player layout finally lives.**

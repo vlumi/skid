@@ -114,7 +114,8 @@ struct TrackBrowserView: View {
     /// to fit a narrow tile as one piece.
     private func tileSummary(_ stats: TrackStats) -> String {
         var parts = [
-            WorldScale.distanceLabel(units: stats.length), "\(stats.corners) corners",
+            WorldScale.distanceLabel(units: stats.length, in: game.settings.units),
+            "\(stats.corners) corners",
         ]
         if stats.topLevel > 0 { parts.append("\(stats.topLevel) up") }
         return parts.joined(separator: " · ")
