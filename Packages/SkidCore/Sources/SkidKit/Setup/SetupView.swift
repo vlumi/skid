@@ -26,18 +26,28 @@ struct SetupView: View {
             Retro.ground.ignoresSafeArea()
             // Scrollable, because the lobby has outgrown the smallest screens
             // (an SE can't show mode + track + race options + colors + both
-            // buttons at once). `minHeight` at the viewport height keeps the
-            // content CENTERED wherever it does fit, so roomy screens look
-            // exactly as before and only a cramped one scrolls. A proper
-            // redesign comes when the game is closer to feature-complete.
-            GeometryReader { proxy in
-                ScrollView(.vertical, showsIndicators: false) {
-                    lobby
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: proxy.size.height)
-                }
+            // buttons at once). A proper redesign comes when the game is closer
+            // to feature-complete.
+            //
+            // **Pinned to the TOP, not centred.** Centring (`minHeight` at the
+            // viewport height with no alignment) made the whole screen drift as
+            // the content changed height: a time trial has no AI options and no
+            // line-up, so picking it slid the title and the mode buttons DOWN,
+            // and the buttons you were aiming at moved out from under your
+            // thumb. The title and the mode row now hold still whatever mode is
+            // chosen, and only what is below them changes.
+            ScrollView(.vertical, showsIndicators: false) {
+                lobby
+                    .frame(maxWidth: .infinity)
             }
         }
+        // **A line-up whenever the mode needs one**, however the mode was set —
+        // the button is one way in, a launch argument and a restored setup are
+        // others, and an empty list would read as the mode being broken.
+        // `onChange` catches the switch, `onAppear` the arrival already in it;
+        // `onChange(initial:)` would do both but needs iOS 17.
+        .onAppear(perform: drawLineupIfNeeded)
+        .onChange(of: game.mode) { _ in drawLineupIfNeeded() }
         .sheet(isPresented: $browsingTracks) {
             TrackBrowserView(game: game) { browsingTracks = false }
         }
@@ -48,6 +58,11 @@ struct SetupView: View {
         ) {
             ColorPaletteSheet(game: game, slot: coloringFor ?? 0) { coloringFor = nil }
         }
+    }
+
+    private func drawLineupIfNeeded() {
+        guard game.mode == .tournament, game.pendingTournamentTracks.isEmpty else { return }
+        game.drawTournamentTracks()
     }
 
     /// The current track: its preview, its name, and the way to change it.
@@ -106,30 +121,49 @@ struct SetupView: View {
                 hiscoreLine
             }
 
+            // **Time trial first**, then a single race, then a series — shortest
+            // commitment to longest, which is also the order somebody picking up
+            // the game tries them in.
             HStack(spacing: 10) {
-                choice(Text("Race", bundle: .module), selected: game.mode == .race) {
-                    game.mode = .race
-                }
                 choice(
                     Text("Time trial", bundle: .module), selected: game.mode == .timeTrial
                 ) {
                     game.mode = .timeTrial
+                }
+                choice(Text("Race", bundle: .module), selected: game.mode == .race) {
+                    game.mode = .race
+                }
+                choice(
+                    Text("Tournament", bundle: .module), selected: game.mode == .tournament
+                ) {
+                    game.mode = .tournament
                 }
             }
 
             // **The chosen track, as a picture.** A row of name chips worked for four
             // built-ins and stopped working the moment a player had tracks of their own —
             // "My track 3" says nothing about what it is. Tapping opens the browser.
-            trackRow
+            //
+            // A tournament races a LIST, so the single-track row would be chrome
+            // that changes nothing; the line-up takes its place.
+            if game.mode == .tournament {
+                TournamentLineup(game: game)
+            } else {
+                trackRow
+            }
 
-            if game.mode == .race {
+            if game.mode == .race || game.mode == .tournament {
                 raceOptions
             }
 
             colorRow
 
             Button {
-                game.startRace()
+                if game.mode == .tournament {
+                    game.startTournament()
+                } else {
+                    game.startRace()
+                }
             } label: {
                 Text("Start", bundle: .module)
                     .font(Retro.font(20, weight: .black))
