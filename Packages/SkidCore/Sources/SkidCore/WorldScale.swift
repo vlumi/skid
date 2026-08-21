@@ -33,18 +33,52 @@ public enum WorldScale {
         unitsPerSecond / unitsPerMetre * 3.6
     }
 
-    /// A distance for display: metres, or kilometres once it would need four
-    /// digits. Rounded, since nobody needs a lap to the centimetre.
-    public static func distanceLabel(units: Double) -> String {
-        let metres = metres(units)
-        if metres >= 1000 {
-            return String(format: "%.1f km", metres / 1000)
-        }
-        return "\(Int(metres.rounded())) m"
+    /// Which units a player reads. **Metric by default**, since most of the
+    /// world is; imperial is a preference, not a locale guess — somebody who
+    /// wants miles per hour wants them wherever they are.
+    public enum Units: String, CaseIterable, Sendable, Codable {
+        case metric
+        case imperial
     }
 
-    /// A speed for display, in km/h.
-    public static func speedLabel(unitsPerSecond: Double) -> String {
-        "\(Int(kilometresPerHour(unitsPerSecond).rounded())) km/h"
+    /// A distance in world units, as feet.
+    public static func feet(_ units: Double) -> Double { metres(units) * 3.280_84 }
+
+    /// A speed in units per second, as mph.
+    public static func milesPerHour(_ unitsPerSecond: Double) -> Double {
+        kilometresPerHour(unitsPerSecond) / 1.609_344
+    }
+
+    /// A distance for display: metres/kilometres, or feet/miles — switching to
+    /// the larger unit once the smaller one would need four digits. Rounded,
+    /// since nobody needs a lap to the centimetre.
+    public static func distanceLabel(units: Double, in system: Units = .metric) -> String {
+        switch system {
+        case .metric:
+            let metres = metres(units)
+            return metres >= 1000
+                ? String(format: "%.1f km", metres / 1000)
+                : "\(Int(metres.rounded())) m"
+        case .imperial:
+            let feet = feet(units)
+            // A mile is 5280 ft, so the same "four digits is too many" rule puts
+            // the switch a little under one mile — which reads better than
+            // "0.3 mi" for a lap that is plainly a few hundred yards.
+            return feet >= 3000
+                ? String(format: "%.1f mi", feet / 5280)
+                : "\(Int(feet.rounded())) ft"
+        }
+    }
+
+    /// A speed for display, in km/h or mph.
+    public static func speedLabel(
+        unitsPerSecond: Double, in system: Units = .metric
+    ) -> String {
+        switch system {
+        case .metric:
+            return "\(Int(kilometresPerHour(unitsPerSecond).rounded())) km/h"
+        case .imperial:
+            return "\(Int(milesPerHour(unitsPerSecond).rounded())) mph"
+        }
     }
 }

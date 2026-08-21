@@ -238,14 +238,22 @@ struct RaceScreen: View {
         }
     }
 
-    /// Zone outlines + corner tabs, only when the screen is shared.
+    /// Zone outlines + corner tabs, only when the screen is shared — and each
+    /// player's own speed readout.
     private func zoneChrome(safeInsets: EdgeInsets) -> [ZoneChrome] {
-        rig.players.map { controls in
-            ZoneChrome(
+        let units = game.settings.units
+        return rig.players.map { controls -> ZoneChrome in
+            let car = session.race.cars.first { $0.id == controls.player }
+            return ZoneChrome(
                 rect: controls.zone,
                 up: controls.up,
                 color: CouchGame.palette[controls.colorIndex],
-                safeInsets: safeInsets
+                safeInsets: safeInsets,
+                // **Signed along the car's own nose**, so reversing reads as a
+                // negative number rather than as the same speed as going
+                // forwards. `velocity.length` cannot tell the two apart, and
+                // "didn't notice I was reversing" is a reported confusion.
+                speed: car.map { ZoneChrome.speedLabel(for: $0.state, in: units) }
             )
         }
     }
@@ -337,4 +345,23 @@ struct ZoneChrome {
     /// Screen safe-area insets, so the color tab can dodge the notch / home
     /// indicator even though the band itself is drawn full-bleed.
     var safeInsets: EdgeInsets
+    /// **This player's speed, already in their units and SIGNED** — negative
+    /// while reversing, which is the one thing a magnitude cannot say. Nil
+    /// before the race starts, so a stationary grid shows no readout.
+    var speed: String?
+
+    /// **What the speedometer reads for a car**, in one place.
+    ///
+    /// The screen and its test both call this, so a test cannot pass while the
+    /// screen shows something else — swapping this for `velocity.length` broke
+    /// reverse and failed nothing while the arithmetic lived at the call site.
+    ///
+    /// Signed along the car's own nose: `velocity.length` cannot tell going
+    /// backwards from going forwards, and "didn't notice I was reversing" is a
+    /// reported confusion. A pure sideways slide reads 0, which is honest —
+    /// there is no forward progress in it.
+    static func speedLabel(for state: CarState, in units: WorldScale.Units) -> String {
+        WorldScale.speedLabel(
+            unitsPerSecond: state.velocity.dot(state.forward), in: units)
+    }
 }

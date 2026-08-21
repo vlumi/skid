@@ -10,6 +10,20 @@ public final class GameSettings: ObservableObject {
     @AppStorage("skid.sound") public var soundOn = true
     @AppStorage("skid.haptics") public var hapticsOn = true
 
+    /// **Metric or imperial**, for every distance and speed a player reads.
+    ///
+    /// Metric by default, because most of the world is — and a PREFERENCE
+    /// rather than a locale guess: somebody who thinks in mph wants mph on
+    /// holiday too, and a game guessing from the region setting is the kind of
+    /// thing that cannot be argued with. Stored as the raw value so the enum can
+    /// gain a case without invalidating anybody's choice.
+    @AppStorage("skid.units") public var unitsRaw = WorldScale.Units.metric.rawValue
+
+    /// The chosen system, falling back to metric for an unreadable stored value.
+    public var units: WorldScale.Units {
+        WorldScale.Units(rawValue: unitsRaw) ?? .metric
+    }
+
     // D-pad feel (applied live, every frame).
     @AppStorage("skid.dpad.deadzone") public var dpadDeadzone = 10.0
     @AppStorage("skid.dpad.travel") public var dpadTravel = 48.0

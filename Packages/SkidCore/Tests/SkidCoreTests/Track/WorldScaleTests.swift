@@ -51,6 +51,86 @@ struct WorldScaleTests {
         #expect(long.contains("12.5"))
     }
 
+    // MARK: - Imperial
+
+    /// **Metric is the default**, everywhere the label is asked without a system.
+    @Test func metricIsTheDefault() {
+        #expect(
+            WorldScale.distanceLabel(units: 5141)
+                == WorldScale.distanceLabel(
+                    units: 5141, in: .metric))
+        #expect(
+            WorldScale.speedLabel(unitsPerSecond: 520)
+                == WorldScale.speedLabel(
+                    unitsPerSecond: 520, in: .metric))
+    }
+
+    /// The same journey, told two ways — and the imperial numbers have to be a
+    /// correct conversion of the metric ones, not a second invented scale.
+    @Test func imperialIsTheSameDistanceInOtherWords() {
+        let lap = 5141.0
+        let metres = WorldScale.metres(lap)
+        let feet = WorldScale.feet(lap)
+        #expect(abs(feet / metres - 3.280_84) < 1e-6)
+        let kph = WorldScale.kilometresPerHour(520)
+        let mph = WorldScale.milesPerHour(520)
+        #expect(abs(kph / mph - 1.609_344) < 1e-6)
+    }
+
+    @Test func imperialLabelsNameImperialUnits() {
+        #expect(WorldScale.distanceLabel(units: 5141, in: .imperial).hasSuffix(" ft"))
+        #expect(WorldScale.speedLabel(unitsPerSecond: 520, in: .imperial).hasSuffix(" mph"))
+        // A long lap switches to miles rather than printing five digits of feet.
+        let long = WorldScale.distanceLabel(units: 100_000, in: .imperial)
+        #expect(long.hasSuffix(" mi"), "a very long lap should read in miles, not \(long)")
+    }
+
+    /// The stock car should sound fast in BOTH systems — 155 mph is the number
+    /// an imperial player reads, and it has to be as satisfying as 250 km/h.
+    @Test func theStockCarSoundsFastInImperialToo() {
+        let mph = WorldScale.milesPerHour(CarTuning().maxSpeed)
+        #expect(mph > 140 && mph < 170, "reads \(Int(mph)) mph")
+    }
+
+    /// An unreadable stored value falls back to metric rather than crashing or
+    /// picking imperial — the default has to survive a bad defaults entry.
+    @Test func anUnknownStoredSystemFallsBackToMetric() {
+        #expect(WorldScale.Units(rawValue: "furlongs") == nil)
+        #expect(WorldScale.Units(rawValue: "metric") == .metric)
+        #expect(WorldScale.Units(rawValue: "imperial") == .imperial)
+    }
+
+    // MARK: - The per-player speedometer
+
+    /// **Reverse reads negative.** The readout is the speed along the car's own
+    /// nose, not the magnitude of its velocity — a magnitude cannot tell going
+    /// backwards from going forwards, and "didn't notice I was reversing" is a
+    /// reported confusion.
+    @Test func reversingReadsAsANegativeSpeed() {
+        var state = CarState(position: .zero, velocity: Vec2(300, 0))
+        state.heading = 0  // nose along +x
+        let forward = WorldScale.kilometresPerHour(state.velocity.dot(state.forward))
+        #expect(forward > 0)
+
+        state.velocity = Vec2(-120, 0)  // rolling back, still facing +x
+        let reversing = WorldScale.kilometresPerHour(state.velocity.dot(state.forward))
+        #expect(reversing < 0, "reversing read as \(Int(reversing))")
+        // The magnitude would have reported this as positive — the whole point.
+        #expect(WorldScale.kilometresPerHour(state.velocity.length) > 0)
+        #expect(
+            WorldScale.speedLabel(unitsPerSecond: state.velocity.dot(state.forward))
+                .hasPrefix("-"))
+    }
+
+    /// A pure sideways slide has no forward progress, so it reads zero. Honest
+    /// rather than obviously right — worth knowing it is deliberate if a drift
+    /// showing 0 ever looks wrong on device.
+    @Test func aSidewaysSlideReadsZero() {
+        var state = CarState(position: .zero, velocity: Vec2(0, 260))
+        state.heading = 0
+        #expect(abs(state.velocity.dot(state.forward)) < 1e-9)
+    }
+
     /// The clover's measured quick lap (14.30 s over its own length) should
     /// average a speed that sounds like racing — the whole point of the scale.
     @Test func aQuickLapAveragesARacingSpeed() throws {
