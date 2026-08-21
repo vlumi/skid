@@ -26,6 +26,50 @@ enum OverlayRenderer {
             zone.rect.maxY - zone.safeInsets.bottom - 10)
         let tab = CGRect(x: edge.x - 22, y: edge.y - 5, width: 44, height: 10)
         context.fill(Path(tab), with: .color(zone.color.opacity(0.6)))
+        drawSpeed(zone, in: rect, into: &context)
+    }
+
+    /// **Each player's own speedometer**, in the corner of their control box.
+    ///
+    /// A digital read-out rather than a dial: at this size a needle would be a
+    /// few pixels of sweep, and the number is what a player actually wants ("am
+    /// I near the limit", "am I in reverse"). Signed, so reversing shows a
+    /// negative — `velocity.length` cannot distinguish the two, and not noticing
+    /// you are in reverse is a reported confusion.
+    ///
+    /// Placed at the corner FURTHEST from the map, and rotated with the zone, so
+    /// it reads upright for a player sitting across the table and never sits
+    /// under the thumb that rests mid-box.
+    private static func drawSpeed(
+        _ zone: ZoneChrome, in rect: CGRect, into context: inout GraphicsContext
+    ) {
+        guard let speed = zone.speed else { return }
+        let text = context.resolve(
+            Text(verbatim: speed)
+                .font(.system(size: 12, weight: .bold).monospacedDigit())
+                .foregroundColor(zone.color.opacity(0.9)))
+        let size = text.measure(in: rect.size)
+        // The home edge is opposite `up`; the readout goes to its outer corner,
+        // inset clear of the box's own stroke.
+        let inset = 8.0
+        let awayFromMap = zone.up * -1
+        var center = Vec2(rect.midX, rect.midY)
+        if awayFromMap.y != 0 {
+            center.y += awayFromMap.y * (rect.height / 2 - size.height / 2 - inset)
+            center.x = rect.minX + size.width / 2 + inset
+        } else {
+            center.x += awayFromMap.x * (rect.width / 2 - size.width / 2 - inset)
+            center.y = rect.minY + size.height / 2 + inset
+        }
+        // Rotated for a player across the table, exactly as their pad is.
+        if zone.up.y > 0 {
+            var flipped = context
+            flipped.translateBy(x: center.x, y: center.y)
+            flipped.rotate(by: .degrees(180))
+            flipped.draw(text, at: .zero, anchor: .center)
+        } else {
+            context.draw(text, at: CGPoint(x: center.x, y: center.y), anchor: .center)
+        }
     }
 
     /// The floating d-pad: a faint disc plus four arrows in the owning

@@ -91,6 +91,36 @@ struct TrackBrowserView: View {
     /// A record with a name reads "0:05.28 Ada"; a guest's reads as the bare time, which
     /// is honest (see `BestRecord.lapHolder`). A track nobody has raced says so rather
     /// than showing an empty row, so the blank means "unraced" instead of "broken".
+    /// **What the track is**, so choosing one is not guesswork from a thumbnail:
+    /// how long a lap is, how many corners, and whether it climbs. The same
+    /// numbers the editor shows while building (`TrackStats`), which is what
+    /// makes a deliberate spread across the library visible.
+    @ViewBuilder private func statsLine(layout: TrackLayout?, selected: Bool) -> some View {
+        if let layout, let stats = TrackStats.of(layout: layout) {
+            // A tile is narrow, so this is the short form — but still words
+            // rather than glyphs: "4 corners" needs no legend, where "4⌒" does.
+            // The climb is named only when there is one, which is the whole
+            // point of showing it.
+            Text(verbatim: tileSummary(stats))
+                .font(.system(size: 9).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(selected ? Retro.onHighlight.opacity(0.8) : Retro.inkSoft)
+        }
+    }
+
+    /// The tile's one-line summary: how long, how many corners, and whether it
+    /// climbs. Assembled as a string rather than a row of views so it can shrink
+    /// to fit a narrow tile as one piece.
+    private func tileSummary(_ stats: TrackStats) -> String {
+        var parts = [
+            WorldScale.distanceLabel(units: stats.length, in: game.settings.units),
+            "\(stats.corners) corners",
+        ]
+        if stats.topLevel > 0 { parts.append("\(stats.topLevel) up") }
+        return parts.joined(separator: " · ")
+    }
+
     @ViewBuilder private func recordLine(for id: String, selected: Bool) -> some View {
         let best = game.hiscores.best(for: id)
         if let lap = best.bestLapTicks {
@@ -150,6 +180,7 @@ struct TrackBrowserView: View {
                     }
                 }
                 .foregroundStyle(selected ? Retro.onHighlight : Retro.ink)
+                statsLine(layout: layout, selected: selected)
                 recordLine(for: id, selected: selected)
             }
             .padding(6)

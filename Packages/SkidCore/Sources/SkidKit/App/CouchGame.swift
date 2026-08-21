@@ -169,6 +169,15 @@ public final class CouchGame: ObservableObject {
     /// Separate from `tournament` so setup can offer one without committing.
     @Published public internal(set) var pendingTournamentTracks: [String] = []
 
+    /// **Where a test drive came from**, or nil when the race on screen is a
+    /// real one. Session-only on purpose: a drive is a question about a design,
+    /// so it should not survive a relaunch and strand the app owing a return to
+    /// an editor it no longer has open. See `CouchTestDrive`.
+    @Published var testDriveReturn: TestDriveReturn?
+    /// The fastest any car went during the current test drive — watched per tick,
+    /// since it is a property of the run and not of the finished state.
+    @Published var testDrivePeakSpeed = 0.0
+
     /// Which race's result has already been scored into the series — see
     /// `recordTournamentResult`. Session-only: a relaunch mid-series has no
     /// finished race on screen to double-count.
