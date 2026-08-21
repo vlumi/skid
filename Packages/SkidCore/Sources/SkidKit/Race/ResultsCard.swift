@@ -59,7 +59,21 @@ struct ResultsCard: View {
             // A series folds this race into its standings the moment the card
             // appears, and shows where everyone stands. `record` is guarded
             // against double-counting, so a redraw cannot score a race twice.
-            if game.mode == .tournament, let series = game.tournament {
+            if game.isTestDriving {
+                TestDriveReport(game: game, race: race)
+                HStack(spacing: 12) {
+                    Button {
+                        game.testDriveAgain()
+                    } label: {
+                        Text("Drive again", bundle: .module).pillStyle()
+                    }
+                    Button {
+                        game.endTestDrive()
+                    } label: {
+                        Text("Back to editor", bundle: .module).pillStyle()
+                    }
+                }
+            } else if game.mode == .tournament, let series = game.tournament {
                 TournamentStandings(game: game, series: series, colors: colors)
                 tournamentButtons(series: series)
             } else {

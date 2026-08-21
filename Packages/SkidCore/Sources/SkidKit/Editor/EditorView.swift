@@ -344,31 +344,6 @@ struct EditorView: View {
         .accessibilityLabel(Text(label, bundle: .module))
     }
 
-    @ViewBuilder
-    func buildStatus(walk: WalkResult) -> some View {
-        // Save state, or how far the selected end is from closing.
-        Group {
-            if game.editorIsSaveable() {
-                Text("Track complete", bundle: .module)
-                    .font(Retro.caption)
-                    .foregroundStyle(.white)
-            } else if let gap = closureHint(walk) {
-                Text(verbatim: gap)
-                    .font(.footnote.monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.9))
-            } else {
-                Text("Extend the loose end to close the loop", bundle: .module)
-                    .font(Retro.caption)
-                    .foregroundStyle(.white.opacity(0.9))
-            }
-        }
-        // A backdrop, because the canvas-bounds dashes run right where
-        // this line sits and made it hard to read.
-        .padding(.horizontal, 10)
-        .padding(.vertical, 3)
-        .background(.black.opacity(0.35), in: Capsule())
-    }
-
     // MARK: - Gestures
 
     private func tapToSelect(walk: WalkResult, transform: EditorRenderer.Transform) -> some Gesture
