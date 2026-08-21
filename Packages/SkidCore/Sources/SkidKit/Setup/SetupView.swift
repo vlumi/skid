@@ -38,6 +38,13 @@ struct SetupView: View {
                 }
             }
         }
+        // **A line-up whenever the mode needs one**, however the mode was set —
+        // the button is one way in, a launch argument and a restored setup are
+        // others, and an empty list would read as the mode being broken.
+        // `onChange` catches the switch, `onAppear` the arrival already in it;
+        // `onChange(initial:)` would do both but needs iOS 17.
+        .onAppear(perform: drawLineupIfNeeded)
+        .onChange(of: game.mode) { _ in drawLineupIfNeeded() }
         .sheet(isPresented: $browsingTracks) {
             TrackBrowserView(game: game) { browsingTracks = false }
         }
@@ -48,6 +55,11 @@ struct SetupView: View {
         ) {
             ColorPaletteSheet(game: game, slot: coloringFor ?? 0) { coloringFor = nil }
         }
+    }
+
+    private func drawLineupIfNeeded() {
+        guard game.mode == .tournament, game.pendingTournamentTracks.isEmpty else { return }
+        game.drawTournamentTracks()
     }
 
     /// The current track: its preview, its name, and the way to change it.
@@ -115,21 +127,37 @@ struct SetupView: View {
                 ) {
                     game.mode = .timeTrial
                 }
+                choice(
+                    Text("Tournament", bundle: .module), selected: game.mode == .tournament
+                ) {
+                    game.mode = .tournament
+                }
             }
 
             // **The chosen track, as a picture.** A row of name chips worked for four
             // built-ins and stopped working the moment a player had tracks of their own —
             // "My track 3" says nothing about what it is. Tapping opens the browser.
-            trackRow
+            //
+            // A tournament races a LIST, so the single-track row would be chrome
+            // that changes nothing; the line-up takes its place.
+            if game.mode == .tournament {
+                TournamentLineup(game: game)
+            } else {
+                trackRow
+            }
 
-            if game.mode == .race {
+            if game.mode == .race || game.mode == .tournament {
                 raceOptions
             }
 
             colorRow
 
             Button {
-                game.startRace()
+                if game.mode == .tournament {
+                    game.startTournament()
+                } else {
+                    game.startRace()
+                }
             } label: {
                 Text("Start", bundle: .module)
                     .font(Retro.font(20, weight: .black))
