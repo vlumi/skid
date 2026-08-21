@@ -15,6 +15,14 @@ import SwiftUI
 struct TrackBrowserView: View {
     @ObservedObject var game: CouchGame
     let dismiss: () -> Void
+    /// **Where the choice goes.** Nil means the browser is picking the track for
+    /// the next race and writes `game.trackID` — the original behaviour. A
+    /// tournament passes a handler instead, so the same browser (thumbnails,
+    /// sections, signing marks and all) can fill a slot in a series line-up
+    /// rather than needing a second, drifting copy of itself.
+    var choose: ((String) -> Void)?
+    /// Which id reads as selected. Defaults to the race's track.
+    var selectedID: String?
 
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
@@ -110,9 +118,13 @@ struct TrackBrowserView: View {
     private func tile(
         id: String, name: String, layout: TrackLayout?, signed: Bool = false
     ) -> some View {
-        let selected = game.trackID == id
+        let selected = (selectedID ?? game.trackID) == id
         return Button {
-            game.trackID = id
+            if let choose {
+                choose(id)
+            } else {
+                game.trackID = id
+            }
             dismiss()
         } label: {
             VStack(spacing: 6) {

@@ -73,6 +73,9 @@ public final class CouchGame: ObservableObject {
     public enum Mode: String, CaseIterable, Codable {
         case race
         case timeTrial
+        /// A series of races on a drawn or chosen set of tracks, scored on
+        /// points. See `Tournament`.
+        case tournament
     }
 
     static let palette: [Color] = TrackRenderer.carPalette
@@ -154,6 +157,22 @@ public final class CouchGame: ObservableObject {
     @Published public var trackID = TrackLibrary.builtins[0].id {
         didSet { saveSetupMemory() }
     }
+
+    /// **The series in progress, or nil** — persisted, since a series a phone
+    /// forgets between races is unfinishable. Rules in `Tournament`, app side in
+    /// `CouchTournament`.
+    @Published public internal(set) var tournament: Tournament? {
+        didSet { saveSetupMemory() }
+    }
+
+    /// The line-up a series *will* race: drawn, then swapped by hand if you like.
+    /// Separate from `tournament` so setup can offer one without committing.
+    @Published public internal(set) var pendingTournamentTracks: [String] = []
+
+    /// Which race's result has already been scored into the series — see
+    /// `recordTournamentResult`. Session-only: a relaunch mid-series has no
+    /// finished race on screen to double-count.
+    var scoredRaceKey: String?
     /// 2P seating: face-to-face (default) vs side-by-side.
     ///
     /// Face-to-face is what two people do with a phone flat on a table — full-width
@@ -223,7 +242,7 @@ public final class CouchGame: ObservableObject {
     /// runs stay reproducible. Seeded from the clock ONCE at launch (view
     /// layer only — the sim itself never touches wall-clock time) so grids
     /// differ across app runs instead of repeating from 1 each session.
-    private var seed: UInt64 = UInt64(Date().timeIntervalSince1970.bitPattern)
+    var seed: UInt64 = UInt64(Date().timeIntervalSince1970.bitPattern)
     /// The countdown second last seen by the audio frame, so a beep fires once per
     /// boundary rather than once per rendered frame.
     var notedCountdownSeconds: Int?
@@ -367,66 +386,6 @@ public final class CouchGame: ObservableObject {
     /// Called every frame by the race screen: audio lifecycle follows the
     /// toggles, and a paused race falls silent instead of droning.
     var humanCount: Int { rig?.players.count ?? 1 }
-
-    /// The per-tick input tap: humans read their own control source, the rest
-    /// come from the AI fleet.
-    private func inputSource(humans: Int) -> (PlayerID, Race) -> CarInput {
-        let fleet = aiFleet
-        return { [weak rig] player, race in
-            guard player.rawValue < humans else { return fleet.input(for: player, in: race) }
-            guard let rig, rig.players.indices.contains(player.rawValue) else { return .coast }
-            let controls = rig.players[player.rawValue]
-            let source = controls.source(for: controls.scheme)
-            // Heading-aware schemes (aim-to-drive) need where the car faces and
-            // how fast it's going along that nose — SIGNED, so "already
-            // reversing" is distinguishable from "driving forward fast".
-            if let headingAware = source as? HeadingAwareControlSource,
-                let car = race.cars.first(where: { $0.id == player })
-            {
-                headingAware.setCar(
-                    heading: car.state.heading,
-                    forwardSpeed: car.state.velocity.dot(car.state.forward),
-                    speed: car.state.velocity.length)
-            }
-            return source.input(for: player, at: race.tick)
-        }
-    }
-
-    private func makeSession(humans: Int, totalCars: Int) -> GameSession {
-        let players = (0..<totalCars).map { PlayerID($0) }
-        let track = selectedTrack()
-        let config: RaceConfig
-        switch mode {
-        case .race:
-            config = RaceConfig(
-                laps: 3, countdownTicks: 3 * Race.tickRate)
-        case .timeTrial:
-            // No finish line — lap forever, chase the best lap.
-            config = RaceConfig(laps: nil, countdownTicks: 3 * Race.tickRate)
-        }
-        let ghost: GhostPlayback? =
-            mode == .timeTrial
-            ? GhostPlayback(record: hiscores.best(for: track.id), track: track)
-            : nil
-        notedLapCount = 0
-        notedFinish = false
-        notedCountdownSeconds = nil
-        runRecords = .none
-        let session = GameSession(
-            track: track, players: players, config: config, seed: seed,
-            tuning: settings.carTuning, ghost: ghost,
-            inputFor: inputSource(humans: humans))
-        session.onTick = { [weak self] race in
-            guard let self else { return }
-            if self.settings.soundOn {
-                self.sound.update(race: race, humanCount: humans, paused: false)
-            }
-            if self.settings.hapticsOn {
-                self.haptics.play(events: race.lastEvents, humanCount: humans)
-            }
-        }
-        return session
-    }
 
     /// Push the persisted control tuning onto every player's schemes —
     /// called each frame, so panel changes apply live mid-race.

@@ -10,7 +10,7 @@ import SwiftUI
 ///     -skid-players N        seat N people
 ///     -skid-ai N             any N > 0 means "fill the grid"
 ///     -skid-track ID         pick a track
-///     -skid-mode NAME        race | timeTrial
+///     -skid-mode NAME        race | timeTrial | tournament
 ///     -skid-setup            open the race options
 ///     -skid-tracks           open the track browser (with -skid-setup)
 ///     -skid-colors           open seat 1's color palette (with -skid-setup)
@@ -79,6 +79,7 @@ extension CouchGame {
         switch arguments[index + 1] {
         case "timeTrial": return .timeTrial
         case "race": return .race
+        case "tournament": return .tournament
         default: return nil
         }
     }
