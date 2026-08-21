@@ -130,6 +130,13 @@ struct RaceScreen: View {
                         ResultsCard(
                             game: game, session: session, net: net, race: race, colors: colors)
                     }
+                    // **A test drive never finishes**, so its numbers cannot wait
+                    // for a results card: it laps until the author has seen
+                    // enough. The readout is live and the way out is always on
+                    // screen — see `TestDriveOverlay`.
+                    if game.isTestDriving, race.phase != .finished {
+                        TestDriveOverlay(game: game, race: race)
+                    }
                 }
                 .ignoresSafeArea()
             }

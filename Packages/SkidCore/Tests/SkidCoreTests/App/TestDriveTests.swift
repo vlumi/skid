@@ -115,6 +115,34 @@ final class TestDriveTests: XCTestCase {
         XCTAssertNil(couch.runRecords.lapRecord)
     }
 
+    /// **The drive never ends and never counts down.** A lap count would make
+    /// the author wait for a finish before reading anything, and three seconds
+    /// of a stationary car is three seconds of waiting to see the thing they
+    /// asked to see. Reported: "I don't want to wait for three laps".
+    func testADriveLapsForeverAndStartsAtOnce() throws {
+        let couch = game()
+        couch.editorLayout = try drivableLayout()
+        couch.openEditor()
+        couch.testDriveEditorTrack()
+        let session = try XCTUnwrap(couch.session)
+        XCTAssertNil(session.race.config.laps, "a lap limit makes the author wait")
+        XCTAssertEqual(session.race.config.countdownTicks, 0, "nobody needs to get ready")
+        XCTAssertEqual(
+            session.race.cars.count, 1,
+            "one car: three made the first number arrive three laps late")
+
+        // Drive well past what would have been three laps: still going.
+        var time = 0.0
+        while time < 90 {
+            time += 1.0 / 60
+            session.advance(to: time)
+        }
+        XCTAssertNotEqual(session.race.phase, .finished, "the drive ended on its own")
+        XCTAssertGreaterThan(
+            session.race.cars[0].progress.lapTimes.count, 1,
+            "several laps should have completed by now")
+    }
+
     /// Peak speed is watched as the drive runs, since it is a property of the
     /// run — the authoring question is "does this track ever reach speed".
     func testPeakSpeedIsMeasuredDuringTheDrive() throws {
@@ -133,18 +161,4 @@ final class TestDriveTests: XCTestCase {
         XCTAssertGreaterThan(couch.testDrivePeakSpeed, 0, "no speed was recorded")
     }
 
-    /// Driving again keeps the drive going rather than returning to the editor,
-    /// and re-seeds so it is a fresh run rather than the same one replayed.
-    func testDrivingAgainStaysInTheDrive() throws {
-        let couch = game()
-        couch.editorLayout = try drivableLayout()
-        couch.openEditor()
-        couch.testDriveEditorTrack()
-        let first = try XCTUnwrap(couch.session)
-        couch.testDriveAgain()
-        let second = try XCTUnwrap(couch.session)
-        XCTAssertTrue(couch.isTestDriving)
-        XCTAssertEqual(couch.phase, .racing)
-        XCTAssertNotEqual(first.raceKey, second.raceKey, "the same race was replayed")
-    }
 }
