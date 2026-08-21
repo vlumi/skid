@@ -91,6 +91,25 @@ struct TrackBrowserView: View {
     /// A record with a name reads "0:05.28 Ada"; a guest's reads as the bare time, which
     /// is honest (see `BestRecord.lapHolder`). A track nobody has raced says so rather
     /// than showing an empty row, so the blank means "unraced" instead of "broken".
+    /// **What the track is**, so choosing one is not guesswork from a thumbnail:
+    /// how long a lap is, how many corners, and whether it climbs. The same
+    /// numbers the editor shows while building (`TrackStats`), which is what
+    /// makes a deliberate spread across the library visible.
+    @ViewBuilder private func statsLine(layout: TrackLayout?, selected: Bool) -> some View {
+        if let layout, let stats = TrackStats.of(layout: layout) {
+            HStack(spacing: 5) {
+                Text(verbatim: "\(Int(stats.length))u")
+                Text(verbatim: "\(stats.corners)⌒")
+                if stats.topLevel > 0 {
+                    Text(verbatim: "▲\(stats.topLevel)")
+                }
+            }
+            .font(.system(size: 9).monospacedDigit())
+            .lineLimit(1)
+            .foregroundStyle(selected ? Retro.onHighlight.opacity(0.8) : Retro.inkSoft)
+        }
+    }
+
     @ViewBuilder private func recordLine(for id: String, selected: Bool) -> some View {
         let best = game.hiscores.best(for: id)
         if let lap = best.bestLapTicks {
@@ -150,6 +169,7 @@ struct TrackBrowserView: View {
                     }
                 }
                 .foregroundStyle(selected ? Retro.onHighlight : Retro.ink)
+                statsLine(layout: layout, selected: selected)
                 recordLine(for: id, selected: selected)
             }
             .padding(6)

@@ -23,6 +23,16 @@ extension EditorView {
             // the attribution seal were most of a row this bar no longer spends.
             nameChip
             Spacer(minLength: 4)
+            // **Watch the AI drive what you have built**, and come back to the
+            // canvas exactly as it was. The fastest way to know whether a corner
+            // works is to see something take it. Absent rather than disabled
+            // while the track will not compile: a control that cannot work
+            // should not be there to press.
+            if game.editorTrack() != nil {
+                iconButton("play.circle", "Test drive") {
+                    game.testDriveEditorTrack()
+                }
+            }
             iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
                 resetView()
             }
