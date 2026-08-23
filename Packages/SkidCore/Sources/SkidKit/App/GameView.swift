@@ -50,6 +50,24 @@ public struct GameView: View {
                 NetworkLobbyView(net: net, game: game)
             }
         }
+        // **A tapped link.** The whole track is in the URL, so this needs no
+        // network and works offline — see `TrackLink`. It offers rather than
+        // files: `receive` parks the track and shows the library, where the
+        // sheet below asks.
+        .onOpenURL { url in
+            _ = game.receive(url: url)
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { game.incomingTrack != nil },
+                set: { if !$0 { game.declineIncomingTrack() } })
+        ) {
+            if let incoming = game.incomingTrack {
+                IncomingTrackSheet(game: game, incoming: incoming) {
+                    game.declineIncomingTrack()
+                }
+            }
+        }
         .onAppear {
             // The lobby hands the race over here: `NetworkedGame` knows the seed,
             // roster and course; `CouchGame` knows how to build a session from them.

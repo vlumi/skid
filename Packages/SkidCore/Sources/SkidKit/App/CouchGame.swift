@@ -173,6 +173,11 @@ public final class CouchGame: ObservableObject {
     /// Separate from `tournament` so setup can offer one without committing.
     @Published public internal(set) var pendingTournamentTracks: [String] = []
 
+    /// **A track handed to us from outside** — a tapped link or a scanned code,
+    /// waiting to be accepted or declined. Session-only: an offer nobody
+    /// answered should not still be pending days later.
+    @Published public internal(set) var incomingTrack: IncomingTrack?
+
     /// **Where a test drive came from**, or nil when the race on screen is a
     /// real one. Session-only on purpose: a drive is a question about a design,
     /// so it should not survive a relaunch and strand the app owing a return to

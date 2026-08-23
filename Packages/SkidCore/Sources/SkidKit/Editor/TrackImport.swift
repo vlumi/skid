@@ -21,6 +21,41 @@ extension CouchGame {
         case unreadable
     }
 
+    /// **A track arrived from outside** — a tapped link, or a scanned code.
+    ///
+    /// Offered rather than filed: the app is being handed something by a third
+    /// party, and one that silently writes to your library on a tap is one you
+    /// stop trusting. The library shows what it is and asks. Nil when the link
+    /// is not a track at all, so a mis-tapped URL says nothing rather than
+    /// popping an error nobody caused.
+    @discardableResult
+    public func receive(url: URL) -> Bool {
+        guard let contents = TrackLink.contents(of: url.absoluteString),
+            let layout = try? TrackCode.decode(contents.code)
+        else { return false }
+        incomingTrack = IncomingTrack(
+            code: contents.code, name: contents.name, layout: layout,
+            alreadyHave: library.entry(id: TrackCode.contentCode(of: contents.code)) != nil)
+        // Straight to the library, which is where it would land — arriving into
+        // whatever screen happened to be open (a race, the editor) and asking a
+        // question there would be an interruption rather than an offer.
+        phase = .tracks
+        return true
+    }
+
+    /// Accept the offered track, filing it under the name it suggested.
+    @discardableResult
+    public func acceptIncomingTrack() -> ImportOutcome {
+        guard let incoming = incomingTrack else { return .unreadable }
+        incomingTrack = nil
+        return add(code: incoming.code, layout: incoming.layout, suggestedName: incoming.name)
+    }
+
+    /// Decline it. Nothing is written, which is the point of asking.
+    public func declineIncomingTrack() {
+        incomingTrack = nil
+    }
+
     /// Add a track from pasted text — a share link or a bare code.
     ///
     /// The name comes from the link when it carries one, since that is what the
@@ -59,4 +94,16 @@ extension CouchGame {
         saveLibrary()
         return .added(name: name)
     }
+}
+
+/// A track offered by a link or a scan, pending the player's answer.
+public struct IncomingTrack: Equatable {
+    public var code: String
+    /// What the sender called it, if the link said.
+    public var name: String?
+    /// Decoded up front, so the offer can show a preview and cannot fail later.
+    public var layout: TrackLayout
+    /// Whether this exact road is already in the library — worth saying before
+    /// somebody accepts a second copy of something they have.
+    public var alreadyHave: Bool
 }
