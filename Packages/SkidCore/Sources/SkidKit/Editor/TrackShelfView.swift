@@ -35,6 +35,8 @@ struct TrackShelfView: View {
     /// outlive the row it belongs to.
     @State private var renaming: TrackLibraryBook.Entry?
     @State private var newName = ""
+    /// What the last "add from clipboard" did, shown until the next one.
+    @State private var importOutcome: CouchGame.ImportOutcome?
     /// The track being shared, if any — its QR, link and code.
     ///
     /// Opens on the first track under `-skid-share`, for the same reason the
@@ -54,7 +56,13 @@ struct TrackShelfView: View {
                     // step inside the editor: it is reached from the front door
                     // (top → tracks → editor) and needs to say where you are.
                     RetroTitle(Text("Tracks", bundle: .module))
-                    newTrackButton
+                    HStack(spacing: 10) {
+                        newTrackButton
+                        addTrackButton
+                    }
+                    if let outcome = importOutcome {
+                        importNote(outcome)
+                    }
 
                     if !game.library.tracks.isEmpty {
                         section(Text("Yours", bundle: .module)) {
@@ -140,6 +148,46 @@ struct TrackShelfView: View {
             .background(Retro.panel)
             .overlay(RetroBevel(thickness: 2))
         }
+    }
+
+    /// **Taking a track IN**, beside making one — the two ways the library
+    /// grows, so they sit together rather than one being hidden in a menu.
+    private var addTrackButton: some View {
+        Button {
+            importOutcome = game.importTrack(fromPasted: Clipboard.paste() ?? "")
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "square.and.arrow.down").font(.title3)
+                Text("Add from clipboard", bundle: .module).font(Retro.caption)
+            }
+            .foregroundStyle(Retro.ink)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
+        }
+    }
+
+    /// What the last import did. Named rather than silent: a paste that appears
+    /// to do nothing is the same to a player as a broken button.
+    @ViewBuilder private func importNote(_ outcome: CouchGame.ImportOutcome) -> some View {
+        switch outcome {
+        case .added(let name):
+            note(Text("Added \(name).", bundle: .module), bad: false)
+        case .alreadyHave(let name):
+            // Not a failure: the same code twice is the same road.
+            note(Text("You already have this one — \(name).", bundle: .module), bad: false)
+        case .unreadable:
+            note(
+                Text("The clipboard doesn't hold a track link or code.", bundle: .module),
+                bad: true)
+        }
+    }
+
+    private func note(_ text: Text, bad: Bool) -> some View {
+        text
+            .font(Retro.caption)
+            .foregroundStyle(bad ? Retro.danger : Retro.onGround)
     }
 
     private func section(
