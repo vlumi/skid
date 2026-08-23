@@ -14,6 +14,7 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Scan a track off somebody's screen.** They open Share, you tap Scan a QR code, and the track is yours — no network on either side, since the whole road is in the code.
 - **Tap a shared link and the track opens in the app.** It shows you what arrived — a picture, the name, how long a lap is — and asks whether you want it, rather than filing it behind your back.
 - **Add a track somebody sent you.** "Add from clipboard" in the library takes a share link or a bare code and files it under the name the sender gave it. Adding the same track twice says so instead of making a second copy, and importing never disturbs whatever you have open in the editor.
 - **Share a track as a QR code.** Every track in the library has a Share option: a QR somebody can point their phone at, or a link and a code to send. The whole track is in the code, so nothing needs the internet and a link cannot stop working.

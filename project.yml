@@ -36,6 +36,11 @@ targets:
         # like "no peers found" rather than an error. The service names must match
         # `MultipeerTransport.serviceType` exactly, and MultipeerConnectivity
         # needs BOTH the _tcp and _udp spellings registered.
+        # Scanning a track's QR code. Nothing is recorded or sent — the camera
+        # is read for codes and the frames are discarded.
+        NSCameraUsageDescription:
+          Skid Jam uses the camera to scan a track's QR code. Nothing is recorded
+          or sent anywhere.
         NSLocalNetworkUsageDescription:
           Skid Jam finds other players' devices nearby so you can race together.
           Nothing leaves your local network.

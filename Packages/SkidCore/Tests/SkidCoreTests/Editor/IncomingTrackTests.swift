@@ -90,6 +90,35 @@ final class IncomingTrackTests: XCTestCase {
         XCTAssertNil(couch.incomingTrack)
     }
 
+    // MARK: - Scanning
+
+    /// **A scanned QR holds a link**, which is what the share sheet puts in one.
+    func testAScannedLinkOffersTheTrack() throws {
+        let couch = game()
+        let url = try link(name: "Scanned")
+        XCTAssertTrue(couch.receive(scanned: url.absoluteString))
+        XCTAssertEqual(couch.incomingTrack?.name, "Scanned")
+        XCTAssertTrue(couch.library.tracks.isEmpty, "a scan filed a track without asking")
+    }
+
+    /// **A bare code in a QR works too.** Somebody pasting a code into a QR
+    /// generator by hand is a perfectly good way to share a track, and refusing
+    /// it would be enforcing our own tooling.
+    func testAScannedBareCodeWorksToo() {
+        let couch = game()
+        XCTAssertTrue(couch.receive(scanned: code))
+        XCTAssertEqual(couch.incomingTrack?.code, code)
+    }
+
+    /// **Anything else is not a track**, and says so by returning false — the
+    /// scanner keeps looking rather than stopping on a shop's wifi QR.
+    func testScanningSomethingElseIsRefused() {
+        let couch = game()
+        XCTAssertFalse(couch.receive(scanned: "WIFI:S:CafeNet;T:WPA;P:hunter2;;"))
+        XCTAssertFalse(couch.receive(scanned: "https://example.com/"))
+        XCTAssertNil(couch.incomingTrack)
+    }
+
     /// **Both link forms arrive**, since either may have been shared.
     func testTheFragmentFormArrivesToo() throws {
         let couch = game()
