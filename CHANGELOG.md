@@ -14,6 +14,8 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+### build 17 — 2026-08-23
+
 - **Your tracks have a home.** The front page's "Track editor" is now "Tracks": a library of everything you have built, where you start a new one, rename, copy or delete — and the editor opens from there. Closing the editor goes back to the library rather than out to the title screen, so the path in and out is the same one every time.
 - **Share a track as a QR code.** Every track in the library has a Share option: a QR somebody can point their phone at, or a link and a code to send. The whole track is in the code, so nothing needs the internet and a link cannot stop working.
 - **Scan a track off somebody's screen.** They open Share, you tap Scan a QR code, and the track is yours — no network on either side, since the whole road is in the code.
