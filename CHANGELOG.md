@@ -14,6 +14,7 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Share a track as a QR code.** Every track in the library has a Share option: a QR somebody can point their phone at, or a link and a code to send. The whole track is in the code, so nothing needs the internet and a link cannot stop working.
 - **Your tracks have a home.** The front page's "Track editor" is now "Tracks": a library of everything you have built, where you start a new one, rename, copy or delete — and the editor opens from there. Closing the editor goes back to the library rather than out to the title screen, so the path in and out is the same one every time.
 
 - **Test drive a track from the editor.** A play button on the editor's top bar sends an AI car round what you have built, lapping until you tap Done — which returns you to the canvas exactly as you left it, nothing saved and nothing recorded. The lap count, best lap and top speed show as it drives, so the first flying lap already tells you whether a lap is any good and whether there is anywhere to use the throttle.
