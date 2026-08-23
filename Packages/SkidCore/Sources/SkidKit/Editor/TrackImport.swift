@@ -43,6 +43,24 @@ extension CouchGame {
         return true
     }
 
+    /// **A scanned code** — the camera's half of `receive(url:)`.
+    ///
+    /// A QR holds whatever the sharer's app put in it, which is a link; but a
+    /// code pasted into a QR generator by hand is just as valid a way to share a
+    /// track, so both are accepted. Returns whether it was a track at all, so
+    /// the scanner can keep looking rather than stopping on a shop's wifi code.
+    @discardableResult
+    public func receive(scanned text: String) -> Bool {
+        guard let contents = TrackLink.code(fromPasted: text),
+            let layout = try? TrackCode.decode(contents.code)
+        else { return false }
+        incomingTrack = IncomingTrack(
+            code: contents.code, name: contents.name, layout: layout,
+            alreadyHave: library.entry(id: TrackCode.contentCode(of: contents.code)) != nil)
+        phase = .tracks
+        return true
+    }
+
     /// Accept the offered track, filing it under the name it suggested.
     @discardableResult
     public func acceptIncomingTrack() -> ImportOutcome {

@@ -37,6 +37,8 @@ struct TrackShelfView: View {
     @State private var newName = ""
     /// What the last "add from clipboard" did, shown until the next one.
     @State private var importOutcome: CouchGame.ImportOutcome?
+    /// Whether the camera scanner is open.
+    @State private var scanning = false
     /// The track being shared, if any — its QR, link and code.
     ///
     /// Opens on the first track under `-skid-share`, for the same reason the
@@ -60,6 +62,7 @@ struct TrackShelfView: View {
                         newTrackButton
                         addTrackButton
                     }
+                    scanButton
                     if let outcome = importOutcome {
                         importNote(outcome)
                     }
@@ -106,6 +109,9 @@ struct TrackShelfView: View {
         }
         .onAppear {
             if shareOnAppear, sharing == nil { sharing = game.library.tracks.first }
+        }
+        .sheet(isPresented: $scanning) {
+            ScanTrackSheet(game: game) { scanning = false }
         }
         .sheet(
             isPresented: Binding(
@@ -159,6 +165,25 @@ struct TrackShelfView: View {
             HStack(spacing: 10) {
                 Image(systemName: "square.and.arrow.down").font(.title3)
                 Text("Add from clipboard", bundle: .module).font(Retro.caption)
+            }
+            .foregroundStyle(Retro.ink)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
+        }
+    }
+
+    /// **The camera path.** Its own row rather than crowded in beside the other
+    /// two: it is the one somebody uses standing next to the person sharing, and
+    /// the other two are for a link that arrived some other way.
+    private var scanButton: some View {
+        Button {
+            scanning = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "qrcode.viewfinder").font(.title3)
+                Text("Scan a QR code", bundle: .module).font(Retro.caption)
             }
             .foregroundStyle(Retro.ink)
             .frame(maxWidth: .infinity)
