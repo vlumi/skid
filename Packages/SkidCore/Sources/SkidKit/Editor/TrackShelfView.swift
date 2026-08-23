@@ -35,6 +35,13 @@ struct TrackShelfView: View {
     /// outlive the row it belongs to.
     @State private var renaming: TrackLibraryBook.Entry?
     @State private var newName = ""
+    /// The track being shared, if any — its QR, link and code.
+    ///
+    /// Opens on the first track under `-skid-share`, for the same reason the
+    /// other screenshot arguments exist: `simctl` cannot tap a context menu, so
+    /// this sheet is otherwise unreachable for a screenshot.
+    @State private var sharing: TrackLibraryBook.Entry?
+    private let shareOnAppear = ProcessInfo.processInfo.arguments.contains("-skid-share")
 
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
@@ -87,6 +94,18 @@ struct TrackShelfView: View {
                 renaming = nil
             } label: {
                 Text("Cancel", bundle: .module)
+            }
+        }
+        .onAppear {
+            if shareOnAppear, sharing == nil { sharing = game.library.tracks.first }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { sharing != nil },
+                set: { if !$0 { sharing = nil } })
+        ) {
+            if let entry = sharing {
+                TrackShareSheet(name: entry.name, code: entry.code) { sharing = nil }
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -171,6 +190,17 @@ struct TrackShelfView: View {
 
     /// Copy, rename, delete — the things that are not "open this".
     @ViewBuilder private func actions(for entry: TrackLibraryBook.Entry) -> some View {
+        // **First, because it is the point of a library.** A track you cannot
+        // hand to anyone is a track only you will ever drive.
+        Button {
+            sharing = entry
+        } label: {
+            Label {
+                Text("Share", bundle: .module)
+            } icon: {
+                Image(systemName: "qrcode")
+            }
+        }
         Button {
             game.startFrom(code: entry.code, name: entry.name)
             openCanvas()
