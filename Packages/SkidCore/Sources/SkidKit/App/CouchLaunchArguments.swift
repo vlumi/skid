@@ -14,7 +14,9 @@ import SwiftUI
 ///     -skid-setup            open the race options
 ///     -skid-tracks           open the track browser (with -skid-setup)
 ///     -skid-colors           open seat 1's color palette (with -skid-setup)
-///     -skid-shelf            open the editor's track list
+///     -skid-tracks-library   open the track library (top → tracks)
+///     -skid-share            open the first track's share sheet (with the library)
+///     (a shared link is testable with `simctl openurl`, which needs no argument)
 ///     -skid-edit             open the editor canvas
 ///     -skid-levels           start the editor's Levels mode on (with -skid-edit)
 ///     -skid-testdrive        go straight into an editor test drive (with -skid-edit)
@@ -50,18 +52,14 @@ extension CouchGame {
         if arguments.contains("-skid-setup") {
             phase = .setup
         }
-        // Straight into the editor's track shelf, for the same reason `-skid-setup`
-        // exists: it is several taps in and `simctl` cannot tap.
-        // The editor canvas itself, past the shelf.
+        // The editor canvas, for the same reason `-skid-setup` exists: it is
+        // several taps in and `simctl` cannot tap.
         if arguments.contains("-skid-edit") {
             phase = .editing
-            showingTrackShelf = false
         }
-        // Explicit, so a screenshot of the shelf leaves the same way a real one would.
-        if arguments.contains("-skid-shelf") {
-            phase = .editing
-            showingTrackShelf = true
-            shelfCameFromEditor = false
+        // The track library, one level above the editor.
+        if arguments.contains("-skid-tracks-library") {
+            phase = .tracks
         }
         // Straight into a test drive, for the same reason the rest of these
         // exist: `simctl` cannot tap the editor's play button, so a screenshot

@@ -35,6 +35,17 @@ struct TrackShelfView: View {
     /// outlive the row it belongs to.
     @State private var renaming: TrackLibraryBook.Entry?
     @State private var newName = ""
+    /// What the last "add from clipboard" did, shown until the next one.
+    @State private var importOutcome: CouchGame.ImportOutcome?
+    /// Whether the camera scanner is open.
+    @State private var scanning = false
+    /// The track being shared, if any — its QR, link and code.
+    ///
+    /// Opens on the first track under `-skid-share`, for the same reason the
+    /// other screenshot arguments exist: `simctl` cannot tap a context menu, so
+    /// this sheet is otherwise unreachable for a screenshot.
+    @State private var sharing: TrackLibraryBook.Entry?
+    private let shareOnAppear = ProcessInfo.processInfo.arguments.contains("-skid-share")
 
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
@@ -43,7 +54,18 @@ struct TrackShelfView: View {
             Retro.ground.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    newTrackButton
+                    // **Titled, because this is a destination now** rather than a
+                    // step inside the editor: it is reached from the front door
+                    // (top → tracks → editor) and needs to say where you are.
+                    RetroTitle(Text("Tracks", bundle: .module))
+                    HStack(spacing: 10) {
+                        newTrackButton
+                        addTrackButton
+                    }
+                    scanButton
+                    if let outcome = importOutcome {
+                        importNote(outcome)
+                    }
 
                     if !game.library.tracks.isEmpty {
                         section(Text("Yours", bundle: .module)) {
@@ -85,6 +107,21 @@ struct TrackShelfView: View {
                 Text("Cancel", bundle: .module)
             }
         }
+        .onAppear {
+            if shareOnAppear, sharing == nil { sharing = game.library.tracks.first }
+        }
+        .sheet(isPresented: $scanning) {
+            ScanTrackSheet(game: game) { scanning = false }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { sharing != nil },
+                set: { if !$0 { sharing = nil } })
+        ) {
+            if let entry = sharing {
+                TrackShareSheet(name: entry.name, code: entry.code) { sharing = nil }
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             Button {
                 back()
@@ -117,6 +154,65 @@ struct TrackShelfView: View {
             .background(Retro.panel)
             .overlay(RetroBevel(thickness: 2))
         }
+    }
+
+    /// **Taking a track IN**, beside making one — the two ways the library
+    /// grows, so they sit together rather than one being hidden in a menu.
+    private var addTrackButton: some View {
+        Button {
+            importOutcome = game.importTrack(fromPasted: Clipboard.paste() ?? "")
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "square.and.arrow.down").font(.title3)
+                Text("Add from clipboard", bundle: .module).font(Retro.caption)
+            }
+            .foregroundStyle(Retro.ink)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
+        }
+    }
+
+    /// **The camera path.** Its own row rather than crowded in beside the other
+    /// two: it is the one somebody uses standing next to the person sharing, and
+    /// the other two are for a link that arrived some other way.
+    private var scanButton: some View {
+        Button {
+            scanning = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "qrcode.viewfinder").font(.title3)
+                Text("Scan a QR code", bundle: .module).font(Retro.caption)
+            }
+            .foregroundStyle(Retro.ink)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Retro.panel)
+            .overlay(RetroBevel(thickness: 2))
+        }
+    }
+
+    /// What the last import did. Named rather than silent: a paste that appears
+    /// to do nothing is the same to a player as a broken button.
+    @ViewBuilder private func importNote(_ outcome: CouchGame.ImportOutcome) -> some View {
+        switch outcome {
+        case .added(let name):
+            note(Text("Added \(name).", bundle: .module), bad: false)
+        case .alreadyHave(let name):
+            // Not a failure: the same code twice is the same road.
+            note(Text("You already have this one — \(name).", bundle: .module), bad: false)
+        case .unreadable:
+            note(
+                Text("The clipboard doesn't hold a track link or code.", bundle: .module),
+                bad: true)
+        }
+    }
+
+    private func note(_ text: Text, bad: Bool) -> some View {
+        text
+            .font(Retro.caption)
+            .foregroundStyle(bad ? Retro.danger : Retro.onGround)
     }
 
     private func section(
@@ -167,6 +263,17 @@ struct TrackShelfView: View {
 
     /// Copy, rename, delete — the things that are not "open this".
     @ViewBuilder private func actions(for entry: TrackLibraryBook.Entry) -> some View {
+        // **First, because it is the point of a library.** A track you cannot
+        // hand to anyone is a track only you will ever drive.
+        Button {
+            sharing = entry
+        } label: {
+            Label {
+                Text("Share", bundle: .module)
+            } icon: {
+                Image(systemName: "qrcode")
+            }
+        }
         Button {
             game.startFrom(code: entry.code, name: entry.name)
             openCanvas()
