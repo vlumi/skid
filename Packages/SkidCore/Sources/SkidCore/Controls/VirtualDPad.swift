@@ -247,6 +247,5 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
             }
         }
         return CarInput(steer: steer * authority, throttle: throttle)
-        return CarInput(steer: steer * authority, throttle: throttle)
     }
 }

@@ -14,6 +14,7 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **The cars handle differently.** Less grip and less drift retention, a gentler aim flip, a wider tail swing, and walls that push back a bit less — the stock feel after a device tuning session. Times set before this are not comparable, since the physics itself changed.
 - **Pro controls are laid out a new way.** The top of your control box is now full throttle with no steering, so you can slide your thumb along it to reposition; drop below that edge to steer, and the bottom band brakes and reverses. The old pad's centre was an invisible point you could not feel for, so after a corner you would hold a little steering you never noticed and drift across the lane. Straightening up is now "slide back to the top", which your thumb can find without looking. **Still being tuned** — the tuning panel (shake) has its layout dials, and a switch between holding full gas while steering and easing off as you steer deeper.
 
 ### build 17 — 2026-08-23

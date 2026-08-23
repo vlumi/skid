@@ -137,6 +137,22 @@ final class ZonedPadTests: XCTestCase {
             abs(deep.steer), abs(shallow.steer), "lifting did not firm the steering")
     }
 
+    /// **At full gas the wheel pulls all the way to straight**, not merely
+    /// toward it — a residue of a few thousandths would be the same
+    /// undetectable steer that started this whole rework, just smaller.
+    func testGasAndGripSnapsASmallSteerToStraight() {
+        let p = pad(.gasAndGrip)
+        p.throttleRecentring = 2.0
+        p.touchBegan(id: 1, at: at(depth: 0.1, x: 90))
+        // Just below the strip: full throttle, so the recentring is strongest —
+        // and a tiny sideways nudge, so it has something to pull to zero.
+        p.touchMoved(id: 1, at: at(depth: 0.305, x: 90))
+        p.touchMoved(id: 1, at: at(depth: 0.305, x: 91))
+        let out = input(p)
+        XCTAssertEqual(out.steer, 0, accuracy: 1e-12, "a nudge at full gas did not straighten")
+        XCTAssertGreaterThan(out.throttle, 0.9, "fixture: should still be near full gas")
+    }
+
     /// Braking is the bottom band, and reverse reaches full at the very bottom
     /// — it only has to get you out of a pinch.
     func testTheBottomBandBrakesAndReverses() {
