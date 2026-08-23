@@ -16,6 +16,7 @@ import SwiftUI
 ///     -skid-colors           open seat 1's color palette (with -skid-setup)
 ///     -skid-tracks-library   open the track library (top → tracks)
 ///     -skid-share            open the first track's share sheet (with the library)
+///     (a shared link is testable with `simctl openurl`, which needs no argument)
 ///     -skid-edit             open the editor canvas
 ///     -skid-levels           start the editor's Levels mode on (with -skid-edit)
 ///     -skid-testdrive        go straight into an editor test drive (with -skid-edit)
