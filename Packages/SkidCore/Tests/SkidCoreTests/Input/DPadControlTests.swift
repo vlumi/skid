@@ -14,6 +14,9 @@ final class DPadControlTests: XCTestCase {
     private func pad() -> VirtualDPadControlSource {
         let source = VirtualDPadControlSource()
         source.bounds = Rect(x: 0, y: 0, width: 1000, height: 1000)
+        // The FLOATING pad — the zone-strip model is a different control with
+        // its own suite (`ZonedPadTests`).
+        source.cruiseStrip = 0
         source.touchBegan(id: 1, at: Vec2(500, 500))
         return source
     }
@@ -30,6 +33,10 @@ final class DPadControlTests: XCTestCase {
         XCTAssertEqual(source.knob.length, radius, accuracy: 1e-9)
     }
 
+    /// **These pin the FLOATING pad**, which is what `cruiseStrip = 0` still
+    /// selects. The zone-strip model deliberately maps depth differently (see
+    /// `ZonedPadTests`); it is a different control, not a redefinition of this
+    /// one, and both ship until device play picks a winner.
     func testHeldGasThenReleaseReturnsToRest() {
         // The reported bug: hold gas (never brake) and the pad used to creep
         // upward and never come back. With a fixed origin, easing the thumb

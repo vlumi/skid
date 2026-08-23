@@ -79,11 +79,50 @@ enum OverlayRenderer {
     /// touch), so a new player sees where to press before pressing.
     static func drawDPad(_ pad: DPadOverlay, into context: inout GraphicsContext) {
         let rest = pad.engaged ? 1.0 : 0.55
+        // **The zone model draws its regions, not a floating disc.** The whole
+        // point is an edge the thumb can find, so the edge has to be visible
+        // while it is being learned.
+        if let zone = pad.zone {
+            drawZonedPad(pad, zone: zone, rest: rest, into: &context)
+            return
+        }
         let disc = CGRect(
             x: pad.origin.x - pad.radius, y: pad.origin.y - pad.radius,
             width: pad.radius * 2, height: pad.radius * 2
         )
         context.fill(Path(ellipseIn: disc), with: .color(pad.color.opacity(0.12 * rest)))
+
+        // **A visible straight-ahead**, and the thumb's offset from it.
+        //
+        // The pad was a 12%-opacity disc with nothing marking its middle, so
+        // after a corner there was no way to see where centre had ended up —
+        // you held a small steer you could not detect and sailed down the lane
+        // in a slow sine curve. Reported exactly that way. The crosshair says
+        // where straight is; the line to the knob says how far off it you are,
+        // which is the reading a thumb cannot take by feel on glass.
+        let tick = 7.0
+        var cross = Path()
+        cross.move(to: CGPoint(x: pad.origin.x - tick, y: pad.origin.y))
+        cross.addLine(to: CGPoint(x: pad.origin.x + tick, y: pad.origin.y))
+        cross.move(to: CGPoint(x: pad.origin.x, y: pad.origin.y - tick))
+        cross.addLine(to: CGPoint(x: pad.origin.x, y: pad.origin.y + tick))
+        context.stroke(cross, with: .color(pad.color.opacity(0.9 * rest)), lineWidth: 2)
+
+        // The steer offset only: a horizontal bar from centre to where the
+        // thumb sits across the pad. Vertical offset is throttle, which the
+        // arrows already report and which nobody has to null out.
+        let across = pad.up.perpendicular
+        let sideways = pad.knob.dot(across)
+        if abs(sideways) > 1 {
+            let end = pad.origin + across * sideways
+            var bar = Path()
+            bar.move(to: CGPoint(x: pad.origin.x, y: pad.origin.y))
+            bar.addLine(to: CGPoint(x: end.x, y: end.y))
+            context.stroke(
+                bar, with: .color(pad.color.opacity(0.85 * rest)), lineWidth: 3)
+            let dot = CGRect(x: end.x - 5, y: end.y - 5, width: 10, height: 10)
+            context.fill(Path(ellipseIn: dot), with: .color(pad.color.opacity(0.95 * rest)))
+        }
 
         let arrows: [(Vec2, Double)] = [
             (pad.up, max(0, pad.input.throttle)),
@@ -102,6 +141,50 @@ enum OverlayRenderer {
             path.closeSubpath()
             context.fill(
                 path, with: .color(pad.color.opacity((0.35 + 0.6 * engagement) * rest)))
+        }
+    }
+
+    /// The strip model: a bright cruise band at the top (full throttle, no
+    /// steering, slide to reposition), the driving band below it, and a brake
+    /// band at the bottom. The lower edge of the strip is the thing a thumb
+    /// learns by feel, so it is drawn as a real line.
+    private static func drawZonedPad(
+        _ pad: DPadOverlay, zone: CGRect, rest: Double, into context: inout GraphicsContext
+    ) {
+        // `up` points away from the player, so a flipped seat's strip belongs
+        // at ITS top — the bottom of the screen rect.
+        let flipped = pad.up.y > 0
+        let stripHeight = zone.height * pad.cruiseStrip
+        let brakeHeight = zone.height * pad.brakeBand
+        let strip =
+            flipped
+            ? CGRect(
+                x: zone.minX, y: zone.maxY - stripHeight, width: zone.width,
+                height: stripHeight)
+            : CGRect(x: zone.minX, y: zone.minY, width: zone.width, height: stripHeight)
+        let brake =
+            flipped
+            ? CGRect(x: zone.minX, y: zone.minY, width: zone.width, height: brakeHeight)
+            : CGRect(
+                x: zone.minX, y: zone.maxY - brakeHeight, width: zone.width,
+                height: brakeHeight)
+
+        context.fill(Path(strip), with: .color(pad.color.opacity(0.22 * rest)))
+        context.fill(Path(brake), with: .color(pad.color.opacity(0.10 * rest)))
+        // The learnable edge.
+        var edge = Path()
+        let edgeY = flipped ? strip.minY : strip.maxY
+        edge.move(to: CGPoint(x: zone.minX, y: edgeY))
+        edge.addLine(to: CGPoint(x: zone.maxX, y: edgeY))
+        context.stroke(edge, with: .color(pad.color.opacity(0.8 * rest)), lineWidth: 2)
+
+        // Where the thumb is, so its position relative to the edge is readable
+        // without looking away from the track.
+        if pad.engaged {
+            let dot = CGRect(
+                x: pad.origin.x + pad.knob.x - 7, y: pad.origin.y + pad.knob.y - 7,
+                width: 14, height: 14)
+            context.fill(Path(ellipseIn: dot), with: .color(pad.color.opacity(0.95)))
         }
     }
 

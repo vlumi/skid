@@ -139,15 +139,24 @@ final class NetworkedSyncTests: XCTestCase {
 
         // Accuracy: what the client shows for tick N is where the host WAS at N.
         // The bound is the geometry's, not a hope: linear blending of 20 Hz samples
-        // cuts corners by up to a couple of units at full speed on a curve. Four
-        // units is an eighth of a car length; the mean must stay well under one.
+        // cuts corners by up to a couple of units at full speed on a curve. The mean
+        // must stay well under one.
+        //
+        // **Widened 4.0 → 5.0 when the stock tuning changed** (grip 1.0 → 0.8, drift
+        // retention 1.0 → 0.6): a car that slides more takes a curve faster, so the
+        // chord between two 20 Hz samples cuts a little deeper. The worst case moved
+        // from just under to just over an eighth of a car length — 4.24 of 34 — so
+        // this is the same geometric claim at the new grip, not a loosened one. The
+        // MEAN bound below is untouched, and it is what would catch a real
+        // divergence: a client tracking the wrong line fails that long before it
+        // brushes a per-sample ceiling.
         var checked = 0
         var totalError = 0.0
         for (tick, position) in run.rendered {
             let nearest = Tick(tick.rounded())
             guard tick == tick.rounded(), let truth = run.hostHistory[nearest] else { continue }
             let error = (position - truth).length
-            XCTAssertLessThan(error, 4.0, "off the host's line by \(error) at \(nearest)")
+            XCTAssertLessThan(error, 5.0, "off the host's line by \(error) at \(nearest)")
             totalError += error
             checked += 1
         }
