@@ -29,6 +29,8 @@
 		<string>_skid-race._tcp</string>
 		<string>_skid-race._udp</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Skid Jam uses the camera to scan a track's QR code. Nothing is recorded or sent anywhere.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Skid Jam finds other players' devices nearby so you can race together. Nothing leaves your local network.</string>
 	<key>UILaunchScreen</key>

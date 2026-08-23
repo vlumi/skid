@@ -1,14 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<!-- Universal links for shared tracks: skid.misaki.fi/t/<code>. The
-	     apple-app-site-association is already deployed on the site with a /t/*
-	     path, so nothing there needs changing. Tapping a link opens the track
-	     in the app; without the app it stays an ordinary web page. -->
-	<key>com.apple.developer.associated-domains</key>
-	<array>
-		<string>applinks:skid.misaki.fi</string>
-	</array>
-</dict>
+<dict/>
 </plist>
