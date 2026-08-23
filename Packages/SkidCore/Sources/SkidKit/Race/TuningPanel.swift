@@ -60,6 +60,31 @@ struct TuningPanel: View {
                         value: $settings.aimTailSwingDegrees,
                         range: 20...120, step: 5, format: "%.0f°")
 
+                    // **The pad is being redesigned on device**, so its layout
+                    // dials are here rather than baked: a floating pad's centre
+                    // is a point on glass with nothing to feel for, and neither
+                    // longer travel nor a self-centring wheel fixed the sine
+                    // curve that causes. The zone-strip model is the third try
+                    // and the first that gives the thumb an EDGE to find, so
+                    // what these want is driving, not more arithmetic.
+                    section(Text("Pro layout", bundle: .module))
+                    modelRow
+                    slider(
+                        Text("Cruise strip", bundle: .module),
+                        value: $settings.dpadCruiseStrip,
+                        range: 0...0.5, step: 0.05, format: "%.2f")
+                    slider(
+                        Text("Brake band", bundle: .module), value: $settings.dpadBrakeBand,
+                        range: 0.1...0.45, step: 0.05, format: "%.2f")
+                    slider(
+                        Text("Gas steering", bundle: .module),
+                        value: $settings.dpadSteerAtFullThrottle,
+                        range: 0...1, step: 0.05, format: "%.2f")
+                    slider(
+                        Text("Gas recentring", bundle: .module),
+                        value: $settings.dpadThrottleRecentring,
+                        range: 0...6, step: 0.25, format: "%.2f")
+
                     section(Text("Pro", bundle: .module))
                     slider(
                         Text("Dead zone", bundle: .module), value: $settings.dpadDeadzone,
@@ -205,6 +230,34 @@ struct TuningPanel: View {
     }
 
     /// Steps per axis: full analog or 1–3 quantized notches.
+    /// Which meaning depth has — the fork worth driving rather than deciding
+    /// in the abstract. See `VirtualDPadControlSource.DepthMeaning`.
+    private var modelRow: some View {
+        HStack(spacing: 8) {
+            Text("Depth", bundle: .module)
+                .font(Retro.caption)
+                .foregroundStyle(Retro.inkSoft)
+            Spacer(minLength: 8)
+            ForEach(VirtualDPadControlSource.DepthMeaning.allCases, id: \.rawValue) { mode in
+                let on = settings.dpadDepthMeaning == mode.rawValue
+                Button {
+                    settings.dpadDepthMeaning = mode.rawValue
+                } label: {
+                    (mode == .steerOnly
+                        ? Text("Steer only", bundle: .module)
+                        : Text("Gas + grip", bundle: .module))
+                        .font(Retro.caption)
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: 30)
+                        .background(on ? Retro.highlight : Retro.panel)
+                        .overlay(RetroBevel(inset: on, thickness: 2))
+                        .foregroundStyle(on ? Retro.onHighlight : Retro.ink)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
     private var stepsRow: some View {
         VStack(spacing: 6) {
             Text("Steps", bundle: .module)

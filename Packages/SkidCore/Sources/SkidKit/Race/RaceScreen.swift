@@ -214,6 +214,10 @@ struct RaceScreen: View {
                 origin: origin,
                 up: controls.pro.up,
                 radius: controls.pro.radius,
+                zone: controls.pro.cruiseStrip > 0 ? controls.content : nil,
+                cruiseStrip: controls.pro.cruiseStrip,
+                brakeBand: controls.pro.brakeBand,
+                knob: controls.pro.knob,
                 input: controls.pro.input(for: controls.player, at: session.race.tick),
                 color: CouchGame.palette[controls.colorIndex],
                 engaged: controls.pro.touching
@@ -319,6 +323,14 @@ struct DPadOverlay {
     var origin: Vec2
     var up: Vec2
     var radius: Double
+    /// The zone the pad divides, and how — nil while the pad is the old
+    /// floating disc (no zone, or the strip turned off).
+    var zone: CGRect?
+    var cruiseStrip: Double = 0
+    var brakeBand: Double = 0
+    /// The thumb's offset from the origin, so the overlay can show how far off
+    /// straight-ahead it is — the reading a thumb cannot take by feel on glass.
+    var knob: Vec2
     var input: CarInput
     var color: Color
     /// Whether a thumb is down — a resting pad draws dimmed.

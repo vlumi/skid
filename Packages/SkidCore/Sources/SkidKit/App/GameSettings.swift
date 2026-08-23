@@ -30,6 +30,22 @@ public final class GameSettings: ObservableObject {
     /// Steps per axis; 0 = fully analog. Analog is the default — on-device
     /// feel testing found it the most natural.
     @AppStorage("skid.dpad.steps") public var dpadSteps = 0
+    /// **How much of the zone is the cruise strip** — full throttle, no
+    /// steering, free to slide sideways to reposition. Its lower edge is a
+    /// boundary a thumb can learn by feel, which the old floating pad's centre
+    /// never was: you held a little lock you could not detect and sailed down
+    /// the lane in a sine curve.
+    @AppStorage("skid.dpad.cruise") public var dpadCruiseStrip = 0.3
+    /// How much of the zone, from the bottom, brakes and reverses.
+    @AppStorage("skid.dpad.brake") public var dpadBrakeBand = 0.25
+    /// Which meaning depth in the zone has — see `DepthMeaning`. Stored raw so
+    /// a new case cannot invalidate a stored choice.
+    @AppStorage("skid.dpad.depth") public var dpadDepthMeaning =
+        VirtualDPadControlSource.DepthMeaning.steerOnly.rawValue
+    /// Under gas+grip: how much steering survives at full throttle.
+    @AppStorage("skid.dpad.gasSteer") public var dpadSteerAtFullThrottle = 0.35
+    /// Under gas+grip: how hard full throttle pulls the wheel back to straight.
+    @AppStorage("skid.dpad.gasRecentre") public var dpadThrottleRecentring = 2.0
     /// Response curve; 1 = linear, higher = softer near center. A gentle
     /// curve is the default so small corrections stay small.
     @AppStorage("skid.dpad.expo") public var dpadExpo = 1.4
@@ -45,23 +61,23 @@ public final class GameSettings: ObservableObject {
     @AppStorage("skid.aim.forwardArcDegrees") public var aimForwardArcDegrees = 150.0
     /// Tail-swing lock: full steer once the tail is this many degrees off the
     /// thumb. Lower swings the tail around harder.
-    @AppStorage("skid.aim.tailSwingDegrees") public var aimTailSwingDegrees = 45.0
+    @AppStorage("skid.aim.tailSwingDegrees") public var aimTailSwingDegrees = 60.0
 
     // Drift physics dials (applied on Reset, like pace — the sim is fixed
     // for a race). Hiscores only record at the stock values.
     /// Base yaw rate toward the aim, rad/s.
-    @AppStorage("skid.sim.aimTurnRate") public var aimTurnRate = 10.0
+    @AppStorage("skid.sim.aimTurnRate") public var aimTurnRate = 7.0
     /// Extra aim yaw rate at full speed, rad/s (the handbrake inertia).
-    @AppStorage("skid.sim.aimFlipBoost") public var aimFlipBoost = 8.0
+    @AppStorage("skid.sim.aimFlipBoost") public var aimFlipBoost = 7.0
     /// Steer-path flip assist at full speed, rad/s — the d-pad's drift.
     @AppStorage("skid.sim.steerFlipBoost") public var steerFlipBoost = 5.0
     /// How much of a drift's bled speed is redirected along the nose, 0…1.
-    @AppStorage("skid.sim.driftRetention") public var driftRetention = 1.0
+    @AppStorage("skid.sim.driftRetention") public var driftRetention = 0.6
     /// Wheel yaw rate at full steer (the classic schemes), rad/s.
     @AppStorage("skid.sim.turnRate") public var turnRate = 3.4
     /// Global grip multiplier — the "inertia": lower = more slide, the car's
     /// motion lags the nose longer.
-    @AppStorage("skid.sim.gripScale") public var gripScale = 1.0
+    @AppStorage("skid.sim.gripScale") public var gripScale = 0.8
 
     // MARK: - Wall contact
     //
@@ -70,7 +86,7 @@ public final class GameSettings: ObservableObject {
     // for which knob answers which complaint.
 
     /// Bounce off a wall hit SQUARE ON, 0…1.
-    @AppStorage("skid.sim.wallRestitution") public var wallRestitution = 0.40
+    @AppStorage("skid.sim.wallRestitution") public var wallRestitution = 0.30
     /// The bounce a pure glance keeps, as a share of the above. Zero feels dead.
     @AppStorage("skid.sim.wallGlanceBounce") public var wallGlanceBounce = 0.3
     /// How fast a scrape bleeds speed along the wall.
@@ -176,7 +192,7 @@ public final class GameSettings: ObservableObject {
         aimReverseBelowSpeed = 90.0
         aimThrottleEase = 0.25
         aimForwardArcDegrees = 150.0
-        aimTailSwingDegrees = 45.0
+        aimTailSwingDegrees = 60.0
         deckScale = 1.2
         debugOverlay = false
         applyRenderTuning()
