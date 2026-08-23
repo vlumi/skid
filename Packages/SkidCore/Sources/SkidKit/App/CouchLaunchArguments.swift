@@ -20,6 +20,7 @@ import SwiftUI
 ///     -skid-edit             open the editor canvas
 ///     -skid-levels           start the editor's Levels mode on (with -skid-edit)
 ///     -skid-testdrive        go straight into an editor test drive (with -skid-edit)
+///     -skid-pro              put every seat on Pro controls
 ///     -skid-autostart        start the race, past the ready gate
 ///     -skid-tuning           open the tuning panel (simctl cannot shake)
 ///     -skid-settings         open the settings sheet
@@ -67,6 +68,11 @@ extension CouchGame {
         // unreachable. Last, so the editor layout it drives is already restored.
         if arguments.contains("-skid-testdrive") {
             testDriveEditorTrack()
+        }
+        // Pro for everyone, so the pad itself can be screenshotted: the
+        // default is Casual, and `simctl` cannot tap the scheme toggle.
+        if arguments.contains("-skid-pro") {
+            schemes = Array(repeating: .pro, count: schemes.count)
         }
         if arguments.contains("-skid-autostart") {
             startRace()

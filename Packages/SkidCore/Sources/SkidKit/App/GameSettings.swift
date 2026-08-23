@@ -30,6 +30,22 @@ public final class GameSettings: ObservableObject {
     /// Steps per axis; 0 = fully analog. Analog is the default — on-device
     /// feel testing found it the most natural.
     @AppStorage("skid.dpad.steps") public var dpadSteps = 0
+    /// **How much of the zone is the cruise strip** — full throttle, no
+    /// steering, free to slide sideways to reposition. Its lower edge is a
+    /// boundary a thumb can learn by feel, which the old floating pad's centre
+    /// never was: you held a little lock you could not detect and sailed down
+    /// the lane in a sine curve.
+    @AppStorage("skid.dpad.cruise") public var dpadCruiseStrip = 0.3
+    /// How much of the zone, from the bottom, brakes and reverses.
+    @AppStorage("skid.dpad.brake") public var dpadBrakeBand = 0.25
+    /// Which meaning depth in the zone has — see `DepthMeaning`. Stored raw so
+    /// a new case cannot invalidate a stored choice.
+    @AppStorage("skid.dpad.depth") public var dpadDepthMeaning =
+        VirtualDPadControlSource.DepthMeaning.steerOnly.rawValue
+    /// Under gas+grip: how much steering survives at full throttle.
+    @AppStorage("skid.dpad.gasSteer") public var dpadSteerAtFullThrottle = 0.35
+    /// Under gas+grip: how hard full throttle pulls the wheel back to straight.
+    @AppStorage("skid.dpad.gasRecentre") public var dpadThrottleRecentring = 2.0
     /// Response curve; 1 = linear, higher = softer near center. A gentle
     /// curve is the default so small corrections stay small.
     @AppStorage("skid.dpad.expo") public var dpadExpo = 1.4
