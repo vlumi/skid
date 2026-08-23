@@ -408,6 +408,13 @@ public final class CouchGame: ObservableObject {
             controls.pro.radius = settings.dpadTravel
             controls.pro.levels = settings.dpadSteps > 0 ? settings.dpadSteps : nil
             controls.pro.expo = settings.dpadExpo
+            controls.pro.cruiseStrip = settings.dpadCruiseStrip
+            controls.pro.brakeBand = settings.dpadBrakeBand
+            controls.pro.depthMeaning =
+                VirtualDPadControlSource.DepthMeaning(rawValue: settings.dpadDepthMeaning)
+                ?? .steerOnly
+            controls.pro.steerAtFullThrottle = settings.dpadSteerAtFullThrottle
+            controls.pro.throttleRecentring = settings.dpadThrottleRecentring
             controls.casual.reverseBelowSpeed = settings.aimReverseBelowSpeed
             controls.casual.throttleEase = settings.aimThrottleEase
             // Stored in degrees, used in radians.
