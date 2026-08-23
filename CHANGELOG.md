@@ -14,6 +14,8 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Pro controls are laid out a new way.** The top of your control box is now full throttle with no steering, so you can slide your thumb along it to reposition; drop below that edge to steer, and the bottom band brakes and reverses. The old pad's centre was an invisible point you could not feel for, so after a corner you would hold a little steering you never noticed and drift across the lane. Straightening up is now "slide back to the top", which your thumb can find without looking. **Still being tuned** — the tuning panel (shake) has its layout dials, and a switch between holding full gas while steering and easing off as you steer deeper.
+
 ### build 17 — 2026-08-23
 
 - **Your tracks have a home.** The front page's "Track editor" is now "Tracks": a library of everything you have built, where you start a new one, rename, copy or delete — and the editor opens from there. Closing the editor goes back to the library rather than out to the title screen, so the path in and out is the same one every time.
