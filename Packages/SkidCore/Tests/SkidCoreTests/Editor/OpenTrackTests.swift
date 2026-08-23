@@ -186,17 +186,21 @@ final class OpenTrackTests: XCTestCase {
         XCTAssertEqual(game.library.tracks.count, 1)
     }
 
-    /// The editor opens on the shelf when there are tracks to choose from, and straight
-    /// onto the canvas when there are none — nobody should be asked to pick from an empty
-    /// list.
-    func testTheShelfOpensOnlyWhenThereIsSomethingOnIt() {
+    /// **The library is always its own screen**, empty or not.
+    ///
+    /// It used to be shown only when there was something on it, because it lived
+    /// INSIDE the editor and an empty list there was a dead end. As a destination
+    /// of its own it is where "new track" lives, so an empty one is the normal
+    /// first-run state rather than a screen to skip.
+    func testTheLibraryOpensWhetherOrNotItHasTracks() {
         let empty = self.game()
-        empty.openEditor()
-        XCTAssertFalse(empty.showingTrackShelf)
+        empty.openTrackLibrary()
+        XCTAssertEqual(empty.phase, .tracks)
+        XCTAssertTrue(empty.library.tracks.isEmpty, "fixture: expected an empty library")
 
         let stocked = self.game()
         _ = seed(stocked)
-        stocked.openEditor()
-        XCTAssertTrue(stocked.showingTrackShelf)
+        stocked.openTrackLibrary()
+        XCTAssertEqual(stocked.phase, .tracks)
     }
 }

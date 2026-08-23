@@ -102,10 +102,14 @@ struct HomeView: View {
             actions
                 .padding(.horizontal, 16)
 
+            // **"Tracks", not "Track editor".** The destination is the library —
+            // your tracks, where you share, rename, delete or start a new one —
+            // and editing is a step deeper from there. Naming the door after the
+            // room behind it sent players expecting a list into a canvas.
             Button {
-                game.openEditor()
+                game.openTrackLibrary()
             } label: {
-                Text("Track editor", bundle: .module).pillStyle()
+                Text("Tracks", bundle: .module).pillStyle()
             }
         }
         .padding(.top, 8)

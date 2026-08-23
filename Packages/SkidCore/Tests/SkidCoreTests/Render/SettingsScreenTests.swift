@@ -94,62 +94,55 @@ final class TrackShelfNavigationTests: XCTestCase {
         }
     }
 
-    /// From the FRONT DOOR: back out to the front door, not into the canvas.
-    func testBackFromTheFrontDoorReturnsToTheFrontDoor() {
+    // MARK: - top → tracks → editor
+
+    /// **The hierarchy is fixed**, which is what replaced a Back that behaved
+    /// differently depending on how you arrived. The library sits below the front
+    /// door and above the editor, and each screen leaves upward.
+    func testTheLibrarySitsBetweenTheMenuAndTheEditor() {
         let game = self.game()
+        game.openTrackLibrary()
+        XCTAssertEqual(game.phase, .tracks)
         game.openEditor()
-        game.showingTrackShelf = true  // as `openEditor` does when the library is not empty
-        game.closeTrackShelf()
-        XCTAssertEqual(game.phase, .menu, "Back went forward, into the editor")
-        XCTAssertFalse(game.showingTrackShelf)
+        XCTAssertEqual(game.phase, .editing)
+        // Closing the editor goes UP one level, to the library it was opened from
+        // — not out to the front door, and not to wherever you happened to come
+        // from. That "leave the way you came in" rule is the thing this replaces.
+        game.closeEditor()
+        XCTAssertEqual(game.phase, .tracks, "the editor did not close to the library")
     }
 
-    /// **Choosing a track opens the canvas, from either entry point.**
+    /// **Choosing a track opens the canvas; Back leaves the library.**
     ///
-    /// The bug this exists for: `back` and "open this track" were the SAME closure, so
-    /// making Back context-aware turned every tile on the shelf into "return to the
-    /// title screen". Reported from device — and the first two tests here passed
-    /// throughout, because they only ever exercised the Back path.
-    func testChoosingATrackFromTheFrontDoorOpensTheCanvas() {
+    /// The bug this exists for: `back` and "open this track" were the SAME closure,
+    /// so making Back context-aware turned every tile on the shelf into "return to
+    /// the title screen". Built with the view's OWN closures, exactly as `GameView`
+    /// builds them — the bug was in this wiring, not in either destination, so a
+    /// test calling the model directly could not see it.
+    func testTheShelfsTwoExitsStayDistinct() {
         let game = self.game()
-        game.openEditor()
-        game.showingTrackShelf = true
-
-        // **The view's OWN closures**, built exactly as `GameView` builds them — the
-        // bug was in this wiring, not in either destination, so a test that called
-        // `closeTrackShelf()` directly (as the two above do) could not see it.
+        game.openTrackLibrary()
         let shelf = TrackShelfView(
             game: game,
-            back: { game.closeTrackShelf() },
-            openCanvas: { game.showingTrackShelf = false })
+            back: { game.backToMenu() },
+            openCanvas: { game.openEditor() })
 
         game.newTrackForEditing()
         shelf.openCanvas()
-        XCTAssertEqual(game.phase, .editing, "picking a track returned to the title screen")
-        XCTAssertFalse(game.showingTrackShelf)
-    }
+        XCTAssertEqual(game.phase, .editing, "picking a track did not open the editor")
 
-    /// And the same view's Back still leaves — the two exits must stay distinct.
-    func testTheSameShelfsBackStillLeaves() {
-        let game = self.game()
-        game.openEditor()
-        game.showingTrackShelf = true
-        let shelf = TrackShelfView(
-            game: game,
-            back: { game.closeTrackShelf() },
-            openCanvas: { game.showingTrackShelf = false })
+        game.openTrackLibrary()
         shelf.back()
-        XCTAssertEqual(game.phase, .menu)
+        XCTAssertEqual(game.phase, .menu, "Back did not leave the library")
     }
 
-    /// From the EDITOR: back to the canvas you were working on.
-    func testBackFromTheEditorReturnsToTheCanvas() {
+    /// The front door opens the LIBRARY, not the canvas — naming the door after
+    /// the room behind it sent players expecting a list into a track they had not
+    /// chosen.
+    func testTheFrontDoorOpensTheLibrary() {
         let game = self.game()
-        game.openEditor()
-        game.shelfCameFromEditor = true
-        game.showingTrackShelf = true
-        game.closeTrackShelf()
-        XCTAssertEqual(game.phase, .editing, "Back left the editor entirely")
-        XCTAssertFalse(game.showingTrackShelf)
+        game.openTrackLibrary()
+        XCTAssertEqual(game.phase, .tracks)
+        XCTAssertNotEqual(game.phase, .editing)
     }
 }
