@@ -166,19 +166,14 @@ struct TrackPropertiesSheet: View {
 
     private func copyCode(signed: Bool) {
         guard let code = game.shareCode(signed: signed) else { return }
-        #if canImport(UIKit)
-        UIPasteboard.general.string = code
-        #endif
+        Clipboard.copy(code)
         copied = true
     }
 
     /// Load a track from a share code on the clipboard. On success the sheet closes,
     /// so the result is on screen rather than behind the sheet that caused it.
     private func pasteCode() {
-        #if canImport(UIKit)
-        guard let pasted = UIPasteboard.general.string,
-            game.loadCustomTrack(code: pasted)
-        else {
+        guard let pasted = Clipboard.paste(), game.loadCustomTrack(code: pasted) else {
             pasteFailed = true
             return
         }
@@ -187,7 +182,6 @@ struct TrackPropertiesSheet: View {
         // pasted track arrives centered. The editor still re-fits its viewport.
         onPasted()
         close()
-        #endif
     }
 
     private var style: TrackLayout.RoadStyle {

@@ -12,6 +12,10 @@ public final class CouchGame: ObservableObject {
         case menu
         case setup
         case racing
+        /// **Your tracks**: the library, reached from the front door. Editing a
+        /// track is a step DEEPER (top → tracks → editor), so the editor closes
+        /// back to here rather than to wherever you came from.
+        case tracks
         case editing
         /// Host/join lobby for a networked race.
         case networking
@@ -168,6 +172,11 @@ public final class CouchGame: ObservableObject {
     /// The line-up a series *will* race: drawn, then swapped by hand if you like.
     /// Separate from `tournament` so setup can offer one without committing.
     @Published public internal(set) var pendingTournamentTracks: [String] = []
+
+    /// **A track handed to us from outside** — a tapped link or a scanned code,
+    /// waiting to be accepted or declined. Session-only: an offer nobody
+    /// answered should not still be pending days later.
+    @Published public internal(set) var incomingTrack: IncomingTrack?
 
     /// **Where a test drive came from**, or nil when the race on screen is a
     /// real one. Session-only on purpose: a drive is a question about a design,
@@ -341,8 +350,22 @@ public final class CouchGame: ObservableObject {
         session = makeSession(humans: humans, totalCars: humans + aiFleet.drivers.count)
     }
 
-    /// Open the track editor. A new track starts with just the start-grid
-    /// piece — you build outward from its loose end.
+    /// **Your tracks**, from the front door. One level down from the top, and
+    /// the only way into the editor — see `openEditor`.
+    public func openTrackLibrary() {
+        sound.stop()
+        phase = .tracks
+    }
+
+    /// Open the track editor on whatever `editorLayout` holds. A new track starts
+    /// with just the start-grid piece — you build outward from its loose end.
+    ///
+    /// **One level deeper than the library**, always: the path is top → tracks →
+    /// editor, and `closeEditor` walks back up it. It used to remember how you
+    /// arrived and leave the same way, which meant the same button did two
+    /// different things — and arriving from the front door then pressing Back
+    /// went FORWARD, into a track you had not chosen to edit. A fixed hierarchy
+    /// has no such case to get wrong.
     public func openEditor() {
         if editorLayout == nil {
             editorLayout = TrackLayout(
@@ -356,33 +379,13 @@ public final class CouchGame: ObservableObject {
         editorSelect((editorLayout?.pieces.count ?? 1) - 1)
         sound.stop()
         phase = .editing
-        // **The shelf first, unless there is nothing on it.** A player with tracks
-        // expects to choose which one; a player with none would be asked to choose
-        // from an empty list, so they go straight to building. See `TrackShelfView`.
-        showingTrackShelf = !library.tracks.isEmpty
-        // Opened from the front door: Back belongs to the front door.
-        shelfCameFromEditor = false
     }
 
-    /// **Leave the shelf the way you came in.** From the canvas, back to the canvas;
-    /// from the front door, back out to it.
-    public func closeTrackShelf() {
-        showingTrackShelf = false
-        if !shelfCameFromEditor {
-            backToMenu()
-        }
+    /// Close the editor: back up to the library it was opened from.
+    public func closeEditor() {
+        sound.stop()
+        phase = .tracks
     }
-
-    /// Whether the editor is showing its track list rather than the canvas.
-    @Published public var showingTrackShelf = false
-
-    /// **Where "Back" goes from the shelf**, which depends on how you got there.
-    ///
-    /// The same screen is reached two ways, and it used to leave the same way from both:
-    /// dismissing always dropped you on the editor canvas. Arriving from the front door
-    /// and pressing Back therefore did not go back — it went *forward*, into a track you
-    /// had not chosen to edit. Reported from device.
-    var shelfCameFromEditor = false
 
     /// Compile the current editor layout to a runtime `Track` for preview.
     /// Nil if it isn't saveable yet. (Test-driving it in a real race arrives

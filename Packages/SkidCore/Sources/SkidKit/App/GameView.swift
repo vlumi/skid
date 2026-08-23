@@ -36,19 +36,36 @@ public struct GameView: View {
                         // Reported from device, twice.
                         .id(session.raceKey)
                 }
+            case .tracks:
+                // **Its own screen, one level below the front door.** Choosing a
+                // track is not an interruption of editing — it is where editing
+                // starts from, and where sharing one lives.
+                TrackShelfView(
+                    game: game,
+                    back: { game.backToMenu() },
+                    openCanvas: { game.openEditor() })
             case .editing:
-                // The shelf is a full screen rather than a sheet: choosing which track to
-                // work on is the first step of editing, not an interruption of it.
-                if game.showingTrackShelf {
-                    TrackShelfView(
-                        game: game,
-                        back: { game.closeTrackShelf() },
-                        openCanvas: { game.showingTrackShelf = false })
-                } else {
-                    EditorView(game: game)
-                }
+                EditorView(game: game)
             case .networking:
                 NetworkLobbyView(net: net, game: game)
+            }
+        }
+        // **A tapped link.** The whole track is in the URL, so this needs no
+        // network and works offline — see `TrackLink`. It offers rather than
+        // files: `receive` parks the track and shows the library, where the
+        // sheet below asks.
+        .onOpenURL { url in
+            _ = game.receive(url: url)
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { game.incomingTrack != nil },
+                set: { if !$0 { game.declineIncomingTrack() } })
+        ) {
+            if let incoming = game.incomingTrack {
+                IncomingTrackSheet(game: game, incoming: incoming) {
+                    game.declineIncomingTrack()
+                }
             }
         }
         .onAppear {
