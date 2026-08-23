@@ -43,6 +43,10 @@ struct TrackShelfView: View {
             Retro.ground.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    // **Titled, because this is a destination now** rather than a
+                    // step inside the editor: it is reached from the front door
+                    // (top → tracks → editor) and needs to say where you are.
+                    RetroTitle(Text("Tracks", bundle: .module))
                     newTrackButton
 
                     if !game.library.tracks.isEmpty {

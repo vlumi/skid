@@ -13,8 +13,11 @@ extension EditorView {
             // EVERY top-bar button is an icon. Text pills wrapped to
             // "Ce/nte/r" on a small phone; icons fit, and the accessibility
             // label carries the meaning.
-            iconButton("checkmark", "Done") {
-                game.backToMenu()
+            // **Close, which goes UP one level to the library** — the path is
+            // top → tracks → editor, so closing the editor lands where the track
+            // was chosen rather than skipping out to the front door.
+            iconButton("xmark", "Close") {
+                game.closeEditor()
             }
             Spacer(minLength: 4)
             // **The track's name, where you are looking at the track** — and the door
@@ -36,15 +39,9 @@ extension EditorView {
             iconButton("arrow.up.left.and.arrow.down.right", "Fit view") {
                 resetView()
             }
-            // **Opens the shelf, rather than clearing the canvas.** It used to call
-            // `editorReset`, which wiped the current track as an undoable edit — the
-            // only "new" available when there was one slot. Now that the library can
-            // hold many, the honest action is to go and pick one (or start a new one
-            // there), leaving this track saved.
-            iconButton("square.grid.2x2", "My tracks") {
-                game.shelfCameFromEditor = true
-                game.showingTrackShelf = true
-            }
+            // **No separate "my tracks" button any more.** It and Close now do
+            // the same thing — the library IS the level above the editor — and two
+            // buttons for one destination was chrome the bar could not spare.
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)

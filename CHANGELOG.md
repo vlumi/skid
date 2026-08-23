@@ -14,6 +14,8 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Your tracks have a home.** The front page's "Track editor" is now "Tracks": a library of everything you have built, where you start a new one, rename, copy or delete — and the editor opens from there. Closing the editor goes back to the library rather than out to the title screen, so the path in and out is the same one every time.
+
 - **Test drive a track from the editor.** A play button on the editor's top bar sends an AI car round what you have built, lapping until you tap Done — which returns you to the canvas exactly as you left it, nothing saved and nothing recorded. The lap count, best lap and top speed show as it drives, so the first flying lap already tells you whether a lap is any good and whether there is anywhere to use the throttle.
 - **A speedometer in every player's own control box.** A digital read-out in the corner, in your car's colour and turned to face you — and it goes NEGATIVE when you are reversing, which the old white reverse lamps never made obvious.
 - **A track tells you what it is, in metres.** How long a lap is, how many corners and which way they go, and how high it climbs — spelled out live in the editor as you place pieces, and on every tile in the track browser.
