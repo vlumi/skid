@@ -246,6 +246,15 @@ final class StateHashTests: XCTestCase {
     /// with itself); a *platform* difference is the thing lockstep networking
     /// cannot survive, and re-pinning would hide it.
     ///
+    /// **Re-pinned a second time, deliberately**: the stock car tuning changed
+    /// after device play (aim flip rate 10→7, speed boost 8→7, drift retention
+    /// 1.0→0.6, grip 1.0→0.8, wall bounce 0.40→0.30). A tuning change is a
+    /// change to the physics being stepped, so every hash after the countdown
+    /// moved — and tick 1's did NOT, which is the evidence it is a physics
+    /// change and not the platform difference this test exists to catch: the
+    /// countdown holds every car still, so nothing tuning touches has happened
+    /// yet.
+    ///
     /// **Re-pinned once, deliberately**: `Race.advance` began quantising its inputs, so
     /// every hash moved. That is a change to what the sim steps rather than to how it
     /// steps, it is the same on every platform, and it is what lets a lap be stored as four
@@ -259,8 +268,10 @@ final class StateHashTests: XCTestCase {
         XCTAssertEqual(
             samples,
             [
-                4_077_695_904_547_307_221, 8_998_183_219_137_324_596, 4_341_081_151_660_624_815,
-                13_682_242_403_462_166_235, 209_440_551_181_993_458, 1_519_371_944_129_834_014,
+                4_077_695_904_547_307_221, 16_590_431_418_557_460_381,
+                8_068_806_620_889_962_240,
+                10_302_452_795_677_023_164, 15_887_607_542_605_494_505,
+                3_158_554_755_381_850_801,
             ])
         XCTAssertEqual(sequence.count, 600)
     }
