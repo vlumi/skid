@@ -4,21 +4,22 @@ import XCTest
 @testable import SkidCore
 @testable import SkidKit
 
-/// **What the zoned pad actually paints** — pixel-sampled, because under
-/// follow-movement steering the thumb's position says nothing about the lock:
-/// if the wheel bar is not really drawn, the held steer is invisible, which is
-/// the founding bug of this whole control rework. A model test cannot see it.
+/// **What the zoned pad actually paints** — pixel-sampled, because the whole
+/// point of the joystick visual is that the held lock is VISIBLE: steer is the
+/// gap between the thumb and the base, and if either is not really drawn the
+/// lock is invisible again, which is the founding bug of this control rework.
+/// A model test cannot see a missing stroke.
 @MainActor
 final class PadOverlayRenderTests: XCTestCase {
-    /// A zone with its strip edge at y = 60, so the bar's row is known.
     private let zone = CGRect(x: 0, y: 0, width: 187, height: 200)
 
-    private func render(steer: Double) throws -> CGImage {
+    private func render(base: Vec2, thumb: Vec2) throws -> CGImage {
         let pad = DPadOverlay(
             origin: Vec2(93.5, 100), up: Vec2(0, -1), radius: 48,
             zone: zone, cruiseStrip: 0.3, brakeBand: 0.25,
             knob: .zero,
-            input: CarInput(steer: steer, throttle: 1),
+            stickBase: base, thumb: thumb, stickRadius: 60,
+            input: CarInput(steer: 0, throttle: 1),
             color: Color(red: 1, green: 0, blue: 0),
             engaged: true)
         let view = Canvas { context, _ in
@@ -28,8 +29,6 @@ final class PadOverlayRenderTests: XCTestCase {
         .background(Color.black)
         let renderer = ImageRenderer(content: view)
         renderer.proposedSize = ProposedViewSize(width: zone.width, height: zone.height)
-        // 4x, so a sample can sit inside the 5-point bar yet clear of the
-        // 2-point edge line that shares its row.
         renderer.scale = 4
         return try XCTUnwrap(renderer.cgImage)
     }
@@ -37,29 +36,31 @@ final class PadOverlayRenderTests: XCTestCase {
     /// Red channel 0…1 at a point in VIEW coordinates.
     private func red(_ image: CGImage, x: Double, y: Double) throws -> Double {
         let data = try XCTUnwrap(image.dataProvider?.data as Data?)
-        let px = Int(x * 4), py = Int(y * 4)
-        let offset = py * image.bytesPerRow + px * 4
+        let offset = Int(y * 4) * image.bytesPerRow + Int(x * 4) * 4
         return Double(data[offset]) / 255
     }
 
-    /// **A held lock is drawn as a bar along the strip edge**, from the zone's
-    /// middle toward the steered side — and only on that side.
-    func testTheWheelBarIsDrawnOnTheSteeredSide() throws {
-        let image = try render(steer: 0.8)
-        // y 61.75: inside the bar (edge ± 2.5) but clear of the edge line
-        // (edge ± 1). x 130 is inside a 0.8 lock's reach (93.5…168).
-        let inBar = try red(image, x: 130, y: 61.75)
-        XCTAssertGreaterThan(inBar, 0.5, "the wheel bar is not drawn (red \(inBar))")
-        // The unsteered side of the same row: nothing but background.
-        let offSide = try red(image, x: 57, y: 61.75)
-        XCTAssertLessThan(offSide, 0.2, "a bar appeared on the unsteered side")
+    /// **The gap between base and thumb is drawn**, and the ring's rim sits a
+    /// travel from the base — the rim IS full lock, so it must be where the
+    /// numbers say.
+    func testTheStickAndItsGapAreDrawn() throws {
+        let image = try render(base: Vec2(60, 100), thumb: Vec2(110, 100))
+        // Mid-gap: the steer bar.
+        let gap = try red(image, x: 85, y: 100)
+        XCTAssertGreaterThan(gap, 0.5, "the steer gap is not drawn (red \(gap))")
+        // The rim, straight below the base: stroke at radius 60.
+        let rim = try red(image, x: 60, y: 160)
+        XCTAssertGreaterThan(rim, 0.3, "the rim is not drawn (red \(rim))")
+        // Same row as the gap but past the thumb: background only.
+        let off = try red(image, x: 150, y: 100)
+        XCTAssertLessThan(off, 0.2, "paint where neither bar nor ring should be")
     }
 
-    /// **Straight ahead draws no bar** — a bar that never disappears would
-    /// read as a lock that is not there.
-    func testNoBarWhenStraight() throws {
-        let image = try render(steer: 0)
-        let sample = try red(image, x: 130, y: 61.75)
-        XCTAssertLessThan(sample, 0.2, "a bar is drawn with no steer (red \(sample))")
+    /// **Centred means no gap**: base under the thumb draws no bar, so a bar
+    /// that never disappears cannot lie about a lock that is not there.
+    func testNoGapWhenTheBaseIsUnderTheThumb() throws {
+        let image = try render(base: Vec2(110, 100), thumb: Vec2(110, 100))
+        let sample = try red(image, x: 85, y: 100)
+        XCTAssertLessThan(sample, 0.2, "a gap is drawn while centred (red \(sample))")
     }
 }
