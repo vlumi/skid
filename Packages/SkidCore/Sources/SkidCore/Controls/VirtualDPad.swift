@@ -8,7 +8,7 @@ import Foundation
 /// with short travel. (Unlike Casual's aim stick, the origin does NOT trail
 /// the thumb: with gas usually held and brake rarely, a trailing origin would
 /// creep upward and never return.)
-public final class VirtualDPadControlSource: TouchDrivenControlSource {
+public final class VirtualDPadControlSource: HeadingAwareControlSource {
     /// Displacement (points) for full deflection. Short on purpose.
     public var radius: Double = 48
     /// Per-axis dead zone (points) so a resting thumb doesn't creep.
@@ -69,6 +69,47 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     /// straight, in full-lock units per second. This is what makes pinned
     /// throttle feel like tracking true rather than like a vague wheel.
     public var throttleRecentring: Double = 2.0
+    /// **How sideways thumb position becomes steering**, below the strip.
+    public enum SteerModel: String, CaseIterable, Sendable {
+        /// Offset from where the thumb entered the band: hold a position to
+        /// hold a lock, go back where you crossed to go straight.
+        case fromEntry
+        /// **Mouse-style: MOVEMENT turns, stillness straightens.** Sliding the
+        /// thumb sideways winds the wheel; holding it still lets the wheel
+        /// return to true at `steerRecentring`. Position never matters, so
+        /// there is no centre to lose — the failure the strip was built
+        /// against — and no lock to hold by muscle memory: a corner is a
+        /// gesture, straight is the absence of one.
+        case followMovement
+    }
+
+    /// Which steering the band uses. `fromEntry` was driven first and read as
+    /// too sticky — a quarter of an SE zone per lock is a long way to drag a
+    /// thumb and hold it there — so `followMovement` is the default under test.
+    public var steerModel: SteerModel = .followMovement
+
+    /// Sideways points for full lock, both models. The first cut used half the
+    /// zone width (93 on an SE), which read on-device as the car resisting the
+    /// turn; this is the dial for exactly that complaint.
+    public var steerTravel: Double = 60
+    /// Under `followMovement`, how fast a STILL thumb's wheel returns to
+    /// straight, in full-lock units per second — the rate at rest, before the
+    /// speed weighting below.
+    public var steerRecentring: Double = 1.2
+    /// How much car speed scales the recentring, 0…1: 0 is a constant rate, 1
+    /// is fully proportional to speed. Modeled on self-aligning torque — a real
+    /// wheel pulls straighter the faster the car rolls — so straights at speed
+    /// hold themselves while a slow hairpin keeps its lock.
+    ///
+    /// Default 1, fully proportional, after the first drive: at 0.5 a car
+    /// stuck off-road pointing the wrong way still shed its lock at 60% rate,
+    /// and getting back took a fight against the recentring — a slow recovery
+    /// is exactly when a held wheel must STAY held.
+    public var recentringSpeedWeight: Double = 1.0
+    /// The speed (units/s) where speed-weighted recentring saturates; wired to
+    /// the car's top speed by the tuning layer.
+    public var fullSpeed: Double = 520
+
     /// The zone's local "up" in screen coordinates.
     public var up = Vec2(0, -1)
     /// The player's control zone; the pad is clamped to stay fully inside.
@@ -90,8 +131,9 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     /// The tick the wheel last returned for, so a frame that samples the same
     /// tick twice cannot double-step it.
     private var lastTick: Tick = -1
-    /// The wheel's current position, -1…1, which lags the thumb on the way back
-    /// to centre and matches it on the way out. See `steerReturnRate`.
+    /// The `followMovement` wheel, -1…1: wound by sideways movement in
+    /// `touchMoved`, unwound toward zero by `recentreWheel`, dropped on lift
+    /// and on sliding back up into the strip.
     private var wheel = 0.0
 
     /// Whether a thumb is currently down on this pad.
@@ -99,6 +141,15 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
     /// Where to DRAW the pad: where the last touch left it, or resting at the
     /// zone's center before any touch. nil only before the zone is laid out.
     public var displayOrigin: Vec2? { origin ?? bounds?.center }
+
+    /// The car's current speed (units/s), for the speed-weighted recentring.
+    private var carSpeed = 0.0
+
+    /// Heading and forward speed are the aim scheme's questions; this pad only
+    /// wants how fast the car rolls.
+    public func setCar(heading: Double, forwardSpeed: Double, speed: Double) {
+        carSpeed = speed
+    }
 
     public init() {}
 
@@ -110,6 +161,9 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
         lastMoved = location
         steerAnchor = nil
         lastInStrip = nil
+        // A fresh touch starts straight: carrying a dead touch's lock into a
+        // new one is the invisible-steer bug in a new costume.
+        wheel = 0
     }
 
     public func touchMoved(id: TouchID, at location: Vec2) {
@@ -127,10 +181,21 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
                 // In the strip: this is the reference, and re-entering resets it.
                 lastInStrip = location.dot(up.perpendicular)
                 steerAnchor = nil
+                // Under followMovement the strip doubles as an instant
+                // straighten: slide up and the wheel is dropped at once, not
+                // recentred over time — the panic move a short track needs.
+                wheel = 0
             } else if steerAnchor == nil {
                 // First movement below: straight-ahead is where the strip was
                 // left, or this column if the touch began below it.
                 steerAnchor = lastInStrip ?? location.dot(up.perpendicular)
+            }
+            // followMovement winds the wheel from MOVEMENT, here where every
+            // event is seen — polling only in `input` would drop the travel
+            // between two ticks, the same polling-luck bug the anchor had.
+            if steerModel == .followMovement, depth > cruiseStrip, let last = lastMoved {
+                let delta = (location - last).dot(up.perpendicular)
+                wheel = min(1, max(-1, wheel + delta / max(1, steerTravel)))
             }
         }
         lastMoved = location
@@ -161,6 +226,8 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
         activeTouch = nil
         knob = .zero
         steerAnchor = nil
+        // The wheel is NOT dropped here: with no touch, `input` coasts, and
+        // `touchBegan` starts every new touch straight — one reset, testable.
     }
 
     public func releaseAll() {
@@ -168,11 +235,33 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
         origin = nil
         knob = .zero
         wheel = 0
+        // A race restart rewinds the tick counter; a stale lastTick from the
+        // old race would silence the recentring until the new race passed it.
+        lastTick = -1
+    }
+
+    /// Winds the wheel back toward straight for the ticks since the last
+    /// read. Tick-keyed, not call-keyed: the render layer polls the same tick
+    /// the sim does, and the pull scales with the tick delta — so a same-tick
+    /// re-read pulls zero, and a replay recentres identically.
+    private func recentreWheel(at tick: Tick) {
+        defer { lastTick = tick }
+        guard steerModel == .followMovement, lastTick >= 0, tick > lastTick else { return }
+        let speed = min(1, max(0, carSpeed / max(1, fullSpeed)))
+        let rate = steerRecentring * ((1 - recentringSpeedWeight) + recentringSpeedWeight * speed)
+        let pull = rate * Double(tick - lastTick) / Double(Race.tickRate)
+        if abs(wheel) <= pull {
+            wheel = 0
+        } else {
+            wheel += wheel < 0 ? pull : -pull
+        }
     }
 
     public func input(for player: PlayerID, at tick: Tick) -> CarInput {
         guard touching, let finger = lastMoved else { return .coast }
-        _ = tick
+        // Before any branch returns: the wheel unwinds with the ticks even
+        // while the thumb cruises in the strip or rides the brake band.
+        recentreWheel(at: tick)
         guard let bounds, let depth = depth(of: finger), cruiseStrip > 0 else {
             // No zone to divide (tests, or a strip turned off): the old
             // floating pad, unchanged.
@@ -209,12 +298,18 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
         // the edge does not snap the wheel.
         let below = (depth - cruiseStrip) * bounds.height
         let authority = steerFadeDepth > 0 ? min(1, below / steerFadeDepth) : 1
-        // Full lock at the zone edge, which is far more travel than the old
-        // 48-point pad had — and the zone is the widest thing available.
-        let travel = max(1, bounds.width / 2)
-        var steer = quantizedAxis(
-            sideways - anchor, deadzone: deadzone, travel: travel, levels: levels,
-            expo: expo)
+        var steer: Double
+        switch steerModel {
+        case .fromEntry:
+            steer = quantizedAxis(
+                sideways - anchor, deadzone: deadzone, travel: max(1, steerTravel),
+                levels: levels, expo: expo)
+        case .followMovement:
+            // The wheel was wound in `touchMoved` and unwound above. No
+            // deadzone or expo: those shape a POSITION, and movement is
+            // already proportional — a still thumb simply adds nothing.
+            steer = wheel
+        }
 
         // **Braking is the bottom band**, and small: reverse only has to get
         // you out of a pinch, while everything above it is driving.
@@ -228,17 +323,27 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
         }
 
         if depthMeaning == .gasAndGrip, throttle > 0 {
-            // **One relationship, not two controls.** Depth eases the gas, and
-            // the steering firms up as it does: pinned throttle is fast and
-            // straight, easing off lets the wheel bite. Cornering means
-            // lifting, as it does in a real car.
-            let drivable = max(0.0001, brakeFrom - cruiseStrip)
-            let into = min(1, (depth - cruiseStrip) / drivable)
-            throttle = 1 - into
-            // Full gas keeps only a nudge of steering; lifting restores it all.
-            steer *= steerAtFullThrottle + (1 - steerAtFullThrottle) * into
-            // And at full gas the wheel pulls back to true, which is what makes
-            // a pinned car track straight instead of wandering.
+            (steer, throttle) = gasAndGrip(depth: depth, brakeFrom: brakeFrom, steer: steer)
+        }
+        return CarInput(steer: steer * authority, throttle: throttle)
+    }
+
+    /// **One relationship, not two controls.** Depth eases the gas, and the
+    /// steering firms up as it does: pinned throttle is fast and straight,
+    /// easing off lets the wheel bite. Cornering means lifting, as it does in
+    /// a real car.
+    private func gasAndGrip(
+        depth: Double, brakeFrom: Double, steer: Double
+    ) -> (steer: Double, throttle: Double) {
+        let drivable = max(0.0001, brakeFrom - cruiseStrip)
+        let into = min(1, (depth - cruiseStrip) / drivable)
+        // Full gas keeps only a nudge of steering; lifting restores it all.
+        var steer = steer * (steerAtFullThrottle + (1 - steerAtFullThrottle) * into)
+        // And at full gas the wheel pulls back to true, which is what makes a
+        // pinned car track straight instead of wandering. `fromEntry` only:
+        // followMovement recentres on its own clock, and two pulls on one
+        // wheel would be untunable.
+        if steerModel == .fromEntry {
             let pull = throttleRecentring * (1 - into) / Double(Race.tickRate)
             if abs(steer) <= pull {
                 steer = 0
@@ -246,6 +351,6 @@ public final class VirtualDPadControlSource: TouchDrivenControlSource {
                 steer += steer < 0 ? pull : -pull
             }
         }
-        return CarInput(steer: steer * authority, throttle: throttle)
+        return (steer, 1 - into)
     }
 }

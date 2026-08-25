@@ -28,6 +28,20 @@ final class ZonedPadTests: XCTestCase {
         source.depthMeaning = meaning
         source.levels = nil
         source.expo = 1
+        // These tests pin the from-entry model; followMovement has its own
+        // fixture below.
+        source.steerModel = .fromEntry
+        return source
+    }
+
+    /// The mouse-style pad: sideways MOVEMENT winds the wheel, stillness lets
+    /// it recentre. Speed weight zeroed so the rate is exactly the dial.
+    private func movementPad() -> VirtualDPadControlSource {
+        let source = pad()
+        source.steerModel = .followMovement
+        source.steerTravel = 60
+        source.steerRecentring = 1.2
+        source.recentringSpeedWeight = 0
         return source
     }
 
@@ -106,6 +120,89 @@ final class ZonedPadTests: XCTestCase {
         p.touchMoved(id: 1, at: at(depth: 0.6, x: 120))  // same offset, deeper
         let deeper = abs(input(p).steer)
         XCTAssertLessThan(justBelow, deeper, "steering did not fade in")
+    }
+
+    // MARK: - Follow movement
+
+    /// **Moving the thumb turns.** 30 points of a 60-point travel is half
+    /// lock, wherever in the band the movement happens.
+    func testMovementWindsTheWheel() {
+        let p = movementPad()
+        p.touchBegan(id: 1, at: at(depth: 0.5, x: 60))
+        p.touchMoved(id: 1, at: at(depth: 0.5, x: 90))
+        XCTAssertEqual(input(p).steer, 0.5, accuracy: 1e-9)
+    }
+
+    /// **Stillness straightens.** A held thumb adds nothing, so the wheel
+    /// unwinds at the dialled rate — and reaches exactly zero, because a
+    /// residue of a few thousandths is the invisible steer this whole rework
+    /// exists to kill.
+    func testAStillThumbRecentres() {
+        let p = movementPad()
+        p.touchBegan(id: 1, at: at(depth: 0.5, x: 60))
+        p.touchMoved(id: 1, at: at(depth: 0.5, x: 90))
+        XCTAssertEqual(input(p, 0).steer, 0.5, accuracy: 1e-9)
+        // 0.1 s at 1.2 locks/s unwinds 0.12.
+        XCTAssertEqual(input(p, 6).steer, 0.38, accuracy: 1e-9)
+        // And a second is more than enough to finish the job, exactly.
+        XCTAssertEqual(input(p, 66).steer, 0, accuracy: 1e-12)
+    }
+
+    /// The same tick sampled twice — the sim and then the render — must not
+    /// recentre twice, or the wheel would unwind at whatever frame rate the
+    /// busiest caller has.
+    func testASecondReadOfTheSameTickDoesNotRecentreAgain() {
+        let p = movementPad()
+        p.touchBegan(id: 1, at: at(depth: 0.5, x: 60))
+        p.touchMoved(id: 1, at: at(depth: 0.5, x: 90))
+        _ = input(p, 0)
+        let first = input(p, 6).steer
+        XCTAssertEqual(input(p, 6).steer, first, accuracy: 1e-12)
+    }
+
+    /// **Recentring can ride the car's speed.** At weight 1 a parked car keeps
+    /// its lock forever and a flat-out car sheds it at the full rate — the
+    /// self-aligning-torque analogy, and the dial the user asked for.
+    func testRecentringScalesWithCarSpeed() {
+        let slow = movementPad()
+        slow.recentringSpeedWeight = 1
+        slow.setCar(heading: 0, forwardSpeed: 0, speed: 0)
+        slow.touchBegan(id: 1, at: at(depth: 0.5, x: 60))
+        slow.touchMoved(id: 1, at: at(depth: 0.5, x: 90))
+        _ = input(slow, 0)
+        XCTAssertEqual(input(slow, 60).steer, 0.5, accuracy: 1e-9, "a parked car recentred")
+
+        let fast = movementPad()
+        fast.recentringSpeedWeight = 1
+        fast.setCar(heading: 0, forwardSpeed: fast.fullSpeed, speed: fast.fullSpeed)
+        fast.touchBegan(id: 1, at: at(depth: 0.5, x: 60))
+        fast.touchMoved(id: 1, at: at(depth: 0.5, x: 90))
+        _ = input(fast, 0)
+        XCTAssertLessThan(
+            abs(input(fast, 60).steer), 0.01, "a flat-out car kept its lock")
+    }
+
+    /// **The strip is an instant straighten.** Sliding up into it drops the
+    /// wheel at once — the panic move — and coming back down starts from zero.
+    func testSlidingIntoTheStripDropsTheWheelAtOnce() {
+        let p = movementPad()
+        p.touchBegan(id: 1, at: at(depth: 0.5, x: 60))
+        p.touchMoved(id: 1, at: at(depth: 0.5, x: 120))
+        XCTAssertGreaterThan(abs(input(p, 0).steer), 0.5)
+        p.touchMoved(id: 1, at: at(depth: 0.1, x: 120))
+        p.touchMoved(id: 1, at: at(depth: 0.5, x: 120))
+        XCTAssertEqual(input(p, 1).steer, 0, accuracy: 1e-12)
+    }
+
+    /// **Lifting straightens.** A wheel that survived the lift would be held
+    /// lock nothing on the screen accounts for.
+    func testLiftingDropsTheWheel() {
+        let p = movementPad()
+        p.touchBegan(id: 1, at: at(depth: 0.5, x: 60))
+        p.touchMoved(id: 1, at: at(depth: 0.5, x: 120))
+        p.touchEnded(id: 1)
+        p.touchBegan(id: 2, at: at(depth: 0.5, x: 60))
+        XCTAssertEqual(input(p, 1).steer, 0, accuracy: 1e-12)
     }
 
     // MARK: - Throttle
