@@ -221,9 +221,8 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
         activeTouch = nil
         knob = .zero
         steerAnchor = nil
-        // Lifting straightens. A wheel that survived the lift would be held
-        // lock nothing on the screen accounts for.
-        wheel = 0
+        // The wheel is NOT dropped here: with no touch, `input` coasts, and
+        // `touchBegan` starts every new touch straight — one reset, testable.
     }
 
     public func releaseAll() {
