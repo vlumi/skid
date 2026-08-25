@@ -41,32 +41,22 @@ final class ControlTuningWiringTests: XCTestCase {
         game.rig = CouchRig(colorIndices: [0])
 
         // Off-default on every dial, so a missed wire cannot pass by luck.
-        game.settings.dpadCruiseStrip = 0.4
-        game.settings.dpadBrakeBand = 0.2
-        game.settings.dpadDepthMeaning =
-            VirtualDPadControlSource.DepthMeaning.gasAndGrip.rawValue
-        game.settings.dpadSteerAtFullThrottle = 0.5
-        game.settings.dpadThrottleRecentring = 3.0
-        game.settings.dpadSteerModel =
-            VirtualDPadControlSource.SteerModel.fromEntry.rawValue
         game.settings.dpadSteerTravel = 80
         game.settings.dpadSteerRecentring = 2.5
         game.settings.dpadRecentringSpeed = 0.75
+        game.settings.dpadSteerAtFullThrottle = 0.4
+        game.settings.dpadCoast = 0.7
 
         game.applyControlTuning()
 
         guard let pad = game.rig?.players.first?.pro else {
             return XCTFail("no rig player to read back")
         }
-        XCTAssertEqual(pad.cruiseStrip, 0.4)
-        XCTAssertEqual(pad.brakeBand, 0.2)
-        XCTAssertEqual(pad.depthMeaning, .gasAndGrip)
-        XCTAssertEqual(pad.steerAtFullThrottle, 0.5)
-        XCTAssertEqual(pad.throttleRecentring, 3.0)
-        XCTAssertEqual(pad.steerModel, .fromEntry)
         XCTAssertEqual(pad.steerTravel, 80)
         XCTAssertEqual(pad.steerRecentring, 2.5)
         XCTAssertEqual(pad.recentringSpeedWeight, 0.75)
+        XCTAssertEqual(pad.steerAtFullThrottle, 0.4)
+        XCTAssertEqual(pad.coastDepth, 0.7)
         // fullSpeed rides the car tuning, pace folded in.
         XCTAssertEqual(pad.fullSpeed, game.settings.carTuning.maxSpeed)
     }
