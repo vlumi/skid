@@ -35,7 +35,7 @@ public final class GameSettings: ObservableObject {
     /// boundary a thumb can learn by feel, which the old floating pad's centre
     /// never was: you held a little lock you could not detect and sailed down
     /// the lane in a sine curve.
-    @AppStorage("skid.dpad.cruise") public var dpadCruiseStrip = 0.3
+    @AppStorage("skid.dpad.cruise") public var dpadCruiseStrip = 0.0
     /// How much of the zone, from the bottom, brakes and reverses.
     @AppStorage("skid.dpad.brake") public var dpadBrakeBand = 0.25
     /// Which meaning depth in the zone has — see `DepthMeaning`. Stored raw so
@@ -205,7 +205,7 @@ public final class GameSettings: ObservableObject {
         dpadExpo = 1.4
         // The zone-strip dials — MISSED when the strip shipped, which the
         // reset-parity test only catches for dials in its list. Both fixed.
-        dpadCruiseStrip = 0.3
+        dpadCruiseStrip = 0.0
         dpadBrakeBand = 0.25
         dpadDepthMeaning = VirtualDPadControlSource.DepthMeaning.steerOnly.rawValue
         dpadSteerAtFullThrottle = 0.35

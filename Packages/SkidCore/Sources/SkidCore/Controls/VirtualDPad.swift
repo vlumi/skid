@@ -19,22 +19,17 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
     /// Response curve: 1 = linear; >1 = softer near center, steeper at
     /// the edges (applied before quantization). Default is a gentle curve.
     public var expo: Double = 1.4
-    /// **How much of the zone is the cruise strip**, 0…1 of its height from the
-    /// top, or 0 for no strip at all.
+    /// **How much of the zone is a steering-neutral full-throttle strip**,
+    /// 0…1 of its height from the top — 0 (the default) for none.
     ///
-    /// **The strip is the fix for "I cannot find the centre".** A floating pad's
-    /// origin is a point on glass with nothing to feel for: after a corner you
-    /// hold a little lock you cannot detect and sail down the lane in a slow
-    /// sine curve. Reported exactly that way, and neither a longer travel nor a
-    /// self-centring wheel cured it — both were trying to synthesise a home
-    /// that the LAYOUT can simply provide.
+    /// The strip was the first fix for "I cannot find the centre": an edge a
+    /// thumb can learn, where sliding is repositioning and dropping below
+    /// starts steering. Device play then found the speed-weighted recentring
+    /// does that job on its own, and a steering-dead region mostly got in the
+    /// way on tracks with no straights long enough to cruise. It remains a
+    /// dial for the layout experiment, not the default.
     ///
-    /// Inside the strip the throttle is full and the steering is neutral, so a
-    /// thumb can slide left and right freely to reposition. Its lower edge is a
-    /// boundary a thumb learns by feel, which a point never is. Dropping below
-    /// it starts steering, measured from wherever the thumb crossed — so hand
-    /// position never matters, and the strip is where the reference is reset.
-    public var cruiseStrip: Double = 0.3
+    public var cruiseStrip: Double = 0
     /// How far below the strip steering reaches full authority, in points. The
     /// ramp means a thumb wobbling across the edge does not snap the wheel.
     public var steerFadeDepth: Double = 24
@@ -155,7 +150,7 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
     /// thumb at the ring's rim, and pushing past the rim tows the base along.
     /// Derived from the wheel (never stored) so the two cannot disagree.
     public var stickBase: Vec2? {
-        guard cruiseStrip > 0, touching, let thumb = lastMoved else { return nil }
+        guard bounds != nil, touching, let thumb = lastMoved else { return nil }
         let across = up.perpendicular
         let travel = max(1, steerTravel)
         let offset: Double
@@ -210,26 +205,28 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
         // and travel a long way between two polls — anchoring there made
         // straight-ahead depend on polling luck, and a fast swipe into a corner
         // lost the whole turn. Every movement passes through this method.
-        if let depth = depth(of: location), cruiseStrip > 0 {
-            if depth <= cruiseStrip {
-                // In the strip: this is the reference, and re-entering resets it.
+        if let depth = depth(of: location) {
+            if cruiseStrip > 0, depth <= cruiseStrip {
+                // In the strip: this is the reference, and re-entering resets
+                // it. Under followMovement it doubles as an instant
+                // straighten — slide up and the wheel is dropped at once.
                 lastInStrip = location.dot(up.perpendicular)
                 steerAnchor = nil
-                // Under followMovement the strip doubles as an instant
-                // straighten: slide up and the wheel is dropped at once, not
-                // recentred over time — the panic move a short track needs.
                 wheel = 0
-            } else if steerAnchor == nil {
-                // First movement below: straight-ahead is where the strip was
-                // left, or this column if the touch began below it.
-                steerAnchor = lastInStrip ?? location.dot(up.perpendicular)
-            }
-            // followMovement winds the wheel from MOVEMENT, here where every
-            // event is seen — polling only in `input` would drop the travel
-            // between two ticks, the same polling-luck bug the anchor had.
-            if steerModel == .followMovement, depth > cruiseStrip, let last = lastMoved {
-                let delta = (location - last).dot(up.perpendicular)
-                wheel = min(1, max(-1, wheel + delta / max(1, steerTravel)))
+            } else {
+                if steerAnchor == nil {
+                    // First movement in the band: straight-ahead is where the
+                    // strip was left, or this column when there is no strip.
+                    steerAnchor = lastInStrip ?? location.dot(up.perpendicular)
+                }
+                // followMovement winds the wheel from MOVEMENT, here where
+                // every event is seen — polling only in `input` would drop
+                // the travel between two ticks, the same polling-luck bug
+                // the anchor had.
+                if steerModel == .followMovement, let last = lastMoved {
+                    let delta = (location - last).dot(up.perpendicular)
+                    wheel = min(1, max(-1, wheel + delta / max(1, steerTravel)))
+                }
             }
         }
         // The base is towed vertically when the thumb strays past the rim —
@@ -302,9 +299,9 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
         // Before any branch returns: the wheel unwinds with the ticks even
         // while the thumb cruises in the strip or rides the brake band.
         recentreWheel(at: tick)
-        guard let bounds, let depth = depth(of: finger), cruiseStrip > 0 else {
-            // No zone to divide (tests, or a strip turned off): the old
-            // floating pad, unchanged.
+        guard let bounds, let depth = depth(of: finger) else {
+            // No zone laid out (tests, or a pad used bare): the old floating
+            // pad, unchanged.
             steerAnchor = nil
             return CarInput(
                 steer: quantizedAxis(
@@ -320,7 +317,7 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
 
         // **In the strip: full throttle, no steering, free to reposition.**
         // The reference itself is maintained in `touchMoved`.
-        guard depth > cruiseStrip else {
+        if cruiseStrip > 0, depth <= cruiseStrip {
             return CarInput(steer: 0, throttle: 1)
         }
 
@@ -336,8 +333,13 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
 
         // **Faded in over the first few points**, so a thumb wobbling across
         // the edge does not snap the wheel.
+        // The fade exists so a thumb wobbling across the strip's edge does
+        // not snap the wheel — with no strip there is no edge to wobble
+        // across, and fading from the zone's top would just be a hidden
+        // weak-steering region.
         let below = (depth - cruiseStrip) * bounds.height
-        let authority = steerFadeDepth > 0 ? min(1, below / steerFadeDepth) : 1
+        let authority =
+            cruiseStrip > 0 && steerFadeDepth > 0 ? min(1, below / steerFadeDepth) : 1
         var steer: Double
         switch steerModel {
         case .fromEntry:
