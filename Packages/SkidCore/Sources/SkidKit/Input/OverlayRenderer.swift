@@ -169,14 +169,18 @@ enum OverlayRenderer {
                 x: zone.minX, y: zone.maxY - brakeHeight, width: zone.width,
                 height: brakeHeight)
 
-        context.fill(Path(strip), with: .color(pad.color.opacity(0.22 * rest)))
-        context.fill(Path(brake), with: .color(pad.color.opacity(0.10 * rest)))
-        // The learnable edge.
-        var edge = Path()
-        let edgeY = flipped ? strip.minY : strip.maxY
-        edge.move(to: CGPoint(x: zone.minX, y: edgeY))
-        edge.addLine(to: CGPoint(x: zone.maxX, y: edgeY))
-        context.stroke(edge, with: .color(pad.color.opacity(0.8 * rest)), lineWidth: 2)
+        if pad.cruiseStrip > 0 {
+            context.fill(Path(strip), with: .color(pad.color.opacity(0.22 * rest)))
+            // The learnable edge.
+            var edge = Path()
+            let edgeY = flipped ? strip.minY : strip.maxY
+            edge.move(to: CGPoint(x: zone.minX, y: edgeY))
+            edge.addLine(to: CGPoint(x: zone.maxX, y: edgeY))
+            context.stroke(edge, with: .color(pad.color.opacity(0.8 * rest)), lineWidth: 2)
+        }
+        if pad.brakeBand > 0 {
+            context.fill(Path(brake), with: .color(pad.color.opacity(0.10 * rest)))
+        }
 
         // **The joystick, under the thumb — the steering model made visible.**
         // Steer IS the horizontal gap between the thumb and the base; the rim

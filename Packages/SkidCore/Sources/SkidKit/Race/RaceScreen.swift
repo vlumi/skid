@@ -214,7 +214,7 @@ struct RaceScreen: View {
                 origin: origin,
                 up: controls.pro.up,
                 radius: controls.pro.radius,
-                zone: controls.pro.cruiseStrip > 0 ? controls.content : nil,
+                zone: controls.content,
                 cruiseStrip: controls.pro.cruiseStrip,
                 brakeBand: controls.pro.brakeBand,
                 knob: controls.pro.knob,

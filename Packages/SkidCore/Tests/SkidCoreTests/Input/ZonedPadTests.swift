@@ -312,15 +312,21 @@ final class ZonedPadTests: XCTestCase {
 
     /// With the strip off, the pad is the old floating one — so the previous
     /// model stays reachable while the new one is being judged on device.
-    func testTurningTheStripOffRestoresTheFloatingPad() {
-        let p = pad()
+    /// **No strip is the default now**, and it must still be the ZONED pad:
+    /// steering live right up to the top edge, the brake band at the bottom,
+    /// the joystick drawn. Turning the strip off used to fall back to the old
+    /// floating pad; the recentring made the strip's job redundant and the
+    /// zoned pad is the only pad a zone gets.
+    func testNoStripSteersFromTheTopAndStillBrakes() {
+        let p = movementPad()
         p.cruiseStrip = 0
-        p.touchBegan(id: 1, at: Vec2(90, 90))
-        p.touchMoved(id: 1, at: Vec2(90, 90 - p.radius))  // straight "up"
-        XCTAssertGreaterThan(input(p).throttle, 0.9)
-        p.touchMoved(id: 1, at: Vec2(90 + p.radius, 90))  // sideways
-        let side = input(p)
-        XCTAssertGreaterThan(side.steer, 0.9)
-        XCTAssertEqual(side.throttle, 0, accuracy: 1e-9)
+        p.touchBegan(id: 1, at: at(depth: 0.05, x: 60))
+        p.touchMoved(id: 1, at: at(depth: 0.05, x: 90))  // near the very top
+        let out = input(p)
+        XCTAssertEqual(out.steer, 0.5, accuracy: 0.2, "no steering near the top edge")
+        XCTAssertEqual(out.throttle, 1, accuracy: 1e-9)
+        XCTAssertNotNil(p.stickBase, "the joystick vanished with the strip")
+        p.touchMoved(id: 1, at: at(depth: 0.99, x: 90))
+        XCTAssertLessThan(input(p).throttle, -0.8, "the brake band went with the strip")
     }
 }
