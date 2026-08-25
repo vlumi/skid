@@ -178,6 +178,20 @@ enum OverlayRenderer {
         edge.addLine(to: CGPoint(x: zone.maxX, y: edgeY))
         context.stroke(edge, with: .color(pad.color.opacity(0.8 * rest)), lineWidth: 2)
 
+        // **The wheel itself, on the learnable edge.** Under follow-movement
+        // steering the thumb's position says nothing about the lock — movement
+        // wound it, stillness is unwinding it — so the held steer must be
+        // DRAWN or it is the invisible lock all over again. From the zone's
+        // middle along the edge: full lock reaches the zone's side.
+        let steer = pad.input.steer
+        if abs(steer) > 0.01 {
+            let end = zone.midX + steer * Double(zone.width) / 2
+            var bar = Path()
+            bar.move(to: CGPoint(x: zone.midX, y: edgeY))
+            bar.addLine(to: CGPoint(x: end, y: edgeY))
+            context.stroke(bar, with: .color(pad.color.opacity(0.95 * rest)), lineWidth: 5)
+        }
+
         // Where the thumb is, so its position relative to the edge is readable
         // without looking away from the track.
         if pad.engaged {

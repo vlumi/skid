@@ -46,6 +46,15 @@ public final class GameSettings: ObservableObject {
     @AppStorage("skid.dpad.gasSteer") public var dpadSteerAtFullThrottle = 0.35
     /// Under gas+grip: how hard full throttle pulls the wheel back to straight.
     @AppStorage("skid.dpad.gasRecentre") public var dpadThrottleRecentring = 2.0
+    /// How the band reads steering: from the entry point, or from movement.
+    @AppStorage("skid.dpad.steer") public var dpadSteerModel =
+        VirtualDPadControlSource.SteerModel.followMovement.rawValue
+    /// Sideways points for full lock, both steering models.
+    @AppStorage("skid.dpad.steerTravel") public var dpadSteerTravel = 60.0
+    /// followMovement: a still thumb's wheel returns at this rate (locks/s).
+    @AppStorage("skid.dpad.recentre") public var dpadSteerRecentring = 1.2
+    /// 0 = constant recentring, 1 = fully proportional to car speed.
+    @AppStorage("skid.dpad.recentreSpeed") public var dpadRecentringSpeed = 0.5
     /// Response curve; 1 = linear, higher = softer near center. A gentle
     /// curve is the default so small corrections stay small.
     @AppStorage("skid.dpad.expo") public var dpadExpo = 1.4
@@ -189,6 +198,17 @@ public final class GameSettings: ObservableObject {
         dpadTravel = 48.0
         dpadSteps = 0
         dpadExpo = 1.4
+        // The zone-strip dials — MISSED when the strip shipped, which the
+        // reset-parity test only catches for dials in its list. Both fixed.
+        dpadCruiseStrip = 0.3
+        dpadBrakeBand = 0.25
+        dpadDepthMeaning = VirtualDPadControlSource.DepthMeaning.steerOnly.rawValue
+        dpadSteerAtFullThrottle = 0.35
+        dpadThrottleRecentring = 2.0
+        dpadSteerModel = VirtualDPadControlSource.SteerModel.followMovement.rawValue
+        dpadSteerTravel = 60.0
+        dpadSteerRecentring = 1.2
+        dpadRecentringSpeed = 0.5
         aimReverseBelowSpeed = 90.0
         aimThrottleEase = 0.25
         aimForwardArcDegrees = 150.0
