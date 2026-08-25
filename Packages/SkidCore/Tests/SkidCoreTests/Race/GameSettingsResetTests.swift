@@ -20,9 +20,12 @@ final class GameSettingsResetTests: XCTestCase {
     /// Bool and rides separately.
     private static let dials: [ReferenceWritableKeyPath<GameSettings, Double>] = [
         \.aimTurnRate, \.aimFlipBoost, \.steerFlipBoost, \.driftRetention,
-        \.turnRate, \.gripScale, \.wallRestitution, \.wallGlanceBounce,
+        \.turnRate, \.gripScale, \.speedGripFade, \.wallRestitution, \.wallGlanceBounce,
         \.wallFriction, \.wallDragFloor, \.gravity, \.wallYaw,
         \.pace, \.dpadDeadzone, \.dpadTravel, \.dpadExpo,
+        \.dpadCruiseStrip, \.dpadBrakeBand, \.dpadSteerAtFullThrottle,
+        \.dpadThrottleRecentring, \.dpadSteerTravel, \.dpadSteerRecentring,
+        \.dpadRecentringSpeed,
         \.aimReverseBelowSpeed, \.aimThrottleEase, \.aimForwardArcDegrees,
         \.aimTailSwingDegrees, \.deckScale,
     ]

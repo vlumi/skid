@@ -26,6 +26,91 @@ final class AIDriverTests: XCTestCase {
         XCTAssertLessThan(race.cars[0].progress.finishedAt!, 60 * Race.tickRate)
     }
 
+    /// **The hard driver laps every built-in under STOCK physics.** The test
+    /// ring is gentle and used to be the only lap check, so a physics change
+    /// the AI cannot drive would have shipped silently. Now it fails HERE,
+    /// not on a device.
+    func testHardAILapsEveryBuiltin() {
+        for builtin in TrackLibrary.builtins {
+            let track = TrackLibrary.track(id: builtin.id)
+            var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: 1))
+            var driver = AIDriver.make(.hard, gridIndex: 0)
+            var ticks = 0
+            while race.cars[0].progress.finishedAt == nil, ticks < 120 * Race.tickRate {
+                let input = driver.input(car: race.cars[0].state, track: race.track)
+                race.advance(inputs: [PlayerID(0): input])
+                ticks += 1
+            }
+            XCTAssertNotNil(
+                race.cars[0].progress.finishedAt,
+                "hard AI failed to lap '\(builtin.id)' in 120 s under stock physics")
+        }
+    }
+
+    /// **A full grid laps "eight" under stock physics.** Line-wander sends a
+    /// medium driver wide BY DESIGN, and with speed-faded grip the recovery
+    /// is the part that has to keep working. Cars collide, too. (Written
+    /// chasing a "beached AI" report that turned out to be three FINISHERS
+    /// parked past the flag — kept, because the fear it checks is real.)
+    func testAMediumGridLapsEightTogether() {
+        let track = TrackLibrary.track(id: "eight")
+        let players = (0..<4).map { PlayerID($0) }
+        var race = Race(track: track, players: players, config: RaceConfig(laps: 1))
+        var drivers = players.indices.map { AIDriver.make(.medium, gridIndex: $0) }
+        var ticks = 0
+        func allFinished() -> Bool {
+            race.cars.allSatisfy { $0.progress.finishedAt != nil }
+        }
+        while !allFinished(), ticks < 180 * Race.tickRate {
+            var inputs: [PlayerID: CarInput] = [:]
+            for (index, player) in players.enumerated() {
+                inputs[player] = drivers[index].input(
+                    car: race.cars[index].state, track: race.track)
+            }
+            race.advance(inputs: inputs)
+            ticks += 1
+        }
+        for car in race.cars {
+            XCTAssertNotNil(
+                car.progress.finishedAt,
+                "car \(car.id) never lapped eight (gate \(car.progress.nextGate))")
+        }
+    }
+
+    /// **Three medium AI lap around a PARKED car, three times.** The
+    /// autostarted-simulator scene: an idle human car sits on the grid all
+    /// race and the AI must dodge it at speed every lap — a collision at pace
+    /// with speed-faded grip is a recovery case a clean grid never hits.
+    func testAIsLapEightAroundAParkedCar() {
+        let track = TrackLibrary.track(id: "eight")
+        let players = (0..<4).map { PlayerID($0) }
+        var race = Race(track: track, players: players, config: RaceConfig(laps: 3))
+        var drivers = [
+            AIDriver.make(.medium, gridIndex: 0),
+            AIDriver.make(.medium, gridIndex: 1),
+            AIDriver.make(.medium, gridIndex: 2),
+        ]
+        var ticks = 0
+        func aisFinished() -> Bool {
+            race.cars.dropFirst().allSatisfy { $0.progress.finishedAt != nil }
+        }
+        while !aisFinished(), ticks < 300 * Race.tickRate {
+            var inputs: [PlayerID: CarInput] = [PlayerID(0): .coast]
+            for index in 0..<3 {
+                inputs[PlayerID(index + 1)] = drivers[index].input(
+                    car: race.cars[index + 1].state, track: race.track)
+            }
+            race.advance(inputs: inputs)
+            ticks += 1
+        }
+        for car in race.cars.dropFirst() {
+            XCTAssertNotNil(
+                car.progress.finishedAt,
+                "car \(car.id) beached at gate \(car.progress.nextGate), lap \(car.progress.lap)"
+            )
+        }
+    }
+
     func testAIIsDeterministic() {
         func run() -> (Race, AIDriver) {
             var race = Race(

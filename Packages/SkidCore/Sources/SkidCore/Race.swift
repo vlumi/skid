@@ -373,7 +373,12 @@ public struct Race: Equatable, Sendable {
         // (driftRetention, energy-true: at 1 a drift redirects momentum
         // without scrubbing it, and never manufactures any) — the arcade
         // rule that makes flicking the body into a corner carry its speed.
-        let kept = lateral * max(0, 1 - surface.grip * tuning.gripScale * dt)
+        // Grip fades with speed (`speedGripFade`): flat-out the slide is
+        // barely bled and the car sweeps wide like a boat; slow, it bites.
+        // Speed is measured before this tick's velocity is rebuilt.
+        let speedFraction = min(1, car.velocity.length / tuning.maxSpeed)
+        let grip = surface.grip * tuning.gripScale * (1 - tuning.speedGripFade * speedFraction)
+        let kept = lateral * max(0, 1 - grip * dt)
         let redirected = tuning.driftRetention * (lateral.lengthSquared - kept.lengthSquared)
         if redirected > 0 {
             let sense: Double = forwardSpeed < 0 ? -1 : 1

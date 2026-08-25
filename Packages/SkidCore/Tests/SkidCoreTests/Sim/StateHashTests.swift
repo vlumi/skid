@@ -246,6 +246,11 @@ final class StateHashTests: XCTestCase {
     /// with itself); a *platform* difference is the thing lockstep networking
     /// cannot survive, and re-pinning would hide it.
     ///
+    /// **Re-pinned a third time, deliberately**: `speedGripFade` (0.5 stock)
+    /// made grip fall with speed, so fast corners hold their slide — a device
+    /// feel request. Physics change, same evidence as before: tick 1's hash
+    /// is untouched because the countdown holds every car still.
+    ///
     /// **Re-pinned a second time, deliberately**: the stock car tuning changed
     /// after device play (aim flip rate 10→7, speed boost 8→7, drift retention
     /// 1.0→0.6, grip 1.0→0.8, wall bounce 0.40→0.30). A tuning change is a
@@ -268,10 +273,10 @@ final class StateHashTests: XCTestCase {
         XCTAssertEqual(
             samples,
             [
-                4_077_695_904_547_307_221, 16_590_431_418_557_460_381,
-                8_068_806_620_889_962_240,
-                10_302_452_795_677_023_164, 15_887_607_542_605_494_505,
-                3_158_554_755_381_850_801,
+                4_077_695_904_547_307_221, 7_350_050_825_889_432_700,
+                7_013_082_318_854_835_301,
+                16_132_993_546_756_088_850, 8_714_512_408_539_503_301,
+                4_554_697_890_581_463_688,
             ])
         XCTAssertEqual(sequence.count, 600)
     }
