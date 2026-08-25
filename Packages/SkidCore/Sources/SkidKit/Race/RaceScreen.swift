@@ -214,10 +214,13 @@ struct RaceScreen: View {
                 origin: origin,
                 up: controls.pro.up,
                 radius: controls.pro.radius,
-                zone: controls.pro.cruiseStrip > 0 ? controls.content : nil,
+                zone: controls.content,
                 cruiseStrip: controls.pro.cruiseStrip,
                 brakeBand: controls.pro.brakeBand,
                 knob: controls.pro.knob,
+                stickBase: controls.pro.stickBase,
+                thumb: controls.pro.touchPoint,
+                stickRadius: controls.pro.steerTravel,
                 input: controls.pro.input(for: controls.player, at: session.race.tick),
                 color: CouchGame.palette[controls.colorIndex],
                 engaged: controls.pro.touching
@@ -331,6 +334,13 @@ struct DPadOverlay {
     /// The thumb's offset from the origin, so the overlay can show how far off
     /// straight-ahead it is — the reading a thumb cannot take by feel on glass.
     var knob: Vec2
+    /// The joystick base and the true thumb position — the zoned pad's whole
+    /// steering model made visible: steer IS the horizontal gap between them,
+    /// the rim is full lock, and the base slides back under a still thumb.
+    var stickBase: Vec2?
+    var thumb: Vec2?
+    /// The ring's radius in points: `steerTravel`, so the rim is honest.
+    var stickRadius: Double = 60
     var input: CarInput
     var color: Color
     /// Whether a thumb is down — a resting pad draws dimmed.

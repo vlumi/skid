@@ -169,35 +169,39 @@ enum OverlayRenderer {
                 x: zone.minX, y: zone.maxY - brakeHeight, width: zone.width,
                 height: brakeHeight)
 
-        context.fill(Path(strip), with: .color(pad.color.opacity(0.22 * rest)))
-        context.fill(Path(brake), with: .color(pad.color.opacity(0.10 * rest)))
-        // The learnable edge.
-        var edge = Path()
-        let edgeY = flipped ? strip.minY : strip.maxY
-        edge.move(to: CGPoint(x: zone.minX, y: edgeY))
-        edge.addLine(to: CGPoint(x: zone.maxX, y: edgeY))
-        context.stroke(edge, with: .color(pad.color.opacity(0.8 * rest)), lineWidth: 2)
-
-        // **The wheel itself, on the learnable edge.** Under follow-movement
-        // steering the thumb's position says nothing about the lock — movement
-        // wound it, stillness is unwinding it — so the held steer must be
-        // DRAWN or it is the invisible lock all over again. From the zone's
-        // middle along the edge: full lock reaches the zone's side.
-        let steer = pad.input.steer
-        if abs(steer) > 0.01 {
-            let end = zone.midX + steer * Double(zone.width) / 2
-            var bar = Path()
-            bar.move(to: CGPoint(x: zone.midX, y: edgeY))
-            bar.addLine(to: CGPoint(x: end, y: edgeY))
-            context.stroke(bar, with: .color(pad.color.opacity(0.95 * rest)), lineWidth: 5)
+        if pad.cruiseStrip > 0 {
+            context.fill(Path(strip), with: .color(pad.color.opacity(0.22 * rest)))
+            // The learnable edge.
+            var edge = Path()
+            let edgeY = flipped ? strip.minY : strip.maxY
+            edge.move(to: CGPoint(x: zone.minX, y: edgeY))
+            edge.addLine(to: CGPoint(x: zone.maxX, y: edgeY))
+            context.stroke(edge, with: .color(pad.color.opacity(0.8 * rest)), lineWidth: 2)
+        }
+        if pad.brakeBand > 0 {
+            context.fill(Path(brake), with: .color(pad.color.opacity(0.10 * rest)))
         }
 
-        // Where the thumb is, so its position relative to the edge is readable
-        // without looking away from the track.
-        if pad.engaged {
-            let dot = CGRect(
-                x: pad.origin.x + pad.knob.x - 7, y: pad.origin.y + pad.knob.y - 7,
-                width: 14, height: 14)
+        // **The joystick, under the thumb — the steering model made visible.**
+        // Steer IS the horizontal gap between the thumb and the base; the rim
+        // is full lock; pushing past the rim tows the base along; and a still
+        // thumb watches the base slide back underneath it as the wheel
+        // recentres. Without this the held lock is invisible, which is the
+        // founding bug of the whole control rework.
+        if pad.engaged, let base = pad.stickBase, let thumb = pad.thumb {
+            let ring = CGRect(
+                x: base.x - pad.stickRadius, y: base.y - pad.stickRadius,
+                width: pad.stickRadius * 2, height: pad.stickRadius * 2)
+            context.stroke(
+                Path(ellipseIn: ring), with: .color(pad.color.opacity(0.55)), lineWidth: 2)
+            let mark = CGRect(x: base.x - 3, y: base.y - 3, width: 6, height: 6)
+            context.fill(Path(ellipseIn: mark), with: .color(pad.color.opacity(0.8)))
+            // The gap itself — the live steer reading.
+            var bar = Path()
+            bar.move(to: CGPoint(x: base.x, y: base.y))
+            bar.addLine(to: CGPoint(x: thumb.x, y: thumb.y))
+            context.stroke(bar, with: .color(pad.color.opacity(0.9)), lineWidth: 4)
+            let dot = CGRect(x: thumb.x - 7, y: thumb.y - 7, width: 14, height: 14)
             context.fill(Path(ellipseIn: dot), with: .color(pad.color.opacity(0.95)))
         }
     }
