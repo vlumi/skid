@@ -1,182 +1,104 @@
 import Foundation
 
-/// Virtual d-pad, the current default: a d-pad materializes where the thumb
-/// lands (clamped inside the player's zone) and STAYS THERE — gas / brake /
-/// left / right keep fixed screen positions for the touch's whole life.
-/// Displacement toward `up` is throttle (pull back = brake/reverse), sideways
-/// is steer, diagonals blend. Per-axis output quantized into `levels` steps
-/// with short travel. (Unlike Casual's aim stick, the origin does NOT trail
-/// the thumb: with gas usually held and brake rarely, a trailing origin would
-/// creep upward and never return.)
+/// **The Pro pad: the player's whole zone is one control.**
+///
+/// Steering is mouse-style — sideways MOVEMENT winds the wheel, stillness
+/// lets it recentre at a speed-weighted rate — so there is no centre to lose
+/// and no lock to hold: a corner is a gesture, straight is the absence of
+/// one. Depth in the zone is one continuous gas axis: full throttle at the
+/// top, coasting at `coastDepth`, full reverse at the bottom — pulling back
+/// brakes while the car still rolls and reverses once it stops, which is the
+/// sim's own reading of negative throttle. Deeper also firms the steering
+/// (gas + grip): pinned throttle keeps only `steerAtFullThrottle` of the
+/// wheel, easing off lets it bite.
+///
+/// This is the survivor of a long device-play elimination: a floating pad
+/// (no findable centre), a from-entry anchor (too sticky), a steering-free
+/// cruise strip and a brake band (both got in the way once the recentring
+/// found straight on its own). The one model left needs no mode switches.
+/// The old floating pad remains ONLY as the bounds-nil fallback below.
 public final class VirtualDPadControlSource: HeadingAwareControlSource {
-    /// Displacement (points) for full deflection. Short on purpose.
+    // MARK: - The floating fallback's knobs (bounds == nil only)
+
+    /// Displacement (points) for full deflection of the FALLBACK pad.
     public var radius: Double = 48
-    /// Per-axis dead zone (points) so a resting thumb doesn't creep.
+    /// Per-axis dead zone (points) of the FALLBACK pad.
     public var deadzone: Double = 10
-    /// Steps per axis direction: 1 = pure digital, nil = fully analog.
-    /// Default analog — the on-device feel favorite.
+    /// Fallback quantization: steps per axis, nil = analog.
     public var levels: Int?
-    /// Response curve: 1 = linear; >1 = softer near center, steeper at
-    /// the edges (applied before quantization). Default is a gentle curve.
+    /// Fallback response curve.
     public var expo: Double = 1.4
-    /// **How much of the zone is a steering-neutral full-throttle strip**,
-    /// 0…1 of its height from the top — 0 (the default) for none.
-    ///
-    /// The strip was the first fix for "I cannot find the centre": an edge a
-    /// thumb can learn, where sliding is repositioning and dropping below
-    /// starts steering. Device play then found the speed-weighted recentring
-    /// does that job on its own, and a steering-dead region mostly got in the
-    /// way on tracks with no straights long enough to cruise. It remains a
-    /// dial for the layout experiment, not the default.
-    ///
-    public var cruiseStrip: Double = 0
-    /// How far below the strip steering reaches full authority, in points. The
-    /// ramp means a thumb wobbling across the edge does not snap the wheel.
-    public var steerFadeDepth: Double = 24
-    /// How much of the zone, from the bottom, is braking and reverse. Small on
-    /// purpose: reverse only has to get you out of a pinch.
-    public var brakeBand: Double = 0.25
 
-    /// **What depth in the zone means**, once past the cruise strip.
-    public enum DepthMeaning: String, CaseIterable, Sendable {
-        /// Depth selects steering only; the gas stays pinned until the brake
-        /// band. Drifting is untouched — throttle held through the slide is
-        /// what makes the car slide.
-        case steerOnly
-        /// **Depth eases the gas, and the steering firms up as it does.** One
-        /// continuous relationship rather than two controls: pinned throttle is
-        /// fast and straight (steering fades toward nothing and what is left
-        /// pulls back to true), and easing off lets the wheel bite so the car
-        /// can be placed. Cornering therefore means lifting, as it does in a
-        /// real car — and the drift is still reachable, at the throttle where a
-        /// real one would break traction.
-        case gasAndGrip
-    }
+    // MARK: - The zoned pad's dials
 
-    /// Which of the two the pad uses. Both are real designs with different
-    /// games behind them, so this is a setting rather than a decision baked in.
-    public var depthMeaning: DepthMeaning = .steerOnly
-
-    /// Under `gasAndGrip`, how much steering survives at full throttle, 0…1.
-    /// Not zero: a pinned car still needs to be nudged between the walls.
-    public var steerAtFullThrottle: Double = 0.35
-    /// Under `gasAndGrip`, how hard full throttle pulls the wheel back toward
-    /// straight, in full-lock units per second. This is what makes pinned
-    /// throttle feel like tracking true rather than like a vague wheel.
-    public var throttleRecentring: Double = 2.0
-    /// **How sideways thumb position becomes steering**, below the strip.
-    public enum SteerModel: String, CaseIterable, Sendable {
-        /// Offset from where the thumb entered the band: hold a position to
-        /// hold a lock, go back where you crossed to go straight.
-        case fromEntry
-        /// **Mouse-style: MOVEMENT turns, stillness straightens.** Sliding the
-        /// thumb sideways winds the wheel; holding it still lets the wheel
-        /// return to true at `steerRecentring`. Position never matters, so
-        /// there is no centre to lose — the failure the strip was built
-        /// against — and no lock to hold by muscle memory: a corner is a
-        /// gesture, straight is the absence of one.
-        case followMovement
-    }
-
-    /// Which steering the band uses. `fromEntry` was driven first and read as
-    /// too sticky — a quarter of an SE zone per lock is a long way to drag a
-    /// thumb and hold it there — so `followMovement` is the default under test.
-    public var steerModel: SteerModel = .followMovement
-
-    /// Sideways points for full lock, both models. The first cut used half the
-    /// zone width (93 on an SE), which read on-device as the car resisting the
-    /// turn; this is the dial for exactly that complaint.
-    public var steerTravel: Double = 60
-    /// Under `followMovement`, how fast a STILL thumb's wheel returns to
-    /// straight, in full-lock units per second — the rate at rest, before the
-    /// speed weighting below.
+    /// Sideways points of movement for full lock.
+    public var steerTravel: Double = 35
+    /// How fast a STILL thumb's wheel returns to straight, in full-lock units
+    /// per second — the rate at full weight, before the speed scaling below.
     public var steerRecentring: Double = 1.2
-    /// How much car speed scales the recentring, 0…1: 0 is a constant rate, 1
-    /// is fully proportional to speed. Modeled on self-aligning torque — a real
-    /// wheel pulls straighter the faster the car rolls — so straights at speed
-    /// hold themselves while a slow hairpin keeps its lock.
-    ///
-    /// Default 1, fully proportional, after the first drive: at 0.5 a car
-    /// stuck off-road pointing the wrong way still shed its lock at 60% rate,
-    /// and getting back took a fight against the recentring — a slow recovery
-    /// is exactly when a held wheel must STAY held.
+    /// How much car speed scales the recentring, 0…1: 0 is a constant rate,
+    /// 1 (the driven-in default) is fully proportional — self-aligning
+    /// torque, so straights at speed hold themselves while a car easing
+    /// through a pinch keeps its lock entirely.
     public var recentringSpeedWeight: Double = 1.0
-    /// The speed (units/s) where speed-weighted recentring saturates; wired to
-    /// the car's top speed by the tuning layer.
+    /// The speed (units/s) where speed-weighted recentring saturates; wired
+    /// to the car's top speed by the tuning layer.
     public var fullSpeed: Double = 520
+    /// How much steering survives at full throttle, 0…1 — the grip half of
+    /// gas + grip. Not zero: a pinned car still needs nudging between walls.
+    public var steerAtFullThrottle: Double = 0.5
+    /// Where on the zone the gas runs out, 0…1 from the top: above it the
+    /// throttle ramps 1→0, below it 0→−1. One continuous axis — "pushing
+    /// backwards is reverse" — with no band chrome to find.
+    public var coastDepth: Double = 0.6
 
     /// The zone's local "up" in screen coordinates.
     public var up = Vec2(0, -1)
-    /// The player's control zone; the pad is clamped to stay fully inside.
+    /// The player's control zone. With no zone the pad degrades to the old
+    /// floating stick (tests, bare use); a zone always gets the zoned pad.
     public var bounds: Rect?
 
-    /// Where the pad sits. **It survives the thumb lifting** — the pad stays
-    /// visible where the player left it, and the next touch-down moves it —
-    /// because a control that only exists while touched appears exactly one
-    /// press too late to show a new player where to press. nil only before
-    /// the first touch (see `displayOrigin` for the resting default).
+    /// Where the fallback pad sits; survives the thumb lifting.
     public private(set) var origin: Vec2?
-    /// Clamped offset of the thumb from `origin`.
+    /// Clamped offset of the thumb from `origin` (fallback display).
     public private(set) var knob = Vec2.zero
 
     private var activeTouch: TouchID?
-    /// Where the thumb last was, so recentering can recompute the knob without
-    /// waiting for a move event that a still thumb never sends.
+    /// Where the thumb last was — the zoned pad's only position input.
     private var lastMoved: Vec2?
-    /// The tick the wheel last returned for, so a frame that samples the same
-    /// tick twice cannot double-step it.
+    /// The tick the wheel last recentred for, so a frame that samples the
+    /// same tick twice cannot double-step it.
     private var lastTick: Tick = -1
-    /// The `followMovement` wheel, -1…1: wound by sideways movement in
-    /// `touchMoved`, unwound toward zero by `recentreWheel`, dropped on lift
-    /// and on sliding back up into the strip.
+    /// The wheel, -1…1: wound by sideways movement in `touchMoved`, unwound
+    /// toward zero by `recentreWheel`, dropped on lift.
     private var wheel = 0.0
-    /// The stick base's position along `up` — DISPLAY state only. It trails
-    /// the thumb vertically (dragged when the thumb strays past `steerTravel`,
-    /// like the floating stick's rim) and never recenters: vertical position
-    /// in the ZONE is what selects throttle, so the base has no vertical
-    /// meaning to return to.
-    private var baseUp = 0.0
+    /// The car's current speed (units/s), for the speed-weighted recentring.
+    private var carSpeed = 0.0
+
+    /// Heading and forward speed are the aim scheme's questions; this pad
+    /// only wants how fast the car rolls.
+    public func setCar(heading: Double, forwardSpeed: Double, speed: Double) {
+        carSpeed = speed
+    }
 
     /// Whether a thumb is currently down on this pad.
     public var touching: Bool { activeTouch != nil }
     /// The thumb's true position while touching — `knob` is clamped to the
-    /// old pad's radius and lies once the thumb is further out than that.
+    /// fallback radius and lies once the thumb is further out than that.
     public var touchPoint: Vec2? { touching ? lastMoved : nil }
-
-    /// **Where the joystick's base sits, for drawing** — the visualization of
-    /// the whole steering model: steering IS the horizontal gap between the
-    /// thumb and this point. Winding the wheel is the base falling behind;
-    /// recentring is the base catching up to the thumb; full lock is the
-    /// thumb at the ring's rim, and pushing past the rim tows the base along.
-    /// Derived from the wheel (never stored) so the two cannot disagree.
-    public var stickBase: Vec2? {
-        guard bounds != nil, touching, let thumb = lastMoved else { return nil }
-        let across = up.perpendicular
-        let travel = max(1, steerTravel)
-        let offset: Double
-        switch steerModel {
-        case .followMovement:
-            offset = wheel * travel
-        case .fromEntry:
-            // The anchor is the base; drawn clamped to the rim, which is
-            // honest — steering saturates at `travel` too.
-            let sideways = thumb.dot(across)
-            let anchor = steerAnchor ?? sideways
-            offset = min(travel, max(-travel, sideways - anchor))
-        }
-        return across * (thumb.dot(across) - offset) + up * baseUp
-    }
-    /// Where to DRAW the pad: where the last touch left it, or resting at the
-    /// zone's center before any touch. nil only before the zone is laid out.
+    /// Where to DRAW the fallback pad.
     public var displayOrigin: Vec2? { origin ?? bounds?.center }
 
-    /// The car's current speed (units/s), for the speed-weighted recentring.
-    private var carSpeed = 0.0
-
-    /// Heading and forward speed are the aim scheme's questions; this pad only
-    /// wants how fast the car rolls.
-    public func setCar(heading: Double, forwardSpeed: Double, speed: Double) {
-        carSpeed = speed
+    /// **A point on the steering-neutral line, for drawing** — the model made
+    /// visible: the line slides left-right with the wheel, steering IS the
+    /// thumb's sideways distance from it, and a still thumb watches the line
+    /// slide back underneath as the wheel recentres. Only the sideways
+    /// component carries meaning (the line is full-height); the returned
+    /// point rides at the thumb so a renderer can span from it along `up`.
+    /// Derived from the wheel, never stored, so the two cannot disagree.
+    public var stickBase: Vec2? {
+        guard bounds != nil, touching, let thumb = lastMoved else { return nil }
+        return thumb - up.perpendicular * (wheel * max(1, steerTravel))
     }
 
     public init() {}
@@ -187,12 +109,9 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
         origin = clampStick(location, radius: radius, bounds: bounds)
         knob = .zero
         lastMoved = location
-        steerAnchor = nil
-        lastInStrip = nil
         // A fresh touch starts straight: carrying a dead touch's lock into a
         // new one is the invisible-steer bug in a new costume.
         wheel = 0
-        baseUp = location.dot(up)
     }
 
     public func touchMoved(id: TouchID, at location: Vec2) {
@@ -200,69 +119,19 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
         let offset = location - origin
         let distance = offset.length
         knob = distance > radius ? offset * (radius / distance) : offset
-        // **The strip crossing is tracked HERE, not when input is read.**
-        // `input(for:at:)` is polled once a tick and a thumb can cross the edge
-        // and travel a long way between two polls — anchoring there made
-        // straight-ahead depend on polling luck, and a fast swipe into a corner
-        // lost the whole turn. Every movement passes through this method.
-        if let depth = depth(of: location) {
-            if cruiseStrip > 0, depth <= cruiseStrip {
-                // In the strip: this is the reference, and re-entering resets
-                // it. Under followMovement it doubles as an instant
-                // straighten — slide up and the wheel is dropped at once.
-                lastInStrip = location.dot(up.perpendicular)
-                steerAnchor = nil
-                wheel = 0
-            } else {
-                if steerAnchor == nil {
-                    // First movement in the band: straight-ahead is where the
-                    // strip was left, or this column when there is no strip.
-                    steerAnchor = lastInStrip ?? location.dot(up.perpendicular)
-                }
-                // followMovement winds the wheel from MOVEMENT, here where
-                // every event is seen — polling only in `input` would drop
-                // the travel between two ticks, the same polling-luck bug
-                // the anchor had.
-                if steerModel == .followMovement, let last = lastMoved {
-                    let delta = (location - last).dot(up.perpendicular)
-                    wheel = min(1, max(-1, wheel + delta / max(1, steerTravel)))
-                }
-            }
+        // The wheel winds from MOVEMENT, here where every event is seen —
+        // polling only in `input` would drop the travel between two ticks.
+        if bounds != nil, let last = lastMoved {
+            let delta = (location - last).dot(up.perpendicular)
+            wheel = min(1, max(-1, wheel + delta / max(1, steerTravel)))
         }
-        // The base is towed vertically when the thumb strays past the rim —
-        // the drag the floating stick has always had — and never recenters on
-        // this axis, because zone depth is what means throttle.
-        let along = location.dot(up)
-        let reach = max(1, steerTravel)
-        baseUp = min(max(baseUp, along - reach), along + reach)
         lastMoved = location
-    }
-
-    /// **Where the thumb crossed out of the cruise strip**, along the zone's
-    /// sideways axis — straight-ahead for as long as it stays below. Cleared on
-    /// lift and whenever the thumb goes back up into the strip, which is what
-    /// makes the strip a reset rather than just a dead zone.
-    private var steerAnchor: Double?
-    /// The sideways column the thumb last held while inside the strip, so a
-    /// diagonal exit anchors where the movement STARTED rather than where it
-    /// had already reached.
-    private var lastInStrip: Double?
-
-    /// How far down the zone the thumb is, 0 at the top edge and 1 at the
-    /// bottom. Nil without a zone to measure against.
-    private func depth(of point: Vec2) -> Double? {
-        guard let bounds, bounds.height > 0 else { return nil }
-        // `up` points away from the player, so "down the zone" is along -up.
-        let fromTop = (point - Vec2(bounds.center.x, bounds.center.y)).dot(up * -1)
-        return min(1, max(0, fromTop / bounds.height + 0.5))
     }
 
     public func touchEnded(id: TouchID) {
         guard id == activeTouch else { return }
-        // The origin stays: the pad rests where the thumb left it.
         activeTouch = nil
         knob = .zero
-        steerAnchor = nil
         // The wheel is NOT dropped here: with no touch, `input` coasts, and
         // `touchBegan` starts every new touch straight — one reset, testable.
     }
@@ -277,13 +146,21 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
         lastTick = -1
     }
 
+    /// How far down the zone the thumb is, 0 at the top edge and 1 at the
+    /// bottom. Nil without a zone to measure against.
+    private func depth(of point: Vec2) -> Double? {
+        guard let bounds, bounds.height > 0 else { return nil }
+        let fromTop = (point - Vec2(bounds.center.x, bounds.center.y)).dot(up * -1)
+        return min(1, max(0, fromTop / bounds.height + 0.5))
+    }
+
     /// Winds the wheel back toward straight for the ticks since the last
     /// read. Tick-keyed, not call-keyed: the render layer polls the same tick
     /// the sim does, and the pull scales with the tick delta — so a same-tick
     /// re-read pulls zero, and a replay recentres identically.
     private func recentreWheel(at tick: Tick) {
         defer { lastTick = tick }
-        guard steerModel == .followMovement, lastTick >= 0, tick > lastTick else { return }
+        guard lastTick >= 0, tick > lastTick else { return }
         let speed = min(1, max(0, carSpeed / max(1, fullSpeed)))
         let rate = steerRecentring * ((1 - recentringSpeedWeight) + recentringSpeedWeight * speed)
         let pull = rate * Double(tick - lastTick) / Double(Race.tickRate)
@@ -296,13 +173,10 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
 
     public func input(for player: PlayerID, at tick: Tick) -> CarInput {
         guard touching, let finger = lastMoved else { return .coast }
-        // Before any branch returns: the wheel unwinds with the ticks even
-        // while the thumb cruises in the strip or rides the brake band.
         recentreWheel(at: tick)
-        guard let bounds, let depth = depth(of: finger) else {
+        guard depth(of: finger) != nil, let depth = depth(of: finger) else {
             // No zone laid out (tests, or a pad used bare): the old floating
             // pad, unchanged.
-            steerAnchor = nil
             return CarInput(
                 steer: quantizedAxis(
                     knob.dot(up.perpendicular), deadzone: deadzone, travel: radius,
@@ -312,87 +186,22 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
                     expo: expo))
         }
 
-        let across = up.perpendicular
-        let sideways = finger.dot(across)
-
-        // **In the strip: full throttle, no steering, free to reposition.**
-        // The reference itself is maintained in `touchMoved`.
-        if cruiseStrip > 0, depth <= cruiseStrip {
-            return CarInput(steer: 0, throttle: 1)
-        }
-
-        // Below the strip. Straight-ahead is where the thumb was while it was
-        // still IN the strip — hand position never matters, only movement from
-        // there.
-        //
-        // The last in-strip column, not the first below it: a thumb crossing
-        // the edge diagonally (which is what a swipe into a corner looks like)
-        // would otherwise anchor itself mid-swipe and throw away the very
-        // movement that was asking for the turn.
-        let anchor = steerAnchor ?? lastInStrip ?? sideways
-
-        // **Faded in over the first few points**, so a thumb wobbling across
-        // the edge does not snap the wheel.
-        // The fade exists so a thumb wobbling across the strip's edge does
-        // not snap the wheel — with no strip there is no edge to wobble
-        // across, and fading from the zone's top would just be a hidden
-        // weak-steering region.
-        let below = (depth - cruiseStrip) * bounds.height
-        let authority =
-            cruiseStrip > 0 && steerFadeDepth > 0 ? min(1, below / steerFadeDepth) : 1
-        var steer: Double
-        switch steerModel {
-        case .fromEntry:
-            steer = quantizedAxis(
-                sideways - anchor, deadzone: deadzone, travel: max(1, steerTravel),
-                levels: levels, expo: expo)
-        case .followMovement:
-            // The wheel was wound in `touchMoved` and unwound above. No
-            // deadzone or expo: those shape a POSITION, and movement is
-            // already proportional — a still thumb simply adds nothing.
-            steer = wheel
-        }
-
-        // **Braking is the bottom band**, and small: reverse only has to get
-        // you out of a pinch, while everything above it is driving.
-        let brakeFrom = 1 - brakeBand
-        var throttle: Double
-        if brakeBand > 0, depth > brakeFrom {
-            let into = (depth - brakeFrom) / brakeBand
-            throttle = -min(1, into)
+        var steer = wheel
+        let coast = min(0.95, max(0.05, coastDepth))
+        let throttle: Double
+        if depth <= coast {
+            // **Gas + grip, one relationship**: depth eases the gas and the
+            // steering firms as it does — pinned throttle is fast and
+            // straight, easing off lets the wheel bite.
+            let into = depth / coast
+            throttle = 1 - into
+            steer *= steerAtFullThrottle + (1 - steerAtFullThrottle) * into
         } else {
-            throttle = 1
+            // Below coast the same pull keeps going: brake while rolling,
+            // reverse once stopped — the sim's own meaning of negative
+            // throttle. Steering stays at full bite.
+            throttle = -min(1, (depth - coast) / (1 - coast))
         }
-
-        if depthMeaning == .gasAndGrip, throttle > 0 {
-            (steer, throttle) = gasAndGrip(depth: depth, brakeFrom: brakeFrom, steer: steer)
-        }
-        return CarInput(steer: steer * authority, throttle: throttle)
-    }
-
-    /// **One relationship, not two controls.** Depth eases the gas, and the
-    /// steering firms up as it does: pinned throttle is fast and straight,
-    /// easing off lets the wheel bite. Cornering means lifting, as it does in
-    /// a real car.
-    private func gasAndGrip(
-        depth: Double, brakeFrom: Double, steer: Double
-    ) -> (steer: Double, throttle: Double) {
-        let drivable = max(0.0001, brakeFrom - cruiseStrip)
-        let into = min(1, (depth - cruiseStrip) / drivable)
-        // Full gas keeps only a nudge of steering; lifting restores it all.
-        var steer = steer * (steerAtFullThrottle + (1 - steerAtFullThrottle) * into)
-        // And at full gas the wheel pulls back to true, which is what makes a
-        // pinned car track straight instead of wandering. `fromEntry` only:
-        // followMovement recentres on its own clock, and two pulls on one
-        // wheel would be untunable.
-        if steerModel == .fromEntry {
-            let pull = throttleRecentring * (1 - into) / Double(Race.tickRate)
-            if abs(steer) <= pull {
-                steer = 0
-            } else {
-                steer += steer < 0 ? pull : -pull
-            }
-        }
-        return (steer, 1 - into)
+        return CarInput(steer: steer, throttle: throttle)
     }
 }

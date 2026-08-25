@@ -72,11 +72,10 @@ struct TuningPanel: View {
                     // and the first that gives the thumb an EDGE to find, so
                     // what these want is driving, not more arithmetic.
                     section(Text("Pro layout", bundle: .module))
-                    steerModelRow
                     slider(
                         Text("Steer travel", bundle: .module),
                         value: $settings.dpadSteerTravel,
-                        range: 20...160, step: 5, format: "%.0f")
+                        range: 15...120, step: 5, format: "%.0f")
                     slider(
                         Text("Recentring", bundle: .module),
                         value: $settings.dpadSteerRecentring,
@@ -85,34 +84,15 @@ struct TuningPanel: View {
                         Text("Speed effect", bundle: .module),
                         value: $settings.dpadRecentringSpeed,
                         range: 0...1, step: 0.05, format: "%.2f")
-                    modelRow
-                    slider(
-                        Text("Cruise strip", bundle: .module),
-                        value: $settings.dpadCruiseStrip,
-                        range: 0...0.5, step: 0.05, format: "%.2f")
-                    slider(
-                        Text("Brake band", bundle: .module), value: $settings.dpadBrakeBand,
-                        range: 0.1...0.45, step: 0.05, format: "%.2f")
                     slider(
                         Text("Gas steering", bundle: .module),
                         value: $settings.dpadSteerAtFullThrottle,
                         range: 0...1, step: 0.05, format: "%.2f")
                     slider(
-                        Text("Gas recentring", bundle: .module),
-                        value: $settings.dpadThrottleRecentring,
-                        range: 0...6, step: 0.25, format: "%.2f")
-
+                        Text("Coast point", bundle: .module),
+                        value: $settings.dpadCoast,
+                        range: 0.3...0.9, step: 0.05, format: "%.2f")
                     section(Text("Pro", bundle: .module))
-                    slider(
-                        Text("Dead zone", bundle: .module), value: $settings.dpadDeadzone,
-                        range: 2...24, step: 1, format: "%.0f")
-                    slider(
-                        Text("Travel", bundle: .module), value: $settings.dpadTravel,
-                        range: 32...80, step: 2, format: "%.0f")
-                    stepsRow
-                    slider(
-                        Text("Curve", bundle: .module), value: $settings.dpadExpo,
-                        range: 1.0...2.5, step: 0.1, format: "%.1f")
                     slider(
                         Text("Turn rate", bundle: .module), value: $settings.turnRate,
                         range: 2...6, step: 0.1, format: "%.1f")
@@ -244,94 +224,6 @@ struct TuningPanel: View {
             .textCase(.uppercase)
             .foregroundStyle(.white.opacity(0.5))
             .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// Steps per axis: full analog or 1–3 quantized notches.
-    /// Which meaning depth has — the fork worth driving rather than deciding
-    /// in the abstract. See `VirtualDPadControlSource.DepthMeaning`.
-    /// Which steering the band uses — the fork the last device round opened:
-    /// hold an offset (from entry) or wind by movement (follow moves).
-    private var steerModelRow: some View {
-        HStack(spacing: 8) {
-            Text("Steering", bundle: .module)
-                .font(Retro.caption)
-                .foregroundStyle(Retro.inkSoft)
-            Spacer(minLength: 8)
-            ForEach(VirtualDPadControlSource.SteerModel.allCases, id: \.rawValue) { mode in
-                let on = settings.dpadSteerModel == mode.rawValue
-                Button {
-                    settings.dpadSteerModel = mode.rawValue
-                } label: {
-                    (mode == .fromEntry
-                        ? Text("From entry", bundle: .module)
-                        : Text("Follow moves", bundle: .module))
-                        .font(Retro.caption)
-                        .padding(.horizontal, 8)
-                        .frame(minHeight: 30)
-                        .background(on ? Retro.highlight : Retro.panel)
-                        .overlay(RetroBevel(inset: on, thickness: 2))
-                        .foregroundStyle(on ? Retro.onHighlight : Retro.ink)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private var modelRow: some View {
-        HStack(spacing: 8) {
-            Text("Depth", bundle: .module)
-                .font(Retro.caption)
-                .foregroundStyle(Retro.inkSoft)
-            Spacer(minLength: 8)
-            ForEach(VirtualDPadControlSource.DepthMeaning.allCases, id: \.rawValue) { mode in
-                let on = settings.dpadDepthMeaning == mode.rawValue
-                Button {
-                    settings.dpadDepthMeaning = mode.rawValue
-                } label: {
-                    (mode == .steerOnly
-                        ? Text("Steer only", bundle: .module)
-                        : Text("Gas + grip", bundle: .module))
-                        .font(Retro.caption)
-                        .padding(.horizontal, 8)
-                        .frame(minHeight: 30)
-                        .background(on ? Retro.highlight : Retro.panel)
-                        .overlay(RetroBevel(inset: on, thickness: 2))
-                        .foregroundStyle(on ? Retro.onHighlight : Retro.ink)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private var stepsRow: some View {
-        VStack(spacing: 6) {
-            Text("Steps", bundle: .module)
-                .font(.footnote.bold())
-                .foregroundStyle(.white.opacity(0.85))
-            HStack(spacing: 8) {
-                stepChoice(label: Text("Analog", bundle: .module), value: 0)
-                ForEach(1...3, id: \.self) { count in
-                    stepChoice(label: Text(verbatim: "\(count)"), value: count)
-                }
-            }
-        }
-    }
-
-    private func stepChoice(label: Text, value: Int) -> some View {
-        Button {
-            settings.dpadSteps = value
-        } label: {
-            label
-                .font(.callout.bold())
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(
-                    settings.dpadSteps == value
-                        ? Color.white.opacity(0.9) : .black.opacity(0.3),
-                    in: Capsule()
-                )
-                .foregroundStyle(settings.dpadSteps == value ? .black : .white)
-        }
     }
 
     private func slider(

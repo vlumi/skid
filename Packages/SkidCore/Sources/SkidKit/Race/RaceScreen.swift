@@ -215,8 +215,7 @@ struct RaceScreen: View {
                 up: controls.pro.up,
                 radius: controls.pro.radius,
                 zone: controls.content,
-                cruiseStrip: controls.pro.cruiseStrip,
-                brakeBand: controls.pro.brakeBand,
+                coastDepth: controls.pro.coastDepth,
                 knob: controls.pro.knob,
                 stickBase: controls.pro.stickBase,
                 thumb: controls.pro.touchPoint,
@@ -326,11 +325,12 @@ struct DPadOverlay {
     var origin: Vec2
     var up: Vec2
     var radius: Double
-    /// The zone the pad divides, and how — nil while the pad is the old
-    /// floating disc (no zone, or the strip turned off).
+    /// The zone the pad owns — nil only for a pad with no zone laid out
+    /// (the bare floating fallback).
     var zone: CGRect?
-    var cruiseStrip: Double = 0
-    var brakeBand: Double = 0
+    /// Where on the zone the gas runs out, 0…1 from the top — the throttle
+    /// gradient's transparent point.
+    var coastDepth: Double = 0.6
     /// The thumb's offset from the origin, so the overlay can show how far off
     /// straight-ahead it is — the reading a thumb cannot take by feel on glass.
     var knob: Vec2
