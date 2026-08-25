@@ -100,7 +100,12 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
     /// is fully proportional to speed. Modeled on self-aligning torque — a real
     /// wheel pulls straighter the faster the car rolls — so straights at speed
     /// hold themselves while a slow hairpin keeps its lock.
-    public var recentringSpeedWeight: Double = 0.5
+    ///
+    /// Default 1, fully proportional, after the first drive: at 0.5 a car
+    /// stuck off-road pointing the wrong way still shed its lock at 60% rate,
+    /// and getting back took a fight against the recentring — a slow recovery
+    /// is exactly when a held wheel must STAY held.
+    public var recentringSpeedWeight: Double = 1.0
     /// The speed (units/s) where speed-weighted recentring saturates; wired to
     /// the car's top speed by the tuning layer.
     public var fullSpeed: Double = 520

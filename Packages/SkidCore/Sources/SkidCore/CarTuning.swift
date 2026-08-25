@@ -44,6 +44,14 @@ public struct CarTuning: Equatable, Sendable, Codable {
     /// heading faster. Scales all surfaces together, keeping their relative
     /// feel.
     public var gripScale: Double
+    /// **How much of the grip is LOST at top speed**, 0…1 of `gripScale`,
+    /// scaling linearly with speed. The boat knob: with it, a corner taken
+    /// flat-out keeps its slide and sweeps wide while the same corner taken
+    /// slow bites and turns — so speed itself is what breaks the car loose,
+    /// which is both how it reads intuitively and self-limiting (drifting
+    /// wide scrubs speed via drag, which restores grip). 0 restores
+    /// speed-independent grip.
+    public var speedGripFade: Double
     // MARK: - Wall contact
     //
     // **Five knobs, because this is pure feel and was retuned three times from
@@ -105,6 +113,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         steerFlipBoost: Double = 5,
         driftRetention: Double = 0.6,
         gripScale: Double = 0.8,
+        speedGripFade: Double = 0.5,
         wallRestitution: Double = 0.30,
         wallGlanceBounce: Double = 0.3,
         wallFriction: Double = 0.002,
@@ -125,6 +134,7 @@ public struct CarTuning: Equatable, Sendable, Codable {
         self.steerFlipBoost = steerFlipBoost
         self.driftRetention = driftRetention
         self.gripScale = gripScale
+        self.speedGripFade = speedGripFade
         self.wallRestitution = wallRestitution
         self.wallGlanceBounce = wallGlanceBounce
         self.wallFriction = wallFriction

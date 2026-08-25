@@ -75,9 +75,44 @@ final class PhysicsTests: XCTestCase {
         advance(&r, ticks: 10, input: CarInput(steer: 1, throttle: 1))
         // Mid-corner the car carries lateral velocity — the drift.
         XCTAssertGreaterThan(r.cars[0].state.slipSpeed, 20)
-        // And grip bleeds it off once the wheel straightens.
-        advance(&r, ticks: 90, input: CarInput(throttle: 1))
+        // And grip bleeds it off once the wheel straightens — over a longer
+        // run than before speedGripFade, since at speed the bleed is now
+        // deliberately slower (that is the boat feel).
+        advance(&r, ticks: 150, input: CarInput(throttle: 1))
         XCTAssertLessThan(r.cars[0].state.slipSpeed, 10)
+    }
+
+    /// **Speed is what breaks the car loose.** Grip bleeds a FRACTION of the
+    /// slide per tick, so without the fade the fraction retained is
+    /// speed-independent — the clean property that isolates the fade itself.
+    func testFastCornersKeepTheirSlideLonger() {
+        // A steering pulse at a given speed, then how much of the slide
+        // survives 30 straight ticks.
+        func retained(runUp: Int, fade: Double) -> Double {
+            var tuning = CarTuning()
+            tuning.speedGripFade = fade
+            var r = Race(track: dragStrip(), players: [PlayerID(0)], tuning: tuning)
+            advance(&r, ticks: runUp, input: CarInput(throttle: 1))
+            advance(&r, ticks: 10, input: CarInput(steer: 1, throttle: 1))
+            let mid = r.cars[0].state.slipSpeed
+            advance(&r, ticks: 30, input: CarInput(throttle: 1))
+            return r.cars[0].state.slipSpeed / mid
+        }
+
+        // Without the fade: slow (~1 s of run-up) and flat-out (~20 s) retain
+        // the SAME fraction, because a proportional bleed cannot tell them
+        // apart. This is the control that proves the comparison below
+        // measures the fade and not something else about speed.
+        let slowFlat = retained(runUp: 30, fade: 0)
+        let fastFlat = retained(runUp: 60 * 20, fade: 0)
+        XCTAssertEqual(slowFlat, fastFlat, accuracy: 0.02)
+
+        // With the fade: the flat-out car holds its slide, the slow one bites.
+        let slow = retained(runUp: 30, fade: 0.5)
+        let fast = retained(runUp: 60 * 20, fade: 0.5)
+        XCTAssertGreaterThan(fast, slow * 1.5, "fast \(fast) vs slow \(slow)")
+        // And the stock default actually HAS the effect.
+        XCTAssertGreaterThan(CarTuning().speedGripFade, 0)
     }
 
     func testGrassIsSlowerThanAsphalt() {
