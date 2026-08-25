@@ -14,6 +14,9 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Pro steering can follow your movement.** The new default: sliding your thumb sideways turns, holding it still lets the wheel wind back to straight — faster the faster you're going, like a real wheel centring itself. There's no position to hold and no centre to find: a corner is a gesture, straight is just stopping. Slide up into the full-throttle strip (or lift) and you're instantly straight. The previous hold-an-offset steering is still there behind the tuning panel's Steering switch, along with dials for how far a full lock is, how fast the wheel returns, and how much your speed drives that.
+- **Your held steering is drawn.** A bar along the strip's edge shows the wheel's actual position — the reading a thumb can't take from glass.
+
 ### build 18 — 2026-08-25
 
 - **The cars handle differently.** Less grip and less drift retention, a gentler aim flip, a wider tail swing, and walls that push back a bit less — the stock feel after a device tuning session. Times set before this are not comparable, since the physics itself changed.
