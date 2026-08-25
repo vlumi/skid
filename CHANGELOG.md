@@ -14,6 +14,8 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+### build 19 — 2026-08-25
+
 - **Pro steering can follow your movement.** The new default: sliding your thumb sideways turns, holding it still lets the wheel wind back to straight — faster the faster you're going, like a real wheel centring itself. There's no position to hold and no centre to find: a corner is a gesture, straight is just stopping. Lift your thumb and you're instantly straight. The previous hold-an-offset steering is still there behind the tuning panel's Steering switch, along with dials for how far a full lock is, how fast the wheel returns, and how much your speed drives that.
 - **Speed breaks the car loose.** Grip now fades as you go faster, so a corner taken flat-out drifts wide like a boat while the same corner taken slow bites and turns — backing off is what brings the car back. The "Speed drift" dial in the tuning panel sets how much (0 restores the old speed-independent grip). Physics changed, so earlier times aren't comparable.
 - **The wheel stops fighting slow recoveries.** Steering recentring now scales fully with speed: stuck off-road pointing the wrong way, your held wheel stays held; flat-out on a straight, it still returns to true on its own.
