@@ -135,9 +135,42 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
     /// `touchMoved`, unwound toward zero by `recentreWheel`, dropped on lift
     /// and on sliding back up into the strip.
     private var wheel = 0.0
+    /// The stick base's position along `up` — DISPLAY state only. It trails
+    /// the thumb vertically (dragged when the thumb strays past `steerTravel`,
+    /// like the floating stick's rim) and never recenters: vertical position
+    /// in the ZONE is what selects throttle, so the base has no vertical
+    /// meaning to return to.
+    private var baseUp = 0.0
 
     /// Whether a thumb is currently down on this pad.
     public var touching: Bool { activeTouch != nil }
+    /// The thumb's true position while touching — `knob` is clamped to the
+    /// old pad's radius and lies once the thumb is further out than that.
+    public var touchPoint: Vec2? { touching ? lastMoved : nil }
+
+    /// **Where the joystick's base sits, for drawing** — the visualization of
+    /// the whole steering model: steering IS the horizontal gap between the
+    /// thumb and this point. Winding the wheel is the base falling behind;
+    /// recentring is the base catching up to the thumb; full lock is the
+    /// thumb at the ring's rim, and pushing past the rim tows the base along.
+    /// Derived from the wheel (never stored) so the two cannot disagree.
+    public var stickBase: Vec2? {
+        guard cruiseStrip > 0, touching, let thumb = lastMoved else { return nil }
+        let across = up.perpendicular
+        let travel = max(1, steerTravel)
+        let offset: Double
+        switch steerModel {
+        case .followMovement:
+            offset = wheel * travel
+        case .fromEntry:
+            // The anchor is the base; drawn clamped to the rim, which is
+            // honest — steering saturates at `travel` too.
+            let sideways = thumb.dot(across)
+            let anchor = steerAnchor ?? sideways
+            offset = min(travel, max(-travel, sideways - anchor))
+        }
+        return across * (thumb.dot(across) - offset) + up * baseUp
+    }
     /// Where to DRAW the pad: where the last touch left it, or resting at the
     /// zone's center before any touch. nil only before the zone is laid out.
     public var displayOrigin: Vec2? { origin ?? bounds?.center }
@@ -164,6 +197,7 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
         // A fresh touch starts straight: carrying a dead touch's lock into a
         // new one is the invisible-steer bug in a new costume.
         wheel = 0
+        baseUp = location.dot(up)
     }
 
     public func touchMoved(id: TouchID, at location: Vec2) {
@@ -198,6 +232,12 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
                 wheel = min(1, max(-1, wheel + delta / max(1, steerTravel)))
             }
         }
+        // The base is towed vertically when the thumb strays past the rim —
+        // the drag the floating stick has always had — and never recenters on
+        // this axis, because zone depth is what means throttle.
+        let along = location.dot(up)
+        let reach = max(1, steerTravel)
+        baseUp = min(max(baseUp, along - reach), along + reach)
         lastMoved = location
     }
 
