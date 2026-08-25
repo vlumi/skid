@@ -151,54 +151,60 @@ enum OverlayRenderer {
     private static func drawZonedPad(
         _ pad: DPadOverlay, zone: CGRect, rest: Double, into context: inout GraphicsContext
     ) {
-        // `up` points away from the player, so a flipped seat's strip belongs
-        // at ITS top — the bottom of the screen rect.
+        // `up` points away from the player, so a flipped seat's gas end is
+        // the bottom of the screen rect.
         let flipped = pad.up.y > 0
-        let stripHeight = zone.height * pad.cruiseStrip
-        let brakeHeight = zone.height * pad.brakeBand
-        let strip =
-            flipped
-            ? CGRect(
-                x: zone.minX, y: zone.maxY - stripHeight, width: zone.width,
-                height: stripHeight)
-            : CGRect(x: zone.minX, y: zone.minY, width: zone.width, height: stripHeight)
-        let brake =
-            flipped
-            ? CGRect(x: zone.minX, y: zone.minY, width: zone.width, height: brakeHeight)
-            : CGRect(
-                x: zone.minX, y: zone.maxY - brakeHeight, width: zone.width,
-                height: brakeHeight)
 
-        if pad.cruiseStrip > 0 {
-            context.fill(Path(strip), with: .color(pad.color.opacity(0.22 * rest)))
-            // The learnable edge.
-            var edge = Path()
-            let edgeY = flipped ? strip.minY : strip.maxY
-            edge.move(to: CGPoint(x: zone.minX, y: edgeY))
-            edge.addLine(to: CGPoint(x: zone.maxX, y: edgeY))
-            context.stroke(edge, with: .color(pad.color.opacity(0.8 * rest)), lineWidth: 2)
-        }
-        if pad.brakeBand > 0 {
-            context.fill(Path(brake), with: .color(pad.color.opacity(0.10 * rest)))
-        }
+        // **The throttle axis, painted.** The player's color, strongest where
+        // the gas (and, past the transparent coast point, the reverse) is
+        // strongest — the zone itself is the legend, and the uncolored gap IS
+        // neutral. No band edges to find: the mapping is continuous and so is
+        // the paint.
+        let coastY =
+            flipped
+            ? zone.maxY - pad.coastDepth * zone.height
+            : zone.minY + pad.coastDepth * zone.height
+        let gasEnd = flipped ? zone.maxY : zone.minY
+        let reverseEnd = flipped ? zone.minY : zone.maxY
+        let gas = Gradient(colors: [pad.color.opacity(0.28 * rest), pad.color.opacity(0)])
+        context.fill(
+            Path(
+                CGRect(
+                    x: zone.minX, y: min(gasEnd, coastY), width: zone.width,
+                    height: abs(coastY - gasEnd))),
+            with: .linearGradient(
+                gas, startPoint: CGPoint(x: zone.midX, y: gasEnd),
+                endPoint: CGPoint(x: zone.midX, y: coastY)))
+        let reverse = Gradient(colors: [pad.color.opacity(0), pad.color.opacity(0.20 * rest)])
+        context.fill(
+            Path(
+                CGRect(
+                    x: zone.minX, y: min(coastY, reverseEnd), width: zone.width,
+                    height: abs(reverseEnd - coastY))),
+            with: .linearGradient(
+                reverse, startPoint: CGPoint(x: zone.midX, y: coastY),
+                endPoint: CGPoint(x: zone.midX, y: reverseEnd)))
 
-        // **The joystick, under the thumb — the steering model made visible.**
-        // Steer IS the horizontal gap between the thumb and the base; the rim
-        // is full lock; pushing past the rim tows the base along; and a still
-        // thumb watches the base slide back underneath it as the wheel
-        // recentres. Without this the held lock is invisible, which is the
-        // founding bug of the whole control rework.
+        // **The steering, as a full-height line.** The old ring implied a
+        // two-axis stick, which was a lie — only the sideways gap steers.
+        // The line is the neutral column: it slides with the wheel, the
+        // thumb's distance from it is the live steer, faint rails a travel
+        // away are full lock, and a still thumb watches the line come back
+        // underneath it as the wheel recentres.
         if pad.engaged, let base = pad.stickBase, let thumb = pad.thumb {
-            let ring = CGRect(
-                x: base.x - pad.stickRadius, y: base.y - pad.stickRadius,
-                width: pad.stickRadius * 2, height: pad.stickRadius * 2)
-            context.stroke(
-                Path(ellipseIn: ring), with: .color(pad.color.opacity(0.55)), lineWidth: 2)
-            let mark = CGRect(x: base.x - 3, y: base.y - 3, width: 6, height: 6)
-            context.fill(Path(ellipseIn: mark), with: .color(pad.color.opacity(0.8)))
-            // The gap itself — the live steer reading.
+            func vertical(at x: Double, width: Double, opacity: Double) {
+                var line = Path()
+                line.move(to: CGPoint(x: x, y: zone.minY))
+                line.addLine(to: CGPoint(x: x, y: zone.maxY))
+                context.stroke(
+                    line, with: .color(pad.color.opacity(opacity)), lineWidth: width)
+            }
+            vertical(at: base.x, width: 2, opacity: 0.9)
+            vertical(at: base.x - pad.stickRadius, width: 1, opacity: 0.3)
+            vertical(at: base.x + pad.stickRadius, width: 1, opacity: 0.3)
+            // The gap itself — the live steer reading, at the thumb.
             var bar = Path()
-            bar.move(to: CGPoint(x: base.x, y: base.y))
+            bar.move(to: CGPoint(x: base.x, y: thumb.y))
             bar.addLine(to: CGPoint(x: thumb.x, y: thumb.y))
             context.stroke(bar, with: .color(pad.color.opacity(0.9)), lineWidth: 4)
             let dot = CGRect(x: thumb.x - 7, y: thumb.y - 7, width: 14, height: 14)

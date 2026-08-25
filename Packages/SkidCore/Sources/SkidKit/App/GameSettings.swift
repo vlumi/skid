@@ -24,40 +24,19 @@ public final class GameSettings: ObservableObject {
         WorldScale.Units(rawValue: unitsRaw) ?? .metric
     }
 
-    // D-pad feel (applied live, every frame).
-    @AppStorage("skid.dpad.deadzone") public var dpadDeadzone = 10.0
-    @AppStorage("skid.dpad.travel") public var dpadTravel = 48.0
-    /// Steps per axis; 0 = fully analog. Analog is the default — on-device
-    /// feel testing found it the most natural.
-    @AppStorage("skid.dpad.steps") public var dpadSteps = 0
-    /// **How much of the zone is the cruise strip** — full throttle, no
-    /// steering, free to slide sideways to reposition. Its lower edge is a
-    /// boundary a thumb can learn by feel, which the old floating pad's centre
-    /// never was: you held a little lock you could not detect and sailed down
-    /// the lane in a sine curve.
-    @AppStorage("skid.dpad.cruise") public var dpadCruiseStrip = 0.0
-    /// How much of the zone, from the bottom, brakes and reverses.
-    @AppStorage("skid.dpad.brake") public var dpadBrakeBand = 0.25
-    /// Which meaning depth in the zone has — see `DepthMeaning`. Stored raw so
-    /// a new case cannot invalidate a stored choice.
-    @AppStorage("skid.dpad.depth") public var dpadDepthMeaning =
-        VirtualDPadControlSource.DepthMeaning.steerOnly.rawValue
-    /// Under gas+grip: how much steering survives at full throttle.
-    @AppStorage("skid.dpad.gasSteer") public var dpadSteerAtFullThrottle = 0.35
-    /// Under gas+grip: how hard full throttle pulls the wheel back to straight.
-    @AppStorage("skid.dpad.gasRecentre") public var dpadThrottleRecentring = 2.0
-    /// How the band reads steering: from the entry point, or from movement.
-    @AppStorage("skid.dpad.steer") public var dpadSteerModel =
-        VirtualDPadControlSource.SteerModel.followMovement.rawValue
-    /// Sideways points for full lock, both steering models.
-    @AppStorage("skid.dpad.steerTravel") public var dpadSteerTravel = 60.0
-    /// followMovement: a still thumb's wheel returns at this rate (locks/s).
+    /// **The Pro pad's dials** — one model now, chosen by device-play
+    /// elimination: mouse-style steering over one continuous gas axis.
+    /// Sideways points of thumb movement for full lock.
+    @AppStorage("skid.dpad.steerTravel") public var dpadSteerTravel = 35.0
+    /// A still thumb's wheel returns at this rate (full locks/s).
     @AppStorage("skid.dpad.recentre") public var dpadSteerRecentring = 1.2
     /// 0 = constant recentring, 1 = fully proportional to car speed.
     @AppStorage("skid.dpad.recentreSpeed") public var dpadRecentringSpeed = 1.0
-    /// Response curve; 1 = linear, higher = softer near center. A gentle
-    /// curve is the default so small corrections stay small.
-    @AppStorage("skid.dpad.expo") public var dpadExpo = 1.4
+    /// How much steering survives at full throttle (gas + grip).
+    @AppStorage("skid.dpad.gasSteer") public var dpadSteerAtFullThrottle = 0.5
+    /// Where on the zone the gas runs out, 0…1 from the top: above it the
+    /// throttle ramps 1→0, below it 0→−1 into reverse.
+    @AppStorage("skid.dpad.coast") public var dpadCoast = 0.6
 
     // Aim scheme feel (applied live, every frame).
     /// Below this speed a behind-target reverses; at speed the body flips.
@@ -199,21 +178,11 @@ public final class GameSettings: ObservableObject {
     public func resetAllTunings() {
         resetPhysics()
         pace = 1.0
-        dpadDeadzone = 10.0
-        dpadTravel = 48.0
-        dpadSteps = 0
-        dpadExpo = 1.4
-        // The zone-strip dials — MISSED when the strip shipped, which the
-        // reset-parity test only catches for dials in its list. Both fixed.
-        dpadCruiseStrip = 0.0
-        dpadBrakeBand = 0.25
-        dpadDepthMeaning = VirtualDPadControlSource.DepthMeaning.steerOnly.rawValue
-        dpadSteerAtFullThrottle = 0.35
-        dpadThrottleRecentring = 2.0
-        dpadSteerModel = VirtualDPadControlSource.SteerModel.followMovement.rawValue
-        dpadSteerTravel = 60.0
+        dpadSteerTravel = 35.0
         dpadSteerRecentring = 1.2
         dpadRecentringSpeed = 1.0
+        dpadSteerAtFullThrottle = 0.5
+        dpadCoast = 0.6
         aimReverseBelowSpeed = 90.0
         aimThrottleEase = 0.25
         aimForwardArcDegrees = 150.0

@@ -404,23 +404,11 @@ public final class CouchGame: ObservableObject {
     public func applyControlTuning() {
         guard let rig else { return }
         for controls in rig.players {
-            controls.pro.deadzone = settings.dpadDeadzone
-            controls.pro.radius = settings.dpadTravel
-            controls.pro.levels = settings.dpadSteps > 0 ? settings.dpadSteps : nil
-            controls.pro.expo = settings.dpadExpo
-            controls.pro.cruiseStrip = settings.dpadCruiseStrip
-            controls.pro.brakeBand = settings.dpadBrakeBand
-            controls.pro.depthMeaning =
-                VirtualDPadControlSource.DepthMeaning(rawValue: settings.dpadDepthMeaning)
-                ?? .steerOnly
-            controls.pro.steerAtFullThrottle = settings.dpadSteerAtFullThrottle
-            controls.pro.throttleRecentring = settings.dpadThrottleRecentring
-            controls.pro.steerModel =
-                VirtualDPadControlSource.SteerModel(rawValue: settings.dpadSteerModel)
-                ?? .followMovement
             controls.pro.steerTravel = settings.dpadSteerTravel
             controls.pro.steerRecentring = settings.dpadSteerRecentring
             controls.pro.recentringSpeedWeight = settings.dpadRecentringSpeed
+            controls.pro.steerAtFullThrottle = settings.dpadSteerAtFullThrottle
+            controls.pro.coastDepth = settings.dpadCoast
             // Speed-weighted recentring saturates at the car's actual top
             // speed, pace dial included.
             controls.pro.fullSpeed = settings.carTuning.maxSpeed
