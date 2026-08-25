@@ -14,6 +14,8 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+### build 20 — 2026-08-25
+
 - **One Pro model, tuned by play.** The steering and throttle switches are gone — the driven winner is the only model: mouse-style steering with speed-scaled recentring, over one continuous gas axis. Your dialled-in feel is the new stock (steer travel 35, gas steering 0.50).
 - **Pulling back is reverse.** The gas axis now runs the whole zone: full throttle at the top, coasting at the coast point, braking below it and full reverse at the very bottom — no brake band to find, and the sim already brakes while you're rolling and reverses once you've stopped. The coast point is a tuning dial.
 - **The zone shows its gas.** Your color paints the control box as a gradient: strongest where the throttle (or, below the transparent neutral gap, the reverse) is strongest — the zone itself is the legend.
