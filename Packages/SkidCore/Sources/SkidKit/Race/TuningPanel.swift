@@ -45,6 +45,10 @@ struct TuningPanel: View {
                         Text("Grip", bundle: .module), value: $settings.gripScale,
                         range: 0.2...2, step: 0.05, format: "%.2f")
                     slider(
+                        Text("Speed drift", bundle: .module),
+                        value: $settings.speedGripFade,
+                        range: 0...1, step: 0.05, format: "%.2f")
+                    slider(
                         Text("Reverse under speed", bundle: .module),
                         value: $settings.aimReverseBelowSpeed,
                         range: 30...150, step: 5, format: "%.0f")
