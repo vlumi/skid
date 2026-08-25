@@ -22,10 +22,9 @@ final class GameSettingsResetTests: XCTestCase {
         \.aimTurnRate, \.aimFlipBoost, \.steerFlipBoost, \.driftRetention,
         \.turnRate, \.gripScale, \.speedGripFade, \.wallRestitution, \.wallGlanceBounce,
         \.wallFriction, \.wallDragFloor, \.gravity, \.wallYaw,
-        \.pace, \.dpadDeadzone, \.dpadTravel, \.dpadExpo,
-        \.dpadCruiseStrip, \.dpadBrakeBand, \.dpadSteerAtFullThrottle,
-        \.dpadThrottleRecentring, \.dpadSteerTravel, \.dpadSteerRecentring,
-        \.dpadRecentringSpeed,
+        \.pace, \.dpadSteerAtFullThrottle,
+        \.dpadSteerTravel, \.dpadSteerRecentring,
+        \.dpadRecentringSpeed, \.dpadCoast,
         \.aimReverseBelowSpeed, \.aimThrottleEase, \.aimForwardArcDegrees,
         \.aimTailSwingDegrees, \.deckScale,
     ]
@@ -60,7 +59,6 @@ final class GameSettingsResetTests: XCTestCase {
         let settings = GameSettings()
         let factory = Self.dials.map { settings[keyPath: $0] }
         let factoryOverlay = settings.debugOverlay
-        let factorySteps = settings.dpadSteps
 
         // Move every dial somewhere it is not.
         settings.aimTurnRate += 1
@@ -76,10 +74,11 @@ final class GameSettingsResetTests: XCTestCase {
         settings.gravity += 2
         settings.wallYaw += 0.01
         settings.pace = 0.5
-        settings.dpadDeadzone += 5
-        settings.dpadTravel += 10
-        settings.dpadSteps = 8
-        settings.dpadExpo += 0.4
+        settings.dpadSteerTravel += 10
+        settings.dpadSteerRecentring += 0.5
+        settings.dpadRecentringSpeed -= 0.3
+        settings.dpadSteerAtFullThrottle += 0.2
+        settings.dpadCoast += 0.1
         settings.aimReverseBelowSpeed += 20
         settings.aimThrottleEase += 0.2
         settings.aimForwardArcDegrees += 20
@@ -95,26 +94,25 @@ final class GameSettingsResetTests: XCTestCase {
                 "a dial did not come back to its factory value (index \(index))")
         }
         XCTAssertEqual(settings.debugOverlay, factoryOverlay)
-        XCTAssertEqual(settings.dpadSteps, factorySteps)
     }
 
     /// **It covers strictly more than the physics reset**, which is the gap that prompted
     /// it: `resetPhysics` leaves the d-pad, the aim shape, the elevation and the pace.
     func testItResetsWhatThePhysicsResetLeavesBehind() {
         let settings = GameSettings()
-        settings.dpadTravel += 20
+        settings.dpadSteerTravel += 20
         settings.aimForwardArcDegrees += 30
         settings.deckScale += 0.2
         settings.pace = 0.5
 
         settings.resetPhysics()
-        // 68 = the tuned value. Compared against the literal, not another `GameSettings`:
+        // 55 = the tuned value. Compared against the literal, not another `GameSettings`:
         // every instance shares `UserDefaults.standard`, so a "fresh" one reads the tuned
         // value too — which is what made the first version of this test fail.
-        XCTAssertEqual(settings.dpadTravel, 68.0, accuracy: 1e-9, "physics reset left it")
+        XCTAssertEqual(settings.dpadSteerTravel, 55.0, accuracy: 1e-9, "physics reset left it")
 
         settings.resetAllTunings()
-        XCTAssertEqual(settings.dpadTravel, 48.0, accuracy: 1e-9)
+        XCTAssertEqual(settings.dpadSteerTravel, 35.0, accuracy: 1e-9)
         XCTAssertEqual(settings.aimForwardArcDegrees, 150.0, accuracy: 1e-9)
         XCTAssertEqual(settings.deckScale, 1.2, accuracy: 1e-9)
         XCTAssertEqual(settings.pace, 1.0, accuracy: 1e-9)
