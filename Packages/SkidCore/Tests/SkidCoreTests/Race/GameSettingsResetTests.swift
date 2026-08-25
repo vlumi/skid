@@ -23,6 +23,9 @@ final class GameSettingsResetTests: XCTestCase {
         \.turnRate, \.gripScale, \.wallRestitution, \.wallGlanceBounce,
         \.wallFriction, \.wallDragFloor, \.gravity, \.wallYaw,
         \.pace, \.dpadDeadzone, \.dpadTravel, \.dpadExpo,
+        \.dpadCruiseStrip, \.dpadBrakeBand, \.dpadSteerAtFullThrottle,
+        \.dpadThrottleRecentring, \.dpadSteerTravel, \.dpadSteerRecentring,
+        \.dpadRecentringSpeed,
         \.aimReverseBelowSpeed, \.aimThrottleEase, \.aimForwardArcDegrees,
         \.aimTailSwingDegrees, \.deckScale,
     ]

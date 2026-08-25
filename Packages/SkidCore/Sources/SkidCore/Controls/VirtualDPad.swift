@@ -318,28 +318,34 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
         }
 
         if depthMeaning == .gasAndGrip, throttle > 0 {
-            // **One relationship, not two controls.** Depth eases the gas, and
-            // the steering firms up as it does: pinned throttle is fast and
-            // straight, easing off lets the wheel bite. Cornering means
-            // lifting, as it does in a real car.
-            let drivable = max(0.0001, brakeFrom - cruiseStrip)
-            let into = min(1, (depth - cruiseStrip) / drivable)
-            throttle = 1 - into
-            // Full gas keeps only a nudge of steering; lifting restores it all.
-            steer *= steerAtFullThrottle + (1 - steerAtFullThrottle) * into
-            // And at full gas the wheel pulls back to true, which is what makes
-            // a pinned car track straight instead of wandering. `fromEntry`
-            // only: followMovement recentres on its own clock, and two pulls
-            // on one wheel would be untunable.
-            if steerModel == .fromEntry {
-                let pull = throttleRecentring * (1 - into) / Double(Race.tickRate)
-                if abs(steer) <= pull {
-                    steer = 0
-                } else {
-                    steer += steer < 0 ? pull : -pull
-                }
-            }
+            (steer, throttle) = gasAndGrip(depth: depth, brakeFrom: brakeFrom, steer: steer)
         }
         return CarInput(steer: steer * authority, throttle: throttle)
+    }
+
+    /// **One relationship, not two controls.** Depth eases the gas, and the
+    /// steering firms up as it does: pinned throttle is fast and straight,
+    /// easing off lets the wheel bite. Cornering means lifting, as it does in
+    /// a real car.
+    private func gasAndGrip(
+        depth: Double, brakeFrom: Double, steer: Double
+    ) -> (steer: Double, throttle: Double) {
+        let drivable = max(0.0001, brakeFrom - cruiseStrip)
+        let into = min(1, (depth - cruiseStrip) / drivable)
+        // Full gas keeps only a nudge of steering; lifting restores it all.
+        var steer = steer * (steerAtFullThrottle + (1 - steerAtFullThrottle) * into)
+        // And at full gas the wheel pulls back to true, which is what makes a
+        // pinned car track straight instead of wandering. `fromEntry` only:
+        // followMovement recentres on its own clock, and two pulls on one
+        // wheel would be untunable.
+        if steerModel == .fromEntry {
+            let pull = throttleRecentring * (1 - into) / Double(Race.tickRate)
+            if abs(steer) <= pull {
+                steer = 0
+            } else {
+                steer += steer < 0 ? pull : -pull
+            }
+        }
+        return (steer, 1 - into)
     }
 }

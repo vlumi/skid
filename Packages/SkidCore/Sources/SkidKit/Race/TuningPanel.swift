@@ -68,6 +68,19 @@ struct TuningPanel: View {
                     // and the first that gives the thumb an EDGE to find, so
                     // what these want is driving, not more arithmetic.
                     section(Text("Pro layout", bundle: .module))
+                    steerModelRow
+                    slider(
+                        Text("Steer travel", bundle: .module),
+                        value: $settings.dpadSteerTravel,
+                        range: 20...160, step: 5, format: "%.0f")
+                    slider(
+                        Text("Recentring", bundle: .module),
+                        value: $settings.dpadSteerRecentring,
+                        range: 0...4, step: 0.1, format: "%.1f")
+                    slider(
+                        Text("Speed effect", bundle: .module),
+                        value: $settings.dpadRecentringSpeed,
+                        range: 0...1, step: 0.05, format: "%.2f")
                     modelRow
                     slider(
                         Text("Cruise strip", bundle: .module),
@@ -232,6 +245,34 @@ struct TuningPanel: View {
     /// Steps per axis: full analog or 1–3 quantized notches.
     /// Which meaning depth has — the fork worth driving rather than deciding
     /// in the abstract. See `VirtualDPadControlSource.DepthMeaning`.
+    /// Which steering the band uses — the fork the last device round opened:
+    /// hold an offset (from entry) or wind by movement (follow moves).
+    private var steerModelRow: some View {
+        HStack(spacing: 8) {
+            Text("Steering", bundle: .module)
+                .font(Retro.caption)
+                .foregroundStyle(Retro.inkSoft)
+            Spacer(minLength: 8)
+            ForEach(VirtualDPadControlSource.SteerModel.allCases, id: \.rawValue) { mode in
+                let on = settings.dpadSteerModel == mode.rawValue
+                Button {
+                    settings.dpadSteerModel = mode.rawValue
+                } label: {
+                    (mode == .fromEntry
+                        ? Text("From entry", bundle: .module)
+                        : Text("Follow moves", bundle: .module))
+                        .font(Retro.caption)
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: 30)
+                        .background(on ? Retro.highlight : Retro.panel)
+                        .overlay(RetroBevel(inset: on, thickness: 2))
+                        .foregroundStyle(on ? Retro.onHighlight : Retro.ink)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
     private var modelRow: some View {
         HStack(spacing: 8) {
             Text("Depth", bundle: .module)

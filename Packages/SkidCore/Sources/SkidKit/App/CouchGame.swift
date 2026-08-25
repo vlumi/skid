@@ -415,6 +415,15 @@ public final class CouchGame: ObservableObject {
                 ?? .steerOnly
             controls.pro.steerAtFullThrottle = settings.dpadSteerAtFullThrottle
             controls.pro.throttleRecentring = settings.dpadThrottleRecentring
+            controls.pro.steerModel =
+                VirtualDPadControlSource.SteerModel(rawValue: settings.dpadSteerModel)
+                ?? .followMovement
+            controls.pro.steerTravel = settings.dpadSteerTravel
+            controls.pro.steerRecentring = settings.dpadSteerRecentring
+            controls.pro.recentringSpeedWeight = settings.dpadRecentringSpeed
+            // Speed-weighted recentring saturates at the car's actual top
+            // speed, pace dial included.
+            controls.pro.fullSpeed = settings.carTuning.maxSpeed
             controls.casual.reverseBelowSpeed = settings.aimReverseBelowSpeed
             controls.casual.throttleEase = settings.aimThrottleEase
             // Stored in degrees, used in radians.
