@@ -89,6 +89,10 @@ struct TuningPanel: View {
                         value: $settings.dpadSteerAtFullThrottle,
                         range: 0...1, step: 0.05, format: "%.2f")
                     slider(
+                        Text("Full gas until", bundle: .module),
+                        value: $settings.dpadFullThrottle,
+                        range: 0...0.5, step: 0.05, format: "%.2f")
+                    slider(
                         Text("Coast point", bundle: .module),
                         value: $settings.dpadCoast,
                         range: 0.3...0.9, step: 0.05, format: "%.2f")

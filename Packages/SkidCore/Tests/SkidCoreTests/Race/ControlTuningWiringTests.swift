@@ -45,6 +45,7 @@ final class ControlTuningWiringTests: XCTestCase {
         game.settings.dpadSteerRecentring = 2.5
         game.settings.dpadRecentringSpeed = 0.75
         game.settings.dpadSteerAtFullThrottle = 0.4
+        game.settings.dpadFullThrottle = 0.2
         game.settings.dpadCoast = 0.7
 
         game.applyControlTuning()
@@ -56,6 +57,7 @@ final class ControlTuningWiringTests: XCTestCase {
         XCTAssertEqual(pad.steerRecentring, 2.5)
         XCTAssertEqual(pad.recentringSpeedWeight, 0.75)
         XCTAssertEqual(pad.steerAtFullThrottle, 0.4)
+        XCTAssertEqual(pad.fullThrottleDepth, 0.2)
         XCTAssertEqual(pad.coastDepth, 0.7)
         // fullSpeed rides the car tuning, pace folded in.
         XCTAssertEqual(pad.fullSpeed, game.settings.carTuning.maxSpeed)
