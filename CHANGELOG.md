@@ -14,6 +14,9 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Full throttle is a region, not an edge.** The top of the control box is pinned at full gas down to the "Full gas until" point (a dial, 30% by default), with steering fully live there — flat-out no longer means pressing your finger against the box's edge. The gas eases from there to the coast point, and braking/reverse keeps the smallest share, since it's only for when you mess up.
+- **Steering reads as a solid band.** The thin line and dot hid under your thumb; now the turn fills a full-height band from straight-ahead toward the side you're steering, visible above and below your finger, framed by faint full-lock rails — and you watch it drain away as the wheel recentres.
+
 ### build 20 — 2026-08-25
 
 - **One Pro model, tuned by play.** The steering and throttle switches are gone — the driven winner is the only model: mouse-style steering with speed-scaled recentring, over one continuous gas axis. Your dialled-in feel is the new stock (steer travel 35, gas steering 0.50).
