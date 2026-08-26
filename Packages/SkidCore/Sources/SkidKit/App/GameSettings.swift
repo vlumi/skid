@@ -36,6 +36,8 @@ public final class GameSettings: ObservableObject {
     @AppStorage("skid.dpad.gasSteer") public var dpadSteerAtFullThrottle = 0.5
     /// Where on the zone the gas runs out, 0…1 from the top: above it the
     /// throttle ramps 1→0, below it 0→−1 into reverse.
+    /// How much of the zone, from the top, is pinned at full throttle.
+    @AppStorage("skid.dpad.fullGas") public var dpadFullThrottle = 0.3
     @AppStorage("skid.dpad.coast") public var dpadCoast = 0.6
 
     // Aim scheme feel (applied live, every frame).
@@ -182,6 +184,7 @@ public final class GameSettings: ObservableObject {
         dpadSteerRecentring = 1.2
         dpadRecentringSpeed = 1.0
         dpadSteerAtFullThrottle = 0.5
+        dpadFullThrottle = 0.3
         dpadCoast = 0.6
         aimReverseBelowSpeed = 90.0
         aimThrottleEase = 0.25

@@ -158,22 +158,29 @@ enum OverlayRenderer {
         // **The throttle axis, painted.** The player's color, strongest where
         // the gas (and, past the transparent coast point, the reverse) is
         // strongest — the zone itself is the legend, and the uncolored gap IS
-        // neutral. No band edges to find: the mapping is continuous and so is
-        // the paint.
-        let coastY =
-            flipped
-            ? zone.maxY - pad.coastDepth * zone.height
-            : zone.minY + pad.coastDepth * zone.height
+        // neutral. The full-throttle plateau paints flat: it IS flat.
+        func yAt(_ depth: Double) -> Double {
+            flipped ? zone.maxY - depth * zone.height : zone.minY + depth * zone.height
+        }
+        let fullY = yAt(min(pad.coastDepth - 0.05, pad.fullThrottleDepth))
+        let coastY = yAt(pad.coastDepth)
         let gasEnd = flipped ? zone.maxY : zone.minY
         let reverseEnd = flipped ? zone.minY : zone.maxY
-        let gas = Gradient(colors: [pad.color.opacity(0.28 * rest), pad.color.opacity(0)])
+        let peak = pad.color.opacity(0.28 * rest)
         context.fill(
             Path(
                 CGRect(
-                    x: zone.minX, y: min(gasEnd, coastY), width: zone.width,
-                    height: abs(coastY - gasEnd))),
+                    x: zone.minX, y: min(gasEnd, fullY), width: zone.width,
+                    height: abs(fullY - gasEnd))),
+            with: .color(peak))
+        let gas = Gradient(colors: [peak, pad.color.opacity(0)])
+        context.fill(
+            Path(
+                CGRect(
+                    x: zone.minX, y: min(fullY, coastY), width: zone.width,
+                    height: abs(coastY - fullY))),
             with: .linearGradient(
-                gas, startPoint: CGPoint(x: zone.midX, y: gasEnd),
+                gas, startPoint: CGPoint(x: zone.midX, y: fullY),
                 endPoint: CGPoint(x: zone.midX, y: coastY)))
         let reverse = Gradient(colors: [pad.color.opacity(0), pad.color.opacity(0.20 * rest)])
         context.fill(
@@ -185,30 +192,29 @@ enum OverlayRenderer {
                 reverse, startPoint: CGPoint(x: zone.midX, y: coastY),
                 endPoint: CGPoint(x: zone.midX, y: reverseEnd)))
 
-        // **The steering, as a full-height line.** The old ring implied a
-        // two-axis stick, which was a lie — only the sideways gap steers.
-        // The line is the neutral column: it slides with the wheel, the
-        // thumb's distance from it is the live steer, faint rails a travel
-        // away are full lock, and a still thumb watches the line come back
-        // underneath it as the wheel recentres.
+        // **The steering, as a solid full-height band.** A line and a dot sat
+        // under the thumb where a thumb cannot see them; a fill that GROWS
+        // from the neutral column toward the steered side is readable above
+        // and below the finger, and its width against the full-lock rails is
+        // the fraction of lock held. A still thumb watches it drain away as
+        // the wheel recentres.
         if pad.engaged, let base = pad.stickBase, let thumb = pad.thumb {
-            func vertical(at x: Double, width: Double, opacity: Double) {
-                var line = Path()
-                line.move(to: CGPoint(x: x, y: zone.minY))
-                line.addLine(to: CGPoint(x: x, y: zone.maxY))
-                context.stroke(
-                    line, with: .color(pad.color.opacity(opacity)), lineWidth: width)
+            let width = abs(thumb.x - base.x)
+            if width > 0.5 {
+                context.fill(
+                    Path(
+                        CGRect(
+                            x: min(base.x, thumb.x), y: zone.minY,
+                            width: width, height: zone.height)),
+                    with: .color(pad.color.opacity(0.45)))
             }
-            vertical(at: base.x, width: 2, opacity: 0.9)
-            vertical(at: base.x - pad.stickRadius, width: 1, opacity: 0.3)
-            vertical(at: base.x + pad.stickRadius, width: 1, opacity: 0.3)
-            // The gap itself — the live steer reading, at the thumb.
-            var bar = Path()
-            bar.move(to: CGPoint(x: base.x, y: thumb.y))
-            bar.addLine(to: CGPoint(x: thumb.x, y: thumb.y))
-            context.stroke(bar, with: .color(pad.color.opacity(0.9)), lineWidth: 4)
-            let dot = CGRect(x: thumb.x - 7, y: thumb.y - 7, width: 14, height: 14)
-            context.fill(Path(ellipseIn: dot), with: .color(pad.color.opacity(0.95)))
+            // The full-lock rails, a travel to either side of neutral.
+            for rail in [base.x - pad.stickRadius, base.x + pad.stickRadius] {
+                var line = Path()
+                line.move(to: CGPoint(x: rail, y: zone.minY))
+                line.addLine(to: CGPoint(x: rail, y: zone.maxY))
+                context.stroke(line, with: .color(pad.color.opacity(0.3)), lineWidth: 1)
+            }
         }
     }
 

@@ -215,6 +215,7 @@ struct RaceScreen: View {
                 up: controls.pro.up,
                 radius: controls.pro.radius,
                 zone: controls.content,
+                fullThrottleDepth: controls.pro.fullThrottleDepth,
                 coastDepth: controls.pro.coastDepth,
                 knob: controls.pro.knob,
                 stickBase: controls.pro.stickBase,
@@ -328,8 +329,9 @@ struct DPadOverlay {
     /// The zone the pad owns — nil only for a pad with no zone laid out
     /// (the bare floating fallback).
     var zone: CGRect?
-    /// Where on the zone the gas runs out, 0…1 from the top — the throttle
-    /// gradient's transparent point.
+    /// The gas plateau's reach and the throttle gradient's transparent
+    /// point, 0…1 from the zone's top.
+    var fullThrottleDepth: Double = 0.3
     var coastDepth: Double = 0.6
     /// The thumb's offset from the origin, so the overlay can show how far off
     /// straight-ahead it is — the reading a thumb cannot take by feel on glass.
