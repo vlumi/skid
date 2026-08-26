@@ -279,3 +279,51 @@ struct RetroChoice: View {
         .buttonStyle(.plain)
     }
 }
+
+/// **The one way out of any screen.** A 44-point beveled icon button that
+/// always sits in the TOP-LEFT corner: `chevron.left` when it goes back up
+/// the hierarchy, `xmark` when it closes a sheet. Before this, every screen
+/// invented its own exit — a wide floating Back, a bare text link, a lonely
+/// pill under the start button — and the editor's corner X was the only one
+/// a thumb could find without reading. Now the X's position is the rule.
+struct RetroCornerButton: View {
+    let symbol: String
+    let label: Text
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(Retro.ink)
+                .frame(width: 44, height: 44)
+                .background(Retro.panel)
+                .overlay(RetroBevel(thickness: 2))
+        }
+        .accessibilityLabel(label)
+    }
+}
+
+/// Back, for screens that live in the hierarchy (setup, tracks, nearby).
+func retroBack(_ action: @escaping () -> Void) -> some View {
+    RetroCornerButton(
+        symbol: "chevron.left", label: Text("Back", bundle: .module), action: action)
+}
+
+/// Close, for sheets (track picker, palette, profile) — chosen over "Done"
+/// because picking already applies: there is nothing left to confirm, only a
+/// surface to put away.
+func retroClose(_ action: @escaping () -> Void) -> some View {
+    RetroCornerButton(
+        symbol: "xmark", label: Text("Close", bundle: .module), action: action)
+}
+
+/// The corner strip a leave button rides in: pinned to the leading edge,
+/// content-height, so every screen puts it in the same place.
+func retroLeaveRow<Leave: View>(_ leave: Leave) -> some View {
+    HStack {
+        leave
+        Spacer()
+    }
+    .padding(.horizontal, 16)
+}

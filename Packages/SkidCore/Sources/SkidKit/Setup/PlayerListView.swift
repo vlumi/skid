@@ -102,8 +102,10 @@ struct PlayerListView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+        // A flat tile, not a bevel: the row holds three separate controls
+        // (swatch, name, remove), and a beveled container read as one big
+        // button wrapping them. The chevron already marks the tappable name.
         .background(Retro.panel)
-        .overlay(RetroBevel(thickness: 2))
     }
 
     /// Two ways to add a person: anonymously, or by name. Both add a row — the second
