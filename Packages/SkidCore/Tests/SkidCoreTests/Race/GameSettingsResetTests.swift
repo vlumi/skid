@@ -24,7 +24,7 @@ final class GameSettingsResetTests: XCTestCase {
         \.wallFriction, \.wallDragFloor, \.gravity, \.wallYaw,
         \.pace, \.dpadSteerAtFullThrottle,
         \.dpadSteerTravel, \.dpadSteerRecentring,
-        \.dpadRecentringSpeed, \.dpadCoast,
+        \.dpadRecentringSpeed, \.dpadFullThrottle, \.dpadCoast,
         \.aimReverseBelowSpeed, \.aimThrottleEase, \.aimForwardArcDegrees,
         \.aimTailSwingDegrees, \.deckScale,
     ]
@@ -79,6 +79,7 @@ final class GameSettingsResetTests: XCTestCase {
         settings.dpadRecentringSpeed -= 0.3
         settings.dpadSteerAtFullThrottle += 0.2
         settings.dpadCoast += 0.1
+        settings.dpadFullThrottle += 0.1
         settings.aimReverseBelowSpeed += 20
         settings.aimThrottleEase += 0.2
         settings.aimForwardArcDegrees += 20

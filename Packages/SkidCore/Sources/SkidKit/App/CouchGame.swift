@@ -408,6 +408,7 @@ public final class CouchGame: ObservableObject {
             controls.pro.steerRecentring = settings.dpadSteerRecentring
             controls.pro.recentringSpeedWeight = settings.dpadRecentringSpeed
             controls.pro.steerAtFullThrottle = settings.dpadSteerAtFullThrottle
+            controls.pro.fullThrottleDepth = settings.dpadFullThrottle
             controls.pro.coastDepth = settings.dpadCoast
             // Speed-weighted recentring saturates at the car's actual top
             // speed, pace dial included.

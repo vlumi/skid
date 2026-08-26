@@ -47,9 +47,16 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
     /// How much steering survives at full throttle, 0…1 — the grip half of
     /// gas + grip. Not zero: a pinned car still needs nudging between walls.
     public var steerAtFullThrottle: Double = 0.5
-    /// Where on the zone the gas runs out, 0…1 from the top: above it the
-    /// throttle ramps 1→0, below it 0→−1. One continuous axis — "pushing
-    /// backwards is reverse" — with no band chrome to find.
+    /// How much of the zone, from the top, is pinned at FULL throttle, 0…1.
+    /// Without it, full gas existed only at the zone's very edge and had to
+    /// be held there by pinning the finger against the box. Steering works
+    /// throughout — this is a throttle plateau, not the old steering-dead
+    /// cruise strip.
+    public var fullThrottleDepth: Double = 0.3
+    /// Where on the zone the gas runs out, 0…1 from the top: the throttle
+    /// ramps 1→0 between `fullThrottleDepth` and here, and 0→−1 below into
+    /// reverse. Reverse keeps the smallest share on purpose — it is only for
+    /// when you mess up.
     public var coastDepth: Double = 0.6
 
     /// The zone's local "up" in screen coordinates.
@@ -187,13 +194,15 @@ public final class VirtualDPadControlSource: HeadingAwareControlSource {
         }
 
         var steer = wheel
-        let coast = min(0.95, max(0.05, coastDepth))
+        let coast = min(0.95, max(0.1, coastDepth))
+        let full = min(coast - 0.05, max(0, fullThrottleDepth))
         let throttle: Double
         if depth <= coast {
-            // **Gas + grip, one relationship**: depth eases the gas and the
-            // steering firms as it does — pinned throttle is fast and
-            // straight, easing off lets the wheel bite.
-            let into = depth / coast
+            // **Gas + grip, one relationship**: past the full-throttle
+            // plateau, depth eases the gas and the steering firms as it
+            // does — pinned throttle is fast and straight, easing off lets
+            // the wheel bite.
+            let into = min(1, max(0, (depth - full) / (coast - full)))
             throttle = 1 - into
             steer *= steerAtFullThrottle + (1 - steerAtFullThrottle) * into
         } else {

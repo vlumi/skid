@@ -23,6 +23,7 @@ final class ZonedPadTests: XCTestCase {
         // Zero so recentring is exactly the dial; the speed test dials it up.
         source.recentringSpeedWeight = 0
         source.steerAtFullThrottle = 0.5
+        source.fullThrottleDepth = 0.3
         source.coastDepth = 0.6
         return source
     }
@@ -105,16 +106,19 @@ final class ZonedPadTests: XCTestCase {
 
     // MARK: - The gas axis
 
-    /// **One continuous axis**: full gas at the top, coasting at the coast
-    /// point, full reverse at the very bottom — "pushing backwards is
-    /// reverse", with no band edge to find. The sim itself turns negative
-    /// throttle into braking while rolling and reverse once stopped.
+    /// **One continuous axis with a full-gas plateau**: pinned at 1 down to
+    /// `fullThrottleDepth` (holding flat-out must not mean pinning the finger
+    /// to the box's edge), ramping to coast, then into reverse at the very
+    /// bottom. The sim itself turns negative throttle into braking while
+    /// rolling and reverse once stopped.
     func testDepthIsOneContinuousGasAxis() {
         let p = pad()
         p.touchBegan(id: 1, at: at(depth: 0, x: 90))
         XCTAssertEqual(input(p).throttle, 1, accuracy: 1e-9, "top is not full gas")
-        p.touchMoved(id: 1, at: at(depth: 0.3, x: 90))
-        XCTAssertEqual(input(p).throttle, 0.5, accuracy: 1e-9, "halfway to coast is not half gas")
+        p.touchMoved(id: 1, at: at(depth: 0.29, x: 90))
+        XCTAssertEqual(input(p).throttle, 1, accuracy: 1e-9, "the plateau is not full gas")
+        p.touchMoved(id: 1, at: at(depth: 0.45, x: 90))
+        XCTAssertEqual(input(p).throttle, 0.5, accuracy: 1e-9, "mid-ramp is not half gas")
         p.touchMoved(id: 1, at: at(depth: 0.6, x: 90))
         XCTAssertEqual(input(p).throttle, 0, accuracy: 1e-9, "the coast point is not neutral")
         p.touchMoved(id: 1, at: at(depth: 0.8, x: 90))
@@ -134,6 +138,9 @@ final class ZonedPadTests: XCTestCase {
             return input(p).steer
         }
         XCTAssertEqual(steer(atDepth: 0), 0.5, accuracy: 1e-9, "full gas did not soften the wheel")
+        XCTAssertEqual(
+            steer(atDepth: 0.29), 0.5, accuracy: 1e-9,
+            "the plateau's steering should match full gas — it IS full gas")
         XCTAssertEqual(steer(atDepth: 0.6), 1.0, accuracy: 1e-9, "coasting did not restore it")
         XCTAssertEqual(steer(atDepth: 0.9), 1.0, accuracy: 1e-9, "reversing lost the wheel")
     }
