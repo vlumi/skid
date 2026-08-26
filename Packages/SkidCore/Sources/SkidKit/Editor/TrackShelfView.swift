@@ -57,6 +57,8 @@ struct TrackShelfView: View {
                     // **Titled, because this is a destination now** rather than a
                     // step inside the editor: it is reached from the front door
                     // (top → tracks → editor) and needs to say where you are.
+                    // Back rides the same corner as every other screen.
+                    retroBack(back)
                     RetroTitle(Text("Tracks", bundle: .module))
                     HStack(spacing: 10) {
                         newTrackButton
@@ -121,21 +123,6 @@ struct TrackShelfView: View {
             if let entry = sharing {
                 TrackShareSheet(name: entry.name, code: entry.code) { sharing = nil }
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                back()
-            } label: {
-                Text("Back", bundle: .module)
-                    .font(Retro.body)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Retro.panel)
-                    .overlay(RetroBevel(thickness: 2))
-                    .foregroundStyle(Retro.ink)
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 8)
         }
     }
 
