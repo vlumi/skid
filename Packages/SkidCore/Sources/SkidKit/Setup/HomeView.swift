@@ -23,10 +23,8 @@ struct HomeView: View {
     let net: NetworkedGame
 
     // `simctl` cannot tap, so these screens are otherwise unreachable for a screenshot.
-    @State private var showingSettings =
-        ProcessInfo.processInfo.arguments.contains("-skid-settings")
-    @State private var showingAbout =
-        ProcessInfo.processInfo.arguments.contains("-skid-about")
+    @State private var showingSettings = LaunchFlag.consume("-skid-settings")
+    @State private var showingAbout = LaunchFlag.consume("-skid-about")
 
     var body: some View {
         ZStack {

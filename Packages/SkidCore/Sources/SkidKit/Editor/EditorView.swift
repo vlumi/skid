@@ -135,7 +135,7 @@ struct EditorView: View {
     // `-skid-levels` starts the mode on — the launch-argument family exists
     // because simctl cannot tap, and a Levels screenshot needs the mode on.
     @State var levelFilter: LevelFilter =
-        ProcessInfo.processInfo.arguments.contains("-skid-levels") ? .all : .off
+        LaunchFlag.consume("-skid-levels") ? .all : .off
 
     /// Brief warning that the clipboard didn't hold a readable share code.
 

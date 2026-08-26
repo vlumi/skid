@@ -45,7 +45,7 @@ struct TrackShelfView: View {
     /// other screenshot arguments exist: `simctl` cannot tap a context menu, so
     /// this sheet is otherwise unreachable for a screenshot.
     @State private var sharing: TrackLibraryBook.Entry?
-    private let shareOnAppear = ProcessInfo.processInfo.arguments.contains("-skid-share")
+    private let shareOnAppear = LaunchFlag.consume("-skid-share")
 
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 

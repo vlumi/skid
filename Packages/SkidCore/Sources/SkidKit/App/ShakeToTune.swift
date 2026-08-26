@@ -82,7 +82,7 @@ private struct ShakeTuningModifier: ViewModifier {
             .onAppear {
                 // `simctl` cannot shake a simulator, so a panel reached only by shaking
                 // is otherwise unreachable for a screenshot.
-                if ProcessInfo.processInfo.arguments.contains("-skid-tuning") {
+                if LaunchFlag.consume("-skid-tuning") {
                     showing = true
                 }
             }
