@@ -23,10 +23,8 @@ struct HomeView: View {
     let net: NetworkedGame
 
     // `simctl` cannot tap, so these screens are otherwise unreachable for a screenshot.
-    @State private var showingSettings =
-        ProcessInfo.processInfo.arguments.contains("-skid-settings")
-    @State private var showingAbout =
-        ProcessInfo.processInfo.arguments.contains("-skid-about")
+    @State private var showingSettings = LaunchFlag.consume("-skid-settings")
+    @State private var showingAbout = LaunchFlag.consume("-skid-about")
 
     var body: some View {
         ZStack {
@@ -49,22 +47,6 @@ struct HomeView: View {
         }
     }
 
-    /// A small icon button for the corner strip. Labelled for VoiceOver, since an icon
-    /// alone says nothing to it.
-    private func cornerButton(
-        _ symbol: String, _ label: Text, action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.title3)
-                .foregroundStyle(Retro.ink)
-                .frame(width: 44, height: 44)
-                .background(Retro.panel)
-                .overlay(RetroBevel(thickness: 2))
-        }
-        .accessibilityLabel(label)
-    }
-
     private var home: some View {
         VStack(spacing: 20) {
             // Settings and About ride in the corner rather than as rows: the front door
@@ -72,10 +54,14 @@ struct HomeView: View {
             // would bury that under housekeeping.
             HStack(spacing: 10) {
                 Spacer()
-                cornerButton("gearshape.fill", Text("Settings", bundle: .module)) {
+                RetroCornerButton(
+                    symbol: "gearshape.fill", label: Text("Settings", bundle: .module)
+                ) {
                     showingSettings = true
                 }
-                cornerButton("info.circle.fill", Text("About", bundle: .module)) {
+                RetroCornerButton(
+                    symbol: "info.circle.fill", label: Text("About", bundle: .module)
+                ) {
                     showingAbout = true
                 }
             }
@@ -101,21 +87,16 @@ struct HomeView: View {
 
             actions
                 .padding(.horizontal, 16)
-
-            // **"Tracks", not "Track editor".** The destination is the library —
-            // your tracks, where you share, rename, delete or start a new one —
-            // and editing is a step deeper from there. Naming the door after the
-            // room behind it sent players expecting a list into a canvas.
-            Button {
-                game.openTrackLibrary()
-            } label: {
-                Text("Tracks", bundle: .module).pillStyle()
-            }
         }
         .padding(.top, 8)
         .padding(.bottom, 18)
     }
 
+    /// **Three doors, one rhythm.** START races on this device and stands
+    /// alone as the primary. The nearby pair lives under its own caption, so
+    /// "one device" and "several devices" read as different kinds of thing
+    /// rather than three unrelated buttons. Tracks is a full-width row like
+    /// the rest — it stopped being a small centred afterthought.
     private var actions: some View {
         VStack(spacing: 10) {
             Button {
@@ -129,21 +110,38 @@ struct HomeView: View {
                     .overlay(RetroBevel())
             }
 
+            // The same section-caption style the library uses, so grouping
+            // looks the same everywhere it happens.
+            Text("NEARBY DEVICES", bundle: .module)
+                .font(Retro.caption)
+                .foregroundStyle(Retro.inkSoft)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 8)
             HStack(spacing: 10) {
                 Button {
                     net.host(seats: game.playerCount)
                     game.openNetworking()
                 } label: {
-                    Text("Host nearby", bundle: .module).pillStyle()
+                    Text("Host", bundle: .module).pillStyle(wide: true)
                 }
                 Button {
                     net.join(seats: game.playerCount)
                     game.openNetworking()
                 } label: {
-                    Text("Join nearby", bundle: .module).pillStyle()
+                    Text("Join", bundle: .module).pillStyle(wide: true)
                 }
             }
 
+            // **"Tracks", not "Track editor".** The destination is the library —
+            // your tracks, where you share, rename, delete or start a new one —
+            // and editing is a step deeper from there. Naming the door after the
+            // room behind it sent players expecting a list into a canvas.
+            Button {
+                game.openTrackLibrary()
+            } label: {
+                Text("Tracks", bundle: .module).pillStyle(wide: true)
+            }
+            .padding(.top, 8)
         }
     }
 }

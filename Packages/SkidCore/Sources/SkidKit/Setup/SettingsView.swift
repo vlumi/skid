@@ -23,6 +23,7 @@ struct SettingsView: View {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
+                    retroLeaveRow(retroClose(close)).padding(.horizontal, -16)
                     RetroTitle(Text("Settings", bundle: .module))
                     audioPanel
                     unitsPanel
@@ -33,7 +34,7 @@ struct SettingsView: View {
                 .frame(maxWidth: 460)
                 .frame(maxWidth: .infinity)
             }
-            .safeAreaInset(edge: .bottom) { footer }
+
         }
     }
 
@@ -143,15 +144,6 @@ struct SettingsView: View {
             }
         }
         .retroPanel()
-    }
-
-    private var footer: some View {
-        Button(action: close) {
-            Text("BACK", bundle: .module).retroButton(wide: true)
-        }
-        .buttonStyle(.plain)
-        .padding(16)
-        .background(Retro.ground.opacity(0.96))
     }
 
 }

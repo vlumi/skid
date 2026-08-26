@@ -96,3 +96,26 @@ extension CouchGame {
         }
     }
 }
+
+/// **A launch argument that fires ONCE.** The view-level screenshot hooks
+/// (`-skid-colors`, `-skid-settings`, …) used to read `ProcessInfo` straight
+/// from `@State` initializers — and process arguments outlive the first
+/// screen, so every later rebuild of the same view re-opened its sheet: press
+/// Start in a process launched with `-skid-colors` and the palette greeted
+/// you every time, forever. Reported from exactly that session. Consuming the
+/// flag keeps the screenshot (the first construction still sees it) and kills
+/// the haunting.
+enum LaunchFlag {
+    private static var consumed: Set<String> = []
+
+    /// True the FIRST time this flag is asked about in a launched-with state,
+    /// false ever after.
+    @MainActor
+    static func consume(_ flag: String) -> Bool {
+        guard ProcessInfo.processInfo.arguments.contains(flag),
+            !consumed.contains(flag)
+        else { return false }
+        consumed.insert(flag)
+        return true
+    }
+}
