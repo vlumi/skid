@@ -11,15 +11,13 @@ struct SetupView: View {
     /// Opens immediately under `-skid-tracks`, which exists for the same reason
     /// `-skid-setup` does: the browser is two taps in, and `simctl` cannot tap, so a
     /// screenshot of it is otherwise unreachable.
-    @State private var browsingTracks = ProcessInfo.processInfo.arguments
-        .contains("-skid-tracks")
+    @State private var browsingTracks = LaunchFlag.consume("-skid-tracks")
     /// Which seat's color palette is open — a long press on its swatch.
     ///
     /// Opens on seat 0 under `-skid-colors`, for the same reason `-skid-tracks`
     /// exists: `simctl` cannot long-press, so a screenshot of this sheet is
     /// otherwise unreachable.
-    @State private var coloringFor: Int? =
-        ProcessInfo.processInfo.arguments.contains("-skid-colors") ? 0 : nil
+    @State private var coloringFor: Int? = LaunchFlag.consume("-skid-colors") ? 0 : nil
 
     var body: some View {
         ZStack {
