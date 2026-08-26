@@ -14,6 +14,9 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **The menus speak one language now.** Leaving a screen is always the top-left corner: a ‹ to go back (race setup, tracks, nearby), an × to close a picker — the same button the editor always had. The bottom of a screen belongs to its main action only, always full width, so the two Start buttons finally match. Pickers lost their "Done" (picking already picks; the corner × just puts the surface away), the track library's floating Back stopped covering the tiles, and the nearby screen's bare Back text became a real button.
+- **The front page groups what goes together.** START stands alone as the way to race on this device; Host and Join live under a small "Nearby devices" caption; Tracks is a full-width row like everything else instead of a small stray button. Player rows are flat tiles now — each holds three controls (color, name, remove), and the old raised frame made the whole row look like one big button.
+
 - **Full throttle is a region, not an edge.** The top of the control box is pinned at full gas down to the "Full gas until" point (a dial, 30% by default), with steering fully live there — flat-out no longer means pressing your finger against the box's edge. The gas eases from there to the coast point, and braking/reverse keeps the smallest share, since it's only for when you mess up.
 - **Steering reads as a solid band.** The thin line and dot hid under your thumb; now the turn fills a full-height band from straight-ahead toward the side you're steering, visible above and below your finger, framed by faint full-lock rails — and you watch it drain away as the wheel recentres.
 

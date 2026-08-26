@@ -35,6 +35,7 @@ struct SeatProfileSheet: View {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
+                    retroLeaveRow(retroClose(dismiss)).padding(.horizontal, -16)
                     RetroTitle(Text("Player \(seat + 1)", bundle: .module))
                     guestPanel
                     if !game.profiles.profiles.isEmpty { peoplePanel }
@@ -44,14 +45,7 @@ struct SeatProfileSheet: View {
                 .frame(maxWidth: 460)
                 .frame(maxWidth: .infinity)
             }
-            .safeAreaInset(edge: .bottom) {
-                Button(action: dismiss) {
-                    Text("DONE", bundle: .module).retroButton(wide: true)
-                }
-                .buttonStyle(.plain)
-                .padding(16)
-                .background(Retro.ground.opacity(0.96))
-            }
+
         }
     }
 

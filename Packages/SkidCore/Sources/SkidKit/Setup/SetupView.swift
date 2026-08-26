@@ -111,6 +111,8 @@ struct SetupView: View {
 
     private var lobby: some View {
         VStack(spacing: 24) {
+            retroLeaveRow(retroBack { game.backToMenu() })
+
             VStack(spacing: 6) {
                 Text("Race", bundle: .module)
                     .font(Retro.font(30, weight: .black))
@@ -158,6 +160,9 @@ struct SetupView: View {
 
             colorRow
 
+            // The same full-width primary as the front door's START — the two
+            // start buttons were different widths for no reason a player could
+            // see. Back lives in the top-left corner like everywhere else.
             Button {
                 if game.mode == .tournament {
                     game.startTournament()
@@ -167,20 +172,12 @@ struct SetupView: View {
             } label: {
                 Text("Start", bundle: .module)
                     .font(Retro.font(20, weight: .black))
-                    .padding(.horizontal, 48)
-                    .padding(.vertical, 14)
+                    .foregroundStyle(Retro.onHighlight)
+                    .frame(maxWidth: .infinity, minHeight: 54)
                     .background(Retro.highlight)
                     .overlay(RetroBevel())
-                    .foregroundStyle(Retro.onHighlight)
             }
-
-            // Nearby and the editor are destinations of their own now, reached from
-            // the front door rather than from the bottom of a race-setup screen.
-            Button {
-                game.backToMenu()
-            } label: {
-                Text("Back", bundle: .module).pillStyle()
-            }
+            .padding(.horizontal, 16)
         }
         // Room to breathe at both ends when the content does scroll, so the
         // title and the editor button don't sit flush against the edges.

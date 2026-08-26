@@ -15,6 +15,15 @@ struct NetworkLobbyView: View {
         ZStack {
             Retro.ground.ignoresSafeArea()
             VStack(spacing: 22) {
+                // Leaving also LEAVES the session — the corner button is the
+                // same one every screen has, but here it hangs up too.
+                retroLeaveRow(
+                    retroBack {
+                        net.leave()
+                        game.backToMenu()
+                    }
+                )
+                .padding(.horizontal, -16)
                 Text("Play together", bundle: .module)
                     .font(Retro.font(20, weight: .black))
                     .foregroundStyle(Retro.onGround)
@@ -44,14 +53,6 @@ struct NetworkLobbyView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                Button {
-                    net.leave()
-                    game.backToMenu()
-                } label: {
-                    Text("Back", bundle: .module)
-                        .font(Retro.body)
-                        .foregroundStyle(Retro.onGround)
-                }
             }
             .padding(28)
         }

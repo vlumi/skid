@@ -31,6 +31,10 @@ struct TrackBrowserView: View {
             Retro.ground.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    // Close, not Done: picking a track already applies and
+                    // dismisses, so there is nothing to confirm — only a
+                    // surface to put away, from the same corner as always.
+                    retroClose(dismiss)
                     section(Text("Tracks", bundle: .module)) {
                         ForEach(TrackLibrary.builtins, id: \.id) { builtin in
                             tile(
@@ -56,21 +60,6 @@ struct TrackBrowserView: View {
                 }
                 .padding(16)
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                dismiss()
-            } label: {
-                Text("Done", bundle: .module)
-                    .font(Retro.body)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Retro.panel)
-                    .overlay(RetroBevel(thickness: 2))
-                    .foregroundStyle(Retro.ink)
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 8)
         }
     }
 
