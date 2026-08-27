@@ -33,6 +33,15 @@ struct TrackPropertiesSheet: View {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
+                    // The one exit, and it SAVES: the name field has no other
+                    // commit, and a close that dropped a rename would be a trap.
+                    retroLeaveRow(
+                        retroClose {
+                            save()
+                            close()
+                        }
+                    )
+                    .padding(.horizontal, -16)
                     RetroTitle(Text("Track", bundle: .module))
                     namePanel
                     roadPanel
@@ -42,7 +51,6 @@ struct TrackPropertiesSheet: View {
                 .frame(maxWidth: 460)
                 .frame(maxWidth: .infinity)
             }
-            .safeAreaInset(edge: .bottom) { footer }
         }
         .onAppear { name = game.editedTrackName ?? "" }
     }
@@ -96,20 +104,19 @@ struct TrackPropertiesSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             RetroHeading(Text("SHARE", bundle: .module))
             attributionRow
+            // Only the SIGNED code is offered. An unsigned "short" variant
+            // existed for disposable links, but "Copy short" was jargon no
+            // player could decode, the share sheet never offered it, and the
+            // QR carries the full signed URL without trouble.
             HStack(spacing: 8) {
                 shareButton(
                     copied ? Text("Copied", bundle: .module) : Text("Copy code", bundle: .module)
                 ) {
-                    copyCode(signed: true)
+                    copyCode()
                 }
-                // The short code drops the ~135-character signature — for links that
-                // are disposable. Its own button, not a hidden long-press.
-                shareButton(Text("Copy short", bundle: .module)) {
-                    copyCode(signed: false)
+                shareButton(Text("Paste code", bundle: .module)) {
+                    pasteCode()
                 }
-            }
-            shareButton(Text("Paste code", bundle: .module)) {
-                pasteCode()
             }
             if pasteFailed {
                 Text("The clipboard doesn't hold a readable track code.", bundle: .module)
@@ -164,8 +171,8 @@ struct TrackPropertiesSheet: View {
         .buttonStyle(.plain)
     }
 
-    private func copyCode(signed: Bool) {
-        guard let code = game.shareCode(signed: signed) else { return }
+    private func copyCode() {
+        guard let code = game.shareCode(signed: true) else { return }
         Clipboard.copy(code)
         copied = true
     }
@@ -186,18 +193,6 @@ struct TrackPropertiesSheet: View {
 
     private var style: TrackLayout.RoadStyle {
         game.editorLayout?.roadStyle ?? .circuit
-    }
-
-    private var footer: some View {
-        Button {
-            save()
-            close()
-        } label: {
-            Text("DONE", bundle: .module).retroButton(wide: true)
-        }
-        .buttonStyle(.plain)
-        .padding(16)
-        .background(Retro.ground.opacity(0.96))
     }
 
     /// The road style applies as it is tapped; only the name needs committing, and an

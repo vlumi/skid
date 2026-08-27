@@ -14,6 +14,9 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **The last four sheets join the corner rule.** Sharing a track, the editor's track sheet, an incoming track offer and the QR scanner all lost their bottom Done/Cancel for the same top-left × as everywhere else. The editor sheet's × still saves your rename on the way out.
+- **"Copy short" is gone.** It copied a track code without its signature — jargon nobody could decode, and the signed code is the one worth passing around.
+
 - **The menus speak one language now.** Leaving a screen is always the top-left corner: a ‹ to go back (race setup, tracks, nearby), an × to close a picker — the same button the editor always had. The bottom of a screen belongs to its main action only, always full width, so the two Start buttons finally match. Pickers lost their "Done" (picking already picks; the corner × just puts the surface away), Settings and About lost their bottom BACK the same way, the track library's floating Back stopped covering the tiles, and the nearby screen's bare Back text became a real button.
 - **The front page groups what goes together.** START stands alone as the way to race on this device; Host and Join live under a small "Nearby devices" caption; Tracks is a full-width row like everything else instead of a small stray button. Player rows are flat tiles now — each holds three controls (color, name, remove), and the old raised frame made the whole row look like one big button.
 
