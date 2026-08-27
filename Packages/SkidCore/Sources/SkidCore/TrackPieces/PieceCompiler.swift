@@ -25,6 +25,15 @@ public enum PieceCompiler {
     /// it); the editor draws this same frame so authors build inside it.
     public static let runOff = Double(PieceCatalog.width)
 
+    /// **How far the world's edge sits from the road's extreme centerline
+    /// point**: half the road (a deck is wider still — `Elevation.scale` —
+    /// so allow for that), the kerb band outboard of it, and the run-off.
+    /// One name, because the editor's size guide has to agree with the
+    /// compile about where the grass will end.
+    public static let frameBeyondCenterline =
+        Double(PieceCatalog.width) / 2 * Elevation.scale(atHeight: 1)
+        + Double(PieceCatalog.kerbBand) + runOff
+
     /// **The world a layout compiles to, in LAYOUT coordinates** — the rect
     /// the grass will cover and the boundary wall will stand on. For the
     /// editor to draw while building, so it never throws: an unfinished loop
@@ -193,11 +202,7 @@ public enum PieceCompiler {
         -> Footprint
     {
         guard !centerline.isEmpty else { return Footprint(origin: .zero, size: Vec2(1, 1)) }
-        // Half the road, plus the widest thing drawn outboard of it (a deck is
-        // wider still — Elevation.scale — so allow for that), plus the run-off.
-        let half =
-            Double(PieceCatalog.width) / 2 * Elevation.scale(atHeight: 1)
-            + Double(PieceCatalog.kerbBand) + runOff
+        let half = frameBeyondCenterline
         let xs = centerline.map { $0.x }
         let ys = centerline.map { $0.y }
         var minX = xs.min()! - half
