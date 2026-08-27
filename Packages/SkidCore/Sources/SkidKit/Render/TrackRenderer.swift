@@ -91,9 +91,17 @@ enum TrackRenderer {
         let track = race.track
         let mapRect = scene.mapRect
         let scale = mapRect.width / track.size.x
-        // Grass fills the whole surface (full-bleed, under the safe areas);
-        // the map is drawn at the allocated rect the bands leave clear.
-        context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(grass))
+        // **Grass is the WORLD, not the screen.** The menus' ground fills the
+        // surface full-bleed (under the safe areas), and grass covers exactly
+        // the track's framed footprint — so the world's boundary wall, which
+        // was invisible under a lawn that ran on to the screen edge, is now
+        // simply where the grass ends. The letterbox and the control bands
+        // share the ground with every other screen.
+        context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Retro.ground))
+        let world = CGRect(
+            x: mapRect.minX, y: mapRect.minY,
+            width: track.size.x * scale, height: track.size.y * scale)
+        context.fill(Path(world), with: .color(grass))
         context.translateBy(x: mapRect.minX, y: mapRect.minY)
         context.scaleBy(x: scale, y: scale)
 
