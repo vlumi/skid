@@ -26,13 +26,10 @@ struct ScanTrackSheet: View {
         ZStack {
             Retro.ground.ignoresSafeArea()
             VStack(spacing: 14) {
+                retroLeaveRow(retroClose(dismiss)).padding(.horizontal, -16)
                 RetroTitle(Text("Scan a track", bundle: .module))
                 camera
                 note
-                Button(action: dismiss) {
-                    Text("Cancel", bundle: .module).retroButton(wide: true)
-                }
-                .buttonStyle(.plain)
             }
             .padding(16)
             .frame(maxWidth: 460)
