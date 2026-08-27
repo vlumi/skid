@@ -47,12 +47,9 @@ struct RaceScreen: View {
                 trackSize: track.size, in: fullSize, safeInsets: insets)
             let overhang = TrackRenderer.drawnOverhang(
                 track: track, scale: base.width / track.size.x)
-            let mapRect =
-                overhang > 0
-                ? TrackRenderer.fittedMapRect(
-                    trackSize: track.size, in: fullSize, safeInsets: insets,
-                    screenPadding: overhang)
-                : base
+            let mapRect = TrackRenderer.fittedMapRect(
+                trackSize: track.size, in: fullSize, safeInsets: insets,
+                screenPadding: overhang)
             TimelineView(.animation) { timeline in
                 // Step the sim on the main actor, then hand the Canvas
                 // plain value copies — its renderer closure is not
@@ -190,8 +187,7 @@ struct RaceScreen: View {
         let overhang = TrackRenderer.drawnOverhang(
             track: session.race.track, scale: mapRect.width / session.race.track.size.x)
         rig.layout(
-            size: size, mapRect: mapRect.insetBy(dx: -overhang, dy: -overhang),
-            safeInsets: safeInsets)
+            size: size, mapRect: mapRect.grown(by: overhang), safeInsets: safeInsets)
         // A no-op every frame after the first: the build happens once, while
         // the race is frozen on the ready gate, so it can never hitch a frame.
         trackLayers.prepare(
