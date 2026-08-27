@@ -29,6 +29,7 @@ struct TrackShareSheet: View {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
+                    retroLeaveRow(retroClose(dismiss)).padding(.horizontal, -16)
                     RetroTitle(Text(verbatim: name))
                     qrPanel
                     copyPanel
@@ -36,14 +37,6 @@ struct TrackShareSheet: View {
                 .padding(16)
                 .frame(maxWidth: 460)
                 .frame(maxWidth: .infinity)
-            }
-            .safeAreaInset(edge: .bottom) {
-                Button(action: dismiss) {
-                    Text("DONE", bundle: .module).retroButton(wide: true)
-                }
-                .buttonStyle(.plain)
-                .padding(16)
-                .background(Retro.ground.opacity(0.96))
             }
         }
     }
