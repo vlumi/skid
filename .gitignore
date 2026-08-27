@@ -4,6 +4,10 @@
 # Build output
 .build/
 .build-xcode/
+# Any one-off DerivedData folder named like the above (a `.build-rel`
+# release build was once committed by accident and had to be purged
+# from history).
+.build*/
 DerivedData/
 
 # Editor / OS
