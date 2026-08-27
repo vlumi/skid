@@ -28,6 +28,18 @@ final class RenderArtifactTests: XCTestCase {
             luminance(atWorld: point + layoutOffset)
         }
 
+        /// (green − blue) at a world point: positive on grass, negative on the
+        /// navy ground, so "is this the world or the ground" is one sign.
+        func greenness(atWorld world: Vec2) -> Double {
+            let x = Int(mapRect.minX + world.x * scale)
+            let y = Int(mapRect.minY + world.y * scale)
+            guard let data = image.dataProvider?.data as Data?,
+                x >= 0, y >= 0, x < image.width, y < image.height
+            else { return 0 }
+            let offset = y * image.bytesPerRow + x * 4
+            return (Double(data[offset + 1]) - Double(data[offset + 2])) / 255
+        }
+
         func luminance(atWorld world: Vec2) -> Double {
             let x = Int(mapRect.minX + world.x * scale)
             let y = Int(mapRect.minY + world.y * scale)
@@ -68,6 +80,21 @@ final class RenderArtifactTests: XCTestCase {
         return Rendered(
             image: image, mapRect: mapRect, scale: mapRect.width / track.size.x,
             layoutOffset: track.layoutOffset)
+    }
+
+    /// **Grass ends exactly at the world's edge.** The boundary wall used to be
+    /// invisible because the lawn ran on to the screen; now the ground beyond
+    /// the track's footprint is the menus' navy, so the wall is where the
+    /// grass stops. Sampled a few units inside and outside each edge.
+    func testGrassEndsAtTheWorldEdge() throws {
+        let rendered = try render()
+        let size = try PieceCompiler.compile(TrackCode.decode(Self.knot), id: "knot").size
+        let inside = rendered.greenness(atWorld: Vec2(6, 6))
+        XCTAssertGreaterThan(inside, 0.1, "no grass just inside the world (\(inside))")
+        for outside in [Vec2(-8, 6), Vec2(6, -8), Vec2(size.x + 8, 6), Vec2(6, size.y + 8)] {
+            let g = rendered.greenness(atWorld: outside)
+            XCTAssertLessThan(g, 0, "grass outside the world at \(outside) (\(g))")
+        }
     }
 
     /// **No shadow bar across a lower band's road.** A climbing loop split

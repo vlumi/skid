@@ -69,7 +69,8 @@ final class RecordHolderTests: XCTestCase {
     /// rather than being wiped — which a version bump would have done.
     func testAnOlderBookAtThisVersionStillDecodes() throws {
         let json = """
-            {"version":2,"tracks":{"clover":{"bestLapTicks":600,"raceTicks":1800}}}
+            {"version":\(HiscoreBook.currentVersion),\
+            "tracks":{"clover":{"bestLapTicks":600,"raceTicks":1800}}}
             """
         let book = try XCTUnwrap(HiscoreBook.decode(Data(json.utf8)))
         XCTAssertEqual(book.best(for: "clover").bestLapTicks, 600)

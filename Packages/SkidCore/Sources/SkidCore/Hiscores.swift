@@ -50,7 +50,11 @@ public struct HiscoreBook: Equatable, Sendable, Codable {
     /// the library grows, and a lap replayed through a track that has moved is a car
     /// driving through grass. Old books therefore decode to nil and the player starts
     /// fresh, which `decode` already does for any version it does not understand.
-    public static let currentVersion = 2
+    /// 3: the compiler gained a run-off margin (`PieceCompiler.runOff`), which
+    /// translates every compiled track — and a ghost's start pose is in world
+    /// coordinates, so every stored ghost would start one margin off and drive
+    /// into the grass. Times would still be true; the ghosts would not.
+    public static let currentVersion = 3
 
     public var version = HiscoreBook.currentVersion
     /// Keyed by `Track.id`.

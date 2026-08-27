@@ -212,6 +212,7 @@ struct EditorView: View {
                         roadStyle: layout.roadStyle,
                         blockedPieces: blockedPieces, showLevels: levelFilter.showsBadges,
                         dimmedExcept: levelFilter.storeyOnly,
+                        worldFrame: PieceCompiler.worldFrame(layout),
                         transform: transform, into: &context)
                 }
                 // **The gestures belong to the MAP, not to the whole screen.**
