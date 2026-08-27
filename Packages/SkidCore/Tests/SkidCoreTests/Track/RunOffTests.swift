@@ -60,6 +60,32 @@ final class RunOffTests: XCTestCase {
         XCTAssertNotNil(PieceCompiler.worldFrame(layout))
     }
 
+    /// **The editor's dotted frame is the most world a track can have** — the
+    /// canvas limit plus the run-off on every side, centred on the track — so
+    /// the grass can never poke outside it, and an author sees the room left.
+    func testTheDottedFrameIsTheMaximumWorldCentredOnTheTrack() throws {
+        let beyond = PieceCompiler.frameBeyondCenterline - Double(PieceCatalog.width) / 2
+        let limit = TrackValidator.canvas
+        for builtin in TrackLibrary.builtins {
+            let layout = try TrackCode.decode(builtin.code)
+            let walk = layout.walk()
+            let t = EditorRenderer.Transform(scale: 0.5, offset: CGSize(width: 10, height: 20))
+            let box = try XCTUnwrap(EditorRenderer.maximumWorldBox(walk: walk, t: t))
+            XCTAssertEqual(box.width, (limit.x + 2 * beyond) * 0.5, accuracy: 1e-9, builtin.id)
+            XCTAssertEqual(box.height, (limit.y + 2 * beyond) * 0.5, accuracy: 1e-9, builtin.id)
+            let footprint = try XCTUnwrap(walk.paddedFootprint())
+            XCTAssertEqual(
+                box.midX, footprint.center.x * 0.5 + 10, accuracy: 1e-9, "\(builtin.id) x")
+            XCTAssertEqual(
+                box.midY, footprint.center.y * 0.5 + 20, accuracy: 1e-9, "\(builtin.id) y")
+            // **The grass can never poke outside the frame** — the whole point.
+            let world = try XCTUnwrap(PieceCompiler.worldFrame(layout))
+            XCTAssertLessThanOrEqual(world.size.x * 0.5, box.width + 1e-9, "\(builtin.id) too wide")
+            XCTAssertLessThanOrEqual(
+                world.size.y * 0.5, box.height + 1e-9, "\(builtin.id) too tall")
+        }
+    }
+
     /// **The editor paints the frame as grass**, pixel-sampled: green inside
     /// the frame away from the road, the canvas colour just outside it.
     func testTheEditorDrawsGrassOverTheFrame() throws {

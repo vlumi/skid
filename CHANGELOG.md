@@ -14,6 +14,7 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **The editor's size guide is a quiet frame now.** The dotted box shows the absolute maximum space a track can have — the limit plus the run-off, centred on your track — so you can see how much room is left. It no longer turns red when you reach the limit; that read as an error on a track that was fine.
 - **Every track gets a road-width of grass around it.** The world used to end at the outermost kerb, so leaving the road near the edge meant hitting an invisible wall at once; now there is one road width of run-off all round — breathing room on screen and somewhere to go wrong on the track. The editor draws that same grass while you build, so what you see is the world you'll race. Saved ghosts are reset, since every track moved by that margin.
 - **Grass is the world, not the screen.** The lawn now covers exactly the track's own footprint and stops where the world stops — so the boundary wall, which used to be an invisible line somewhere in an endless lawn, is simply where the grass ends. Everything beyond it, the letterbox and your control boxes alike, sits on the same dark ground as the menus.
 - **Your control box reads in your color again.** The player tint sat on grass before, and blue-over-green or mint-over-green went to mud; on the dark ground the same tint is crisp, the throttle gradient shows properly, and a stronger colored border says whose box it is.
