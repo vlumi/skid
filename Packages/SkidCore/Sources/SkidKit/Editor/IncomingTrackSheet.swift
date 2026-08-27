@@ -18,6 +18,9 @@ struct IncomingTrackSheet: View {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
+                    // Same corner exit as every sheet; "No thanks" below stays as
+                    // the explicit answer an offer deserves. Both decline.
+                    retroLeaveRow(retroClose(dismiss)).padding(.horizontal, -16)
                     RetroTitle(Text("A track for you", bundle: .module))
                     previewPanel
                     buttons
