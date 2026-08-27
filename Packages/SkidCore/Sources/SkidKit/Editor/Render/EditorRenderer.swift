@@ -25,12 +25,23 @@ enum EditorRenderer {
         gating: Bool = false, selectedPiece: Int? = nil, decals: [Int: Decal] = [:],
         railed: Set<Int> = [], roadStyle: TrackLayout.RoadStyle = .circuit,
         blockedPieces: Set<Int> = [], showLevels: Bool = false,
-        dimmedExcept: Int? = nil, transform t: Transform,
+        dimmedExcept: Int? = nil, worldFrame: Rect? = nil, transform t: Transform,
         into context: inout GraphicsContext
     ) {
         // The size limit, made visible. Under everything else, since it's a
         // boundary you build inside of.
         drawCanvasBounds(walk: walk, t: t, into: &context)
+        // **The world the track will race in**, as the grass it will be painted
+        // with: exactly the compiled frame (road, kerbs, chrome, run-off), so an
+        // author sees the breathing room and the wall line they are building,
+        // not a guess at it. Under the road, over the bounds.
+        if let worldFrame {
+            let rect = CGRect(
+                x: worldFrame.origin.x * t.scale + t.offset.width,
+                y: worldFrame.origin.y * t.scale + t.offset.height,
+                width: worldFrame.size.x * t.scale, height: worldFrame.size.y * t.scale)
+            context.fill(Path(rect), with: .color(grass))
+        }
         drawTrack(
             walk: walk, width: width, gateSeams: gateSeams, gating: gating, decals: decals,
             railed: railed, roadStyle: roadStyle, transform: t, into: &context)
