@@ -4,67 +4,6 @@ import SwiftUI
 /// Draws the whole world procedurally into a `Canvas` context — grass,
 /// kerbed asphalt ribbon, start line, marks, cars. No image assets anywhere.
 enum TrackRenderer {
-    /// Where the track sits on screen — the one primitive the renderer, the
-    /// pause button, and the control-band layout all key off.
-    ///
-    /// Allocation rule: **controls get a guaranteed minimum first, the map
-    /// fills what's left, and any space the map's aspect can't use goes back
-    /// to the controls** (so bands are never below `minBand`, the map is as
-    /// big as it can be in the leftover, and there's never dead grass between
-    /// map and bands). Works off the **safe-area** usable rect, so the notch
-    /// and home indicator never eat into the reserved minimum. The grass is
-    /// still drawn full-bleed; only this positioning respects the insets.
-    /// `screenPadding` reserves extra room on every side of the fitted rect for
-    /// paint that reaches PAST the track's world bounds — a top-storey road is
-    /// drawn wider than its nominal width and casts an offset shadow, and both
-    /// leaked into the control bands (and off-screen) on a tall track whose
-    /// road hugs its canvas edge. The returned rect is still the world mapping;
-    /// the padding just guarantees the overflow lands on visible grass.
-    static func fittedMapRect(
-        trackSize: Vec2, in screen: CGSize, safeInsets: EdgeInsets = EdgeInsets(),
-        minBand: CGFloat = 150, screenPadding: CGFloat = 0
-    ) -> CGRect {
-        // Usable region: the screen minus the safe-area insets.
-        let usable = CGRect(
-            x: safeInsets.leading, y: safeInsets.top,
-            width: screen.width - safeInsets.leading - safeInsets.trailing,
-            height: screen.height - safeInsets.top - safeInsets.bottom)
-        // Tracks are wide, so on portrait the bands are top/bottom and the
-        // map is height-constrained by the leftover between them; on a wide
-        // (landscape) usable area the map may instead be width-constrained.
-        // Reserve minBand on the two sides the bands occupy, fit the map in
-        // the remaining box, then center it — the surplus falls to the bands.
-        let portrait = usable.height >= usable.width
-        let box =
-            portrait
-            ? CGSize(
-                width: max(1, usable.width - 2 * screenPadding),
-                height: max(1, usable.height - 2 * minBand - 2 * screenPadding))
-            : CGSize(
-                width: max(1, usable.width - 2 * minBand - 2 * screenPadding),
-                height: max(1, usable.height - 2 * screenPadding))
-        let scale = min(box.width / trackSize.x, box.height / trackSize.y)
-        let fitted = CGSize(width: trackSize.x * scale, height: trackSize.y * scale)
-        return CGRect(
-            x: usable.minX + (usable.width - fitted.width) / 2,
-            y: usable.minY + (usable.height - fitted.height) / 2,
-            width: fitted.width, height: fitted.height)
-    }
-
-    /// How far the DRAWN track can reach past its world bounds, in screen
-    /// points at `scale`: the top storey's widened road plus its rail beyond
-    /// the nominal edge, and the drop shadow's fixed screen offset. Zero for a
-    /// flat track, so nothing changes where nothing overflows.
-    static func drawnOverhang(track: Track, scale: Double) -> CGFloat {
-        let maxHeight = track.deckTops.max() ?? 0
-        guard maxHeight > 0 else { return 0 }
-        let widened =
-            Double(track.width) / 2 * (Elevation.scale(atHeight: maxHeight) - 1)
-        let rail = Double(PieceCatalog.kerbBand)
-        let shadow = 11.0 * maxHeight  // screen offset; see drawPieceShadow
-        return CGFloat((widened + rail) * scale + shadow + 2)
-    }
-
     // The palette. Deliberately close to the classic top-down look.
     private static let grass = Color(red: 0.28, green: 0.55, blue: 0.23)
     private static let asphalt = Color(white: 0.62)
