@@ -14,15 +14,13 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Every track gets a road-width of grass around it.** The world used to end at the outermost kerb, so leaving the road near the edge meant hitting an invisible wall at once; now there is one road width of run-off all round — breathing room on screen and somewhere to go wrong on the track. The editor draws that same grass while you build, so what you see is the world you'll race. Saved ghosts are reset, since every track moved by that margin.
 - **Grass is the world, not the screen.** The lawn now covers exactly the track's own footprint and stops where the world stops — so the boundary wall, which used to be an invisible line somewhere in an endless lawn, is simply where the grass ends. Everything beyond it, the letterbox and your control boxes alike, sits on the same dark ground as the menus.
 - **Your control box reads in your color again.** The player tint sat on grass before, and blue-over-green or mint-over-green went to mud; on the dark ground the same tint is crisp, the throttle gradient shows properly, and a stronger colored border says whose box it is.
-
 - **The last four sheets join the corner rule.** Sharing a track, the editor's track sheet, an incoming track offer and the QR scanner all lost their bottom Done/Cancel for the same top-left × as everywhere else. The editor sheet's × still saves your rename on the way out.
 - **"Copy short" is gone.** It copied a track code without its signature — jargon nobody could decode, and the signed code is the one worth passing around.
-
 - **The menus speak one language now.** Leaving a screen is always the top-left corner: a ‹ to go back (race setup, tracks, nearby), an × to close a picker — the same button the editor always had. The bottom of a screen belongs to its main action only, always full width, so the two Start buttons finally match. Pickers lost their "Done" (picking already picks; the corner × just puts the surface away), Settings and About lost their bottom BACK the same way, the track library's floating Back stopped covering the tiles, and the nearby screen's bare Back text became a real button.
 - **The front page groups what goes together.** START stands alone as the way to race on this device; Host and Join live under a small "Nearby devices" caption; Tracks is a full-width row like everything else instead of a small stray button. Player rows are flat tiles now — each holds three controls (color, name, remove), and the old raised frame made the whole row look like one big button.
-
 - **Full throttle is a region, not an edge.** The top of the control box is pinned at full gas down to the "Full gas until" point (a dial, 30% by default), with steering fully live there — flat-out no longer means pressing your finger against the box's edge. The gas eases from there to the coast point, and braking/reverse keeps the smallest share, since it's only for when you mess up.
 - **Steering reads as a solid band.** The thin line and dot hid under your thumb; now the turn fills a full-height band from straight-ahead toward the side you're steering, visible above and below your finger, framed by faint full-lock rails — and you watch it drain away as the wheel recentres.
 

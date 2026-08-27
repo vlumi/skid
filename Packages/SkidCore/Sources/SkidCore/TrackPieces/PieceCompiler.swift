@@ -15,6 +15,34 @@ public enum PieceCompiler {
     /// Arc sampling density — matches the existing ≤6°/segment convention.
     static let degreesPerSample = 6.0
 
+    /// **Grass around the road, in world units: one road width.** The world's
+    /// boundary wall stands at the frame's edge, so this is the run-off a car
+    /// has before it hits it — and, since grass is painted exactly over the
+    /// world, the breathing room a track shows on screen. It used to be zero:
+    /// the frame hugged the outermost kerb, and leaving the road near the
+    /// edge meant hitting an invisible wall at once. Fixed rather than per
+    /// track on purpose (the codec can grow a field later if a track needs
+    /// it); the editor draws this same frame so authors build inside it.
+    public static let runOff = Double(PieceCatalog.width)
+
+    /// **The world a layout compiles to, in LAYOUT coordinates** — the rect
+    /// the grass will cover and the boundary wall will stand on. For the
+    /// editor to draw while building, so it never throws: an unfinished loop
+    /// still has a frame, just one that will move as pieces are added.
+    public static func worldFrame(_ layout: TrackLayout) -> Rect? {
+        let walk = layout.walk()
+        guard !walk.placed.isEmpty else { return nil }
+        let road = lowerPieces(walk.placed, railed: layout.railed)
+        var gates: [Gate] = []
+        for seam in layout.gateSeams where walk.placed.indices.contains(seam) {
+            gates.append(gate(at: seam, in: walk.placed))
+        }
+        let start = walk.placed.first { $0.id == PieceCatalog.startPieceID }
+        let slots = start.map { startGrid(at: $0).slots } ?? []
+        let box = footprint(of: road.centerline, gates: gates, slots: slots)
+        return Rect(origin: box.origin, size: box.size)
+    }
+
     public static func compile(_ layout: TrackLayout, id: String = "") throws -> Track {
         let validation = TrackValidator.validate(layout)
         guard validation.isSaveable else { throw Failure.notSaveable(validation.problems) }
@@ -165,11 +193,11 @@ public enum PieceCompiler {
         -> Footprint
     {
         guard !centerline.isEmpty else { return Footprint(origin: .zero, size: Vec2(1, 1)) }
-        // Half the road, plus the widest thing drawn outboard of it. A deck is
-        // wider still (Elevation.scale), so allow for that too.
+        // Half the road, plus the widest thing drawn outboard of it (a deck is
+        // wider still — Elevation.scale — so allow for that), plus the run-off.
         let half =
             Double(PieceCatalog.width) / 2 * Elevation.scale(atHeight: 1)
-            + Double(PieceCatalog.kerbBand)
+            + Double(PieceCatalog.kerbBand) + runOff
         let xs = centerline.map { $0.x }
         let ys = centerline.map { $0.y }
         var minX = xs.min()! - half
