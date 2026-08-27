@@ -246,6 +246,14 @@ final class StateHashTests: XCTestCase {
     /// with itself); a *platform* difference is the thing lockstep networking
     /// cannot survive, and re-pinning would hide it.
     ///
+    /// **Re-pinned a fourth time, deliberately**: the compiler gained a run-off
+    /// margin (`PieceCompiler.runOff`), which TRANSLATES every compiled track —
+    /// and `testRing` is the compiled "small" builtin. Positions are absolute,
+    /// so every hash moved, tick 1 included: unlike the physics re-pins, the
+    /// countdown's stillness is no alibi here, because the cars were placed a
+    /// road width further in before the first tick. A translation, not a
+    /// physics change and not a platform one.
+    ///
     /// **Re-pinned a third time, deliberately**: `speedGripFade` (0.5 stock)
     /// made grip fall with speed, so fast corners hold their slide — a device
     /// feel request. Physics change, same evidence as before: tick 1's hash
@@ -273,10 +281,10 @@ final class StateHashTests: XCTestCase {
         XCTAssertEqual(
             samples,
             [
-                4_077_695_904_547_307_221, 7_350_050_825_889_432_700,
-                7_013_082_318_854_835_301,
-                16_132_993_546_756_088_850, 8_714_512_408_539_503_301,
-                4_554_697_890_581_463_688,
+                8_168_309_041_451_275_334, 15_062_452_510_356_021_344,
+                8_788_705_495_310_688_251,
+                1_864_096_498_505_380_116, 8_827_391_443_098_983_015,
+                12_618_885_254_617_686_516,
             ])
         XCTAssertEqual(sequence.count, 600)
     }

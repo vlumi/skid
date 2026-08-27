@@ -55,7 +55,7 @@ final class TrackLayerCache {
         let scale = mapRect.width / track.size.x
         let overhang = TrackRenderer.drawnOverhang(track: track, scale: scale)
         let placement = Placement(
-            rect: mapRect.insetBy(dx: -overhang, dy: -overhang),
+            rect: mapRect.grown(by: overhang),
             mapRect: mapRect, scale: scale, displayScale: displayScale)
         screenRect = placement.rect
         for storey in TrackRenderer.trackStoreys(track) {
