@@ -14,6 +14,9 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Grass is the world, not the screen.** The lawn now covers exactly the track's own footprint and stops where the world stops — so the boundary wall, which used to be an invisible line somewhere in an endless lawn, is simply where the grass ends. Everything beyond it, the letterbox and your control boxes alike, sits on the same dark ground as the menus.
+- **Your control box reads in your color again.** The player tint sat on grass before, and blue-over-green or mint-over-green went to mud; on the dark ground the same tint is crisp, the throttle gradient shows properly, and a stronger colored border says whose box it is.
+
 - **The last four sheets join the corner rule.** Sharing a track, the editor's track sheet, an incoming track offer and the QR scanner all lost their bottom Done/Cancel for the same top-left × as everywhere else. The editor sheet's × still saves your rename on the way out.
 - **"Copy short" is gone.** It copied a track code without its signature — jargon nobody could decode, and the signed code is the one worth passing around.
 

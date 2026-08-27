@@ -13,8 +13,13 @@ enum OverlayRenderer {
         // Square, like everything else now — a rounded card around a pixel-art game
         // was the last piece of native-looking chrome on the race screen.
         let shape = Path(rect)
+        // The zone sits on the menus' ground now, not on grass: the player's
+        // tint was mud over green (blue-over-green, mint-over-green) and reads
+        // clean over navy. The border does the owning, drawn stronger so the
+        // palette's deep blue and purple still separate from the ground.
+        context.fill(shape, with: .color(Retro.ground))
         context.fill(shape, with: .color(zone.color.opacity(0.15)))
-        context.stroke(shape, with: .color(zone.color.opacity(0.5)), lineWidth: 2)
+        context.stroke(shape, with: .color(zone.color.opacity(0.85)), lineWidth: 3)
         // Tab at the middle of the zone's "home" edge (opposite of up),
         // pulled inside the safe area so it never hides under the notch /
         // Dynamic Island (top) or the home indicator (bottom).
