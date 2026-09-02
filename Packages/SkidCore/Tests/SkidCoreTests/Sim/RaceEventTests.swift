@@ -55,6 +55,44 @@ final class RaceEventTests: XCTestCase {
         XCTAssertTrue(sawImpact)
     }
 
+    /// **Intermediate gates announce themselves; the finish line does not
+    /// double-speak.** Three gates and one lap: the two mid-course gates emit
+    /// `gateCrossed`, the wrap emits `lapCompleted` (and here `finished`) with
+    /// NO `gateCrossed` alongside — one crossing, one event.
+    func testIntermediateGatesEmitGateCrossed() {
+        func gate(x: Double) -> Gate {
+            Gate(from: Vec2(x, -300), to: Vec2(x, 300), forward: Vec2(1, 0))
+        }
+        let track = Track(
+            centerline: [Vec2(-20000, 0), Vec2(20000, 0)],
+            width: 600,
+            gates: [gate(x: 400), gate(x: 900), gate(x: 1400)],
+            startSlots: [Vec2.zero],
+            size: Vec2(40000, 4000)
+        )
+        var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: 1))
+        var gates = 0
+        var lapTickEvents: [RaceEvent] = []
+        for _ in 0..<(10 * Race.tickRate) {
+            race.advance(inputs: [PlayerID(0): CarInput(throttle: 1)])
+            for case .gateCrossed(let id) in race.lastEvents {
+                XCTAssertEqual(id, PlayerID(0))
+                gates += 1
+            }
+            if race.lastEvents.contains(where: {
+                if case .lapCompleted = $0 { return true } else { return false }
+            }) {
+                lapTickEvents = race.lastEvents
+            }
+        }
+        XCTAssertEqual(gates, 2, "two intermediate gates, two events")
+        XCTAssertFalse(
+            lapTickEvents.contains {
+                if case .gateCrossed = $0 { return true } else { return false }
+            },
+            "the finish line spoke twice: \(lapTickEvents)")
+    }
+
     func testLapAndFinishEventsMatchProgress() {
         func gate(x: Double) -> Gate {
             Gate(from: Vec2(x, -300), to: Vec2(x, 300), forward: Vec2(1, 0))

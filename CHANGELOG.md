@@ -14,6 +14,8 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Every car has an engine now, not just P1's.** Each car sounds at the pitch its own speed asks for, slightly detuned per seat with its own slow flutter — so a grid at the start line rumbles like a field of machines instead of one loud engine — and the volume is budgeted so more cars means a fuller sound, not a louder one. A car that takes the flag shuts its engine off as it rolls to a stop.
+- **You can hear and feel your progress.** Crossing a gate gives a soft chirp and a light tap; completing a lap a brighter tone and a firm tap; taking the flag the highest note of the three with the finish flourish — for every human driving on this device, and only them.
 ### build 21 — 2026-08-27
 
 - **The editor's size guide is a quiet frame now.** The dotted box shows the absolute maximum space a track can have — the limit plus the run-off, centred on your track — so you can see how much room is left. It no longer turns red when you reach the limit; that read as an error on a track that was fine.

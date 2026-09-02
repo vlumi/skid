@@ -27,6 +27,12 @@ public final class Haptics {
             case .carImpact(let a, let b, _)
             where a.rawValue < humanCount || b.rawValue < humanCount:
                 heavy.impactOccurred(intensity: 0.8)
+            // Progress you can feel: a light tick per gate, a firm one per
+            // lap, and the flag keeps its flourish below.
+            case .gateCrossed(let id) where id.rawValue < humanCount:
+                light.impactOccurred(intensity: 0.6)
+            case .lapCompleted(let id, _) where id.rawValue < humanCount:
+                heavy.impactOccurred(intensity: 0.7)
             case .finished(let id) where id.rawValue < humanCount:
                 notice.notificationOccurred(.success)
             default:
