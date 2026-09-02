@@ -41,6 +41,15 @@ public struct EngineVoice {
     /// of the speed range rather than to the middle of it.
     private static let curve = 1.7
 
+    /// **Each seat's engine sits a hair off true pitch** — a fixed few-percent
+    /// detune per grid slot, so a full grid at the same speed is a chorus
+    /// rather than one loud engine. Deterministic on purpose: a car keeps its
+    /// voice for the whole race, and seat 0 stays exactly on pitch.
+    public static func detune(seat: Int) -> Double {
+        let offsets = [1.0, 0.968, 1.034, 0.947, 1.052, 0.982, 1.021, 0.958, 1.041]
+        return offsets[((seat % offsets.count) + offsets.count) % offsets.count]
+    }
+
     /// How far up the rev range a speed sits, 0…1 — the shared curve, so pitch and duty
     /// cannot drift apart.
     static func revs(forSpeed speed: Double, topSpeed: Double = CarTuning().maxSpeed) -> Double {

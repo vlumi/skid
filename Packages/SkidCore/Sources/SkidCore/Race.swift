@@ -17,48 +17,6 @@ public struct RaceConfig: Equatable, Sendable, Codable {
     }
 }
 
-/// One car's progress through the gate sequence. A lap is earned by
-/// crossing every gate in order, in the driving direction — cutting the
-/// track can never skip ahead.
-public struct CarProgress: Equatable, Sendable, Codable {
-    /// Index into `track.gates` of the next gate that counts.
-    public var nextGate = 0
-    /// Completed laps.
-    public var lap = 0
-    /// Tick the current lap started at.
-    public var lapStartTick: Tick = 0
-    /// Completed lap durations, in ticks.
-    public var lapTimes: [Tick] = []
-    /// Tick the car took the flag, once it has.
-    public var finishedAt: Tick?
-
-    public init() {}
-
-    public var bestLapTicks: Tick? { lapTimes.min() }
-}
-
-/// One car in the race: identity + dynamic state + race progress.
-public struct Car: Equatable, Sendable, Codable {
-    public let id: PlayerID
-    public var state: CarState
-    public var progress = CarProgress()
-
-    public init(id: PlayerID, state: CarState) {
-        self.id = id
-        self.state = state
-    }
-}
-
-/// Something audible/tactile that happened during a tick — derived
-/// deterministically from the sim, consumed by sound/haptics. Never fed
-/// back into physics.
-public enum RaceEvent: Equatable, Sendable {
-    case wallImpact(PlayerID, speed: Double)
-    case carImpact(PlayerID, PlayerID, closingSpeed: Double)
-    case lapCompleted(PlayerID, lapTicks: Tick)
-    case finished(PlayerID)
-}
-
 /// The whole deterministic simulation: same inputs → same states,
 /// bit-for-bit. Advances at a fixed timestep; no I/O, no rendering, no
 /// wall-clock time anywhere.
@@ -172,7 +130,15 @@ public struct Race: Equatable, Sendable {
                 applyRamps(car: &car, movedFrom: origins[i])
                 let lapsBefore = car.progress.lapTimes.count
                 let finishedBefore = car.progress.finishedAt != nil
+                let gateBefore = car.progress.nextGate
                 updateProgress(car: &car, movedFrom: origins[i])
+                // The same diff pattern as laps below: `updateProgress` mutates
+                // only the car, and the loop reads the change off it. A gate
+                // advance that did NOT wrap is an intermediate gate; the wrap
+                // is the finish line, whose event is the lap (or the flag).
+                if car.progress.nextGate > gateBefore {
+                    lastEvents.append(.gateCrossed(car.id))
+                }
                 if car.progress.lapTimes.count > lapsBefore,
                     let lap = car.progress.lapTimes.last
                 {

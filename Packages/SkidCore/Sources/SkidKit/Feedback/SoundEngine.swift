@@ -15,9 +15,7 @@ import SkidCore
 @MainActor
 public final class SoundEngine {
     struct Mix {
-        var engineHz: Double = 0
-        var engineDuty: Double = 0.3
-        var engineGain: Double = 0
+        var engines: [EngineTone] = []
         var skidGain: Double = 0
         var thump: Double = 0
         /// A start beep to fire, as (pitch, loudness). Consumed by the render thread
@@ -30,13 +28,9 @@ public final class SoundEngine {
         private let lock = NSLock()
         private var mix = Mix()
 
-        func set(
-            engineHz: Double, engineDuty: Double, engineGain: Double, skidGain: Double
-        ) {
+        func set(engines: [EngineTone], skidGain: Double) {
             lock.lock()
-            mix.engineHz = engineHz
-            mix.engineDuty = engineDuty
-            mix.engineGain = engineGain
+            mix.engines = engines
             mix.skidGain = skidGain
             lock.unlock()
         }
@@ -111,41 +105,78 @@ public final class SoundEngine {
     public func update(race: Race, humanCount: Int, paused: Bool) {
         guard running else { return }
         if paused {
-            state.set(engineHz: 0, engineDuty: 0.3, engineGain: 0, skidGain: 0)
+            state.set(engines: [], skidGain: 0)
             return
         }
-        let humans = race.cars.prefix(max(1, humanCount))
-        let leadSpeed = humans.first?.state.velocity.length ?? 0
-        let maxSlip = humans.map(\.state.slipSpeed).max() ?? 0
-        let engineHz = EngineVoice.hz(forSpeed: leadSpeed)
-        let engineDuty = EngineVoice.duty(forSpeed: leadSpeed)
-        // Raised after measuring: the old chain halved 0.10…0.30 again at the mix, so
-        // the engine rendered at 4–9% peak — inaudible against a countdown beep at 31%
-        // on a phone speaker. It is the constant bed, so it sits under the beeps, but
-        // it has to be there.
-        let engineGain = min(0.55, 0.22 + leadSpeed / 900)
-        // **The skid was already here and inaudible.** Measured on a clover lap: 948 of
-        // 2400 frames slip past the old 90 threshold — you are drifting 40% of the time —
-        // but the gain reached only 0.13 at the 90th-percentile slip, against an engine at
-        // 0.55. Reported as a missing skid sound; it was a buried one.
-        //
-        // Starts earlier (a drift you can feel should be one you can hear) and reaches a
-        // level that sits ON the engine rather than under it.
-        let skidGain = maxSlip > 55 ? min(0.34, (maxSlip - 55) / 380) : 0
         state.set(
-            engineHz: engineHz, engineDuty: engineDuty, engineGain: engineGain,
-            skidGain: skidGain)
-        for event in race.lastEvents {
+            engines: SoundEngine.engineTones(race: race),
+            skidGain: SoundEngine.skidGain(race: race, humanCount: humanCount))
+        note(events: race.lastEvents, humanCount: humanCount)
+    }
+
+    /// Thumps for contact, chirps for progress — the humans at this device.
+    private func note(events: [RaceEvent], humanCount: Int) {
+        var chirp: (hz: Double, gain: Double)?
+        for event in events {
             switch event {
             case .wallImpact(let id, let speed) where id.rawValue < humanCount:
                 state.addThump(min(1, speed / 400))
             case .carImpact(let a, let b, let closing)
             where a.rawValue < humanCount || b.rawValue < humanCount:
                 state.addThump(min(1, closing / 350))
+            // **Progress you can hear**, for the humans at this device. One
+            // beep voice, so one tick picks its most important crossing: the
+            // flag over the finish line over an intermediate gate.
+            case .gateCrossed(let id) where id.rawValue < humanCount:
+                if chirp == nil { chirp = (hz: 740, gain: 0.3) }
+            case .lapCompleted(let id, _) where id.rawValue < humanCount:
+                if (chirp?.hz ?? 0) < 1480 { chirp = (hz: 1480, gain: 0.6) }
+            case .finished(let id) where id.rawValue < humanCount:
+                chirp = (hz: 1760, gain: 0.9)
             default:
                 break
             }
         }
+        if let chirp {
+            state.beep(hz: chirp.hz, gain: chirp.gain)
+        }
+    }
+
+    /// **Every car's engine, not just P1's** — reported: the other seats were
+    /// silent. Each car gets the voice its own speed asks for, at its seat's
+    /// detune, and a car that has taken the flag is muted (the sim locks it to
+    /// a stop; the sound should stop with it). Gain is budgeted across the
+    /// grid so nine engines are a field, not nine times one engine's volume.
+    static func engineTones(race: Race) -> [EngineTone] {
+        let live = race.cars.prefix(EngineBank.maxVoices)
+        let voiced = max(1, live.filter { $0.progress.finishedAt == nil }.count)
+        let budget = 1 / Double(voiced).squareRoot()
+        return live.enumerated().map { seat, car in
+            guard car.progress.finishedAt == nil else {
+                return EngineTone(hz: 0, duty: 0.3, gain: 0)
+            }
+            let speed = car.state.velocity.length
+            // The measured floor: below this chain the engine bed rendered at
+            // 4–9% peak and vanished under a countdown beep on a phone speaker.
+            let gain = min(0.55, 0.22 + speed / 900) * budget
+            return EngineTone(
+                hz: EngineVoice.hz(forSpeed: speed) * EngineVoice.detune(seat: seat),
+                duty: EngineVoice.duty(forSpeed: speed),
+                gain: gain)
+        }
+    }
+
+    /// **The skid was once here and inaudible.** Measured on a clover lap: 948
+    /// of 2400 frames slip past the old 90 threshold — drifting 40% of the
+    /// time — at a gain of 0.13 under an engine at 0.55. Starts earlier (a
+    /// drift you can feel should be one you can hear) and sits ON the engine.
+    /// Humans only: an AI's drift on the far side of the map is not feedback.
+    static func skidGain(race: Race, humanCount: Int) -> Double {
+        let humans = race.cars.prefix(max(1, humanCount))
+        let maxSlip =
+            humans.filter { $0.progress.finishedAt == nil }
+            .map(\.state.slipSpeed).max() ?? 0
+        return maxSlip > 55 ? min(0.34, (maxSlip - 55) / 380) : 0
     }
 
     /// One xorshift noise sample in -1…1 — low-passed for skid, raw-ish for thumps.
@@ -159,11 +190,7 @@ public final class SoundEngine {
 
     private func makeSourceNode(sampleRate: Double) -> AVAudioSourceNode {
         let state = self.state
-        var phase1 = 0.0
-        var subPhase = 0.0
-        var smoothedHz = EngineVoice.idleHz
-        var smoothedDuty = 0.3
-        var smoothedEngine = 0.0
+        var bank = EngineBank()
         var smoothedSkid = 0.0
         var noiseFilter = 0.0
         var thumpEnv = 0.0
@@ -180,26 +207,18 @@ public final class SoundEngine {
                 return noErr
             }
             for frame in 0..<Int(frameCount) {
-                // Per-sample smoothing keeps pitch/gain changes click-free.
-                smoothedHz += (targets.engineHz - smoothedHz) * 0.0004
-                smoothedDuty += (targets.engineDuty - smoothedDuty) * 0.0004
-                smoothedEngine += (targets.engineGain - smoothedEngine) * 0.0008
+                // Per-voice smoothing lives in the bank; skid smoothing here.
                 smoothedSkid += (targets.skidGain - smoothedSkid) * 0.0015
                 thumpEnv *= 0.9996
 
-                // A pulse and a square an octave down — see `EngineVoice`.
-                phase1 += smoothedHz / sampleRate
-                subPhase += smoothedHz * 0.5 / sampleRate
-                phase1 -= phase1.rounded(.down)
-                subPhase -= subPhase.rounded(.down)
-                let engine = EngineVoice.sample(
-                    phase: phase1, subPhase: subPhase, duty: smoothedDuty)
+                // Every car's engine, summed — see `EngineBank`.
+                let engine = bank.sample(targets: targets.engines, rate: sampleRate)
 
                 let white = SoundEngine.noise(&seed)
                 noiseFilter += (white - noiseFilter) * 0.12
 
                 let sample =
-                    engine * smoothedEngine * 0.5
+                    engine * 0.5
                     + noiseFilter * smoothedSkid
                     + white * thumpEnv * 0.5
                     + beep.sample(rate: sampleRate)
