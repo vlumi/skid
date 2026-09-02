@@ -55,6 +55,42 @@ final class RaceEventTests: XCTestCase {
         XCTAssertTrue(sawImpact)
     }
 
+    /// **The best lap is the fastest one driven so far, and absent before any
+    /// lap exists** — the results card stars the race's fastest lap and the
+    /// HUD highlights a personal best off exactly this reading. The second lap
+    /// is made slower by driving back past the gate and returning; every loop
+    /// is BOUNDED, because a `while` on sim state hung the suite once.
+    func testBestLapTracksTheFastestDrivenLap() {
+        let track = Track(
+            centerline: [Vec2(-20000, 0), Vec2(20000, 0)],
+            width: 600,
+            gates: [Gate(from: Vec2(400, -300), to: Vec2(400, 300), forward: Vec2(1, 0))],
+            startSlots: [Vec2.zero],
+            size: Vec2(40000, 4000)
+        )
+        var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: 3))
+        XCTAssertNil(race.cars[0].progress.bestLapTicks, "a best lap before any lap")
+        func drive(throttle: Double, seconds: Double, orLap lap: Int? = nil) {
+            for _ in 0..<Int(seconds * Double(Race.tickRate)) {
+                if let lap, race.cars[0].progress.lap >= lap { return }
+                race.advance(inputs: [PlayerID(0): CarInput(throttle: throttle)])
+            }
+        }
+        drive(throttle: 1, seconds: 10, orLap: 1)
+        guard race.cars[0].progress.lap == 1 else { return XCTFail("lap 1 never happened") }
+        let firstLap = race.cars[0].progress.lapTimes[0]
+        XCTAssertEqual(race.cars[0].progress.bestLapTicks, firstLap)
+        // Back behind the gate (a backward crossing must not count), then
+        // forward across it again — a second, far slower lap.
+        drive(throttle: -1, seconds: 8)
+        drive(throttle: 1, seconds: 30, orLap: 2)
+        guard race.cars[0].progress.lap == 2 else { return XCTFail("lap 2 never happened") }
+        XCTAssertGreaterThan(race.cars[0].progress.lapTimes[1], firstLap, "fixture: laps equal")
+        XCTAssertEqual(
+            race.cars[0].progress.bestLapTicks, firstLap,
+            "a slower second lap must not steal the best")
+    }
+
     /// **Intermediate gates announce themselves; the finish line does not
     /// double-speak.** Three gates and one lap: the two mid-course gates emit
     /// `gateCrossed`, the wrap emits `lapCompleted` (and here `finished`) with
