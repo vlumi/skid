@@ -149,6 +149,7 @@ no progress file to go stale. Re-enter the chain at the right point:
 | --- | --- | --- |
 | preflight / publish, **before** the PR merged | nothing irreversible; PR (if any) left open | `make release` again — a clean restart |
 | **after** the PR merged, before tagging | the base has the bumped build but no tag | `make release` — **publish self-skips** (its build is already ahead of every tag) and the chain tags + distributes |
+| **tagged**, but a later step failed and you want the same build number back | the tag is on origin; nothing shipped under it (no GitHub release worth keeping) | delete the tag on origin (`git push --delete origin <prefix>/vX.Y.Z-N`), then `make release` — the lane mirrors origin's tags into the clone, so the deleted tag stops counting and **publish self-skips** straight to tagging |
 | **partway through tagging** | tag or release missing | `make release-tag` — skips a done one, creates a missing release for an existing tag |
 | **upload only** (export ok, ASC upload flaked) | the `.ipa` is already in `dist/` | `make release-upload` — uploads the existing package, no rebuild |
 | **archive/export** | release is tagged; the build failed | `make release-distribute-retry` — verifies the tag exists, then re-archives/exports/uploads **without** touching git/PR/tags |
