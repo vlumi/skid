@@ -6,11 +6,12 @@ import XCTest
 /// every packet and loss on many. The lockstep spike's costliest lesson was a
 /// harness with instant delivery — a network that cannot fail like a network —
 /// so every test here ships packets through a delayed, lossy link.
+@MainActor
 final class NetworkedSyncTests: XCTestCase {
     private var roster = RaceRoster()
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         roster = RaceRoster()
         try? roster.join("host#aaaa", seats: 1)
         try? roster.join("guest#bbbb", seats: 1)

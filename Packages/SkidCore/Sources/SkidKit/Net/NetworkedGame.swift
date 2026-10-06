@@ -119,7 +119,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         localColors = colors
         roster = RaceRoster()
         resetSession()
-        try? roster.join(transport.me, seats: seats, colors: colors)
+        _ = try? roster.join(transport.me, seats: seats, colors: colors)
         phase = .hosting
         note("hosting as \(DeviceName.display(transport.me))")
         transport.startHosting()

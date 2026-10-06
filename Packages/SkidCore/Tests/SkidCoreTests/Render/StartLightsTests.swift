@@ -8,6 +8,7 @@ import XCTest
 /// Lights replaced a mirrored "3 · 2 · 1" because a number upside down is not that
 /// number — so the row has to read identically from every seat around the phone. That
 /// is a property, not a look, and it is what these hold.
+@MainActor
 final class StartLightsTests: XCTestCase {
     /// **Every state is symmetric.** The reason the design works at all: a player on the
     /// far side of the table sees the same pattern, not a reversed one.

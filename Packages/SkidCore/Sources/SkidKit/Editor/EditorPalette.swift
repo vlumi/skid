@@ -92,7 +92,7 @@ extension EditorView {
     /// already carries some of that geometry, but the Phase-A compiler can't build
     /// it, so offering it would only produce tracks that fail to compile (see
     /// docs/track-pieces.md "Beyond the ring").
-    static func hotbarPieces(experimental: Bool) -> [PieceID] {
+    nonisolated static func hotbarPieces(experimental: Bool) -> [PieceID] {
         experimental ? [PieceCatalog.ID.gap] : []
     }
 

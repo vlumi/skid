@@ -8,6 +8,7 @@ import XCTest
 /// The property that matters is "exactly once per second boundary". The audio frame runs
 /// at display rate, so anything shaped like "is the clock near a second?" fires the same
 /// beep on every frame it is near one — a machine-gun countdown.
+@MainActor
 final class StartBeepTests: XCTestCase {
     /// **A beep only where the second actually changes.** Same value in, nothing out.
     func testNoBeepWhileTheSecondHoldsSteady() {
@@ -139,8 +140,8 @@ final class CountdownBeepGateTests: XCTestCase {
             setupFilename: "test-\(UUID().uuidString).json")
     }
 
-    override func tearDown() {
-        super.tearDown()
+    override func tearDown() async throws {
+        try await super.tearDown()
         let base =
             FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first ?? FileManager.default.temporaryDirectory

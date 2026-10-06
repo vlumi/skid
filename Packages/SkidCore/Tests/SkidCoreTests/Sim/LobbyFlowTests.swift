@@ -6,6 +6,7 @@ import XCTest
 /// The lobby handshake as a sequence of messages, without a radio. Two device
 /// failures came out of this flow — a peer-name collision, then a countdown that
 /// deadlocked — so the flow itself is now pinned.
+@MainActor
 final class LobbyFlowTests: XCTestCase {
     func testOnlyTheHostIsTheHostAfterARosterUpdate() {
         // A guest showing a working Start button means two devices can both try to

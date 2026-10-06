@@ -273,7 +273,7 @@ extension CouchGame {
         var identities = Array(repeating: SeatIdentity.guest, count: Self.maxLocalPlayers)
         for (seat, entrant) in entrants.filter(\.isHuman).enumerated()
         where seat < identities.count {
-            identities[seat] = entrant.seatIdentity ?? .guest
+            identities[seat] = entrant.seatIdentity
         }
         seatIdentities = identities
     }

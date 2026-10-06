@@ -13,8 +13,8 @@ final class HostAuthSessionTests: XCTestCase {
     private let hostKey = "host#aaaa"
     private let guestKey = "guest#bbbb"
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         roster = RaceRoster()
         try? roster.join(hostKey, seats: 1)
         try? roster.join(guestKey, seats: 1)

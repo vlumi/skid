@@ -16,6 +16,7 @@ import XCTest
 /// 2. a glancing hit points the nose along the wall
 /// 3. a hard enough glancing hit can stop the car
 /// 4. near-head-on hits still bounce
+@MainActor
 final class WallContactTests: XCTestCase {
     /// A long straight wall along the x axis, and a car set up to graze it.
     private func race() -> Race {

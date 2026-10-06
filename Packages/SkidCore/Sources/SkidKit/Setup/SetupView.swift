@@ -45,7 +45,7 @@ struct SetupView: View {
         // `onChange` catches the switch, `onAppear` the arrival already in it;
         // `onChange(initial:)` would do both but needs iOS 17.
         .onAppear(perform: drawLineupIfNeeded)
-        .onChange(of: game.mode) { _ in drawLineupIfNeeded() }
+        .onChangeCompat(of: game.mode) { _ in drawLineupIfNeeded() }
         .sheet(isPresented: $browsingTracks) {
             TrackBrowserView(game: game) { browsingTracks = false }
         }

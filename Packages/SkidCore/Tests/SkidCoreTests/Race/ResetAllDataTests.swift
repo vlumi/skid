@@ -16,8 +16,8 @@ final class ResetAllDataTests: XCTestCase {
     private var defaults: UserDefaults!
     private var directory: URL!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         // A private defaults suite and a private directory: both stores are otherwise
         // process-wide, so this would empty the developer's own dials and tracks.
         suiteName = "skid.test.\(UUID().uuidString)"
@@ -28,10 +28,10 @@ final class ResetAllDataTests: XCTestCase {
             at: directory, withIntermediateDirectories: true)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suiteName)
         try? FileManager.default.removeItem(at: directory)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     private func write(_ name: String) {
@@ -109,8 +109,8 @@ final class GameResetTests: XCTestCase {
             setupFilename: "test-\(UUID().uuidString).json")
     }
 
-    override func tearDown() {
-        super.tearDown()
+    override func tearDown() async throws {
+        try await super.tearDown()
         let base =
             FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first ?? FileManager.default.temporaryDirectory

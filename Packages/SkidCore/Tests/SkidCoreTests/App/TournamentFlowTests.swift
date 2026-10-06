@@ -12,8 +12,8 @@ import XCTest
 final class TournamentFlowTests: XCTestCase {
     private var setupFilename = ""
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         setupFilename = "test-tournament-\(UUID().uuidString).json"
     }
 

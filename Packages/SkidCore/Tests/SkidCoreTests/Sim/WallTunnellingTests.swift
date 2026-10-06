@@ -13,6 +13,7 @@ import XCTest
 /// 2. A longer step misses entirely: the nearest-approach test samples only the
 ///    start, middle and end of the movement, so nothing within reach of the wall
 ///    means no collision at all, whatever the path crossed.
+@MainActor
 final class WallTunnellingTests: XCTestCase {
     /// The reported track.
     private func track() throws -> Track {
@@ -47,7 +48,7 @@ final class WallTunnellingTests: XCTestCase {
     /// The same for the other three sides, so the fix isn't one-sided.
     func testEveryFenceSideHolds() throws {
         let track = try track()
-        var race = race(track)
+        let race = race(track)
         let mid = Vec2(track.size.x / 2, track.size.y / 2)
         struct Probe {
             var name: String

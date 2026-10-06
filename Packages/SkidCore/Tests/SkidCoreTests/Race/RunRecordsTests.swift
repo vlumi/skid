@@ -59,8 +59,8 @@ final class RunRecordsTests: XCTestCase {
         return session
     }
 
-    override func tearDown() {
-        super.tearDown()
+    override func tearDown() async throws {
+        try await super.tearDown()
         let base =
             FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first ?? FileManager.default.temporaryDirectory
@@ -232,8 +232,8 @@ final class RunRecordsTests: XCTestCase {
 /// **The way back to stock**, which is what makes a tuned phone able to record again.
 @MainActor
 final class StockPhysicsTests: XCTestCase {
-    override func tearDown() {
-        super.tearDown()
+    override func tearDown() async throws {
+        try await super.tearDown()
         GameSettings().resetPhysics()
     }
 

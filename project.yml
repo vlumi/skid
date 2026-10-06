@@ -86,6 +86,8 @@ targets:
         SKID_TUNING_FLAG: SKID_TUNING
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: >-
             $(inherited) $(SKID_EXPERIMENTAL_FLAG) $(SKID_TUNING_FLAG)
+        # Swift 6 language mode: data races are compile errors, not device bugs.
+        SWIFT_VERSION: "6.0"
         PRODUCT_BUNDLE_IDENTIFIER: fi.misaki.skid
         # User-visible app/bundle name; without this it'd be the target name
         # "Skid-iOS". The Xcode project + targets keep the short "Skid" name;
@@ -157,6 +159,8 @@ targets:
         SKID_TUNING_FLAG: SKID_TUNING
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: >-
             $(inherited) $(SKID_EXPERIMENTAL_FLAG) $(SKID_TUNING_FLAG)
+        # Swift 6 language mode: data races are compile errors, not device bugs.
+        SWIFT_VERSION: "6.0"
         PRODUCT_BUNDLE_IDENTIFIER: fi.misaki.skid
         PRODUCT_NAME: Skid Jam
         MARKETING_VERSION: "0.8.0"

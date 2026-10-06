@@ -32,7 +32,9 @@ that had already been replaced.
 
 ## Conventions
 
-- **Toolchain:** Xcode + Swift 6, **XcodeGen** (`.xcodeproj` generated,
+- **Toolchain:** Xcode + Swift 6 in the **Swift 6 language mode** (data races
+  are compile errors; reach for `@preconcurrency` only for an unannotated Apple
+  framework, with the reason beside it), **XcodeGen** (`.xcodeproj` generated,
   gitignored, never committed). The team ID IS committed in `project.yml`
   (it's not a secret, and the release lane's headless automatic signing
   needs it); certs/profiles are fetched by `-allowProvisioningUpdates`.

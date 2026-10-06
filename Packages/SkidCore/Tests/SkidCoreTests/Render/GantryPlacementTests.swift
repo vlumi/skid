@@ -9,6 +9,7 @@ import XCTest
 /// landed on the cars and their ownership arrows (reported from device). When the
 /// panel would overlap the grid, it dodges vertically into the roomier gap, staying
 /// over the map.
+@MainActor
 final class GantryPlacementTests: XCTestCase {
     private let screen = CGSize(width: 750, height: 1334)
 
