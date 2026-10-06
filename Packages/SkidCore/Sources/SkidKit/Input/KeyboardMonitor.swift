@@ -57,6 +57,9 @@ private struct KeyboardDrivingModifier: ViewModifier {
     /// One key event: the game's if it means something during a race, the
     /// system's otherwise. Local monitors run on the main thread.
     private func route(_ event: NSEvent) -> NSEvent? {
+        // A text field being edited (a track or player name) keeps every key:
+        // its arrows move the caret and its Return commits.
+        if event.window?.firstResponder is NSText { return event }
         let meaning = KeyEvent(
             macKeyCode: event.keyCode, down: event.type == .keyDown,
             command: event.modifierFlags.contains(.command))
