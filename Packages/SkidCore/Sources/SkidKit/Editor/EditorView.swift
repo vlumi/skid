@@ -177,13 +177,12 @@ struct EditorView: View {
         .task(id: ClosingKey(pieces: layout.pieces, end: nil)) {
             refreshClosingRun(walk)
         }
-        .onChangeCompat(of: game.editorBuildEnd) { _ in refreshClosingRun(walk) }
+        .onChange(of: game.editorBuildEnd) { refreshClosingRun(walk) }
         // Same reasoning: the blockage check compiles the track.
         .task(id: layout.pieces) { blockedPieces = layout.blockedPieces() }
         // Long-pressing a hotbar slot opens its picker. A `sheet` rather than
         // `fullScreenCover` (that one is iOS-only, and this package also builds
-        // for macOS), driven by `isPresented` rather than `item:` (iOS 17+,
-        // and the package targets 16).
+        // for macOS), driven by `isPresented`.
         .sheet(
             isPresented: .init(
                 get: { configuring != nil }, set: { if !$0 { configuring = nil } }

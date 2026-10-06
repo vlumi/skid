@@ -40,8 +40,8 @@ let package = Package(
     name: "SkidCore",
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v16),
-        .macOS(.v14),
+        .iOS(.v18),
+        .macOS(.v15),
     ],
     products: [
         // Pure simulation — deterministic, no UI dependencies. Headlessly testable.

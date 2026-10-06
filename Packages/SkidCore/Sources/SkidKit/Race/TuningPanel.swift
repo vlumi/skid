@@ -103,7 +103,7 @@ struct TuningPanel: View {
         .foregroundStyle(.white)
         // Push the elevation knob into the renderer's global as it's dragged,
         // so the deck/car scale updates live.
-        .onChangeCompat(of: settings.deckScale) { _ in settings.applyRenderTuning() }
+        .onChange(of: settings.deckScale) { settings.applyRenderTuning() }
     }
 
     /// **Wipe every stored track, record and dial** — a development tool, so it reads as a

@@ -157,11 +157,9 @@ enum DebugOverlay {
                         height: Double(lines.count) * lineHeight + 4), cornerRadius: 2),
                 with: .color(.black.opacity(0.55)))
             for (index, line) in lines.enumerated() {
-                // `foregroundColor` rather than `foregroundStyle`: the package
-                // targets iOS 16, and the latter is 17+.
                 text.draw(
                     Text(verbatim: line).font(.system(size: 7, weight: .bold))
-                        .foregroundColor(.white),
+                        .foregroundStyle(.white),
                     at: CGPoint(x: 0, y: Double(index) * lineHeight), anchor: .topLeading)
             }
         }

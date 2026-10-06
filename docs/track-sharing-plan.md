@@ -73,7 +73,7 @@ than a copy, or the site ends up advertising tracks that do not look like they d
 the app.
 
 Already feasible, so this is scheduling rather than a question: `SkidKit` declares
-`.macOS(.v14)` and neither renderer imports UIKit, so the real drawing code can run
+`.macOS(.v15)` and neither renderer imports UIKit, so the real drawing code can run
 on a Mac and go through `ImageRenderer`.
 
 **Two shapes, and the Mac client changes which is better.** A Mac version is wanted

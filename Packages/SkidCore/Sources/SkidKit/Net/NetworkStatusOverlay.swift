@@ -40,8 +40,7 @@ struct NetworkStatusOverlay: View {
         // Island — a desync WAS reported from device as "no banner" when it had in
         // fact fired and was hidden there. The inset is passed in rather than read
         // from the environment, because this view is inside a full-bleed stack that
-        // has already discarded it (and `safeAreaPadding` is iOS 17+, while the
-        // deployment target is 16).
+        // has already discarded it.
         .padding(.top, topInset + 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .allowsHitTesting(false)

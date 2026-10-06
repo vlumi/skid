@@ -17,7 +17,7 @@ case "$family" in
     *) echo "error: family must be iphone or ipad (got '$family')" >&2; exit 2 ;;
 esac
 
-# Pick a simulator (iOS >= 16, the app's minimum). Rules:
+# Pick a simulator (iOS >= 18, the app's minimum). Rules:
 #  - No DEVICE filter: reuse an already-booted one of the family if any, else
 #    the newest by runtime version — the quick "just run it" path.
 #  - DEVICE filter given: it is AUTHORITATIVE — pick the best NAME match and
@@ -36,7 +36,7 @@ matches = []  # (exact_name, name_len, ver, udid)
 for runtime, devs in d.items():
     m = re.search(r"iOS-(\d+)-(\d+)", runtime)
     ver = (int(m.group(1)), int(m.group(2))) if m else None
-    if not ver or ver < (16, 0):
+    if not ver or ver < (18, 0):
         continue
     for dev in devs:
         name = dev["name"]
@@ -57,7 +57,7 @@ else:
     print(booted or sorted(matches)[0][3])
 ')"
 [ -n "$udid" ] || {
-    echo "error: no available iOS>=16 $family_match simulator${device:+ matching '$device'} found" >&2
+    echo "error: no available iOS>=18 $family_match simulator${device:+ matching '$device'} found" >&2
     exit 1
 }
 

@@ -76,7 +76,7 @@ In practice:
 - **Intel is out of scope, decided rather than assumed.** It was the one case that
   could genuinely differ — and there is no Intel Mac available to test on, so it
   cannot be supported whatever the OS allows. An untestable platform is not a
-  supported one. (macOS 14 does still *run* on some 2018-and-later Intel models,
+  supported one. (macOS 15 does still *run* on some 2018-and-later Intel models,
   so the deployment target alone does not exclude them; this is a support
   decision, not a build one.)
 - a Swift or OS version difference across peers is a smaller but real version of
