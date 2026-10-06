@@ -157,6 +157,29 @@ final class CouchLayoutTests: XCTestCase {
         XCTAssertTrue(r.players.allSatisfy { $0.up == Vec2(0, -1) }, "a sideways band was rotated")
     }
 
+    /// **At a keyboard everyone sits on one side**: the map leaves a strip
+    /// along the bottom only, and the bands share it side by side — P1
+    /// (WASD) on the left — even in a landscape window.
+    func testKeyboardBandsShareTheBottomStrip() {
+        let strip = CouchRig.keyboardBand
+        let map = TrackRenderer.fittedMapRect(
+            trackSize: Vec2(1000, 1000), in: wide, bottomBand: strip)
+        XCTAssertLessThanOrEqual(map.maxY, wide.height - strip + 0.5, "the map ate the strip")
+        for n in 1...2 {
+            let r = rig(n)
+            r.layout(size: wide, mapRect: map, dockAtBottom: true)
+            let zones = r.players.map(\.zone)
+            for zone in zones {
+                XCTAssertGreaterThanOrEqual(
+                    zone.minY, map.maxY - 0.5, "\(n)P band not below the map")
+                XCTAssertEqual(zone.maxY, wide.height, accuracy: 0.5)
+                XCTAssertGreaterThanOrEqual(zone.height, strip - 0.5)
+            }
+            XCTAssertEqual(zones.map(\.width).reduce(0, +), wide.width, accuracy: 0.5)
+            if n == 2 { XCTAssertLessThan(zones[0].minX, zones[1].minX, "P1 not on the left") }
+        }
+    }
+
     func testOnePlayerBandBelowMap() {
         let zone = zones(rig(1))[0]
         XCTAssertGreaterThanOrEqual(zone.minY, map.maxY - 0.5)  // below the map

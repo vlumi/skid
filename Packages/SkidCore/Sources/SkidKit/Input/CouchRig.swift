@@ -108,6 +108,7 @@ public final class CouchRig: ObservableObject {
     private var lastSize: CGSize = .zero
     private var lastMapRect: CGRect = .zero
     private var lastInsets = EdgeInsets()
+    private var lastDock = false
 
     /// `seats` names the cars these bands drive, defaulting to `0..<n` for a couch
     /// race where the local players ARE the whole field.
@@ -136,8 +137,22 @@ public final class CouchRig: ObservableObject {
     /// band sits "below the map from their point of view": the bottom gap
     /// for near-side players (up), the top gap for players across the table
     /// (down, rotated). `mapRect` is where the track sits on screen.
-    public func layout(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets = EdgeInsets()) {
-        guard size != lastSize || mapRect != lastMapRect || safeInsets != lastInsets else { return }
+    /// The keyboard's bottom strip, in points: the HUD's height, no thumb room.
+    public static let keyboardBand: CGFloat = 120
+
+    /// `dockAtBottom`: everyone sits on ONE side — the keyboard's — so every
+    /// band goes along the bottom edge, side by side, whatever the screen's
+    /// shape. (Pair it with `fittedMapRect(bottomBand:)`, which leaves the
+    /// strip.)
+    public func layout(
+        size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets = EdgeInsets(),
+        dockAtBottom: Bool = false
+    ) {
+        guard
+            size != lastSize || mapRect != lastMapRect || safeInsets != lastInsets
+                || dockAtBottom != lastDock
+        else { return }
+        lastDock = dockAtBottom
         lastSize = size
         lastMapRect = mapRect
         lastInsets = safeInsets
@@ -146,9 +161,11 @@ public final class CouchRig: ObservableObject {
         // above and below a map that fills the height would be zero pixels
         // tall, so the zones (and the HUD in them) simply vanished.
         let bands =
-            mapRect.minX > mapRect.minY
-            ? sideBands(size: size, mapRect: mapRect, safeInsets: safeInsets)
-            : portraitBands(size: size, mapRect: mapRect, safeInsets: safeInsets)
+            dockAtBottom
+            ? bottomBands(size: size, mapRect: mapRect, safeInsets: safeInsets)
+            : mapRect.minX > mapRect.minY
+                ? sideBands(size: size, mapRect: mapRect, safeInsets: safeInsets)
+                : portraitBands(size: size, mapRect: mapRect, safeInsets: safeInsets)
         for (index, player) in players.enumerated() where index < bands.count {
             player.setZone(bands[index].box, content: bands[index].content, up: bands[index].up)
         }
@@ -205,6 +222,25 @@ public final class CouchRig: ObservableObject {
             return ZoneCorner.allCases.map { corner in
                 band(top: corner.isTopRow, half: corner.isLeft ? .left : .right)
             }
+        }
+    }
+
+    /// Every band below the map, side by side in seat order (P1 on the left,
+    /// where WASD sits), the whole strip from the map down to the screen edge.
+    private func bottomBands(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets) -> [Band] {
+        let count = max(1, players.count)
+        let width = size.width / Double(count)
+        return (0..<count).map { index in
+            let box = CGRect(
+                x: Double(index) * width, y: mapRect.maxY,
+                width: width, height: size.height - mapRect.maxY)
+            let first = index == 0, last = index == count - 1
+            let content = CGRect(
+                x: box.minX + (first ? safeInsets.leading : 0), y: box.minY,
+                width: box.width - (first ? safeInsets.leading : 0)
+                    - (last ? safeInsets.trailing : 0),
+                height: box.height - safeInsets.bottom)
+            return Band(box: box, content: content, up: up)
         }
     }
 
