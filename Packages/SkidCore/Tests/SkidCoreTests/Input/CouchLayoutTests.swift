@@ -115,6 +115,48 @@ final class CouchLayoutTests: XCTestCase {
         XCTAssertEqual(far.content.maxY, far.zone.maxY, accuracy: 0.5)
     }
 
+    // MARK: - landscape: bands at the sides
+
+    /// A Mac window or an iPad held sideways: the map fills the height, so a
+    /// band above or below it would be zero pixels tall — the zones and the
+    /// HUD in them used to vanish.
+    private let wide = CGSize(width: 1280, height: 860)
+
+    private func wideZones(_ n: Int) -> (zones: [CGRect], map: CGRect) {
+        let map = TrackRenderer.fittedMapRect(trackSize: Vec2(1000, 1000), in: wide)
+        let r = rig(n)
+        r.layout(size: wide, mapRect: map)
+        return (r.players.map(\.zone), map)
+    }
+
+    func testLandscapeBandsSitBesideTheMapFullAndFlush() {
+        for n in 1...4 {
+            let (zones, map) = wideZones(n)
+            XCTAssertEqual(zones.count, n)
+            for zone in zones {
+                XCTAssertFalse(zone.intersects(map.insetBy(dx: 1, dy: 0)), "\(n)P band over map")
+                XCTAssertGreaterThanOrEqual(zone.width, 132, "\(n)P band too narrow")
+                XCTAssertGreaterThanOrEqual(zone.height, 132, "\(n)P band too short")
+                let flushLeft = abs(zone.minX) < 0.5 && abs(zone.maxX - map.minX) < 0.5
+                let flushRight =
+                    abs(zone.maxX - wide.width) < 0.5 && abs(zone.minX - map.maxX) < 0.5
+                XCTAssertTrue(flushLeft || flushRight, "\(n)P band \(zone) not flush to the map")
+            }
+        }
+    }
+
+    /// Two at a keyboard: P1 (WASD, the left hand) on the left, P2 on the
+    /// right, each the full height — and both facing the screen.
+    func testLandscapeTwoPlayersSplitLeftAndRight() {
+        let (zones, map) = wideZones(2)
+        XCTAssertLessThanOrEqual(zones[0].maxX, map.minX + 0.5, "P1 not left of the map")
+        XCTAssertGreaterThanOrEqual(zones[1].minX, map.maxX - 0.5, "P2 not right of the map")
+        for zone in zones { XCTAssertEqual(zone.height, wide.height, accuracy: 0.5) }
+        let r = rig(2)
+        r.layout(size: wide, mapRect: map)
+        XCTAssertTrue(r.players.allSatisfy { $0.up == Vec2(0, -1) }, "a sideways band was rotated")
+    }
+
     func testOnePlayerBandBelowMap() {
         let zone = zones(rig(1))[0]
         XCTAssertGreaterThanOrEqual(zone.minY, map.maxY - 0.5)  // below the map
