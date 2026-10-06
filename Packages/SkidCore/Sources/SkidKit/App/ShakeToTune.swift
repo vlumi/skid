@@ -62,7 +62,7 @@ extension View {
     func tuningOnShake(
         settings: GameSettings, resetAllData: (() -> Void)? = nil
     ) -> some View {
-        #if SKID_TUNING && canImport(UIKit)
+        #if SKID_TUNING
         return modifier(ShakeTuningModifier(settings: settings, resetAllData: resetAllData))
         #else
         return self
@@ -70,7 +70,10 @@ extension View {
     }
 }
 
-#if SKID_TUNING && canImport(UIKit)
+// The panel itself is plain SwiftUI, so it is on every platform the dials are:
+// only the SHAKE needs UIKit. A Mac posts the same notification from a menu
+// item (⌘T, see `SkidMacCommands`).
+#if SKID_TUNING
 
 private struct ShakeTuningModifier: ViewModifier {
     @ObservedObject var settings: GameSettings

@@ -31,7 +31,7 @@ extension CouchGame {
         if let index = arguments.firstIndex(of: "-skid-players"),
             index + 1 < arguments.count, let count = Int(arguments[index + 1])
         {
-            playerCount = max(1, min(Self.maxLocalPlayers, count))
+            playerCount = max(1, min(localSeatLimit, count))
         }
         if let index = arguments.firstIndex(of: "-skid-ai"),
             index + 1 < arguments.count, let count = Int(arguments[index + 1])

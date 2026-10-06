@@ -68,8 +68,10 @@ struct RaceScreen: View {
                     roadLayers: trackLayers.images, roadLayersRect: trackLayers.screenRect,
                     debug: game.settings.debugOverlay
                 )
-                let pads = padOverlays()
-                let aims = aimOverlays()
+                // No pads to draw for keys: the gradient legend and the steer
+                // band describe a thumb on glass, and there is none.
+                let pads = game.keyboardDriving ? [] : padOverlays()
+                let aims = game.keyboardDriving ? [] : aimOverlays()
                 let zones = zoneChrome(safeInsets: insets)
                 let markers = GridMarkers.markers(
                     race: race, players: rig.players, mapRect: mapRect,
@@ -151,18 +153,7 @@ struct RaceScreen: View {
             .contentShape(Rectangle())
             .frame(width: mapRect.width, height: mapRect.height)
             .position(x: mapRect.midX, y: mapRect.midY)
-            .onTapGesture {
-                // **No pause in a networked race yet.** A client has nothing to
-                // pause (it renders the host's stream) and a host pausing everyone
-                // is a design question — until it is answered, the map tap does
-                // nothing rather than something broken.
-                guard !session.isNetworked else { return }
-                if !session.started {
-                    session.started = true
-                } else {
-                    session.paused = true
-                }
-            }
+            .onTapGesture { session.startOrPause() }
     }
 
     /// The ready gate: a big Play button on the map center while the race is

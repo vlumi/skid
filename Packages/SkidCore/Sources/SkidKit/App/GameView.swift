@@ -82,5 +82,10 @@ public struct GameView: View {
         // a pause-menu button, reachable only from inside a race. In a production
         // build this is the identity function.
         .tuningOnShake(settings: game.settings) { game.resetAllData() }
+        #if os(macOS)
+        // The Mac drives with keys. Only the Mac shell hosts this view on
+        // macOS — the test suite, which also runs there, never builds it.
+        .keyboardDriving(game)
+        #endif
     }
 }
