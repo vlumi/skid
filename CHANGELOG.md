@@ -14,6 +14,7 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **The menus work from the keyboard on the Mac.** Arrows (or WASD) move an amber highlight between buttons, Enter or Space presses it, and Escape takes the screen's corner way out — Back, or a sheet's ×. It works in sheets too, in the pause menu (Escape resumes) and on the results card; while a name is being typed, the keys stay with the text field.
 - **Requires iOS 18 or macOS 15.** iOS 18 runs on every iPhone iOS 17 does (the XS/XR and newer, and the 2nd-generation SE); iPhone 8 and X owners stay on the last build that supported iOS 16.
 - **Skid Jam on the Mac.** The same game in a Mac window, driven from the keyboard: WASD or the arrows, gas and brake on up/down, steering on left/right. Two players share one keyboard — WASD is P1, the arrows are P2 — and a lone driver can use either; both players' boxes sit along the bottom of the window, on the keyboard's side. Space starts the race off the ready gate and Escape pauses. Setup shows whose keys are whose where the Pro/Casual switch was.
 - **Menus keep a menu's width on big screens.** On a Mac window or an iPad every menu is now a centred column instead of buttons stretched edge to edge, and rows of choices stay centred in it. Phones look the same.

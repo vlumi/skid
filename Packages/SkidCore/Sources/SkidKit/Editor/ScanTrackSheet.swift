@@ -22,7 +22,10 @@ struct ScanTrackSheet: View {
     /// alternative is a camera that appears to ignore a perfectly good QR.
     @State private var notATrack = false
 
-    var body: some View {
+    /// Its own keyboard focus: arrows move inside the sheet while it is up.
+    var body: some View { sheetBody.menuFocusScope() }
+
+    @ViewBuilder private var sheetBody: some View {
         ZStack {
             Retro.ground.ignoresSafeArea()
             VStack(spacing: 14) {

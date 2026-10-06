@@ -268,6 +268,8 @@ public final class CouchGame: ObservableObject {
     }
     /// The keyboard's two clusters and who drives with which.
     public let keyboard = KeyboardSeats()
+    /// Which surface's buttons the arrow keys move between (see `MenuFocus`).
+    public let menus = MenuFocusCenter()
     var aiColorIndices: [Int] = []
     /// Race seed, bumped before every race and recorded with each replay so
     /// runs stay reproducible. Seeded from the clock ONCE at launch (view

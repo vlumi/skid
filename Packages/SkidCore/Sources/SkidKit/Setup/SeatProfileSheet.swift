@@ -30,7 +30,10 @@ struct SeatProfileSheet: View {
         game.entrants.indices.contains(seat) && game.entrants[seat].kind != .player
     }
 
-    var body: some View {
+    /// Its own keyboard focus: arrows move inside the sheet while it is up.
+    var body: some View { sheetBody.menuFocusScope() }
+
+    @ViewBuilder private var sheetBody: some View {
         ZStack {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
@@ -86,7 +89,7 @@ struct SeatProfileSheet: View {
                     // Swipe-to-delete went with the `List`. An explicit button is
                     // better here anyway: this is a menu, not a mail inbox, and a
                     // hidden gesture is not something a player will find.
-                    Button {
+                    MenuButton {
                         game.deleteProfile(id: profile.id)
                     } label: {
                         Text(verbatim: "✕")
@@ -115,7 +118,7 @@ struct SeatProfileSheet: View {
                     .frame(minHeight: 40)
                     .background(Retro.panel.opacity(0.55))
                     .overlay(RetroBevel(inset: true, thickness: 2))
-                Button(action: create) {
+                MenuButton(action: create) {
                     Text("ADD", bundle: .module)
                         .font(Retro.body)
                         .foregroundStyle(canAdd ? Retro.onHighlight : Retro.inkSoft)

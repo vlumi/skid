@@ -63,7 +63,7 @@ struct SetupView: View {
 
     /// The current track: its preview, its name, and the way to change it.
     private var trackRow: some View {
-        Button {
+        MenuButton {
             browsingTracks = true
         } label: {
             HStack(spacing: 12) {
@@ -159,7 +159,7 @@ struct SetupView: View {
             // The same full-width primary as the front door's START — the two
             // start buttons were different widths for no reason a player could
             // see. Back lives in the top-left corner like everywhere else.
-            Button {
+            MenuButton {
                 if game.mode == .tournament {
                     game.startTournament()
                 } else {
@@ -267,7 +267,7 @@ struct SetupView: View {
                     } else {
                         // Each player picks their own scheme — one couch can mix
                         // aim and d-pad drivers.
-                        Button {
+                        MenuButton {
                             game.toggleScheme(slot: slot)
                         } label: {
                             Text(
@@ -329,7 +329,7 @@ struct SetupView: View {
     private func choice(
         _ label: Text, selected: Bool, action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        MenuButton(action: action) {
             label
                 .font(Retro.font(14))
                 .padding(.horizontal, 18)

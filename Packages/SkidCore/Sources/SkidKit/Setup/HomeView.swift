@@ -100,7 +100,7 @@ struct HomeView: View {
     /// the rest — it stopped being a small centred afterthought.
     private var actions: some View {
         VStack(spacing: 10) {
-            Button {
+            MenuButton {
                 game.openSetup()
             } label: {
                 Text("START", bundle: .module)
@@ -119,13 +119,13 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 8)
             HStack(spacing: 10) {
-                Button {
+                MenuButton {
                     net.host(seats: game.playerCount)
                     game.openNetworking()
                 } label: {
                     Text("Host", bundle: .module).pillStyle(wide: true)
                 }
-                Button {
+                MenuButton {
                     net.join(seats: game.playerCount)
                     game.openNetworking()
                 } label: {
@@ -137,7 +137,7 @@ struct HomeView: View {
             // your tracks, where you share, rename, delete or start a new one —
             // and editing is a step deeper from there. Naming the door after the
             // room behind it sent players expecting a list into a canvas.
-            Button {
+            MenuButton {
                 game.openTrackLibrary()
             } label: {
                 Text("Tracks", bundle: .module).pillStyle(wide: true)
