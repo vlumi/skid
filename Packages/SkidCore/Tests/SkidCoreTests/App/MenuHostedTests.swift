@@ -95,11 +95,16 @@ final class MenuHostedTests: XCTestCase {
         window.makeKeyAndOrderFront(nil)
         defer { window.close() }
         RunLoop.main.run(until: Date().addingTimeInterval(1.0))
+        // The sheet's scope holds the sheet's buttons ONLY — About has just its
+        // ×. If the sheet pushed no scope of its own, its buttons would have
+        // joined the SCREEN's scope through the environment, and the active
+        // scope would also hold the screen's button behind it.
         let active = try XCTUnwrap(center.active, "no scope at all")
+        XCTAssertFalse(active.targets.isEmpty, "the sheet's buttons did not register")
         XCTAssertTrue(
-            active.targets.contains { $0.isCancel },
-            "the active scope is not the sheet's (no close button in it): "
-                + "\(active.targets.count) targets")
+            active.targets.allSatisfy(\.isCancel),
+            "the arrows would reach the screen behind the sheet: "
+                + "\(active.targets.count) targets, not just the sheet's close")
     }
 }
 #endif
