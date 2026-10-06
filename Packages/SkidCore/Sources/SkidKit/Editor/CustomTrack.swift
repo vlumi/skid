@@ -368,15 +368,6 @@ extension CouchGame {
         editedEntryID.flatMap { library.entry(id: $0)?.name } ?? pendingTrackName
     }
 
-    /// Rename the track currently being edited. Convenience over `renameTrack(id:to:)` for
-    /// the editor, which knows *what* it is editing but should not have to know how rows
-    /// are keyed.
-    ///
-    /// **Works before the first save too**: with no row yet, the name is remembered and
-    /// applied when one is written, which is what `pendingTrackName` already does for a
-    /// track started from a copy. So naming a brand-new track works the moment you think
-    /// of the name, rather than only after it has been saved.
-    @discardableResult
     /// **Set the edited track's road style**, which is a property of the whole track
     /// rather than of any piece — see `TrackLayout.RoadStyle`.
     ///
@@ -388,6 +379,14 @@ extension CouchGame {
         editorLayout = layout
     }
 
+    /// Rename the track currently being edited. Convenience over `renameTrack(id:to:)` for
+    /// the editor, which knows *what* it is editing but should not have to know how rows
+    /// are keyed.
+    ///
+    /// **Works before the first save too**: with no row yet, the name is remembered and
+    /// applied when one is written, which is what `pendingTrackName` already does for a
+    /// track started from a copy. So naming a brand-new track works the moment you think
+    /// of the name, rather than only after it has been saved.
     @discardableResult
     public func renameEditedTrack(to name: String) -> Bool {
         guard let cleaned = TrackName.cleaned(name) else { return false }
