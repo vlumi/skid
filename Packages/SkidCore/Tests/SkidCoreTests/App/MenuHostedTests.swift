@@ -70,5 +70,36 @@ final class MenuHostedTests: XCTestCase {
         couch.handle(.pause)
         XCTAssertEqual(couch.phase, .menu, "Escape did not press Back")
     }
+
+    /// **A sheet takes the keys while it is up.** The focus centre has to
+    /// reach the sheet's content through the environment; if it did not, the
+    /// sheet would push no scope and the arrows would move the screen behind.
+    func testASheetPushesItsOwnScope() throws {
+        let couch = game()
+        let center = couch.menus
+        struct Probe: View {
+            @State var showing = true
+            var body: some View {
+                MenuButton(action: {}) { Text(verbatim: "screen") }
+                    .sheet(isPresented: $showing) {
+                        AboutView(close: { showing = false })
+                    }
+            }
+        }
+        let window = NSWindow(
+            contentRect: CGRect(x: 0, y: 0, width: 800, height: 800),
+            styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(
+            rootView: Probe().menuFocusScope().menuFocusCenter(center))
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        RunLoop.main.run(until: Date().addingTimeInterval(1.0))
+        let active = try XCTUnwrap(center.active, "no scope at all")
+        XCTAssertTrue(
+            active.targets.contains { $0.isCancel },
+            "the active scope is not the sheet's (no close button in it): "
+                + "\(active.targets.count) targets")
+    }
 }
 #endif
