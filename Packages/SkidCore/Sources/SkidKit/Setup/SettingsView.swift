@@ -18,7 +18,10 @@ struct SettingsView: View {
     /// bottom, after everything you might actually have come here for.
     @State private var confirmingReset = false
 
-    var body: some View {
+    /// Its own keyboard focus: arrows move inside the sheet while it is up.
+    var body: some View { sheetBody.menuFocusScope() }
+
+    @ViewBuilder private var sheetBody: some View {
         ZStack {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
@@ -114,7 +117,7 @@ struct SettingsView: View {
                     .font(Retro.caption)
                     .foregroundStyle(Retro.inkSoft)
                     .multilineTextAlignment(.center)
-                Button {
+                MenuButton {
                     confirmingReset = false
                     game.resetAllData()
                     close()
@@ -123,7 +126,7 @@ struct SettingsView: View {
                         .retroButton(wide: true, tint: Retro.danger)
                 }
                 .buttonStyle(.plain)
-                Button {
+                MenuButton {
                     confirmingReset = false
                 } label: {
                     Text("Never mind", bundle: .module)
@@ -132,7 +135,7 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                Button {
+                MenuButton {
                     confirmingReset = true
                 } label: {
                     Text("Erase all data", bundle: .module)

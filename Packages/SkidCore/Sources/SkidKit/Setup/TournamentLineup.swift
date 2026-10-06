@@ -19,7 +19,7 @@ struct TournamentLineup: View {
                     .font(Retro.heading)
                     .foregroundStyle(Retro.inkSoft)
                 Spacer()
-                Button {
+                MenuButton {
                     game.drawTournamentTracks()
                 } label: {
                     Text("Redraw", bundle: .module)
@@ -77,7 +77,7 @@ struct TournamentLineup: View {
     }
 
     private func row(index: Int, id: String) -> some View {
-        Button {
+        MenuButton {
             choosingFor = index
         } label: {
             HStack(spacing: 10) {

@@ -24,7 +24,10 @@ struct TrackShareSheet: View {
     /// library cannot produce.
     private var url: URL? { TrackLink.url(code: code, name: name) }
 
-    var body: some View {
+    /// Its own keyboard focus: arrows move inside the sheet while it is up.
+    var body: some View { sheetBody.menuFocusScope() }
+
+    @ViewBuilder private var sheetBody: some View {
         ZStack {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
@@ -82,7 +85,7 @@ struct TrackShareSheet: View {
     }
 
     private func shareButton(_ label: Text, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        MenuButton(action: action) {
             label.retroButton(wide: true)
         }
         .buttonStyle(.plain)

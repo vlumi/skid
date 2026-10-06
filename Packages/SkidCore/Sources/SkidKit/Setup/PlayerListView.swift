@@ -66,7 +66,7 @@ struct PlayerListView: View {
             // the host's roster resolves claims).
             SeatColorSwatch(game: game, slot: index) { coloringFor = index }
 
-            Button {
+            MenuButton {
                 pickingFor = index
             } label: {
                 HStack(spacing: 8) {
@@ -91,7 +91,7 @@ struct PlayerListView: View {
             // Never below one row, so this is absent rather than disabled on the last
             // one — a control that cannot work should not be there to press.
             if game.entrants.count > 1 {
-                Button {
+                MenuButton {
                     game.removeEntrant(at: index)
                 } label: {
                     Image(systemName: "minus.circle.fill")
@@ -124,7 +124,7 @@ struct PlayerListView: View {
     private func add(_ title: Text, kind: DriverKind, action: @escaping () -> Void)
         -> some View
     {
-        Button(action: action) {
+        MenuButton(action: action) {
             title
                 .font(Retro.font(13))
                 .frame(maxWidth: .infinity)

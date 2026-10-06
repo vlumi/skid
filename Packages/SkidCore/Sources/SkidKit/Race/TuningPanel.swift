@@ -18,7 +18,10 @@ struct TuningPanel: View {
     /// opened by shaking the phone.
     @State private var confirmingReset = false
 
-    var body: some View {
+    /// Its own keyboard focus: arrows move inside the sheet while it is up.
+    var body: some View { sheetBody.menuFocusScope() }
+
+    @ViewBuilder private var sheetBody: some View {
         VStack(spacing: 12) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
@@ -82,7 +85,7 @@ struct TuningPanel: View {
             // Floating footer: leaving, and undoing. Both are wanted from anywhere in the
             // list, so they do not scroll away.
             HStack(spacing: 12) {
-                Button(action: close) {
+                MenuButton(action: close) {
                     Text("Back", bundle: .module).pillStyle()
                 }
                 // **The way back.** The dials persist, so a phone that has been
@@ -90,7 +93,7 @@ struct TuningPanel: View {
                 // which is a silent failure with no obvious cure. Covers the whole panel,
                 // not only the physics: the aim shape, the d-pad, elevation and pace are
                 // just as tuned, and a reset that left them was a half restore.
-                Button {
+                MenuButton {
                     settings.resetAllTunings()
                 } label: {
                     Text("Reset to defaults", bundle: .module).pillStyle()
@@ -226,7 +229,7 @@ struct TuningPanel: View {
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
-                    Button {
+                    MenuButton {
                         confirmingReset = false
                         resetAllData()
                         close()
@@ -238,7 +241,7 @@ struct TuningPanel: View {
                             .background(.red.opacity(0.85), in: Capsule())
                             .foregroundStyle(.white)
                     }
-                    Button {
+                    MenuButton {
                         confirmingReset = false
                     } label: {
                         Text("Never mind", bundle: .module)
@@ -246,7 +249,7 @@ struct TuningPanel: View {
                             .foregroundStyle(.white.opacity(0.6))
                     }
                 } else {
-                    Button {
+                    MenuButton {
                         confirmingReset = true
                     } label: {
                         Text("Erase all data", bundle: .module)

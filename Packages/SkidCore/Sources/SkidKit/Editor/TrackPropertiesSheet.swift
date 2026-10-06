@@ -28,7 +28,10 @@ struct TrackPropertiesSheet: View {
     @State private var copied = false
     @State private var pasteFailed = false
 
-    var body: some View {
+    /// Its own keyboard focus: arrows move inside the sheet while it is up.
+    var body: some View { sheetBody.menuFocusScope() }
+
+    @ViewBuilder private var sheetBody: some View {
         ZStack {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {

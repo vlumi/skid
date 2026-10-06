@@ -26,7 +26,10 @@ struct TrackBrowserView: View {
 
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
-    var body: some View {
+    /// Its own keyboard focus: arrows move inside the sheet while it is up.
+    var body: some View { sheetBody.menuFocusScope() }
+
+    @ViewBuilder private var sheetBody: some View {
         ZStack {
             Retro.ground.ignoresSafeArea()
             ScrollView {
@@ -139,7 +142,7 @@ struct TrackBrowserView: View {
         id: String, name: String, layout: TrackLayout?, signed: Bool = false
     ) -> some View {
         let selected = (selectedID ?? game.trackID) == id
-        return Button {
+        return MenuButton {
             if let choose {
                 choose(id)
             } else {
