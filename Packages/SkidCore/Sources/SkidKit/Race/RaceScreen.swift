@@ -273,31 +273,31 @@ struct PauseMenu: View {
 
     private var menu: some View {
         VStack(spacing: 12) {
-            Button {
+            MenuButton {
                 session.paused = false
             } label: {
                 Text("Resume", bundle: .module).pillStyle()
             }
             HStack(spacing: 10) {
-                Button {
+                MenuButton {
                     settings.soundOn.toggle()
                 } label: {
                     Text("Sound", bundle: .module).pillStyle()
                         .opacity(settings.soundOn ? 1 : 0.45)
                 }
-                Button {
+                MenuButton {
                     settings.hapticsOn.toggle()
                 } label: {
                     Text("Haptics", bundle: .module).pillStyle()
                         .opacity(settings.hapticsOn ? 1 : 0.45)
                 }
             }
-            Button {
+            MenuButton {
                 game.raceAgain()
             } label: {
                 Text("Reset", bundle: .module).pillStyle()
             }
-            Button {
+            MenuButton {
                 game.backToSetup()
             } label: {
                 Text("Setup", bundle: .module).pillStyle()

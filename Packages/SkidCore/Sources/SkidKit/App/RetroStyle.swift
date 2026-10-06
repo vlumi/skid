@@ -217,7 +217,7 @@ struct RetroToggle: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        Button {
+        MenuButton {
             isOn.toggle()
         } label: {
             HStack {
@@ -248,7 +248,7 @@ struct RetroChoice: View {
     let choose: () -> Void
 
     var body: some View {
-        Button(action: choose) {
+        MenuButton(action: choose) {
             HStack(alignment: .top, spacing: 8) {
                 Text(verbatim: selected ? "▸" : " ")
                     .font(Retro.body)
@@ -289,10 +289,13 @@ struct RetroChoice: View {
 struct RetroCornerButton: View {
     let symbol: String
     let label: Text
+    /// This surface's way out — so Escape presses it. Back and Close are;
+    /// Settings and About, which share the shape, are not.
+    var cancel = false
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        MenuButton(cancel: cancel, action: action) {
             Image(systemName: symbol)
                 .font(.title3)
                 .foregroundStyle(Retro.ink)
@@ -308,7 +311,8 @@ struct RetroCornerButton: View {
 @MainActor
 func retroBack(_ action: @escaping () -> Void) -> some View {
     RetroCornerButton(
-        symbol: "chevron.left", label: Text("Back", bundle: .module), action: action)
+        symbol: "chevron.left", label: Text("Back", bundle: .module), cancel: true,
+        action: action)
 }
 
 /// Close, for sheets (track picker, palette, profile) — chosen over "Done"
@@ -317,7 +321,7 @@ func retroBack(_ action: @escaping () -> Void) -> some View {
 @MainActor
 func retroClose(_ action: @escaping () -> Void) -> some View {
     RetroCornerButton(
-        symbol: "xmark", label: Text("Close", bundle: .module), action: action)
+        symbol: "xmark", label: Text("Close", bundle: .module), cancel: true, action: action)
 }
 
 /// The corner strip a leave button rides in: pinned to the leading edge,
