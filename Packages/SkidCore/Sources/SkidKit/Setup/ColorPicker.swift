@@ -67,7 +67,10 @@ struct ColorPaletteSheet: View {
         return found
     }
 
-    var body: some View {
+    /// Its own keyboard focus: arrows move inside the sheet while it is up.
+    var body: some View { sheetBody.menuFocusScope() }
+
+    @ViewBuilder private var sheetBody: some View {
         ZStack {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
@@ -119,7 +122,7 @@ struct ColorPaletteSheet: View {
             if holder != nil {
                 chipFace(color, mine: mine, holder: holder)
             } else {
-                Button {
+                MenuButton {
                     game.chooseColor(color, slot: slot)
                     dismiss()
                 } label: {

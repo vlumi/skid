@@ -331,9 +331,10 @@ struct EditorView: View {
     /// accessibility name — the icon carries the meaning visually, but a
     /// glyph alone tells a screen reader nothing.
     func iconButton(
-        _ symbol: String, _ label: LocalizedStringKey, action: @escaping () -> Void
+        _ symbol: String, _ label: LocalizedStringKey, cancel: Bool = false,
+        action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        MenuButton(cancel: cancel, action: action) {
             Image(systemName: symbol)
                 .font(Retro.font(14))
                 .padding(.horizontal, 10)

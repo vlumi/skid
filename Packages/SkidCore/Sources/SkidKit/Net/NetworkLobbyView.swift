@@ -64,7 +64,7 @@ struct NetworkLobbyView: View {
     private var chooser: some View {
         VStack(spacing: 18) {
             seatPicker
-            Button {
+            MenuButton {
                 // The colors these players picked at home ride along as
                 // preferences; the roster's first-come claims are the answer.
                 net.host(
@@ -73,7 +73,7 @@ struct NetworkLobbyView: View {
             } label: {
                 label(Text("Host a race", bundle: .module), filled: true)
             }
-            Button {
+            MenuButton {
                 net.join(
                     seats: game.playerCount,
                     colors: Array(game.colorIndices.prefix(game.playerCount)))
@@ -96,7 +96,7 @@ struct NetworkLobbyView: View {
                 .foregroundStyle(Retro.onGround)
             HStack(spacing: 10) {
                 ForEach(1...RaceRoster.maxSeatsPerDevice, id: \.self) { count in
-                    Button {
+                    MenuButton {
                         game.playerCount = count
                     } label: {
                         Text("\(count)")
@@ -154,12 +154,12 @@ struct NetworkLobbyView: View {
                         .font(Retro.body)
                         .foregroundStyle(Retro.onGround)
                     Spacer()
-                    Button {
+                    MenuButton {
                         net.approve(pending.peer)
                     } label: {
                         Text("Let in", bundle: .module).font(Retro.body)
                     }
-                    Button {
+                    MenuButton {
                         net.decline(pending.peer)
                     } label: {
                         Text("No", bundle: .module).font(Retro.body)
@@ -181,7 +181,7 @@ struct NetworkLobbyView: View {
             }
 
             if net.isHost {
-                Button {
+                MenuButton {
                     start()
                 } label: {
                     label(
@@ -212,7 +212,7 @@ struct NetworkLobbyView: View {
                     .foregroundStyle(.orange)
             }
             ForEach(net.visibleHosts, id: \.self) { host in
-                Button {
+                MenuButton {
                     net.askToJoin(host)
                 } label: {
                     label(Text(verbatim: DeviceName.display(host)), filled: true)
@@ -233,7 +233,7 @@ struct NetworkLobbyView: View {
                 .font(Retro.body)
                 .foregroundStyle(Retro.onGround)
                 .multilineTextAlignment(.center)
-            Button {
+            MenuButton {
                 net.leave()
                 game.backToMenu()
             } label: {
