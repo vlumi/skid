@@ -1,7 +1,9 @@
 import SwiftUI
 
 #if canImport(UIKit) && !targetEnvironment(macCatalyst)
-import AVFoundation
+// AVFoundation is not annotated for Sendable; its session is documented safe
+// to drive from a background queue, which is all `sessionQueue` does with it.
+@preconcurrency import AVFoundation
 
 /// **The camera, looking for one thing.**
 ///
@@ -37,7 +39,12 @@ struct QRScannerView: UIViewRepresentable {
     }
 
     /// The preview layer and the session that feeds it.
-    final class ScannerUIView: UIView, AVCaptureMetadataOutputObjectsDelegate {
+    ///
+    /// `@preconcurrency` on the delegate: it is registered on `.main` below, so
+    /// AVFoundation calls it on the main thread this view lives on. Swift
+    /// cannot see that through the framework's unannotated protocol; this
+    /// makes a call from anywhere else a runtime trap rather than a race.
+    final class ScannerUIView: UIView, @preconcurrency AVCaptureMetadataOutputObjectsDelegate {
         var onCode: ((String) -> Void)?
         var onFailure: ((String) -> Void)?
         private let session = AVCaptureSession()
@@ -73,13 +80,21 @@ struct QRScannerView: UIViewRepresentable {
             previewLayer.videoGravity = .resizeAspectFill
             // Off the main thread: `startRunning` blocks until the camera is
             // configured, which is long enough to drop frames of the UI.
-            Task.detached { [session] in session.startRunning() }
+            Self.sessionQueue.async { [session] in session.startRunning() }
         }
 
         func stop() {
-            guard session.isRunning else { return }
-            Task.detached { [session] in session.stopRunning() }
+            Self.sessionQueue.async { [session] in
+                if session.isRunning { session.stopRunning() }
+            }
         }
+
+        /// **One serial queue for start and stop**, as Apple recommends. They
+        /// were two detached tasks, which carry no ordering: open the scanner
+        /// and close it at once, and the stop could run BEFORE the start — the
+        /// camera left live behind a dismissed sheet. In order, a stop always
+        /// lands after its start (and checks `isRunning` there, not on main).
+        private static let sessionQueue = DispatchQueue(label: "fi.misaki.skid.camera")
 
         override func layoutSubviews() {
             super.layoutSubviews()
