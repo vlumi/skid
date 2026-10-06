@@ -308,6 +308,7 @@ struct RetroCornerButton: View {
 }
 
 /// Back, for screens that live in the hierarchy (setup, tracks, nearby).
+@MainActor
 func retroBack(_ action: @escaping () -> Void) -> some View {
     RetroCornerButton(
         symbol: "chevron.left", label: Text("Back", bundle: .module), cancel: true,
@@ -317,6 +318,7 @@ func retroBack(_ action: @escaping () -> Void) -> some View {
 /// Close, for sheets (track picker, palette, profile) — chosen over "Done"
 /// because picking already applies: there is nothing left to confirm, only a
 /// surface to put away.
+@MainActor
 func retroClose(_ action: @escaping () -> Void) -> some View {
     RetroCornerButton(
         symbol: "xmark", label: Text("Close", bundle: .module), cancel: true, action: action)

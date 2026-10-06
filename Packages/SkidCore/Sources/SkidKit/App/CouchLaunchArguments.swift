@@ -106,7 +106,7 @@ extension CouchGame {
 /// flag keeps the screenshot (the first construction still sees it) and kills
 /// the haunting.
 enum LaunchFlag {
-    private static var consumed: Set<String> = []
+    @MainActor private static var consumed: Set<String> = []
 
     /// True the FIRST time this flag is asked about in a launched-with state,
     /// false ever after.

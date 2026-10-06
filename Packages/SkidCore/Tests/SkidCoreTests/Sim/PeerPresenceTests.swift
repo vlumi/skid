@@ -5,6 +5,7 @@ import XCTest
 /// The grace period. MultipeerConnectivity reports a peer lost on brief
 /// interruptions, so the failure mode that matters here is ejecting a player for
 /// a hiccup — worse than a car that coasts for a second.
+@MainActor
 final class PeerPresenceTests: XCTestCase {
     func testABriefDropDoesNotEjectAnyone() {
         // The whole point of the type. Down and back inside the grace period is a

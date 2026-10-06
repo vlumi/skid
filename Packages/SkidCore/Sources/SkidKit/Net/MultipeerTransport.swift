@@ -1,5 +1,7 @@
 import Foundation
-import MultipeerConnectivity
+// MultipeerConnectivity is not annotated for Sendable, though its objects are
+// documented thread-safe and MC itself calls them from its own queues.
+@preconcurrency import MultipeerConnectivity
 import SkidCore
 
 #if canImport(UIKit)
@@ -151,6 +153,16 @@ public final class MultipeerTransport: NSObject, RaceTransport {
     private static let sendQueue = DispatchQueue(label: "fi.misaki.skid.mc-send")
 }
 
+/// **Why sharing it across threads is safe** — the invariant the class
+/// comment describes, stated where Swift 6 asks for it. Its mutable state
+/// (`delegate`, `advertiser`, `browser`) is only ever touched by its caller,
+/// `NetworkedGame`, which is `@MainActor`. MultipeerConnectivity's own
+/// callbacks, on MC's private queues, read nothing but immutable `let`s
+/// (`session` — which MC itself makes thread-safe) and hop to the main actor
+/// for everything else. Not `@MainActor` itself: that would break its
+/// conformance to the platform-neutral `RaceTransport` protocol.
+extension MultipeerTransport: @unchecked Sendable {}
+
 // MARK: - MCSessionDelegate
 
 extension MultipeerTransport: MCSessionDelegate {
@@ -239,8 +251,9 @@ public enum DeviceName {
     /// appear in a device name a user typed, and survives MC's 63-byte limit.
     static let separator: Character = "#"
 
-    /// The human part — what a player sees in someone else's lobby.
-    public static var friendly: String {
+    /// The human part — what a player sees in someone else's lobby. Main
+    /// actor, because on iOS it is `UIDevice`'s to tell.
+    @MainActor public static var friendly: String {
         #if canImport(UIKit)
         let name = UIDevice.current.name
         #else
@@ -254,7 +267,7 @@ public enum DeviceName {
     /// Uniqueness is per *launch*, not per install, which is the right scope: it
     /// only has to distinguish the devices in one race, and a value that survived
     /// a reinstall would be a device identifier — more than this needs.
-    public static func uniqueKey(suffixLength: Int = 4) -> String {
+    @MainActor public static func uniqueKey(suffixLength: Int = 4) -> String {
         key(for: friendly, suffixLength: suffixLength)
     }
 

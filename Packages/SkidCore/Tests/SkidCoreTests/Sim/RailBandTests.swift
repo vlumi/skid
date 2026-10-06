@@ -17,6 +17,7 @@ import XCTest
 /// overlap came out `39 − (−3.4)` — a **42-unit shove** off the road, through a
 /// continuous railing, into a fall. Reported as "found a spot where the car gets
 /// through, and of course can't get back on the track".
+@MainActor
 final class RailBandTests: XCTestCase {
     /// The reported track, reduced to its essentials: a deck rail as a short
     /// segment, with the car off its end rather than beside it.

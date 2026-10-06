@@ -6,6 +6,7 @@ import XCTest
 /// Global seat numbering, which the plan called out as "the first bug this design
 /// would hit": two phones each thinking they own seats 0–1 means every car is
 /// driven by two thumbs.
+@MainActor
 final class RaceRosterTests: XCTestCase {
     func testSeatNumbersAreGlobalNotPerDevice() {
         // The whole point. Two devices bringing two players each must get 0,1 and

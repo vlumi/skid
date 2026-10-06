@@ -11,6 +11,7 @@ import XCTest
 /// The roster was never at fault — it correctly refuses a duplicate. The bug was
 /// keying device identity on a name that is not unique, and swallowing the refusal
 /// with `try?`.
+@MainActor
 final class PeerIdentityTests: XCTestCase {
     func testTwoDevicesWithTheSameNameGetDistinctKeys() {
         // The fix, stated directly: whatever the devices are called, two launches

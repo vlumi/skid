@@ -14,7 +14,7 @@ import SkidCore
 ///   this is the only thing it can ever report.
 /// - **A race record needs a finish**, so it exists only where there is a results screen
 ///   to read it on.
-public struct RunRecords: Equatable {
+public struct RunRecords: Equatable, Sendable {
     /// This run set the track's best lap, and the time it beat (nil when there was no
     /// previous record — the first lap on a track is a record with nothing behind it).
     public var lapRecord: Improvement?
@@ -22,7 +22,7 @@ public struct RunRecords: Equatable {
     public var raceRecord: Improvement?
 
     /// A record that fell: what it is now, and what it was.
-    public struct Improvement: Equatable {
+    public struct Improvement: Equatable, Sendable {
         public init(ticks: Tick, previous: Tick?) {
             self.ticks = ticks
             self.previous = previous
