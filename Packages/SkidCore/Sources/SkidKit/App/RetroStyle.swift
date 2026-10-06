@@ -327,3 +327,20 @@ func retroLeaveRow<Leave: View>(_ leave: Leave) -> some View {
     }
     .padding(.horizontal, 16)
 }
+
+extension Retro {
+    /// **The width a menu reads at**, on any screen. A phone is narrower, so
+    /// nothing changes there; on a Mac window or an iPad the screen becomes a
+    /// centred column — a dialog on the ground — instead of buttons stretched
+    /// edge to edge. The sheets have used this width all along.
+    static let menuWidth: CGFloat = 460
+    /// The track grids are tiles, and a wider column fits more of them a row.
+    static let shelfWidth: CGFloat = 760
+}
+
+extension View {
+    /// Cap the content at `width` and centre it in whatever is left over.
+    func retroColumn(_ width: CGFloat = Retro.menuWidth) -> some View {
+        frame(maxWidth: width).frame(maxWidth: .infinity)
+    }
+}

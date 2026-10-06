@@ -55,6 +55,7 @@ struct NetworkLobbyView: View {
 
             }
             .padding(28)
+            .retroColumn()
         }
     }
 

@@ -36,7 +36,7 @@ struct SetupView: View {
             // chosen, and only what is below them changes.
             ScrollView(.vertical, showsIndicators: false) {
                 lobby
-                    .frame(maxWidth: .infinity)
+                    .retroColumn()
             }
         }
         // **A line-up whenever the mode needs one**, however the mode was set —
@@ -317,12 +317,9 @@ struct SetupView: View {
             label
                 .font(Retro.caption)
                 .foregroundStyle(Retro.ink)
-            // 88, not 58: the 58 was sized for the single-digit player/AI steppers, and
-            // once those went the only callers were WORD labels — which wrapped
-            // mid-word into "Me/diu/m". A pill should never break a word.
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 88), spacing: 10)], spacing: 10,
-                content: content)
+            // Each pill at its natural width, so a word never breaks ("Me/diu/m"
+            // once did, in a grid column sized for single digits).
+            CenteredFlow(spacing: 10) { content() }
         }
     }
 
