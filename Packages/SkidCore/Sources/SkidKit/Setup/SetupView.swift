@@ -36,7 +36,7 @@ struct SetupView: View {
             // chosen, and only what is below them changes.
             ScrollView(.vertical, showsIndicators: false) {
                 lobby
-                    .frame(maxWidth: .infinity)
+                    .retroColumn()
             }
         }
         // **A line-up whenever the mode needs one**, however the mode was set —
@@ -261,24 +261,48 @@ struct SetupView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .frame(width: 64)
-                    // Each player picks their own scheme — one couch can mix
-                    // aim and d-pad drivers.
-                    Button {
-                        game.toggleScheme(slot: slot)
-                    } label: {
-                        Text(
-                            game.schemes[slot] == .casual ? "Casual" : "Pro", bundle: .module
-                        )
-                        .font(Retro.caption)
-                        .frame(width: 64)  // fixed, so toggling doesn't shift the column
-                        .padding(.vertical, 5)
-                        .background(Retro.panel)
-                        .overlay(RetroBevel(thickness: 2))
-                        .foregroundStyle(Retro.ink)
+                    if game.keyboardDriving {
+                        // **Whose keys are whose**, where the scheme toggle was:
+                        // a keyboard has one scheme, and what a player needs to
+                        // know before the lights is which hand drives.
+                        keysLabel(slot: slot, humans: humans)
+                    } else {
+                        // Each player picks their own scheme — one couch can mix
+                        // aim and d-pad drivers.
+                        Button {
+                            game.toggleScheme(slot: slot)
+                        } label: {
+                            Text(
+                                game.schemes[slot] == .casual ? "Casual" : "Pro",
+                                bundle: .module
+                            )
+                            .font(Retro.caption)
+                            .frame(width: 64)  // fixed, so toggling doesn't shift the column
+                            .padding(.vertical, 5)
+                            .background(Retro.panel)
+                            .overlay(RetroBevel(thickness: 2))
+                            .foregroundStyle(Retro.ink)
+                        }
                     }
                 }
             }
         }
+    }
+
+    /// The keys a seat drives with: both clusters for a lone driver, WASD or
+    /// the arrows when two share the keyboard. Flat, not beveled — it is a
+    /// legend, and a bevel would read as a button.
+    private func keysLabel(slot: Int, humans: Int) -> some View {
+        let text: Text =
+            humans <= 1
+            ? Text("WASD / arrows", bundle: .module)
+            : slot == 0 ? Text("WASD", bundle: .module) : Text("Arrows", bundle: .module)
+        return
+            text
+            .font(Retro.caption)
+            .foregroundStyle(Retro.inkSoft)
+            .frame(width: 96)
+            .padding(.vertical, 5)
     }
 
     /// A labeled row of choices that **wraps** rather than running off the screen.
@@ -293,12 +317,9 @@ struct SetupView: View {
             label
                 .font(Retro.caption)
                 .foregroundStyle(Retro.ink)
-            // 88, not 58: the 58 was sized for the single-digit player/AI steppers, and
-            // once those went the only callers were WORD labels — which wrapped
-            // mid-word into "Me/diu/m". A pill should never break a word.
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 88), spacing: 10)], spacing: 10,
-                content: content)
+            // Each pill at its natural width, so a word never breaks ("Me/diu/m"
+            // once did, in a grid column sized for single digits).
+            CenteredFlow(spacing: 10) { content() }
         }
     }
 

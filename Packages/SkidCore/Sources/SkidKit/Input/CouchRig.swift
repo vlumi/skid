@@ -108,6 +108,7 @@ public final class CouchRig: ObservableObject {
     private var lastSize: CGSize = .zero
     private var lastMapRect: CGRect = .zero
     private var lastInsets = EdgeInsets()
+    private var lastDock = false
 
     /// `seats` names the cars these bands drive, defaulting to `0..<n` for a couch
     /// race where the local players ARE the whole field.
@@ -136,11 +137,42 @@ public final class CouchRig: ObservableObject {
     /// band sits "below the map from their point of view": the bottom gap
     /// for near-side players (up), the top gap for players across the table
     /// (down, rotated). `mapRect` is where the track sits on screen.
-    public func layout(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets = EdgeInsets()) {
-        guard size != lastSize || mapRect != lastMapRect || safeInsets != lastInsets else { return }
+    /// The keyboard's bottom strip, in points: the HUD's height, no thumb room.
+    public static let keyboardBand: CGFloat = 120
+
+    /// `dockAtBottom`: everyone sits on ONE side — the keyboard's — so every
+    /// band goes along the bottom edge, side by side, whatever the screen's
+    /// shape. (Pair it with `fittedMapRect(bottomBand:)`, which leaves the
+    /// strip.)
+    public func layout(
+        size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets = EdgeInsets(),
+        dockAtBottom: Bool = false
+    ) {
+        guard
+            size != lastSize || mapRect != lastMapRect || safeInsets != lastInsets
+                || dockAtBottom != lastDock
+        else { return }
+        lastDock = dockAtBottom
         lastSize = size
         lastMapRect = mapRect
         lastInsets = safeInsets
+        // **Landscape puts the spare space at the SIDES** — a Mac window, an
+        // iPad turned sideways — and `fittedMapRect` reserves it there. Bands
+        // above and below a map that fills the height would be zero pixels
+        // tall, so the zones (and the HUD in them) simply vanished.
+        let bands =
+            dockAtBottom
+            ? bottomBands(size: size, mapRect: mapRect, safeInsets: safeInsets)
+            : mapRect.minX > mapRect.minY
+                ? sideBands(size: size, mapRect: mapRect, safeInsets: safeInsets)
+                : portraitBands(size: size, mapRect: mapRect, safeInsets: safeInsets)
+        for (index, player) in players.enumerated() where index < bands.count {
+            player.setZone(bands[index].box, content: bands[index].content, up: bands[index].up)
+        }
+    }
+
+    /// Bands above and below a map that fills the width (portrait).
+    private func portraitBands(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets) -> [Band] {
         let w = size.width
 
         // Band that fills the bottom gap (near players) or top gap (far),
@@ -174,26 +206,77 @@ public final class CouchRig: ObservableObject {
             return Band(box: box, content: content, up: top ? down : up)
         }
 
-        let bands: [Band]
         switch players.count {
         case 1:
-            bands = [band(top: false, half: .full)]
+            return [band(top: false, half: .full)]
         case 2 where seating.faceToFace:
-            bands = [band(top: false, half: .full), band(top: true, half: .full)]
+            return [band(top: false, half: .full), band(top: true, half: .full)]
         case 2:
-            bands = [band(top: false, half: .left), band(top: false, half: .right)]
+            return [band(top: false, half: .left), band(top: false, half: .right)]
         case 3:
             let corners = ZoneCorner.allCases.filter { $0 != seating.openCorner }
-            bands = corners.map { corner in
+            return corners.map { corner in
                 band(top: corner.isTopRow, half: corner.isLeft ? .left : .right)
             }
         default:
-            bands = ZoneCorner.allCases.map { corner in
+            return ZoneCorner.allCases.map { corner in
                 band(top: corner.isTopRow, half: corner.isLeft ? .left : .right)
             }
         }
-        for (index, player) in players.enumerated() where index < bands.count {
-            player.setZone(bands[index].box, content: bands[index].content, up: bands[index].up)
+    }
+
+    /// Every band below the map, side by side in seat order (P1 on the left,
+    /// where WASD sits), the whole strip from the map down to the screen edge.
+    private func bottomBands(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets) -> [Band] {
+        let count = max(1, players.count)
+        let width = size.width / Double(count)
+        return (0..<count).map { index in
+            let box = CGRect(
+                x: Double(index) * width, y: mapRect.maxY,
+                width: width, height: size.height - mapRect.maxY)
+            let first = index == 0, last = index == count - 1
+            let content = CGRect(
+                x: box.minX + (first ? safeInsets.leading : 0), y: box.minY,
+                width: box.width - (first ? safeInsets.leading : 0)
+                    - (last ? safeInsets.trailing : 0),
+                height: box.height - safeInsets.bottom)
+            return Band(box: box, content: content, up: up)
+        }
+    }
+
+    /// Bands left and right of a map that fills the height. Everyone faces
+    /// screen-up: the long edge is where people sit. One player takes the
+    /// left; two split left/right (WASD under the left hand is P1, so P1's
+    /// box is on the left too); three or four stack two to a side, in the
+    /// same corner order the portrait layout uses.
+    private func sideBands(size: CGSize, mapRect: CGRect, safeInsets: EdgeInsets) -> [Band] {
+        func band(left: Bool, rows: ClosedRange<Int> = 0...1) -> Band {
+            let x = left ? 0 : mapRect.maxX
+            let width = left ? mapRect.minX : size.width - mapRect.maxX
+            let y = rows.lowerBound == 0 ? 0 : size.height / 2
+            let height = size.height / 2 * Double(rows.count)
+            let box = CGRect(x: x, y: y, width: width, height: height)
+            let topEdge = rows.lowerBound == 0, bottomEdge = rows.upperBound == 1
+            let content = CGRect(
+                x: box.minX + (left ? safeInsets.leading : 0),
+                y: box.minY + (topEdge ? safeInsets.top : 0),
+                width: box.width - (left ? safeInsets.leading : safeInsets.trailing),
+                height: box.height - (topEdge ? safeInsets.top : 0)
+                    - (bottomEdge ? safeInsets.bottom : 0))
+            return Band(box: box, content: content, up: up)
+        }
+        switch players.count {
+        case 1:
+            return [band(left: true)]
+        case 2:
+            return [band(left: true), band(left: false)]
+        default:
+            let corners =
+                players.count == 3
+                ? ZoneCorner.allCases.filter { $0 != seating.openCorner } : ZoneCorner.allCases
+            return corners.map { corner in
+                band(left: corner.isLeft, rows: corner.isTopRow ? 0...0 : 1...1)
+            }
         }
     }
 

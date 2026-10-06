@@ -85,6 +85,7 @@ struct TrackShelfView: View {
                     }
                 }
                 .padding(16)
+                .retroColumn(Retro.shelfWidth)
             }
         }
         // An alert rather than a sheet: one field and two buttons, and a sheet would cover

@@ -10,6 +10,9 @@ struct TuningPanel: View {
     /// Throw away every stored track, record and dial. Nil where there is no game to
     /// reset, which is how the panel stays usable without one.
     var resetAllData: (() -> Void)?
+    /// A keyboard-driven device (the Mac) shows only the dials a keyboard
+    /// can feel — see `keyboardSections`.
+    var keyboardDriving = false
 
     /// Guards the wipe behind a second tap: it is irreversible, and it sits on a panel
     /// opened by shaking the phone.
@@ -31,78 +34,11 @@ struct TuningPanel: View {
                     .tint(.orange)
                     .padding(.horizontal, 4)
 
-                    section(Text("Casual", bundle: .module))
-                    slider(
-                        Text("Flip rate", bundle: .module), value: $settings.aimTurnRate,
-                        range: 0...16, step: 0.5, format: "%.1f")
-                    slider(
-                        Text("Speed boost", bundle: .module), value: $settings.aimFlipBoost,
-                        range: 0...16, step: 0.5, format: "%.1f")
-                    slider(
-                        Text("Drift keep", bundle: .module), value: $settings.driftRetention,
-                        range: 0...1, step: 0.05, format: "%.2f")
-                    slider(
-                        Text("Grip", bundle: .module), value: $settings.gripScale,
-                        range: 0.2...2, step: 0.05, format: "%.2f")
-                    slider(
-                        Text("Speed drift", bundle: .module),
-                        value: $settings.speedGripFade,
-                        range: 0...1, step: 0.05, format: "%.2f")
-                    slider(
-                        Text("Reverse under speed", bundle: .module),
-                        value: $settings.aimReverseBelowSpeed,
-                        range: 30...150, step: 5, format: "%.0f")
-                    slider(
-                        Text("Gas ease", bundle: .module), value: $settings.aimThrottleEase,
-                        range: 0...1, step: 0.05, format: "%.2f")
-                    slider(
-                        Text("Forward arc", bundle: .module),
-                        value: $settings.aimForwardArcDegrees,
-                        range: 90...170, step: 5, format: "%.0f°")
-                    slider(
-                        Text("Tail swing", bundle: .module),
-                        value: $settings.aimTailSwingDegrees,
-                        range: 20...120, step: 5, format: "%.0f°")
-
-                    // **The pad is being redesigned on device**, so its layout
-                    // dials are here rather than baked: a floating pad's centre
-                    // is a point on glass with nothing to feel for, and neither
-                    // longer travel nor a self-centring wheel fixed the sine
-                    // curve that causes. The zone-strip model is the third try
-                    // and the first that gives the thumb an EDGE to find, so
-                    // what these want is driving, not more arithmetic.
-                    section(Text("Pro layout", bundle: .module))
-                    slider(
-                        Text("Steer travel", bundle: .module),
-                        value: $settings.dpadSteerTravel,
-                        range: 15...120, step: 5, format: "%.0f")
-                    slider(
-                        Text("Recentring", bundle: .module),
-                        value: $settings.dpadSteerRecentring,
-                        range: 0...4, step: 0.1, format: "%.1f")
-                    slider(
-                        Text("Speed effect", bundle: .module),
-                        value: $settings.dpadRecentringSpeed,
-                        range: 0...1, step: 0.05, format: "%.2f")
-                    slider(
-                        Text("Gas steering", bundle: .module),
-                        value: $settings.dpadSteerAtFullThrottle,
-                        range: 0...1, step: 0.05, format: "%.2f")
-                    slider(
-                        Text("Full gas until", bundle: .module),
-                        value: $settings.dpadFullThrottle,
-                        range: 0...0.5, step: 0.05, format: "%.2f")
-                    slider(
-                        Text("Coast point", bundle: .module),
-                        value: $settings.dpadCoast,
-                        range: 0.3...0.9, step: 0.05, format: "%.2f")
-                    section(Text("Pro", bundle: .module))
-                    slider(
-                        Text("Turn rate", bundle: .module), value: $settings.turnRate,
-                        range: 2...6, step: 0.1, format: "%.1f")
-                    slider(
-                        Text("Flip", bundle: .module), value: $settings.steerFlipBoost,
-                        range: 0...12, step: 0.5, format: "%.1f")
+                    if keyboardDriving {
+                        keyboardSections
+                    } else {
+                        touchSections
+                    }
 
                     // Only the two knobs device play could actually tell apart. The
                     // others (glance bounce, scrape, nose pull) are real terms but
@@ -179,6 +115,108 @@ struct TuningPanel: View {
     /// it offers no Cancel of its own — tapping the link again disarms it, and the footer
     /// already has the one way out. Two buttons that both mean "never mind" is what the
     /// first version had, and it read as a mistake.
+    /// The touch schemes' dials — Casual's aim, the Pro pad's layout, and the
+    /// Pro physics — exactly as a phone shows them.
+    @ViewBuilder private var touchSections: some View {
+        section(Text("Casual", bundle: .module))
+        slider(
+            Text("Flip rate", bundle: .module), value: $settings.aimTurnRate,
+            range: 0...16, step: 0.5, format: "%.1f")
+        slider(
+            Text("Speed boost", bundle: .module), value: $settings.aimFlipBoost,
+            range: 0...16, step: 0.5, format: "%.1f")
+        slider(
+            Text("Drift keep", bundle: .module), value: $settings.driftRetention,
+            range: 0...1, step: 0.05, format: "%.2f")
+        slider(
+            Text("Grip", bundle: .module), value: $settings.gripScale,
+            range: 0.2...2, step: 0.05, format: "%.2f")
+        slider(
+            Text("Speed drift", bundle: .module),
+            value: $settings.speedGripFade,
+            range: 0...1, step: 0.05, format: "%.2f")
+        slider(
+            Text("Reverse under speed", bundle: .module),
+            value: $settings.aimReverseBelowSpeed,
+            range: 30...150, step: 5, format: "%.0f")
+        slider(
+            Text("Gas ease", bundle: .module), value: $settings.aimThrottleEase,
+            range: 0...1, step: 0.05, format: "%.2f")
+        slider(
+            Text("Forward arc", bundle: .module),
+            value: $settings.aimForwardArcDegrees,
+            range: 90...170, step: 5, format: "%.0f°")
+        slider(
+            Text("Tail swing", bundle: .module),
+            value: $settings.aimTailSwingDegrees,
+            range: 20...120, step: 5, format: "%.0f°")
+
+        // **The pad is being redesigned on device**, so its layout
+        // dials are here rather than baked: a floating pad's centre
+        // is a point on glass with nothing to feel for, and neither
+        // longer travel nor a self-centring wheel fixed the sine
+        // curve that causes. The zone-strip model is the third try
+        // and the first that gives the thumb an EDGE to find, so
+        // what these want is driving, not more arithmetic.
+        section(Text("Pro layout", bundle: .module))
+        slider(
+            Text("Steer travel", bundle: .module),
+            value: $settings.dpadSteerTravel,
+            range: 15...120, step: 5, format: "%.0f")
+        slider(
+            Text("Recentring", bundle: .module),
+            value: $settings.dpadSteerRecentring,
+            range: 0...4, step: 0.1, format: "%.1f")
+        slider(
+            Text("Speed effect", bundle: .module),
+            value: $settings.dpadRecentringSpeed,
+            range: 0...1, step: 0.05, format: "%.2f")
+        slider(
+            Text("Gas steering", bundle: .module),
+            value: $settings.dpadSteerAtFullThrottle,
+            range: 0...1, step: 0.05, format: "%.2f")
+        slider(
+            Text("Full gas until", bundle: .module),
+            value: $settings.dpadFullThrottle,
+            range: 0...0.5, step: 0.05, format: "%.2f")
+        slider(
+            Text("Coast point", bundle: .module),
+            value: $settings.dpadCoast,
+            range: 0.3...0.9, step: 0.05, format: "%.2f")
+        section(Text("Pro", bundle: .module))
+        slider(
+            Text("Turn rate", bundle: .module), value: $settings.turnRate,
+            range: 2...6, step: 0.1, format: "%.1f")
+        slider(
+            Text("Flip", bundle: .module), value: $settings.steerFlipBoost,
+            range: 0...12, step: 0.5, format: "%.1f")
+    }
+
+    /// **The Mac's dials: only what a keyboard can feel.** The aim scheme and
+    /// the pad's layout describe a thumb on glass, and the stock Pro turn rate
+    /// is replaced by the keyboard's own (input shaping, so hiscores keep
+    /// recording). What stays is the car itself: flip, drift, grip.
+    @ViewBuilder private var keyboardSections: some View {
+        section(Text("Keyboard", bundle: .module))
+        slider(
+            Text("Key turn rate", bundle: .module), value: $settings.keyboardTurnRate,
+            range: 1...4, step: 0.1, format: "%.1f")
+        section(Text("Car", bundle: .module))
+        slider(
+            Text("Flip", bundle: .module), value: $settings.steerFlipBoost,
+            range: 0...12, step: 0.5, format: "%.1f")
+        slider(
+            Text("Drift keep", bundle: .module), value: $settings.driftRetention,
+            range: 0...1, step: 0.05, format: "%.2f")
+        slider(
+            Text("Grip", bundle: .module), value: $settings.gripScale,
+            range: 0.2...2, step: 0.05, format: "%.2f")
+        slider(
+            Text("Speed drift", bundle: .module),
+            value: $settings.speedGripFade,
+            range: 0...1, step: 0.05, format: "%.2f")
+    }
+
     @ViewBuilder private var resetAllDataLink: some View {
         if let resetAllData {
             VStack(spacing: 8) {

@@ -28,7 +28,7 @@ compose instead of each being a rewrite.
 | | `SkidCore` | `SkidKit` |
 |---|---|---|
 | holds | physics, track model, race state, piece model | SwiftUI rendering, input capture, editor UI, persistence I/O |
-| imports | Foundation, CryptoKit | SwiftUI, UIKit, CoreGraphics, AVFoundation, SkidCore |
+| imports | Foundation, CryptoKit | SwiftUI, UIKit / AppKit, CoreGraphics, AVFoundation, SkidCore |
 | tested | headless, coverage-gated | coverage-ignored |
 
 The rule: **testable logic goes in SkidCore.** Where a feature needs platform
@@ -203,7 +203,17 @@ d-pad). Holding a drift by manual countersteer needs precision glass can't give,
 which is why those two earned their place and the other candidates were cut.
 
 Chrome respects the zones: HUD chips sit in each player's own corner, rotated;
-meta actions never float over a thumb area.
+meta actions never float over a thumb area. When the spare space is at the
+sides — a Mac window, an iPad turned — the zones dock left and right of the map
+instead of above and below it.
+
+**On a Mac, the keyboard.** A third `ControlSource`, `KeyboardControlSource`:
+Pro-style digital driving, full deflection on a key, with the sim's own
+steering rate limit doing the smoothing. One keyboard seats at most two — a lone
+driver gets both WASD and the arrows, two split them (WASD is P1, the left-hand
+seat). A Mac-only monitor maps *physical* key codes onto platform-neutral keys,
+so the routing is tested headlessly. Keyboard driving is a runtime flag the Mac
+shell sets, not `#if os(macOS)`: the test suite itself runs on macOS.
 
 ---
 
@@ -241,8 +251,8 @@ MultipeerConnectivity, inputs-only sync, one peer as clock host. No server. The
 sim has been built for this from the first line; that's why determinism is
 non-negotiable above.
 
-**Platforms** — macOS, keyboard and GameController as further `ControlSource`s,
-landscape, iPad map-sizing.
+**Platforms** — GameController as a further `ControlSource`, landscape couch
+reorientation, iPad map-sizing, and a track-preview render mode on the Mac target.
 
 Also planned, with detail in [ROADMAP.md](ROADMAP.md): placeable hazards and
 scenery, track size classes, profiles and tournaments, and a real front end.

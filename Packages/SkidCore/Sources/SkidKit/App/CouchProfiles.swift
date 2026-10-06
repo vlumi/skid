@@ -166,7 +166,7 @@ extension CouchGame {
     /// belongs to whoever just sat down and they have not said who they are yet;
     /// shrinking drops the last ones, so the person who left stops racing.
     func setHumanCount(_ count: Int) {
-        let target = max(1, min(Self.maxLocalPlayers, count))
+        let target = max(1, min(localSeatLimit, count))
         var rows = entrants
         while rows.count < target { rows.append(.guest) }
         if rows.count > target { rows.removeLast(rows.count - target) }
@@ -236,7 +236,13 @@ extension CouchGame {
     /// Whether another person would be accepted, so a view can disable a button rather
     /// than offer a tap that does nothing.
     public func canAdd(_ kind: DriverKind = .guest) -> Bool {
-        entrants.count < Self.maxLocalPlayers
+        entrants.count < localSeatLimit
+    }
+
+    /// How many people can drive from THIS device: four thumbs on a screen,
+    /// or two hands' worth of keys on a keyboard.
+    public var localSeatLimit: Int {
+        keyboardDriving ? KeyboardSeats.maxSeats : Self.maxLocalPlayers
     }
 
     @discardableResult

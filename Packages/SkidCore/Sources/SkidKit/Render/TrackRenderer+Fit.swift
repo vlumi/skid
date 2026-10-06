@@ -20,9 +20,15 @@ extension TrackRenderer {
     /// leaked into the control bands. The returned rect is still the world
     /// mapping; the padding only guarantees the overflow stays out of the
     /// bands and on screen.
+    ///
+    /// `bottomBand`, when set, replaces the two bands with ONE strip of that
+    /// height along the bottom edge — the keyboard's layout: everyone sits on
+    /// the keyboard's side of the screen, and a key needs no thumb room, only
+    /// space for the HUD.
     static func fittedMapRect(
         trackSize: Vec2, in screen: CGSize, safeInsets: EdgeInsets = EdgeInsets(),
-        minBand: CGFloat = 150, screenPadding: EdgeInsets = EdgeInsets()
+        minBand: CGFloat = 150, screenPadding: EdgeInsets = EdgeInsets(),
+        bottomBand: CGFloat? = nil
     ) -> CGRect {
         // Usable region: the screen minus the safe-area insets.
         let usable = CGRect(
@@ -41,17 +47,25 @@ extension TrackRenderer {
         let horizontal = screenPadding.leading + screenPadding.trailing
         let vertical = screenPadding.top + screenPadding.bottom
         let box =
-            portrait
-            ? CGRect(
-                x: usable.minX + screenPadding.leading,
-                y: usable.minY + minBand + screenPadding.top,
-                width: max(1, usable.width - horizontal),
-                height: max(1, usable.height - 2 * minBand - vertical))
-            : CGRect(
-                x: usable.minX + minBand + screenPadding.leading,
-                y: usable.minY + screenPadding.top,
-                width: max(1, usable.width - 2 * minBand - horizontal),
-                height: max(1, usable.height - vertical))
+            if let bottomBand {
+                CGRect(
+                    x: usable.minX + screenPadding.leading,
+                    y: usable.minY + screenPadding.top,
+                    width: max(1, usable.width - horizontal),
+                    height: max(1, usable.height - bottomBand - vertical))
+            } else if portrait {
+                CGRect(
+                    x: usable.minX + screenPadding.leading,
+                    y: usable.minY + minBand + screenPadding.top,
+                    width: max(1, usable.width - horizontal),
+                    height: max(1, usable.height - 2 * minBand - vertical))
+            } else {
+                CGRect(
+                    x: usable.minX + minBand + screenPadding.leading,
+                    y: usable.minY + screenPadding.top,
+                    width: max(1, usable.width - 2 * minBand - horizontal),
+                    height: max(1, usable.height - vertical))
+            }
         let scale = min(box.width / trackSize.x, box.height / trackSize.y)
         let fitted = CGSize(width: trackSize.x * scale, height: trackSize.y * scale)
         return CGRect(

@@ -81,6 +81,27 @@ public final class GameSession: ObservableObject {
     /// rendering.
     public var isNetworked = false
 
+    /// **The one "go" gesture**, however it arrives — a tap on the map or a
+    /// press of Space: off the ready gate first, the pause menu after. No pause
+    /// in a networked race yet: a client renders the host's stream and a host
+    /// pausing everyone is an open design question, so it does nothing rather
+    /// than something broken.
+    public func startOrPause() {
+        guard !isNetworked, !raceOver else { return }
+        if !started {
+            started = true
+        } else {
+            paused = true
+        }
+    }
+
+    /// Escape: in and out of the pause menu, but never past the ready gate —
+    /// a race that has not started has nothing to pause.
+    public func togglePause() {
+        guard !isNetworked, started, !raceOver else { return }
+        paused.toggle()
+    }
+
     /// **Which race this session is for.** A rematch builds a new session while the
     /// old one may still be on screen for a frame or two, and both hold the same
     /// driver — so the stale one kept pulling the driver's snapshots for a race that

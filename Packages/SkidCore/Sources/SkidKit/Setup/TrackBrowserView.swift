@@ -59,6 +59,7 @@ struct TrackBrowserView: View {
                     }
                 }
                 .padding(16)
+                .retroColumn(Retro.shelfWidth)
             }
         }
     }

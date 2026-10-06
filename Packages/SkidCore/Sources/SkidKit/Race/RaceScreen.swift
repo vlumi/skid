@@ -43,13 +43,14 @@ struct RaceScreen: View {
             // overflow (widened decks, shadows) so a tall track's paint stays
             // out of the control bands and on screen.
             let track = session.race.track
+            let strip = game.keyboardDriving ? CouchRig.keyboardBand : nil
             let base = TrackRenderer.fittedMapRect(
-                trackSize: track.size, in: fullSize, safeInsets: insets)
+                trackSize: track.size, in: fullSize, safeInsets: insets, bottomBand: strip)
             let overhang = TrackRenderer.drawnOverhang(
                 track: track, scale: base.width / track.size.x)
             let mapRect = TrackRenderer.fittedMapRect(
                 trackSize: track.size, in: fullSize, safeInsets: insets,
-                screenPadding: overhang)
+                screenPadding: overhang, bottomBand: strip)
             TimelineView(.animation) { timeline in
                 // Step the sim on the main actor, then hand the Canvas
                 // plain value copies — its renderer closure is not
@@ -68,8 +69,10 @@ struct RaceScreen: View {
                     roadLayers: trackLayers.images, roadLayersRect: trackLayers.screenRect,
                     debug: game.settings.debugOverlay
                 )
-                let pads = padOverlays()
-                let aims = aimOverlays()
+                // No pads to draw for keys: the gradient legend and the steer
+                // band describe a thumb on glass, and there is none.
+                let pads = game.keyboardDriving ? [] : padOverlays()
+                let aims = game.keyboardDriving ? [] : aimOverlays()
                 let zones = zoneChrome(safeInsets: insets)
                 let markers = GridMarkers.markers(
                     race: race, players: rig.players, mapRect: mapRect,
@@ -151,18 +154,7 @@ struct RaceScreen: View {
             .contentShape(Rectangle())
             .frame(width: mapRect.width, height: mapRect.height)
             .position(x: mapRect.midX, y: mapRect.midY)
-            .onTapGesture {
-                // **No pause in a networked race yet.** A client has nothing to
-                // pause (it renders the host's stream) and a host pausing everyone
-                // is a design question — until it is answered, the map tap does
-                // nothing rather than something broken.
-                guard !session.isNetworked else { return }
-                if !session.started {
-                    session.started = true
-                } else {
-                    session.paused = true
-                }
-            }
+            .onTapGesture { session.startOrPause() }
     }
 
     /// The ready gate: a big Play button on the map center while the race is
@@ -187,7 +179,8 @@ struct RaceScreen: View {
         let overhang = TrackRenderer.drawnOverhang(
             track: session.race.track, scale: mapRect.width / session.race.track.size.x)
         rig.layout(
-            size: size, mapRect: mapRect.grown(by: overhang), safeInsets: safeInsets)
+            size: size, mapRect: mapRect.grown(by: overhang), safeInsets: safeInsets,
+            dockAtBottom: game.keyboardDriving)
         // A no-op every frame after the first: the build happens once, while
         // the race is frozen on the ready gate, so it can never hitch a frame.
         trackLayers.prepare(

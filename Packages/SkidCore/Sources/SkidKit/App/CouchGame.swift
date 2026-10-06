@@ -255,6 +255,19 @@ public final class CouchGame: ObservableObject {
     let aiFleet = AIFleet()
     let sound = SoundEngine()
     let haptics = Haptics()
+    /// **Driving from a keyboard instead of the screen** — set once at launch
+    /// by the Mac shell, and never by the iOS one. A runtime flag rather than
+    /// `#if os(macOS)` on purpose: the test suite runs ON macOS, and a
+    /// compile-time switch would quietly move every touch test onto the keyboard.
+    @Published public var keyboardDriving = false {
+        didSet {
+            // Two clusters, two drivers: a restored four-seat setup would
+            // otherwise seat people who have no keys.
+            if keyboardDriving, playerCount > localSeatLimit { setHumanCount(localSeatLimit) }
+        }
+    }
+    /// The keyboard's two clusters and who drives with which.
+    public let keyboard = KeyboardSeats()
     var aiColorIndices: [Int] = []
     /// Race seed, bumped before every race and recorded with each replay so
     /// runs stay reproducible. Seeded from the clock ONCE at launch (view
@@ -402,6 +415,7 @@ public final class CouchGame: ObservableObject {
     /// Push the persisted control tuning onto every player's schemes —
     /// called each frame, so panel changes apply live mid-race.
     public func applyControlTuning() {
+        keyboard.turnRate = settings.keyboardTurnRate
         guard let rig else { return }
         for controls in rig.players {
             controls.pro.steerTravel = settings.dpadSteerTravel

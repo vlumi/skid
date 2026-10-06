@@ -34,6 +34,7 @@ struct HomeView: View {
             // and floated the corner buttons away from the corner they name.
             ScrollView(.vertical, showsIndicators: false) {
                 home
+                    .frame(maxWidth: Retro.menuWidth)
                     .frame(maxWidth: .infinity, alignment: .top)
             }
         }

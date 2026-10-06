@@ -131,6 +131,7 @@ extension CouchGame {
         // seat numbers, so a lookup by seat is both correct and direct.
         let bandForSeat = Dictionary(
             uniqueKeysWithValues: localSeats.enumerated().map { ($1, $0) })
+        let keys = keyboardSource(humans: localSeats.count)
         let session = GameSession(
             track: track, players: start.roster.seats, config: config, seed: start.seed,
             // **The HOST's tuning, never this device's.** Every device used to race
@@ -146,6 +147,7 @@ extension CouchGame {
                     // client this path never runs — only local seats are read.
                     return driver?.remoteInput(for: player) ?? .coast
                 }
+                if let keys { return keys(band, player, race) }
                 let controls = rig.players[band]
                 let source = controls.source(for: controls.scheme)
                 if let headingAware = source as? HeadingAwareControlSource,

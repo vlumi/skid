@@ -76,10 +76,12 @@ The redesign itself shipped: the opening screen (who is playing, then what to do
 
 The game runs one way on one kind of device: portrait, on a phone, driven by thumbs on glass. Cross-device play works, so a Mac target has its purpose — and a Mac joining as a rendering client needs no float determinism from its libm, which was the one real cross-platform risk.
 
-- [ ] **macOS target** (Universal Purchase, same bundle id), sim untouched — only render/input capture differ. `SkidKit` already declares `.macOS(.v14)` and neither renderer imports UIKit, so this is less than it looks. **Also unlocks the track-preview generator**: a Mac build links the renderer already, so rendering a code to a PNG becomes a render mode on that target rather than a second executable — see [docs/track-sharing-plan.md](docs/track-sharing-plan.md).
-- [ ] **Keyboard scheme** (arrows/WASD, 1–2 players) and GameController support as additional `ControlSource`s.
+- [x] **macOS target** (Universal Purchase, same bundle id), sim untouched — only input capture differs.
+- [ ] **Track-preview generator** on the Mac target: it links the renderer already, so rendering a code to a PNG becomes a render mode there rather than a second executable — see [docs/track-sharing-plan.md](docs/track-sharing-plan.md).
+- [x] **Keyboard scheme** — arrows/WASD, 1–2 players, Pro-style.
+- [ ] **GameController support** as a further `ControlSource`.
 - [ ] **Landscape mode (couch).** Turn the phone and the *whole game* reorients 90° — map, HUD, and each player's control/steering frame — but the touch **zones stay pinned to the same physical device regions** (thumbs don't move; zones are device-space, not UI-space). Payoff: wide tracks align with the long axis → bigger map. **Lock orientation during a race** (settle it before the race, freeze it — a mid-drift flip is chaos); unlock in menus.
-- [ ] **iPad & landscape map-sizing policy.** Grow `fittedMapRect` from pure edge-to-edge fit into a policy: phone = fit-to-width (current); **iPad = cap the map at a comfortable size and reserve *more* for controls**; **landscape = bands dock left/right** of the map, which needs `CouchRig` side-band support (today it only does top/bottom).
+- [ ] **iPad & landscape map-sizing policy.** Grow `fittedMapRect` from pure edge-to-edge fit into a policy: phone = fit-to-width (current); **iPad = cap the map at a comfortable size and reserve *more* for controls**; **landscape = bands dock left/right** of the map (shipped with the Mac target: `CouchRig` now docks side bands whenever the spare space is at the sides).
 
 ## Polish & submission — *this one is 1.0 by definition*
 

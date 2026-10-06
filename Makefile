@@ -45,6 +45,16 @@ build-ios: Skid.xcodeproj  ## Build the iOS app (simulator, unsigned; EXPERIMENT
 		-destination 'generic/platform=iOS Simulator' -derivedDataPath .build-xcode \
 		CODE_SIGNING_ALLOWED=NO $(EXPERIMENTAL_SETTING) $(NO_TUNING_SETTING) -quiet
 
+.PHONY: build-macos
+build-macos: Skid.xcodeproj  ## Build the macOS app (unsigned; EXPERIMENTAL=1, NO_TUNING=1)
+	@xcodebuild build -project Skid.xcodeproj -scheme Skid-macOS \
+		-destination 'platform=macOS' -derivedDataPath .build-xcode \
+		CODE_SIGNING_ALLOWED=NO $(EXPERIMENTAL_SETTING) $(NO_TUNING_SETTING) -quiet
+
+.PHONY: run-mac
+run-mac: build-macos  ## Build + launch the macOS app (keys: WASD = P1, arrows = P2)
+	@open ".build-xcode/Build/Products/Debug/Skid Jam.app"
+
 .PHONY: test
 test:  ## Run the package logic tests (EXPERIMENTAL=1 to include gated code, NO_TUNING=1)
 	@SKID_EXPERIMENTAL=$(if $(EXPERIMENTAL),1,0) \
@@ -78,17 +88,17 @@ clean:  ## Remove the generated project + local build output
 # --- Release lane -----------------------------------------------------------
 # Cut a build: `make release` runs preflight → publish → tag → distribute.
 # Each step is its own script, re-deriving its inputs from git + project.yml,
-# so any one can be re-run standalone (e.g. Scripts/release-tag.sh ios) after
-# a stall. Mirrors donpa's lane.
+# so any one can be re-run standalone (e.g. Scripts/release-tag.sh all) after
+# a stall.
 #
-# PLATFORM selects scope (default ios; macos/all reserved for a Mac target).
-# UPLOAD=0 stops after export (no ASC upload).
-PLATFORM ?= ios
+# PLATFORM selects scope (default all); UPLOAD=0 stops after export (no ASC
+# upload). An `all` release asks to confirm, then asks for the version.
+PLATFORM ?= all
 UPLOAD ?= 1
 DIST_FLAGS := $(if $(filter 0,$(UPLOAD)),--no-upload,)
 
 .PHONY: release
-release: release-distribute  ## Cut a release (PLATFORM=ios|macos|all, UPLOAD=0 to skip ASC)
+release: release-distribute  ## Cut a release (PLATFORM=all|ios|macos, UPLOAD=0 to skip ASC)
 	@echo "✓ release complete (PLATFORM=$(PLATFORM))."
 
 .PHONY: release-build

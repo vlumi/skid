@@ -14,6 +14,11 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+- **Skid Jam on the Mac.** The same game in a Mac window, driven from the keyboard: WASD or the arrows, gas and brake on up/down, steering on left/right. Two players share one keyboard — WASD is P1, the arrows are P2 — and a lone driver can use either; both players' boxes sit along the bottom of the window, on the keyboard's side. Space starts the race off the ready gate and Escape pauses. Setup shows whose keys are whose where the Pro/Casual switch was.
+- **Menus keep a menu's width on big screens.** On a Mac window or an iPad every menu is now a centred column instead of buttons stretched edge to edge, and rows of choices stay centred in it. Phones look the same.
+- **The keyboard turns at its own rate.** A "Key turn rate" dial (Mac tuning panel, ⌘T) sets how hard a key turns the car without changing the car's physics, so lap records keep counting — and the Mac's panel shows only the dials a keyboard can feel.
+- **Landscape keeps its controls.** With the screen wider than tall — a Mac window, an iPad turned sideways — each player's box now sits beside the track instead of disappearing, so the lap, position and speed are always on screen.
+
 ### build 23 — 2026-09-02
 
 - **Every car has an engine now, not just P1's.** Each car sounds at the pitch its own speed asks for, slightly detuned per seat with its own slow flutter — so a grid at the start line rumbles like a field of machines instead of one loud engine — and the volume is budgeted so more cars means a fuller sound, not a louder one. A car that takes the flag shuts its engine off as it rolls to a stop.
