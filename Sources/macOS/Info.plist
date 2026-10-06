@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>Skid Jam</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -31,6 +31,8 @@
 		<string>_skid-race._tcp</string>
 		<string>_skid-race._udp</string>
 	</array>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Skid Jam finds other players' devices nearby so you can race together. Nothing leaves your local network.</string>
 </dict>

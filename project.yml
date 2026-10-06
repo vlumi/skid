@@ -132,9 +132,11 @@ targets:
       path: Sources/macOS/Info.plist
       properties:
         CFBundleDisplayName: Skid Jam
+        CFBundleName: Skid Jam  # the menu-bar app name (else PRODUCT_NAME)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        NSHighResolutionCapable: true
         # The Mac App Store validates this one, so it is the exact category
         # identifier rather than the shorter spelling iOS has carried.
         LSApplicationCategoryType: public.app-category.racing-games

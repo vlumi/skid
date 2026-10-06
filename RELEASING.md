@@ -1,8 +1,8 @@
 # Releasing
 
-How Skid Jam versions, builds, and ships. Mechanical steps only. The lane mirrors
-its sibling project's, for iOS and macOS: one App Store Connect record (Universal
-Purchase), one bundle id, and one version/build number that every target shares.
+How Skid Jam versions, builds, and ships. Mechanical steps only. One lane for
+iOS and macOS: one App Store Connect record (Universal Purchase), one bundle id,
+and one version/build number that every target shares.
 
 ## Branching
 
@@ -72,10 +72,10 @@ One command from a clean, up-to-date release base — `main`, or a version-line
 `release/<minor>.x` branch when patching a shipped version:
 
 ```sh
-make release                 # iOS → App Store Connect (PLATFORM defaults to ios)
+make release                 # both platforms: confirm, then pick the version
+make release PLATFORM=ios    # one platform only (or PLATFORM=macos)
 make release UPLOAD=0        # everything through export, no ASC upload
 make release-build           # alias for UPLOAD=0
-make release PLATFORM=macos  # the Mac app; PLATFORM=all does both
 # Before the FIRST Mac upload: add the macOS platform to the app's App Store
 # Connect record once (Universal Purchase), or the upload has nowhere to land.
 ```
