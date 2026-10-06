@@ -147,7 +147,7 @@ extension CouchGame {
                     // client this path never runs — only local seats are read.
                     return driver?.remoteInput(for: player) ?? .coast
                 }
-                if let keys { return keys(band)?.input(for: player, at: race.tick) ?? .coast }
+                if let keys { return keys(band, player, race) }
                 let controls = rig.players[band]
                 let source = controls.source(for: controls.scheme)
                 if let headingAware = source as? HeadingAwareControlSource,

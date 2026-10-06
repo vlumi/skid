@@ -15,9 +15,7 @@ extension CouchGame {
         let keys = keyboardSource(humans: humans)
         return { [weak rig] player, race in
             guard player.rawValue < humans else { return fleet.input(for: player, in: race) }
-            if let keys {
-                return keys(player.rawValue)?.input(for: player, at: race.tick) ?? .coast
-            }
+            if let keys { return keys(player.rawValue, player, race) }
             guard let rig, rig.players.indices.contains(player.rawValue) else { return .coast }
             let controls = rig.players[player.rawValue]
             let source = controls.source(for: controls.scheme)

@@ -76,6 +76,9 @@ public final class KeyboardSeats {
     public let seats: [KeyboardControlSource] = (0..<maxSeats).map { _ in KeyboardControlSource() }
     /// How many people are driving from this keyboard right now.
     public var humans = 1
+    /// The keyboard's turn rate (see `KeyboardSteering`) — a tuning dial,
+    /// applied live.
+    public var turnRate = 2.0
 
     public init() {}
 
@@ -103,5 +106,37 @@ public final class KeyboardSeats {
 
     public func source(forSeat seat: Int) -> KeyboardControlSource? {
         seats.indices.contains(seat) ? seats[seat] : nil
+    }
+}
+
+/// **A keyboard's own turn rate, without touching the physics.**
+///
+/// A key is all-or-nothing, so at stock `turnRate` the keyboard car turned
+/// harder than felt right — device play landed on 2.0. But `turnRate` is
+/// STOCK physics: changing it stops hiscores recording (ghosts replay with
+/// stock tuning) and would change the touch Pro car too. So the keyboard
+/// asks for less WHEEL instead, by exactly the amount that makes the sim's
+/// yaw what `turnRate = keyTurnRate` would have produced:
+///
+///     yaw = wheel × (turnRate·e + flipBoost·f)        e, f: the sim's speed factors
+///     wheel = (keyTurnRate·e + flipBoost·f) / (turnRate·e + flipBoost·f)
+///
+/// The ratio varies with speed (≈0.6 parked, ≈0.8 flat out at the stock
+/// values), which is why one fixed scale could not stand in for the dial. The
+/// recorded input is the scaled one, so a replay is exact.
+public enum KeyboardSteering {
+    public static func scaled(
+        _ input: CarInput, car: CarState, tuning: CarTuning, keyTurnRate: Double
+    ) -> CarInput {
+        guard input.steer != 0 else { return input }
+        // The same two factors `Race.turn` computes, from the same state.
+        let effect = min(1, abs(car.velocity.dot(car.forward)) / tuning.steerFullSpeed)
+        let flip = pow(min(1, car.velocity.length / tuning.maxSpeed), 2)
+        let stock = tuning.turnRate * effect + tuning.steerFlipBoost * flip
+        let wanted = keyTurnRate * effect + tuning.steerFlipBoost * flip
+        let wheel = stock > 1e-9 ? wanted / stock : keyTurnRate / max(1e-9, tuning.turnRate)
+        var out = input
+        out.steer *= min(1, max(0, wheel))
+        return out
     }
 }

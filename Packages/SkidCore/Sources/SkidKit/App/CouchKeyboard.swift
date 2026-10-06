@@ -48,16 +48,24 @@ extension CouchGame {
         }
     }
 
-    /// The input tap's view of the keyboard: a seat-indexed lookup when this
-    /// device drives with keys, nil when it drives with touch. Built once per
-    /// race, so the per-tick closure never reaches back into the game.
-    func keyboardSource(humans: Int) -> ((Int) -> KeyboardControlSource?)? {
+    /// The input tap's view of the keyboard: a seat's input — at the
+    /// keyboard's own turn rate — when this device drives with keys, nil when
+    /// it drives with touch. Built once per race, so the per-tick closure
+    /// never reaches back into the game.
+    func keyboardSource(humans: Int) -> ((Int, PlayerID, Race) -> CarInput)? {
         guard keyboardDriving else { return nil }
         let keys = keyboard
         keys.humans = humans
         // A fresh race starts with nothing held: a key-up that went to a
         // menu (or to another app) must not leave a car driving itself.
         keys.releaseAll()
-        return { keys.source(forSeat: $0) }
+        return { seat, player, race in
+            guard let source = keys.source(forSeat: seat),
+                let car = race.cars.first(where: { $0.id == player })
+            else { return .coast }
+            return KeyboardSteering.scaled(
+                source.input(for: player, at: race.tick), car: car.state,
+                tuning: race.tuning, keyTurnRate: keys.turnRate)
+        }
     }
 }

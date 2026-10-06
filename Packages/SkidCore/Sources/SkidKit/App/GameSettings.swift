@@ -39,6 +39,10 @@ public final class GameSettings: ObservableObject {
     /// How much of the zone, from the top, is pinned at full throttle.
     @AppStorage("skid.dpad.fullGas") public var dpadFullThrottle = 0.3
     @AppStorage("skid.dpad.coast") public var dpadCoast = 0.6
+    /// The keyboard's turn rate, in `turnRate` units — input shaping, NOT
+    /// physics, so moving it keeps hiscores recording (see `KeyboardSteering`).
+    /// 2.0 is where device play settled; stock physics is 3.4.
+    @AppStorage("skid.keys.turnRate") public var keyboardTurnRate = 2.0
 
     // Aim scheme feel (applied live, every frame).
     /// Below this speed a behind-target reverses; at speed the body flips.
@@ -186,6 +190,7 @@ public final class GameSettings: ObservableObject {
         dpadSteerAtFullThrottle = 0.5
         dpadFullThrottle = 0.3
         dpadCoast = 0.6
+        keyboardTurnRate = 2.0
         aimReverseBelowSpeed = 90.0
         aimThrottleEase = 0.25
         aimForwardArcDegrees = 150.0

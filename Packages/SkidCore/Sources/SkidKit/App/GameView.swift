@@ -81,7 +81,9 @@ public struct GameView: View {
         // root so every phase inherits it, which is the point: the dials used to be
         // a pause-menu button, reachable only from inside a race. In a production
         // build this is the identity function.
-        .tuningOnShake(settings: game.settings) { game.resetAllData() }
+        .tuningOnShake(settings: game.settings, keyboardDriving: game.keyboardDriving) {
+            game.resetAllData()
+        }
         #if os(macOS)
         // The Mac drives with keys. Only the Mac shell hosts this view on
         // macOS — the test suite, which also runs there, never builds it.

@@ -55,6 +55,26 @@ final class KeyboardDrivingTests: XCTestCase {
         XCTAssertGreaterThan(speed(couch, seat: 1), 50, "↑ did not drive P2")
     }
 
+    /// **The keyboard's own turn rate reaches the sim**: a held D at speed
+    /// asks for LESS than full lock (the scaled wheel), and the recording —
+    /// what a ghost replays — holds that scaled value, not the raw key.
+    func testHeldKeysAreScaledToTheKeyboardTurnRate() throws {
+        let couch = game(humans: 1)
+        couch.settings.keyboardTurnRate = 2
+        couch.applyControlTuning()
+        XCTAssertEqual(couch.keyboard.turnRate, 2, "the dial never reached the keyboard")
+        couch.handle(.start)
+        var t = 0.0
+        run(couch, seconds: 3.6, from: &t)
+        couch.handle(.drive(.w, down: true))
+        run(couch, seconds: 1, from: &t)
+        couch.handle(.drive(.d, down: true))
+        run(couch, seconds: 0.2, from: &t)
+        let steer = try XCTUnwrap(couch.session?.recording.inputs.last?[PlayerID(0)]).steer
+        XCTAssertGreaterThan(steer, 0.3, "D did not steer")
+        XCTAssertLessThan(steer, 0.95, "the key went in at full lock, unscaled")
+    }
+
     /// A lone driver drives with either hand.
     func testALoneDriverUsesEitherCluster() {
         let couch = game(humans: 1)

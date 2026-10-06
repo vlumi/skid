@@ -125,4 +125,68 @@ final class KeyboardControlTests: XCTestCase {
         XCTAssertGreaterThan(
             race.cars[0].state.position.y, before + 5, "D did not turn the car right")
     }
+
+    // MARK: - The keyboard's turn rate
+
+    /// **The scaled wheel produces EXACTLY the yaw of the target turn rate**,
+    /// at every speed — the identity the whole design rests on, checked
+    /// against the formula `Race.turn` uses.
+    func testScaledWheelGivesTheTargetTurnRatesYaw() {
+        let tuning = CarTuning()
+        for speed in stride(from: 0.0, through: tuning.maxSpeed, by: tuning.maxSpeed / 20) {
+            var car = CarState(position: .zero, heading: 0)
+            car.velocity = Vec2(speed, 0)
+            let wheel = KeyboardSteering.scaled(
+                CarInput(steer: 1), car: car, tuning: tuning, keyTurnRate: 2
+            ).steer
+            let effect = min(1, speed / tuning.steerFullSpeed)
+            let flip = pow(min(1, speed / tuning.maxSpeed), 2)
+            let yaw = wheel * (tuning.turnRate * effect + tuning.steerFlipBoost * flip)
+            let target = 2 * effect + tuning.steerFlipBoost * flip
+            if speed > 0 { XCTAssertEqual(yaw, target, accuracy: 1e-9, "at \(speed)") }
+            XCTAssertLessThanOrEqual(wheel, 1)
+        }
+    }
+
+    /// **End to end through the sim**: on STOCK physics, a held key with
+    /// `keyTurnRate` 2 turns the car as far as raw full lock does on physics
+    /// tuned to `turnRate` 2 — within the sliver the wheel's slew rate adds.
+    func testAKeyTurnRateDrivesLikeThatPhysicsTurnRate() {
+        func heading(stockKeys: Bool) -> Double {
+            var tuning = CarTuning()
+            if !stockKeys { tuning.turnRate = 2 }
+            let track = Track(
+                centerline: [Vec2(-10000, 0), Vec2(10000, 0)], width: 4000,
+                startSlots: [Vec2.zero], size: Vec2(20000, 8000))
+            var race = Race(track: track, players: [PlayerID(0)], tuning: tuning)
+            for tick in 0..<120 {
+                var input = CarInput(steer: tick < 60 ? 0 : 1, throttle: 1)
+                if stockKeys {
+                    input = KeyboardSteering.scaled(
+                        input, car: race.cars[0].state, tuning: race.tuning, keyTurnRate: 2)
+                }
+                race.advance(inputs: [PlayerID(0): input])
+            }
+            return race.cars[0].state.heading
+        }
+        let keys = heading(stockKeys: true)
+        let physics = heading(stockKeys: false)
+        XCTAssertGreaterThan(physics, 0.2, "fixture: the car barely turned")
+        XCTAssertEqual(keys, physics, accuracy: physics * 0.05)
+    }
+
+    /// Straight ahead stays straight, and a key turn rate at or above stock
+    /// asks for no more than full lock.
+    func testScalingLeavesStraightAloneAndNeverExceedsFullLock() {
+        var car = CarState(position: .zero, heading: 0)
+        car.velocity = Vec2(300, 0)
+        XCTAssertEqual(
+            KeyboardSteering.scaled(
+                CarInput(throttle: 1), car: car, tuning: CarTuning(), keyTurnRate: 2),
+            CarInput(throttle: 1))
+        XCTAssertEqual(
+            KeyboardSteering.scaled(
+                CarInput(steer: -1), car: car, tuning: CarTuning(), keyTurnRate: 9
+            ).steer, -1)
+    }
 }

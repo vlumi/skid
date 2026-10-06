@@ -415,6 +415,7 @@ public final class CouchGame: ObservableObject {
     /// Push the persisted control tuning onto every player's schemes —
     /// called each frame, so panel changes apply live mid-race.
     public func applyControlTuning() {
+        keyboard.turnRate = settings.keyboardTurnRate
         guard let rig else { return }
         for controls in rig.players {
             controls.pro.steerTravel = settings.dpadSteerTravel
