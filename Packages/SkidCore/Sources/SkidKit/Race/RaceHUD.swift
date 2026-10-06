@@ -48,7 +48,7 @@ struct RaceHUD: View {
         }
         .allowsHitTesting(false)
         .onAppear { updatePlaces() }
-        .onChangeCompat(of: race.tick) { _ in updatePlaces() }
+        .onChange(of: race.tick) { updatePlaces() }
     }
 
     /// Fold `race.standings` into a debounced per-car place. A car's shown

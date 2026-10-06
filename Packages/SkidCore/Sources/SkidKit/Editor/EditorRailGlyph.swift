@@ -6,8 +6,7 @@ import SwiftUI
 /// Drawn rather than an SF Symbol. Every road glyph in the catalog — `road.lanes`,
 /// `road.lanes.curved.right` — says what SHAPE a road is, so the pair read as
 /// "straight or curved" rather than "railed or open", which is what it was reported
-/// as. Nothing stock says "barrier along both edges", and `fence` is iOS 17 while this
-/// package targets 16.
+/// as. Nothing stock says "barrier along both edges".
 ///
 /// Two strokes of asphalt gray with the rail's own light blue beside them, so the icon
 /// is a small picture of what the map will look like. Same color as the drawn rail

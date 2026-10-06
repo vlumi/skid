@@ -42,10 +42,8 @@ struct SetupView: View {
         // **A line-up whenever the mode needs one**, however the mode was set —
         // the button is one way in, a launch argument and a restored setup are
         // others, and an empty list would read as the mode being broken.
-        // `onChange` catches the switch, `onAppear` the arrival already in it;
-        // `onChange(initial:)` would do both but needs iOS 17.
-        .onAppear(perform: drawLineupIfNeeded)
-        .onChangeCompat(of: game.mode) { _ in drawLineupIfNeeded() }
+        // `initial: true` covers both: the switch, and arriving already in it.
+        .onChange(of: game.mode, initial: true) { drawLineupIfNeeded() }
         .sheet(isPresented: $browsingTracks) {
             TrackBrowserView(game: game) { browsingTracks = false }
         }

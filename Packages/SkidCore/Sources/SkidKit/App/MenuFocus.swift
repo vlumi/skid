@@ -140,16 +140,14 @@ struct MenuButton<Label: View>: View {
         // swiftlint:disable:next redundant_discardable_let
         let _ = refresh()
         Button(action: action) { label }
-            .background(
-                GeometryReader { proxy in
-                    Color.clear
-                        .onAppear {
-                            target.frame = proxy.frame(in: .global)
-                            scope?.register(target)
-                        }
-                        .onChangeCompat(of: proxy.frame(in: .global)) { target.frame = $0 }
-                }
-            )
+            // Where the button is, kept current as it moves (a scroll, a
+            // resize) — the frame the arrows navigate by.
+            .onGeometryChange(for: CGRect.self) {
+                $0.frame(in: .global)
+            } action: {
+                target.frame = $0
+            }
+            .onAppear { scope?.register(target) }
             .onDisappear { scope?.unregister(target) }
             .overlay {
                 if let scope { FocusRing(scope: scope, target: target) }
