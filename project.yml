@@ -4,6 +4,7 @@ options:
   bundleIdPrefix: fi.misaki
   deploymentTarget:
     iOS: "16.0"
+    macOS: "14.0"
   createIntermediateGroups: true
   developmentLanguage: en
 
@@ -104,5 +105,67 @@ targets:
         product: SkidKit
     # Explicit scheme so XcodeGen writes a SHARED scheme file — without it,
     # `xcodebuild -scheme Skid-iOS` fails on a fresh checkout.
+    scheme:
+      configVariants: []
+
+  # **The Mac app: the same game, driven from a keyboard.** Same bundle id as
+  # iOS — Universal Purchase — and the same version and build numbers, which
+  # the release lane bumps on every target at once and refuses to cut when
+  # they differ. The sim is untouched; only input capture differs (see
+  # `KeyboardMonitor`), so a Mac races an iPhone in a nearby race as an equal.
+  Skid-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/macOS
+      - path: Sources/Shared
+    entitlements:
+      path: Sources/macOS/Skid.entitlements
+      properties:
+        # Sandboxed, as the Mac App Store requires. Nearby racing is the only
+        # thing that reaches beyond the app — MultipeerConnectivity both
+        # listens and connects, so it needs the client AND server rights.
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.network.server: true
+    info:
+      path: Sources/macOS/Info.plist
+      properties:
+        CFBundleDisplayName: Skid Jam
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        # The Mac App Store validates this one, so it is the exact category
+        # identifier rather than the shorter spelling iOS has carried.
+        LSApplicationCategoryType: public.app-category.racing-games
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        # macOS 15+ asks before local-network access too, with the same keys
+        # and the same SILENT failure when the Bonjour list is wrong.
+        NSLocalNetworkUsageDescription:
+          Skid Jam finds other players' devices nearby so you can race together.
+          Nothing leaves your local network.
+        NSBonjourServices:
+          - _skid-race._tcp
+          - _skid-race._udp
+    settings:
+      base:
+        # Same feature flags as iOS, with the same polarity: see the iOS
+        # target for why experimental is opt-in and tuning opt-out.
+        SKID_EXPERIMENTAL_FLAG: ""
+        SKID_TUNING_FLAG: SKID_TUNING
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: >-
+            $(inherited) $(SKID_EXPERIMENTAL_FLAG) $(SKID_TUNING_FLAG)
+        PRODUCT_BUNDLE_IDENTIFIER: fi.misaki.skid
+        PRODUCT_NAME: Skid Jam
+        MARKETING_VERSION: "0.8.0"
+        CURRENT_PROJECT_VERSION: "23"
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+        DEVELOPMENT_TEAM: U84DT7P75P
+        CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - package: SkidCore
+        product: SkidKit
     scheme:
       configVariants: []
