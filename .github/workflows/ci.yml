@@ -125,3 +125,10 @@ jobs:
             -scheme Skid-iOS \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO
+      - name: Build macOS
+        run: |
+          xcodebuild build \
+            -project Skid.xcodeproj \
+            -scheme Skid-macOS \
+            -destination 'generic/platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO

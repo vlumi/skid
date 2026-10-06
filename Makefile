@@ -45,6 +45,16 @@ build-ios: Skid.xcodeproj  ## Build the iOS app (simulator, unsigned; EXPERIMENT
 		-destination 'generic/platform=iOS Simulator' -derivedDataPath .build-xcode \
 		CODE_SIGNING_ALLOWED=NO $(EXPERIMENTAL_SETTING) $(NO_TUNING_SETTING) -quiet
 
+.PHONY: build-macos
+build-macos: Skid.xcodeproj  ## Build the macOS app (unsigned; EXPERIMENTAL=1, NO_TUNING=1)
+	@xcodebuild build -project Skid.xcodeproj -scheme Skid-macOS \
+		-destination 'platform=macOS' -derivedDataPath .build-xcode \
+		CODE_SIGNING_ALLOWED=NO $(EXPERIMENTAL_SETTING) $(NO_TUNING_SETTING) -quiet
+
+.PHONY: run-mac
+run-mac: build-macos  ## Build + launch the macOS app (keys: WASD = P1, arrows = P2)
+	@open ".build-xcode/Build/Products/Debug/Skid Jam.app"
+
 .PHONY: test
 test:  ## Run the package logic tests (EXPERIMENTAL=1 to include gated code, NO_TUNING=1)
 	@SKID_EXPERIMENTAL=$(if $(EXPERIMENTAL),1,0) \
