@@ -81,6 +81,11 @@ public struct GameView: View {
         // root so every phase inherits it, which is the point: the dials used to be
         // a pause-menu button, reachable only from inside a race. In a production
         // build this is the identity function.
+        // **Keyboard focus**: one scope for the window's screens (a phase
+        // change swaps their buttons in and out of it), and every sheet pushes
+        // its own over it.
+        .menuFocusScope()
+        .menuFocusCenter(game.menus)
         .tuningOnShake(settings: game.settings, keyboardDriving: game.keyboardDriving) {
             game.resetAllData()
         }

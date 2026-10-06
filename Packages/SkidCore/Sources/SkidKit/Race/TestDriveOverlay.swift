@@ -20,7 +20,7 @@ struct TestDriveOverlay: View {
             HStack(alignment: .top) {
                 readout
                 Spacer(minLength: 8)
-                Button {
+                MenuButton {
                     game.endTestDrive()
                 } label: {
                     Text("Done", bundle: .module)

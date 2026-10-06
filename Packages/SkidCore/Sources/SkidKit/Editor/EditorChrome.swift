@@ -16,7 +16,7 @@ extension EditorView {
             // **Close, which goes UP one level to the library** — the path is
             // top → tracks → editor, so closing the editor lands where the track
             // was chosen rather than skipping out to the front door.
-            iconButton("xmark", "Close") {
+            iconButton("xmark", "Close", cancel: true) {
                 game.closeEditor()
             }
             Spacer(minLength: 4)

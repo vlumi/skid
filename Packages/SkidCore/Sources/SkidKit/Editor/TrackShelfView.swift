@@ -128,7 +128,7 @@ struct TrackShelfView: View {
     }
 
     private var newTrackButton: some View {
-        Button {
+        MenuButton {
             game.newTrackForEditing()
             openCanvas()
         } label: {
@@ -147,7 +147,7 @@ struct TrackShelfView: View {
     /// **Taking a track IN**, beside making one — the two ways the library
     /// grows, so they sit together rather than one being hidden in a menu.
     private var addTrackButton: some View {
-        Button {
+        MenuButton {
             importOutcome = game.importTrack(fromPasted: Clipboard.paste() ?? "")
         } label: {
             HStack(spacing: 10) {
@@ -166,7 +166,7 @@ struct TrackShelfView: View {
     /// two: it is the one somebody uses standing next to the person sharing, and
     /// the other two are for a link that arrived some other way.
     private var scanButton: some View {
-        Button {
+        MenuButton {
             scanning = true
         } label: {
             HStack(spacing: 10) {
@@ -223,7 +223,7 @@ struct TrackShelfView: View {
     /// A plain button with a `contextMenu` puts the common case on the tap and keeps copy,
     /// rename and delete one press away.
     private func tile(entry: TrackLibraryBook.Entry) -> some View {
-        Button {
+        MenuButton {
             game.openForEditing(entryID: entry.id)
             openCanvas()
         } label: {
@@ -294,7 +294,7 @@ struct TrackShelfView: View {
     }
 
     private func builtinTile(_ builtin: TrackLibrary.Builtin) -> some View {
-        Button {
+        MenuButton {
             game.startFrom(
                 code: builtin.code, name: TrackLibrary.displayName(id: builtin.id))
             openCanvas()

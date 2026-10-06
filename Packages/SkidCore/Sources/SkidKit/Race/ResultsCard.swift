@@ -81,18 +81,18 @@ struct ResultsCard: View {
     @ViewBuilder private func tournamentButtons(series: Tournament) -> some View {
         HStack(spacing: 12) {
             if series.isComplete {
-                Button {
+                MenuButton {
                     game.abandonTournament()
                 } label: {
                     Text("Done", bundle: .module).pillStyle()
                 }
             } else {
-                Button {
+                MenuButton {
                     game.advanceTournament()
                 } label: {
                     Text("Next race", bundle: .module).pillStyle()
                 }
-                Button {
+                MenuButton {
                     game.abandonTournament()
                 } label: {
                     Text("Quit series", bundle: .module).pillStyle()
@@ -103,7 +103,7 @@ struct ResultsCard: View {
 
     @ViewBuilder private var singleRaceButtons: some View {
         HStack(spacing: 12) {
-            Button {
+            MenuButton {
                 // **A networked race exits to the LOBBY, not to setup**, and
                 // "race again" is the host's call there: the connection and the
                 // roster are already agreed, so the next race costs one message.
@@ -120,7 +120,7 @@ struct ResultsCard: View {
                     session.isNetworked ? "Lobby" : "Race again", bundle: .module
                 ).pillStyle()
             }
-            Button {
+            MenuButton {
                 if session.isNetworked { net.leave() }
                 game.backToSetup()
             } label: {

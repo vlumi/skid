@@ -13,7 +13,10 @@ struct IncomingTrackSheet: View {
     let incoming: IncomingTrack
     let dismiss: () -> Void
 
-    var body: some View {
+    /// Its own keyboard focus: arrows move inside the sheet while it is up.
+    var body: some View { sheetBody.menuFocusScope() }
+
+    @ViewBuilder private var sheetBody: some View {
         ZStack {
             Retro.ground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
@@ -70,7 +73,7 @@ struct IncomingTrackSheet: View {
             // library can hold — offering "add anyway" would be a button that
             // silently does nothing.
             if incoming.alreadyHave {
-                Button {
+                MenuButton {
                     game.declineIncomingTrack()
                     dismiss()
                 } label: {
@@ -79,7 +82,7 @@ struct IncomingTrackSheet: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                Button {
+                MenuButton {
                     _ = game.acceptIncomingTrack()
                     dismiss()
                 } label: {
@@ -87,7 +90,7 @@ struct IncomingTrackSheet: View {
                         .retroButton(wide: true, tint: Retro.highlight)
                 }
                 .buttonStyle(.plain)
-                Button {
+                MenuButton {
                     game.declineIncomingTrack()
                     dismiss()
                 } label: {
