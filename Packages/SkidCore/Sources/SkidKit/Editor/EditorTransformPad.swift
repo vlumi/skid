@@ -17,9 +17,15 @@ extension EditorView {
     ///
     /// So the five rare transforms collapse behind one button, and the two constant
     /// ones stay out where they can be hit without looking.
-    @ViewBuilder
     var transformPad: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 6) { transformButtons }
+    }
+
+    /// The pad's buttons, without a container: a row on a phone, a column in the
+    /// big-screen dock (see `EditorWideLayout`).
+    @ViewBuilder
+    var transformButtons: some View {
+        Group {
             // Undo and redo stand down while the transforms are out: expanded, the two
             // together want the whole 320 pt of an SE's width, and the transform you
             // just made is undone by the transform button beside it (rotate back, lower
