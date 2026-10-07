@@ -24,13 +24,19 @@ extension EditorView {
     ///
     /// Buttons are DISABLED rather than absent when nothing is selected, so the row
     /// never reflows and the bin is always in the same place.
-    @ViewBuilder
     var selectionRow: some View {
+        HStack(spacing: 6) { selectionButtons }
+    }
+
+    /// The strip's buttons, without a container: a row on a phone, a column in
+    /// the big-screen dock (see `EditorWideLayout`).
+    @ViewBuilder
+    var selectionButtons: some View {
         let index = game.editorSelectedPiece
         let hasPiece =
             index.map { game.editorLayout?.pieces.indices.contains($0) ?? false }
             ?? false
-        HStack(spacing: 6) {
+        Group {
             // Step the selection along the ring, so a sweep of property edits
             // (rail this run, mark these corners) needs no re-aiming between pieces.
             mapAction(

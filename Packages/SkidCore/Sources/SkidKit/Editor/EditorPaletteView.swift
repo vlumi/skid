@@ -13,42 +13,52 @@ extension EditorView {
     /// radius (tight → medium → sweep).
     func mainRow(walk: WalkResult) -> some View {
         VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
-                // The straight places the 1U short, but ICONS as the longer road:
-                // a 1U ribbon is as wide as it is long and reads as a stub tile.
-                pieceButton(
-                    straight, icon: PieceCatalog.ID.straight, walk: walk, big: true)
-                pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
+            nextPieceButtons(walk: walk)
+            HStack(alignment: .top, spacing: 12) { nextPieceSettings(walk: walk) }
+        }
+    }
+
+    /// The three pieces the next tap lays: left corner, straight, right corner.
+    func nextPieceButtons(walk: WalkResult) -> some View {
+        HStack(spacing: 8) {
+            pieceButton(corner(left: true, radius: radius), walk: walk, big: true)
+            // The straight places the 1U short, but ICONS as the longer road:
+            // a 1U ribbon is as wide as it is long and reads as a stub tile.
+            pieceButton(
+                straight, icon: PieceCatalog.ID.straight, walk: walk, big: true)
+            pieceButton(corner(left: false, radius: radius), walk: walk, big: true)
+        }
+    }
+
+    /// What shapes the next piece — radius, pitch, wall (and warp when the gap
+    /// is on) — without a container: a row on a phone, a column in the dock.
+    @ViewBuilder
+    func nextPieceSettings(walk: WalkResult) -> some View {
+        settingGroup(Text("RADIUS", bundle: .module)) {
+            triStack(values: CurveRadius.allCases, current: radius, horizontal: true) {
+                radiusRaw = $0.rawValue
+            } content: { value in
+                radiusGlyph(value)
             }
-            HStack(alignment: .top, spacing: 12) {
-                settingGroup(Text("RADIUS", bundle: .module)) {
-                    triStack(values: CurveRadius.allCases, current: radius, horizontal: true) {
-                        radiusRaw = $0.rawValue
-                    } content: { value in
-                        radiusGlyph(value)
-                    }
-                }
-                settingGroup(Text("PITCH", bundle: .module)) {
-                    triStack(
-                        values: [Pitch.up, .flat, .down], current: buildPitch, horizontal: true
-                    ) {
-                        buildPitch = $0
-                    } content: { value in
-                        pitchGlyph(value)
-                    }
-                }
-                settingGroup(Text("WALL", bundle: .module)) {
-                    railBuildToggle
-                }
-                // WARP with the settings: it also shapes the next piece (the one that
-                // steps rather than slopes). Experimental, so the whole stepper goes
-                // with the Gap it exists to serve.
-                if EditorView.experimentalGaps {
-                    settingGroup(Text("WARP", bundle: .module)) {
-                        warpStepper(height: appendHeight(walk))
-                    }
-                }
+        }
+        settingGroup(Text("PITCH", bundle: .module)) {
+            triStack(
+                values: [Pitch.up, .flat, .down], current: buildPitch, horizontal: true
+            ) {
+                buildPitch = $0
+            } content: { value in
+                pitchGlyph(value)
+            }
+        }
+        settingGroup(Text("WALL", bundle: .module)) {
+            railBuildToggle
+        }
+        // WARP with the settings: it also shapes the next piece (the one that
+        // steps rather than slopes). Experimental, so the whole stepper goes
+        // with the Gap it exists to serve.
+        if EditorView.experimentalGaps {
+            settingGroup(Text("WARP", bundle: .module)) {
+                warpStepper(height: appendHeight(walk))
             }
         }
     }

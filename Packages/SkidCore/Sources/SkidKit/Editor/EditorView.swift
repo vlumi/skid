@@ -161,10 +161,16 @@ struct EditorView: View {
         // A VStack gives the canvas exactly the space between the bars instead.
         return ZStack {
             Retro.ground.ignoresSafeArea()
-            VStack(spacing: 0) {
-                topBar
-                mapRegion(layout: layout, walk: walk)
-                paletteBar(walk: walk)
+            GeometryReader { geo in
+                if Self.usesDocks(in: geo.size) {
+                    dockedLayout(layout: layout, walk: walk)
+                } else {
+                    VStack(spacing: 0) {
+                        topBar
+                        mapRegion(layout: layout, walk: walk)
+                        paletteBar(walk: walk)
+                    }
+                }
             }
         }
         .sheet(isPresented: $renamingTrack) {
@@ -195,7 +201,7 @@ struct EditorView: View {
 
     /// The canvas and the chrome that is genuinely spatial (the close-loop chip,
     /// anchored at the loose end it acts on). Everything else lives in the bars.
-    private func mapRegion(layout: TrackLayout, walk: WalkResult) -> some View {
+    func mapRegion(layout: TrackLayout, walk: WalkResult) -> some View {
         GeometryReader { geo in
             let transform = fitTransform(walk: walk, in: geo.size)
             ZStack {
