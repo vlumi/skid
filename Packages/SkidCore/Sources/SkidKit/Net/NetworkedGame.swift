@@ -8,8 +8,9 @@ import SwiftUI
 /// on the host, `ClientView` on a guest). Everything that decides what a frame
 /// shows lives in `SkidCore` and is tested under latency and loss — this is the
 /// part that needs a radio and a screen, and it is kept as thin as that allows.
+@Observable
 @MainActor
-public final class NetworkedGame: ObservableObject, RaceTransportDelegate, NetworkedRaceDriver {
+public final class NetworkedGame: RaceTransportDelegate, NetworkedRaceDriver {
     /// Where in the flow we are. The UI switches on this and nothing else.
     public enum Phase: Equatable {
         case idle
@@ -27,28 +28,28 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
         case ended(reason: String?)
     }
 
-    @Published public internal(set) var phase: Phase = .idle
-    @Published public internal(set) var peers: [RaceRoster.PeerName] = []
-    @Published public internal(set) var roster = RaceRoster()
+    public internal(set) var phase: Phase = .idle
+    public internal(set) var peers: [RaceRoster.PeerName] = []
+    public internal(set) var roster = RaceRoster()
     /// What to show when the race is not moving, or nil when it is. Read per
-    /// frame by the overlay and deliberately NOT `@Published`: it changes per
-    /// frame, `RaceScreen` observes this object, and publishing per-frame state
+    /// frame by the overlay and deliberately untracked: it changes per frame,
+    /// `RaceScreen` observes this object, and publishing per-frame state
     /// from inside the render pass froze the app solid once already.
-    public internal(set) var stallNote: String?
+    @ObservationIgnored public internal(set) var stallNote: String?
     /// The client's link, measured: worst recent arrival gap and the latency the
-    /// jitter buffer is paying to absorb it. Plain (not `@Published`) and updated
+    /// jitter buffer is paying to absorb it. Untracked and updated
     /// about once a second — the instrument the next device session reads, so a
     /// bad link is a number rather than an adjective.
-    public internal(set) var linkNote: String?
-    var linkNoteAge: TimeInterval = 0
+    @ObservationIgnored public internal(set) var linkNote: String?
+    @ObservationIgnored var linkNoteAge: TimeInterval = 0
     /// Why a device could not be seated, for the host's lobby. A join that fails
     /// silently is indistinguishable from one that never arrived.
-    @Published public private(set) var joinNote: String?
+    public private(set) var joinNote: String?
     /// **A running log of the handshake, shown in the lobby.** Two device sessions
     /// were spent on failures whose cause was invisible from the screen — a peer
     /// name collision, then a lobby that stopped responding. On-device is the only
     /// place this flow can be observed, so it reports itself.
-    @Published public private(set) var trace: [String] = []
+    public private(set) var trace: [String] = []
 
     func note(_ line: String) {
         trace.append(line)
@@ -56,22 +57,22 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     }
 
     /// How many players this device brings.
-    public var localSeats: Int = 1
+    @ObservationIgnored public var localSeats: Int = 1
     /// The colors those players picked at home (palette indices, local seat
     /// order) — sent as PREFERENCES with the join; the roster answers with the
     /// resolved claims.
-    public var localColors: [Int] = []
+    @ObservationIgnored public var localColors: [Int] = []
     /// The host this guest chose, so a second advertiser's traffic is ignored.
-    var chosenHost: RaceRoster.PeerName?
+    @ObservationIgnored var chosenHost: RaceRoster.PeerName?
 
     /// Hosts this device can see and choose between. Only a browsing guest fills
     /// this — the spike joined whatever it found first, which is fine for a spike
     /// and wrong in a room with two races in it.
-    @Published public internal(set) var visibleHosts: [RaceRoster.PeerName] = []
+    public internal(set) var visibleHosts: [RaceRoster.PeerName] = []
     /// Guests waiting on the host's yes or no, in arrival order.
-    @Published public internal(set) var pendingJoins: [PendingJoin] = []
+    public internal(set) var pendingJoins: [PendingJoin] = []
     /// Why the race ended, when it ended for a reason worth naming.
-    @Published public internal(set) var endedReason: String?
+    public internal(set) var endedReason: String?
 
     /// A guest asking in: how many seats it brings, and the colors they want.
     public struct PendingJoin: Equatable, Identifiable {
@@ -87,20 +88,20 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
 
     let transport: MultipeerTransport
     /// Losses waiting out their grace period — a brief drop is not a departure.
-    var presence = PeerPresence()
+    @ObservationIgnored var presence = PeerPresence()
     /// What the last race was raced on, so Rematch needs no new decisions.
-    var lastCourse: RaceStart.Course?
-    var lastTuning = CarTuning()
+    @ObservationIgnored var lastCourse: RaceStart.Course?
+    @ObservationIgnored var lastTuning = CarTuning()
     /// The host's half of the sync, or nil on a client.
-    var relay: HostRelay?
+    @ObservationIgnored var relay: HostRelay?
     /// The client's half, or nil on the host.
-    var clientView: ClientView?
-    var start: RaceStart?
+    @ObservationIgnored var clientView: ClientView?
+    @ObservationIgnored var start: RaceStart?
     /// Set by the host so a guest can be told what to race on.
-    private var pendingStart: ((RaceStart) -> Void)?
+    @ObservationIgnored private var pendingStart: ((RaceStart) -> Void)?
     /// Set by `adoptForTesting` so per-tick traffic lands in `outbox` rather than
     /// going to a transport there is none of.
-    var captureSends = false
+    @ObservationIgnored var captureSends = false
 
     public var me: RaceRoster.PeerName { transport.me }
     public var isHost: Bool { roster.host == transport.me }
@@ -202,7 +203,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     /// Bumped for every race, so a session built for an earlier one can tell it is
     /// obsolete. A rematch leaves the old session alive for a frame or two, and
     /// both hold this same driver.
-    public private(set) var generation = 0
+    @ObservationIgnored public private(set) var generation = 0
 
     public var isRaceHost: Bool { relay != nil }
 
@@ -422,7 +423,7 @@ public final class NetworkedGame: ObservableObject, RaceTransportDelegate, Netwo
     /// it without a radio.
     /// A stored property cannot live in an extension, so this stays with the
     /// class while the seams that use it live in `NetworkedTestSeams.swift`.
-    var outbox: [[UInt8]] = []
+    @ObservationIgnored var outbox: [[UInt8]] = []
 
     /// **The only way bytes leave this device.** Every send goes through here so the
     /// test seam cannot diverge from production: `decline` sent via `transport`

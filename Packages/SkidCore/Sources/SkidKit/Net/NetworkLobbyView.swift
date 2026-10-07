@@ -8,8 +8,8 @@ import SwiftUI
 /// "nothing happened" is the failure mode that costs an afternoon to diagnose.
 /// A designed lobby comes after the design is known to work.
 struct NetworkLobbyView: View {
-    @ObservedObject var net: NetworkedGame
-    @ObservedObject var game: CouchGame
+    let net: NetworkedGame
+    let game: CouchGame
 
     var body: some View {
         ZStack {

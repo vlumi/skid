@@ -9,7 +9,7 @@ import SwiftUI
 ///
 /// The preview is the point — a name is a claim, while the picture is the track.
 struct IncomingTrackSheet: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     let incoming: IncomingTrack
     let dismiss: () -> Void
 

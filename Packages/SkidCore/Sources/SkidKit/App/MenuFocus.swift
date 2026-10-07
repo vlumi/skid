@@ -5,7 +5,7 @@ import SwiftUI
 /// A reference, so a button can refresh its action every render without the
 /// scope having to re-register it.
 @MainActor
-final class MenuTarget: ObservableObject {
+final class MenuTarget {
     var action: () -> Void = {}
     /// The surface's way OUT (its corner ‹ or ×): Escape presses it.
     var isCancel = false
@@ -14,10 +14,11 @@ final class MenuTarget: ObservableObject {
 
 /// **The buttons of one surface** — a screen, or a sheet over it — and which
 /// of them the keyboard highlight is on.
+@Observable
 @MainActor
-public final class MenuFocusScope: ObservableObject {
-    @Published private(set) var focused: MenuTarget?
-    private(set) var targets: [MenuTarget] = []
+public final class MenuFocusScope {
+    private(set) var focused: MenuTarget?
+    @ObservationIgnored private(set) var targets: [MenuTarget] = []
 
     public init() {}
 
@@ -109,7 +110,7 @@ extension View {
 
 private struct MenuScopeModifier: ViewModifier {
     @Environment(\.menuFocusCenter) private var center
-    @StateObject private var scope = MenuFocusScope()
+    @State private var scope = MenuFocusScope()
 
     func body(content: Content) -> some View {
         content
@@ -127,7 +128,7 @@ struct MenuButton<Label: View>: View {
     private let isCancel: Bool
     private let label: Label
     @Environment(\.menuScope) private var scope
-    @StateObject private var target = MenuTarget()
+    @State private var target = MenuTarget()
 
     init(cancel: Bool = false, action: @escaping () -> Void, @ViewBuilder label: () -> Label) {
         self.action = action
@@ -162,7 +163,7 @@ struct MenuButton<Label: View>: View {
 
 /// The highlight: the game's amber, just outside the button's own bevel.
 private struct FocusRing: View {
-    @ObservedObject var scope: MenuFocusScope
+    let scope: MenuFocusScope
     let target: MenuTarget
 
     var body: some View {

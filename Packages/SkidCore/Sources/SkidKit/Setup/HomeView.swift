@@ -19,7 +19,7 @@ import SwiftUI
 /// AI is a race setting rather than a list row, so nearby needs no caveat about it: the
 /// protocol has no AI seat, and `aiCount` reports zero for a networked race.
 struct HomeView: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     let net: NetworkedGame
 
     // `simctl` cannot tap, so these screens are otherwise unreachable for a screenshot.

@@ -23,7 +23,7 @@ import SwiftUI
 /// live in one place. Each row remembers the profile it last held, so a row that goes
 /// back to Guest and then to a player again does not have to be told twice.
 struct PlayerListView: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     /// Which row's player picker is open.
     @State private var pickingFor: Int?
     /// Which row's color palette is open — a long press on its swatch.

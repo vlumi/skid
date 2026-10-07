@@ -21,7 +21,7 @@ import SwiftUI
 ///   ship in the binary and have no row to claim. A copy you never edit leaves no trace,
 ///   which is the honest outcome: there is nothing yet to distinguish it from its source.
 struct TrackShelfView: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     /// **Leaving without choosing** — back to wherever the shelf was opened from.
     let back: () -> Void
     /// **A track was chosen**, so the canvas opens regardless of how we got here.

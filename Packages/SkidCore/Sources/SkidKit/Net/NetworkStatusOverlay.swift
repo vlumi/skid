@@ -11,8 +11,8 @@ import SwiftUI
 /// Stays quiet when everything is fine — a permanent readout would just be noise
 /// once the design is trusted.
 struct NetworkStatusOverlay: View {
-    /// Plain values, not an `@ObservedObject`. These are updated on every simulated
-    /// tick, so observing them would publish from inside the render pass — which
+    /// Plain values, untracked on `NetworkedGame`. These are updated on every
+    /// simulated tick, so observing them would publish from inside the render pass — which
     /// froze the app solid. `RaceScreen` redraws every frame via `TimelineView`
     /// anyway, so reading them as values is both correct and sufficient.
     let stallNote: String?

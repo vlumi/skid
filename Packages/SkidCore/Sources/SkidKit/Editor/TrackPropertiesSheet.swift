@@ -18,7 +18,7 @@ import UIKit
 /// from decals, and why lane markings ended up as a road style rather than paint you
 /// place. See `TrackLayout.RoadStyle`.
 struct TrackPropertiesSheet: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     /// Called after a successful paste, so the editor can re-fit its view to the track
     /// that just replaced the canvas.
     var onPasted: () -> Void = {}

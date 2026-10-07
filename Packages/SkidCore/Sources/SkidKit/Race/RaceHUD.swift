@@ -7,7 +7,7 @@ import SwiftUI
 struct RaceHUD: View {
     let race: Race
     let colors: [Color]
-    @ObservedObject var rig: CouchRig
+    let rig: CouchRig
     let size: CGSize
     /// What this run has taken off the record book. Only a time trial reads it — a race
     /// reports its records on the results screen, which a trial never reaches.

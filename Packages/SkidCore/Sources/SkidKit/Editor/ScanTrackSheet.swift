@@ -12,7 +12,7 @@ import SwiftUI
 /// then ignores everything, rather than re-offering the same track sixty times
 /// while somebody holds the phone still.
 struct ScanTrackSheet: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     let dismiss: () -> Void
 
     /// Set once a track has been taken, so the stream of repeats is ignored.

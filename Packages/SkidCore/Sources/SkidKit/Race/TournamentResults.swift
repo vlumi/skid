@@ -7,7 +7,7 @@ import SwiftUI
 /// this race go", this answers "how is the series going", and `RaceHUD.swift`
 /// is at its length limit anyway.
 struct TournamentStandings: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     let series: Tournament
     let colors: [Color]
 

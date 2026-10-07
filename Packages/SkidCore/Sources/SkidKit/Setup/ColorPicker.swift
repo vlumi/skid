@@ -12,7 +12,7 @@ import SwiftUI
 /// and the tap then fires only sometimes (the editor's hotbar hit exactly that,
 /// and its level button is written this way for the same reason).
 struct SeatColorSwatch: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     /// The seat this swatch belongs to — an index into `colorIndices`.
     let slot: Int
     /// How wide the disc draws. The list row wants a small one, the options
@@ -51,7 +51,7 @@ struct SeatColorSwatch: View {
 /// A seat's OWN color is not unavailable, it is selected — the one marked with
 /// the DOS caret the rest of the app uses for a current choice.
 struct ColorPaletteSheet: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     let slot: Int
     let dismiss: () -> Void
 

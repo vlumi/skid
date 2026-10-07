@@ -12,7 +12,7 @@ import SwiftUI
 /// line it takes, and a panel over the middle of the road would hide the thing
 /// being judged.
 struct TestDriveOverlay: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     let race: Race
 
     var body: some View {

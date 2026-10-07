@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import SkidCore
 
 /// Drives the deterministic sim from render-loop time: accumulates elapsed
@@ -10,22 +11,23 @@ import SkidCore
 /// One session = one race. "Race again" builds a fresh session (new seed),
 /// so recording/marks/timing state can never leak between runs.
 ///
-/// Deliberately no `@Published`: the game view redraws every frame via
-/// `TimelineView(.animation)` anyway, and publishing per-frame sim state
-/// would mutate observable state mid-view-update.
+/// Per-frame state is deliberately `@ObservationIgnored`: the game view
+/// redraws every frame via `TimelineView(.animation)` anyway, and tracking
+/// per-frame sim state would mutate observable state mid-view-update.
+@Observable
 @MainActor
-public final class GameSession: ObservableObject {
-    public private(set) var race: Race
-    public private(set) var marks = MarkStore()
+public final class GameSession {
+    @ObservationIgnored public private(set) var race: Race
+    @ObservationIgnored public private(set) var marks = MarkStore()
     /// The whole run as seed + inputs — replay/ghost currency, recorded
     /// from the first lap-capable build because it can't be retrofitted.
-    public private(set) var recording: RaceRecording
+    @ObservationIgnored public private(set) var recording: RaceRecording
     /// The whole field's pose at each lap boundary of the first car, captured as
     /// the boundary passes — what lets the finish-line ghost cut be a SLICE of
     /// the recording instead of a replay of the race (which took seconds on the
     /// frame the finish line was crossed, felt as a hitch).
-    public private(set) var lapStartPoses: [Tick: LapGhost.Start] = [:]
-    private var posedLapCount = 0
+    @ObservationIgnored public private(set) var lapStartPoses: [Tick: LapGhost.Start] = [:]
+    @ObservationIgnored private var posedLapCount = 0
     /// Where each gate paints its checkpoint line on the road.
     public let gateSpans: [(a: Vec2, b: Vec2)?]
     /// The seed this race was built from — part of `raceKey`, so two races differ
@@ -36,9 +38,9 @@ public final class GameSession: ObservableObject {
     /// The PB ghost running alongside, if any (time trial).
     public let ghost: GhostPlayback?
     /// Frozen: the sim doesn't advance and the clock doesn't accumulate.
-    /// Published (unlike per-frame state) so chrome like edge-gesture
+    /// Tracked (unlike per-frame state) so chrome like edge-gesture
     /// deferral can react — it only flips on explicit user action.
-    @Published public var paused = false
+    public var paused = false
     /// The race waits on a ready gate: it opens frozen (everyone gets thumbs
     /// in place) and only begins once a player taps to start. Freezing before
     /// the countdown reuses the exact `paused` mechanism (clock stays
@@ -49,20 +51,20 @@ public final class GameSession: ObservableObject {
     /// publishes no input, so no peer's clock can release a tick, so nobody's
     /// countdown moves. It stuck at "3" on two phones. The host's "Start race" in
     /// the lobby IS the shared ready gate, and it is the only one there can be.
-    @Published public var started = false
+    public var started = false
     /// Networked only: each seat's palette index, resolved by the host's roster
     /// (first-come claiming) — every peer renders off the same map, so every
     /// screen paints the same field. Empty locally, where `CouchGame`'s own
     /// `colorIndices` are the truth.
-    public var seatColorIndices: [PlayerID: Int] = [:]
+    @ObservationIgnored public var seatColorIndices: [PlayerID: Int] = [:]
     /// Called after every sim tick with the fresh race — the event stream
     /// consumer seam (sound, haptics). Events from intermediate ticks in a
     /// frame are never skipped.
-    public var onTick: ((Race) -> Void)?
-    /// Published once when the race reaches .finished — chrome outside the
+    @ObservationIgnored public var onTick: ((Race) -> Void)?
+    /// Set once when the race reaches .finished — chrome outside the
     /// per-frame redraw (edge-gesture deferral) keys off this. Set via a
     /// hop off the render pass, never mid-view-update.
-    @Published public private(set) var raceOver = false
+    public private(set) var raceOver = false
     private let inputFor: (PlayerID, Race) -> CarInput
 
     /// **The networking seam, host-authoritative.**
@@ -74,12 +76,12 @@ public final class GameSession: ObservableObject {
     /// broadcast from `onTick`; nothing in this file knows it is hosting.
     /// Client: `snapshotClient` set, and the sim never runs — the race value
     /// becomes a display buffer for the host's snapshots.
-    public var snapshotClient: SnapshotClientDriver?
+    @ObservationIgnored public var snapshotClient: SnapshotClientDriver?
 
     /// True for any networked role. The pause guard keys off this (a per-device
     /// pause would freeze one screen of a shared race), as does seat-colored
     /// rendering.
-    public var isNetworked = false
+    @ObservationIgnored public var isNetworked = false
 
     /// **The one "go" gesture**, however it arrives — a tap on the map or a
     /// press of Space: off the ready gate first, the pause menu after. No pause
@@ -107,7 +109,7 @@ public final class GameSession: ObservableObject {
     /// driver — so the stale one kept pulling the driver's snapshots for a race that
     /// no longer existed, and the client's car froze at the previous race's last
     /// tick. Reported from device. A session whose generation is stale does nothing.
-    public var generation = 0
+    @ObservationIgnored public var generation = 0
 
     /// A value that changes for every race, for SwiftUI's `.id`.
     ///
@@ -137,8 +139,8 @@ public final class GameSession: ObservableObject {
         func view(advancedBy dt: TimeInterval) -> RaceSnapshot?
     }
 
-    private var lastTime: TimeInterval?
-    private var accumulator: TimeInterval = 0
+    @ObservationIgnored private var lastTime: TimeInterval?
+    @ObservationIgnored private var accumulator: TimeInterval = 0
     /// Don't spiral after a long pause (backgrounding, debugger): cap the
     /// ticks owed by any single frame.
     private static let maxTicksPerFrame = 12
