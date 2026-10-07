@@ -13,8 +13,8 @@ final class NetworkedSyncTests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         roster = RaceRoster()
-        try? roster.join("host#aaaa", seats: 1)
-        try? roster.join("guest#bbbb", seats: 1)
+        try roster.join("host#aaaa", seats: 1)
+        try roster.join("guest#bbbb", seats: 1)
     }
 
     private func thumb(_ seat: PlayerID, _ tick: Tick) -> CarInput {
@@ -238,7 +238,7 @@ final class NetworkedSyncTests: XCTestCase {
         // fixed 75 ms buffer starved between bursts and the client pulsed at the
         // burst rate. The lag must adapt to the observed arrival rhythm: a bursty
         // link costs latency, never rhythm.
-        var relay = HostRelay(roster: roster, me: "host#aaaa")
+        let relay = HostRelay(roster: roster, me: "host#aaaa")
         var view = ClientView(roster: roster, me: "guest#bbbb")
         var race = Race(track: TrackLibrary.testRing(), players: roster.seats, seed: 3)
         _ = relay
@@ -288,11 +288,11 @@ final class NetworkedSyncTests: XCTestCase {
     ///
     /// It is not a substitute for a third phone in the room: the packet budget and
     /// MultipeerConnectivity's own ceiling can only be measured on hardware.
-    func testThreeDevicesEachDriveTheirOwnSeats() {
+    func testThreeDevicesEachDriveTheirOwnSeats() throws {
         var roster = RaceRoster()
-        try? roster.join("host#aaaa", seats: 1)
-        try? roster.join("g1#bbbb", seats: 2)
-        try? roster.join("g2#cccc", seats: 1)
+        try roster.join("host#aaaa", seats: 1)
+        try roster.join("g1#bbbb", seats: 2)
+        try roster.join("g2#cccc", seats: 1)
         XCTAssertEqual(roster.seatCount, 4)
         XCTAssertEqual(roster.peers.count, 3)
 

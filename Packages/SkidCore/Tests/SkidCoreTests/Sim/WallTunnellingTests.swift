@@ -30,7 +30,7 @@ final class WallTunnellingTests: XCTestCase {
     /// carry further, and the fence is the last line before the void.
     func testTheMapFenceKeepsACarInsideAtEverySpeed() throws {
         let track = try track()
-        var race = race(track)
+        let race = race(track)
         // Straight at the left fence (x = 8) from inside.
         for step in [10.0, 30.0, 60.0, 120.0, 300.0] {
             var car = race.cars[0].state
@@ -82,7 +82,7 @@ final class WallTunnellingTests: XCTestCase {
     /// not teleported — the fix must not turn contact into a shove.
     func testApproachingAWallStillStopsShortOfIt() throws {
         let track = try track()
-        var race = race(track)
+        let race = race(track)
         var car = race.cars[0].state
         car.height = 0
         let from = Vec2(40, 600)
@@ -96,7 +96,7 @@ final class WallTunnellingTests: XCTestCase {
     /// Rails guarding a deck must not fling a car off the bridge either.
     func testADeckRailKeepsACarOnTheRoadSide() throws {
         let track = try track()
-        var race = race(track)
+        let race = race(track)
         guard
             let rail = track.walls.first(where: {
                 $0.kind == .rail && $0.height > 0.9 && $0.outward.length > 0.001

@@ -21,54 +21,54 @@ final class RaceRosterTests: XCTestCase {
         XCTAssertEqual(roster.seats, (0..<4).map(PlayerID.init))
     }
 
-    func testEachDeviceKnowsOnlyItsOwnSeats() {
+    func testEachDeviceKnowsOnlyItsOwnSeats() throws {
         // A device drives its own thumbs and simulates everybody's car, so it has
         // to be able to tell the two sets apart.
         var roster = RaceRoster()
-        try? roster.join("a", seats: 1)
-        try? roster.join("b", seats: 3)
+        try roster.join("a", seats: 1)
+        try roster.join("b", seats: 3)
         XCTAssertEqual(roster.seats(for: "a"), [PlayerID(0)])
         XCTAssertEqual(roster.seats(for: "b"), [PlayerID(1), PlayerID(2), PlayerID(3)])
         XCTAssertEqual(roster.seats(for: "nobody"), [])
     }
 
-    func testASeatMapsBackToTheDeviceDrivingIt() {
+    func testASeatMapsBackToTheDeviceDrivingIt() throws {
         // For "waiting for Ville's phone" chrome: a stall names a seat, and the
         // player needs to know whose device that is.
         var roster = RaceRoster()
-        try? roster.join("a", seats: 2)
-        try? roster.join("b", seats: 2)
+        try roster.join("a", seats: 2)
+        try roster.join("b", seats: 2)
         XCTAssertEqual(roster.peer(driving: PlayerID(0)), "a")
         XCTAssertEqual(roster.peer(driving: PlayerID(3)), "b")
         XCTAssertNil(roster.peer(driving: PlayerID(8)))
     }
 
-    func testTheHostIsWhoeverJoinedFirst() {
+    func testTheHostIsWhoeverJoinedFirst() throws {
         var roster = RaceRoster()
         XCTAssertNil(roster.host, "an empty roster has no host")
-        try? roster.join("host-phone", seats: 1)
-        try? roster.join("guest", seats: 1)
+        try roster.join("host-phone", seats: 1)
+        try roster.join("guest", seats: 1)
         XCTAssertEqual(roster.host, "host-phone")
         XCTAssertEqual(roster.peers, ["host-phone", "guest"])
     }
 
     // MARK: - Refusing a join
 
-    func testTheSameDeviceCannotJoinTwice() {
+    func testTheSameDeviceCannotJoinTwice() throws {
         // A duplicate join would double that device's cars — and a re-invitation
         // after a flaky connection is exactly how it would happen.
         var roster = RaceRoster()
-        try? roster.join("a", seats: 2)
+        try roster.join("a", seats: 2)
         XCTAssertThrowsError(try roster.join("a", seats: 1)) { error in
             XCTAssertEqual(error as? RaceRoster.JoinError, .alreadyJoined("a"))
         }
         XCTAssertEqual(roster.seatCount, 2, "a rejected join still changed the roster")
     }
 
-    func testTheFieldFillsToItsCapAndThenRefuses() {
+    func testTheFieldFillsToItsCapAndThenRefuses() throws {
         var roster = RaceRoster()
         for index in 0..<(RaceRoster.maxSeats / RaceRoster.maxSeatsPerDevice) {
-            try? roster.join("device-\(index)", seats: RaceRoster.maxSeatsPerDevice)
+            try roster.join("device-\(index)", seats: RaceRoster.maxSeatsPerDevice)
         }
         let remaining = RaceRoster.maxSeats - roster.seatCount
         XCTAssertEqual(remaining, RaceRoster.maxSeats % RaceRoster.maxSeatsPerDevice)
@@ -117,13 +117,13 @@ final class RaceRosterTests: XCTestCase {
 
     // MARK: - Leaving
 
-    func testARemovedDeviceDoesNotRenumberTheOthers() {
+    func testARemovedDeviceDoesNotRenumberTheOthers() throws {
         // Compacting seats would change somebody else's color and grid slot — and
         // mid-race it would be a different race on every peer. So holes are legal.
         var roster = RaceRoster()
-        try? roster.join("a", seats: 2)
-        try? roster.join("b", seats: 2)
-        try? roster.join("c", seats: 1)
+        try roster.join("a", seats: 2)
+        try roster.join("b", seats: 2)
+        try roster.join("c", seats: 1)
         roster.remove(peer: "b")
         XCTAssertEqual(roster.seats(for: "a"), [PlayerID(0), PlayerID(1)])
         XCTAssertEqual(roster.seats(for: "c"), [PlayerID(4)], "seat 4 was renumbered")
@@ -131,34 +131,34 @@ final class RaceRosterTests: XCTestCase {
         XCTAssertEqual(roster.seatCount, 3)
     }
 
-    func testRemovingTheHostPromotesTheNextDevice() {
+    func testRemovingTheHostPromotesTheNextDevice() throws {
         // Not a policy decision about who SHOULD host mid-race — just that `host`
         // stays answerable rather than dangling at a device that is gone.
         var roster = RaceRoster()
-        try? roster.join("a", seats: 1)
-        try? roster.join("b", seats: 1)
+        try roster.join("a", seats: 1)
+        try roster.join("b", seats: 1)
         roster.remove(peer: "a")
         XCTAssertEqual(roster.host, "b")
     }
 
-    func testRemovingAnUnknownDeviceIsHarmless() {
+    func testRemovingAnUnknownDeviceIsHarmless() throws {
         var roster = RaceRoster()
-        try? roster.join("a", seats: 2)
+        try roster.join("a", seats: 2)
         roster.remove(peer: "ghost")
         XCTAssertEqual(roster.seatCount, 2)
     }
 
     // MARK: - Agreeing it across devices
 
-    func testARosterRoundTripsSoEveryPeerAgreesOnIt() {
+    func testARosterRoundTripsSoEveryPeerAgreesOnIt() throws {
         // The host assigns seats and sends the roster; every peer must decode the
         // identical thing, because a peer that disagrees about seat numbering
         // drives the wrong car.
         var roster = RaceRoster()
-        try? roster.join("a", seats: 2)
-        try? roster.join("b", seats: 1)
+        try roster.join("a", seats: 2)
+        try roster.join("b", seats: 1)
         roster.remove(peer: "a")
-        try? roster.join("c", seats: 3)
+        try roster.join("c", seats: 3)
 
         guard let data = try? JSONEncoder().encode(roster),
             let back = try? JSONDecoder().decode(RaceRoster.self, from: data)
@@ -169,7 +169,7 @@ final class RaceRosterTests: XCTestCase {
         XCTAssertEqual(back.seats(for: "c"), [PlayerID(3), PlayerID(4), PlayerID(5)])
     }
 
-    func testSeatNumbersMayExceedTheFieldSizeAfterChurn() {
+    func testSeatNumbersMayExceedTheFieldSizeAfterChurn() throws {
         // Monotonic numbering means a lobby with churn issues numbers above the
         // field size — 4 cars might be seats 1, 3, 5, 7 in a 9-slot grid. Safe
         // because `Race` assigns grid slots by array INDEX, not by `rawValue`;
@@ -178,7 +178,7 @@ final class RaceRosterTests: XCTestCase {
         // cars on top of each other.
         var roster = RaceRoster()
         for index in 0..<8 {
-            try? roster.join("d\(index)", seats: 1)
+            try roster.join("d\(index)", seats: 1)
             if index % 2 == 0 { roster.remove(peer: "d\(index)") }
         }
         XCTAssertEqual(roster.seats.map(\.rawValue), [1, 3, 5, 7])
@@ -190,12 +190,12 @@ final class RaceRosterTests: XCTestCase {
         XCTAssertEqual(Set(race.cars.map(\.state.position)).count, 4)
     }
 
-    func testTheRosterDrivesARealRace() {
+    func testTheRosterDrivesARealRace() throws {
         // End to end: the seats a roster produces must be what `Race` and
         // `LockstepClock` are built from, holes and all.
         var roster = RaceRoster()
-        try? roster.join("a", seats: 2)
-        try? roster.join("b", seats: 2)
+        try roster.join("a", seats: 2)
+        try roster.join("b", seats: 2)
         roster.remove(peer: "a")
 
         let race = Race(track: TrackLibrary.testRing(), players: roster.seats, seed: 3)

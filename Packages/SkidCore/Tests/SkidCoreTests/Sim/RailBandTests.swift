@@ -31,7 +31,7 @@ final class RailBandTests: XCTestCase {
     /// the car sits 40 units past a short deck rail's endpoint, which is inside the
     /// inflated reach but beside nothing.
     func testACarOffTheEndOfARailIsNotShoved() {
-        var race = Race(track: track(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
+        let race = Race(track: track(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
         // A 6-unit rail at deck height, as a ramp's curve produces.
         let rail = Wall(
             from: Vec2(0, 0), to: Vec2(0, 6), height: 1, kind: .rail,
@@ -53,7 +53,7 @@ final class RailBandTests: XCTestCase {
     /// And beside the rail the band still works: a car approaching from outboard
     /// stops clear of the painted face, not at the bare collision line.
     func testTheBandStillStopsACarBesideTheRail() {
-        var race = Race(track: track(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
+        let race = Race(track: track(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
         let rail = Wall(
             from: Vec2(0, -200), to: Vec2(0, 200), height: 1, kind: .rail,
             outward: Vec2(-1, 0), onClimb: false)
@@ -73,7 +73,7 @@ final class RailBandTests: XCTestCase {
     /// **No wall may ever move a car further than it was from that wall.** The
     /// invariant the warp violated: a correction closes a gap, it cannot open one.
     func testNoPushExceedsTheSeparation() {
-        var race = Race(track: track(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
+        let race = Race(track: track(), players: [PlayerID(0)], config: RaceConfig(laps: nil))
         let rail = Wall(
             from: Vec2(0, 0), to: Vec2(0, 6), height: 1, kind: .rail,
             outward: Vec2(-1, 0), onClimb: true)

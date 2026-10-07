@@ -16,8 +16,8 @@ final class HostAuthSessionTests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         roster = RaceRoster()
-        try? roster.join(hostKey, seats: 1)
-        try? roster.join(guestKey, seats: 1)
+        try roster.join(hostKey, seats: 1)
+        try roster.join(guestKey, seats: 1)
     }
 
     private func raceStart() -> RaceStart {

@@ -68,7 +68,7 @@ struct FullFieldTests {
 
         // And a full field really races — driven here rather than assumed, since
         // nothing in the product exercises it while the cap is lower.
-        let track = try #require(TrackLibrary.track(id: "eight"))
+        let track = TrackLibrary.track(id: "eight")
         var race = Race(
             track: track, players: (0..<CouchGame.fieldCapacity).map(PlayerID.init),
             config: RaceConfig(laps: 1))

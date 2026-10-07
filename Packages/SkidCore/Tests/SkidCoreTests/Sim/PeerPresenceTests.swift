@@ -79,11 +79,11 @@ final class PeerPresenceTests: XCTestCase {
         XCTAssertEqual(presence.advance(by: PeerPresence.grace), ["late"])
     }
 
-    func testPresenceIsReadableAgainstARoster() {
+    func testPresenceIsReadableAgainstARoster() throws {
         var roster = RaceRoster()
-        try? roster.join("host#aaaa", seats: 1)
-        try? roster.join("fader#bbbb", seats: 1)
-        try? roster.join("goner#cccc", seats: 1)
+        try roster.join("host#aaaa", seats: 1)
+        try roster.join("fader#bbbb", seats: 1)
+        try roster.join("goner#cccc", seats: 1)
         var presence = PeerPresence()
         presence.lost("fader#bbbb")
         presence.lost("goner#cccc")

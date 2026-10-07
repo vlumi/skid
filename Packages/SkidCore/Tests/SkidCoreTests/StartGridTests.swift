@@ -47,7 +47,7 @@ struct StartGridTests {
     /// ranking falls back to an index tie-break — which read as a random order at the
     /// lights when rows were introduced.
     @Test func everyCarHasItsOwnPlaceOnTheGrid() throws {
-        let track = try #require(TrackLibrary.track(id: "clover"))
+        let track = TrackLibrary.track(id: "clover")
         for count in [4, 6, 9] {
             let race = Race(
                 track: track, players: (0..<count).map(PlayerID.init),
@@ -63,7 +63,7 @@ struct StartGridTests {
     /// sits 44 from the centerline against a 60 half-width.
     @Test func everySlotIsOnTheRoad() throws {
         for id in TrackLibrary.builtins.map(\.id) {
-            let track = try #require(TrackLibrary.track(id: id))
+            let track = TrackLibrary.track(id: id)
             #expect(track.startSlots.count == Grid.slots, "\(id)")
             for (index, slot) in track.startSlots.enumerated() {
                 #expect(
@@ -75,7 +75,7 @@ struct StartGridTests {
 
     /// Pole is at the front: the first slot is nearest the line.
     @Test func poleIsNearestTheLine() throws {
-        let track = try #require(TrackLibrary.track(id: "eight"))
+        let track = TrackLibrary.track(id: "eight")
         let line = try #require(track.gates.last)
         let midLine = (line.a + line.b) * 0.5
         let toLine = track.startSlots.map { $0.distance(to: midLine) }
