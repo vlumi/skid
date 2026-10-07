@@ -19,13 +19,12 @@ final class TrackSigningTests: XCTestCase {
     }
 
     private let signer = TestSigner(key: Curve25519.Signing.PrivateKey())
-    private var layout: TrackLayout {
-        // swiftlint:disable:next force_try
-        try! TrackCode.decode(TestTracks.Code.bridgeRing)
+    private func layout() throws -> TrackLayout {
+        try TrackCode.decode(TestTracks.Code.bridgeRing)
     }
 
     func testASignedCodeReportsItsKeyAndVerifies() throws {
-        let code = try TrackCode.encode(layout, signedBy: signer)
+        let code = try TrackCode.encode(layout(), signedBy: signer)
         let signature = try XCTUnwrap(TrackCode.signature(of: code))
         XCTAssertEqual(signature.publicKey, signer.publicKey)
         XCTAssertTrue(signature.isValid)
@@ -34,22 +33,22 @@ final class TrackSigningTests: XCTestCase {
     /// A signed code still decodes to the same track — the extra sections are
     /// skipped by the layout decoder.
     func testSigningDoesNotChangeTheTrack() throws {
-        let code = try TrackCode.encode(layout, signedBy: signer)
-        XCTAssertEqual(try TrackCode.decode(code), layout)
+        let code = try TrackCode.encode(layout(), signedBy: signer)
+        XCTAssertEqual(try TrackCode.decode(code), try layout())
     }
 
     /// Stripping a signature is well defined: the unsigned prefix is exactly
     /// what `encode` alone produces.
     func testTheUnsignedPrefixIsThePlainCode() throws {
-        let signed = try TrackCode.encode(layout, signedBy: signer)
-        let plain = TrackCode.encode(layout)
+        let signed = try TrackCode.encode(layout(), signedBy: signer)
+        let plain = TrackCode.encode(try layout())
         let body = try XCTUnwrap(TrackCode.base64urlDecode(signed)).dropFirst(2)
         let plainBody = try XCTUnwrap(TrackCode.base64urlDecode(plain)).dropFirst(2)
         XCTAssertEqual(Array(body.prefix(plainBody.count)), Array(plainBody))
     }
 
     func testAnUnsignedCodeHasNoSignature() {
-        XCTAssertNil(TrackCode.signature(of: TrackCode.encode(layout)))
+        XCTAssertNil(TrackCode.signature(of: TrackCode.encode(try layout())))
         XCTAssertNil(TrackCode.signature(of: TestTracks.Code.clover))
     }
 
@@ -57,7 +56,7 @@ final class TrackSigningTests: XCTestCase {
     /// catch it. Without the CRC repair this would test the CRC, not the
     /// signature.
     func testEditedContentFailsVerification() throws {
-        let code = try TrackCode.encode(layout, signedBy: signer)
+        let code = try TrackCode.encode(layout(), signedBy: signer)
         var blob = try XCTUnwrap(TrackCode.base64urlDecode(code))
         blob[8] ^= 0x01  // somewhere inside the pieces payload
         let tampered = reframed(blob)
@@ -68,7 +67,7 @@ final class TrackSigningTests: XCTestCase {
     /// must not produce a code that verifies as that other author — otherwise
     /// anyone could re-attribute a signed track without the private key.
     func testSwappingThePublicKeyFailsVerification() throws {
-        let code = try TrackCode.encode(layout, signedBy: signer)
+        let code = try TrackCode.encode(layout(), signedBy: signer)
         var blob = try XCTUnwrap(TrackCode.base64urlDecode(code))
         let other = Array(Curve25519.Signing.PrivateKey().publicKey.rawRepresentation)
         let at = try XCTUnwrap(indexOfPayload(tag: 254, in: blob))
@@ -81,7 +80,7 @@ final class TrackSigningTests: XCTestCase {
     /// re-encodes canonically — verifying that way would attest to bytes nobody
     /// signed. This is the test that pins the whole discipline.
     func testAReorderedBodyFailsVerification() throws {
-        let code = try TrackCode.encode(layout, signedBy: signer)
+        let code = try TrackCode.encode(layout(), signedBy: signer)
         let blob = try XCTUnwrap(TrackCode.base64urlDecode(code))
         let records = splitRecords(Array(blob.dropFirst(2)))
         XCTAssertGreaterThan(records.count, 3)
@@ -92,7 +91,7 @@ final class TrackSigningTests: XCTestCase {
         let rebuilt = TrackCode.finish(body)
 
         // It still decodes to the same track — which is exactly the hazard.
-        XCTAssertEqual(try TrackCode.decode(rebuilt), layout)
+        XCTAssertEqual(try TrackCode.decode(rebuilt), try layout())
         XCTAssertEqual(TrackCode.signature(of: rebuilt)?.isValid, false)
     }
 
@@ -103,7 +102,7 @@ final class TrackSigningTests: XCTestCase {
     /// two rules apart — only a trailer the right size proves the LAST RECORD
     /// MUST BE TAGGED `sig`, rather than merely being the right length.
     func testASignatureMustBeTheLastRecord() throws {
-        let code = try TrackCode.encode(layout, signedBy: signer)
+        let code = try TrackCode.encode(layout(), signedBy: signer)
         let signed = Array(try XCTUnwrap(TrackCode.base64urlDecode(code)).dropFirst(2))
 
         var unknownTrailer = signed
@@ -119,7 +118,7 @@ final class TrackSigningTests: XCTestCase {
 
     /// Malformed envelopes are refused rather than crashing or half-verifying.
     func testMalformedSignatureSectionsAreRefused() throws {
-        let plain = TrackCode.encodedBody(layout)
+        let plain = TrackCode.encodedBody(try layout())
 
         var shortSig = plain
         TrackCode.appendSection(&shortSig, .pubkey, signer.publicKey)
@@ -153,15 +152,15 @@ final class TrackSigningTests: XCTestCase {
     /// Ed25519 is deterministic per RFC 8032, but CryptoKit does not promise it,
     /// and pinning signature bytes would be a time bomb.
     func testSigningTwiceBothVerify() throws {
-        let first = try TrackCode.encode(layout, signedBy: signer)
-        let second = try TrackCode.encode(layout, signedBy: signer)
+        let first = try TrackCode.encode(layout(), signedBy: signer)
+        let second = try TrackCode.encode(layout(), signedBy: signer)
         XCTAssertEqual(TrackCode.signature(of: first)?.isValid, true)
         XCTAssertEqual(TrackCode.signature(of: second)?.isValid, true)
     }
 
     /// The measured cost, so the QR budget stays honest as sections are added.
     func testASignedCodeStaysInsideTheQRBudget() throws {
-        let code = try TrackCode.encode(layout, signedBy: signer)
+        let code = try TrackCode.encode(layout(), signedBy: signer)
         // The stable invariant is BYTES: PUBKEY (2 + 32) plus SIG (2 + 64) = 100.
         // Character overhead is not stable — base64url packs 3 bytes into 4 chars,
         // so the same 100 bytes cost 133 or 134 characters depending on the
@@ -169,7 +168,7 @@ final class TrackSigningTests: XCTestCase {
         // and broke the moment the fixture gained a section.
         let signedBytes = try XCTUnwrap(TrackCode.base64urlDecode(code)).count
         let plainBytes = try XCTUnwrap(
-            TrackCode.base64urlDecode(TrackCode.encode(layout))
+            TrackCode.base64urlDecode(TrackCode.encode(layout()))
         ).count
         XCTAssertEqual(signedBytes - plainBytes, 100)
         XCTAssertLessThan("https://skid.misaki.fi/t/".count + code.count, 250)

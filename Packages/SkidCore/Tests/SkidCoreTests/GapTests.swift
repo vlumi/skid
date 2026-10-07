@@ -48,8 +48,8 @@ struct GapTests {
     /// last solid point, and a zero-length warp used to stamp a pile of duplicate
     /// centerline points beside the gap — each casting its own end cap, which paved
     /// the hole over completely and left the car "on road" across it.
-    @Test func thereIsAirOverAGap() {
-        let track = TestTracks.jumpRing()
+    @Test func thereIsAirOverAGap() throws {
+        let track = try TestTracks.jumpRing()
         let gapPoints = track.centerline.indices.filter { track.segmentIsGap($0) }
         #expect(!gapPoints.isEmpty, "the ring should have a gap at all")
 
@@ -64,8 +64,8 @@ struct GapTests {
 
     /// The centerline runs THROUGH a gap, so progress, lap scoring and the AI need
     /// to know nothing about it. Deleting the points instead would break the loop.
-    @Test func theCenterlineStillRunsThroughAGap() {
-        let track = TestTracks.jumpRing()
+    @Test func theCenterlineStillRunsThroughAGap() throws {
+        let track = try TestTracks.jumpRing()
         let gapped = track.centerline.indices.filter { track.segmentIsGap($0) }
         #expect(!gapped.isEmpty)
         for i in gapped {
@@ -78,16 +78,16 @@ struct GapTests {
     }
 
     /// A track with no gap is unchanged: `gaps` all false.
-    @Test func aTrackWithoutAGapHasNoGaps() {
-        let track = TestTracks.steepBridge()
+    @Test func aTrackWithoutAGapHasNoGaps() throws {
+        let track = try TestTracks.steepBridge()
         #expect(!track.gaps.isEmpty)
         #expect(track.gaps.allSatisfy { !$0 })
         #expect(track.gaps.count == track.centerline.count)
     }
 
     /// **A railed gap gets no railing.** A fence beside thin air guards nothing.
-    @Test func railingAGapLeavesItUnfenced() {
-        let track = TestTracks.railedJumpRing()
+    @Test func railingAGapLeavesItUnfenced() throws {
+        let track = try TestTracks.railedJumpRing()
         let gapPoints = track.centerline.indices.filter { track.segmentIsGap($0) }
         guard let first = gapPoints.first, let last = gapPoints.last else {
             Issue.record("no gap")
@@ -157,8 +157,8 @@ struct ExperimentalGapsStayRaceableTests {
     }
 
     /// And it still races: the AI laps it, and the car really leaves the road.
-    @Test func aTrackUsingThemStillRaces() {
-        let track = TestTracks.jumpRing()
+    @Test func aTrackUsingThemStillRaces() throws {
+        let track = try TestTracks.jumpRing()
         var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: 1))
         var driver = AIDriver()
         var airborne = 0

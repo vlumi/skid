@@ -18,16 +18,15 @@ final class LibraryPickerTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "skid.editor.customTrack")
     }
 
-    private var ring: TrackLayout {
-        // swiftlint:disable:next force_try
-        try! TrackCode.decode(TestTracks.Code.bridgeRing)
+    private func ring() throws -> TrackLayout {
+        try TrackCode.decode(TestTracks.Code.bridgeRing)
     }
 
     /// An edited track becomes a raceable choice, and racing it compiles under
     /// the entry's own id so hiscores attach to that road.
     func testAnEditedTrackIsRaceableUnderItsOwnID() throws {
         let game = game()
-        game.editorLayout = ring
+        game.editorLayout = try ring()
 
         let entry = try XCTUnwrap(game.library.raceable.first)
         XCTAssertEqual(entry.trackID, TestTracks.Code.bridgeRing)
@@ -92,7 +91,7 @@ final class LibraryPickerTests: XCTestCase {
     func testASignedImportKeepsItsSignature() throws {
         let game = game()
         let key = InMemorySigningKey()
-        let signed = try TrackCode.encode(ring, signedBy: key)
+        let signed = try TrackCode.encode(ring(), signedBy: key)
         XCTAssertTrue(game.loadCustomTrack(code: signed))
 
         let entry = try XCTUnwrap(game.library.entry(id: TestTracks.Code.bridgeRing))

@@ -11,16 +11,15 @@ final class SigningKeyStoreTests: XCTestCase {
         func signer() -> TrackCode.Signer? { key }
     }
 
-    private var layout: TrackLayout {
-        // swiftlint:disable:next force_try
-        try! TrackCode.decode(TestTracks.Code.bridgeRing)
+    private func layout() throws -> TrackLayout {
+        try TrackCode.decode(TestTracks.Code.bridgeRing)
     }
 
     /// A store with a key signs; the code verifies against that key.
     func testAStoreWithAKeySigns() throws {
         let store = FixedStore(key: InMemorySigningKey())
         let signer = try XCTUnwrap(store.signer())
-        let code = try TrackCode.encode(layout, signedBy: signer)
+        let code = try TrackCode.encode(layout(), signedBy: signer)
         let signature = try XCTUnwrap(TrackCode.signature(of: code))
         XCTAssertTrue(signature.isValid)
         XCTAssertEqual(signature.publicKey, signer.publicKey)
@@ -32,10 +31,10 @@ final class SigningKeyStoreTests: XCTestCase {
         let store = NoSigningKey()
         XCTAssertNil(store.signer())
 
-        let code = try shareCode(of: layout, using: store)
-        XCTAssertEqual(code, TrackCode.encode(layout))
+        let code = try shareCode(of: layout(), using: store)
+        XCTAssertEqual(code, TrackCode.encode(try layout()))
         XCTAssertNil(TrackCode.signature(of: code))
-        XCTAssertEqual(try TrackCode.decode(code), layout)
+        XCTAssertEqual(try TrackCode.decode(code), try layout())
     }
 
     /// The same store keeps the same identity across signatures — a key that
@@ -55,7 +54,7 @@ final class SigningKeyStoreTests: XCTestCase {
             InMemorySigningKey(rawRepresentation: original.rawRepresentation))
         XCTAssertEqual(restored.publicKey, original.publicKey)
 
-        let code = try TrackCode.encode(layout, signedBy: restored)
+        let code = try TrackCode.encode(layout(), signedBy: restored)
         XCTAssertEqual(TrackCode.signature(of: code)?.isValid, true)
     }
 

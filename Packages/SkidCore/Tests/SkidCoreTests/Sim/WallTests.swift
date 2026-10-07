@@ -223,8 +223,8 @@ final class WallTests: XCTestCase {
     /// through the embankment. The cap sits at 0.99: under the wall rule
     /// (`Race.blocks`, floor = trunc(height)) that blocks 0…0.99 — everything below
     /// the deck — while a car arriving along the ramp at deck height passes.
-    func testYouCannotDriveUnderARamp() {
-        let track = TestTracks.steepBridge()
+    func testYouCannotDriveUnderARamp() throws {
+        let track = try TestTracks.steepBridge()
         let count = track.centerline.count
         var blockedFromOutside = 0
         var allowedUpTheRamp = 0
