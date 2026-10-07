@@ -9,7 +9,7 @@ import SwiftUI
 struct ResultsCard: View {
     /// Observed, not held flat: the record line reads `game.runRecords`, which is written
     /// on the frame the finish lands — the same frame this card first appears.
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     /// A networked race exits to the LOBBY rather than to setup — the connection is
     /// worth keeping, since the next race reuses it.
     let session: GameSession

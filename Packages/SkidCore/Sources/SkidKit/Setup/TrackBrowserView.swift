@@ -13,7 +13,7 @@ import SwiftUI
 /// versus "where is the one I made?"), and because only the second can be edited or
 /// deleted.
 struct TrackBrowserView: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     let dismiss: () -> Void
     /// **Where the choice goes.** Nil means the browser is picking the track for
     /// the next race and writes `game.trackID` — the original behaviour. A

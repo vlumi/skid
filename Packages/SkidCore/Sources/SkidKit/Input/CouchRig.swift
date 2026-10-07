@@ -100,7 +100,7 @@ public struct SeatingConfig: Equatable, Sendable {
 /// a touch belongs to the zone it started in, for its whole life. Each player
 /// drives their own scheme (Casual or Pro), chosen in setup.
 @MainActor
-public final class CouchRig: ObservableObject {
+public final class CouchRig {
     public private(set) var players: [PlayerControls]
     public let seating: SeatingConfig
 

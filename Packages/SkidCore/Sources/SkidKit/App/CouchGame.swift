@@ -1,8 +1,9 @@
 import SkidCore
 import SwiftUI
 
+@Observable
 @MainActor
-public final class CouchGame: ObservableObject {
+public final class CouchGame {
     public enum Phase: Equatable {
         /// **The front door**: solo, couch, nearby, or the editor.
         ///
@@ -28,7 +29,12 @@ public final class CouchGame: ObservableObject {
     /// race your own design. It persists across launches as a share code, so
     /// the track survives quitting the app — and the same code is what gets
     /// pasted into the repo to promote a design to a built-in.
-    @Published public var editorLayout: TrackLayout? {
+    ///
+    /// Restored as the INITIAL value, not assigned in `init`: under
+    /// `@Observable` an assignment in `init` runs the observer below, which
+    /// would re-save what was only read and sync it into a library not yet
+    /// loaded. An initial value runs no observer.
+    public var editorLayout: TrackLayout? = CouchGame.restoredCustomTrack() {
         didSet {
             saveCustomTrack()
             syncEditedTrackToLibrary()
@@ -36,18 +42,18 @@ public final class CouchGame: ObservableObject {
     }
 
     /// Placement verdicts memoised per layout fingerprint — see `editorCanAppend`
-    /// and `VerdictMemo` for why the fingerprint includes the origin height. Not
-    /// `@Published` on purpose: it's a cache, and invalidating views over it
+    /// and `VerdictMemo` for why the fingerprint includes the origin height.
+    /// Untracked on purpose: it's a cache, and invalidating views over it
     /// would defeat its point.
-    var appendVerdicts = VerdictMemo()
+    @ObservationIgnored var appendVerdicts = VerdictMemo()
     /// The same cache for the head end (`editorCanPrepend`). Kept separate
     /// because the two ends give different verdicts on the same piece.
-    var prependVerdicts = VerdictMemo()
+    @ObservationIgnored var prependVerdicts = VerdictMemo()
 
-    /// Undo/redo history as encoded snapshots — see `EditorUndo`. `@Published`
+    /// Undo/redo history as encoded snapshots — see `EditorUndo`. Tracked
     /// because the buttons' enabled state reads off them.
-    @Published var undoStack: [String] = []
-    @Published var redoStack: [String] = []
+    var undoStack: [String] = []
+    var redoStack: [String] = []
 
     /// What a map tap means. One tap used to mean two things — select an end or
     /// toggle a checkpoint — so a stray seam hit was a silent real edit.
@@ -56,23 +62,23 @@ public final class CouchGame: ObservableObject {
         case gate
     }
 
-    @Published public var editorMode: EditorMode = .build {
+    public var editorMode: EditorMode = .build {
         // Gate mode owns map taps, so a piece selection would be stale chrome
         // pointing at something you can no longer act on.
         didSet { if editorMode == .gate { selectionRaw = nil } }
     }
 
     /// The selected piece's index — see `EditorSelection`.
-    @Published var selectionRaw: Int?
+    var selectionRaw: Int?
     /// Which end of an open chain the palette builds from. Remembered so the common
     /// case stays one tap.
-    @Published public var editorBuildEnd: CouchGame.BuildEnd = .tail
+    public var editorBuildEnd: CouchGame.BuildEnd = .tail
 
     /// **Whether pieces laid from here on get a guard railing.** Sticky, like the
     /// build end: railing a bridge is a run of pieces, so asking once beats
     /// toggling each piece afterwards. Off by default, matching
     /// `TrackLayout.railed`.
-    @Published public var editorRailNewPieces = false
+    public var editorRailNewPieces = false
 
     public enum Mode: String, CaseIterable, Codable {
         case race
@@ -84,8 +90,8 @@ public final class CouchGame: ObservableObject {
 
     static let palette: [Color] = TrackRenderer.carPalette
 
-    @Published public internal(set) var phase: Phase = .menu
-    @Published public var mode: Mode = .race {
+    public internal(set) var phase: Phase = .menu
+    public var mode: Mode = .race {
         didSet { saveSetupMemory() }
     }
     /// **What a race is allowed to hold today: four cars.**
@@ -136,12 +142,12 @@ public final class CouchGame: ObservableObject {
     ///
     /// Local only — a nearby field is built by whoever hosts it, and the protocol has no
     /// AI seat at all. `aiCount` enforces that rather than this flag being reset.
-    @Published public var fillWithAI = true {
+    public var fillWithAI = true {
         didSet { saveSetupMemory() }
     }
 
     /// How well the AI drives.
-    @Published public var aiDifficulty: AIDriver.Difficulty = .medium {
+    public var aiDifficulty: AIDriver.Difficulty = .medium {
         didSet { saveSetupMemory() }
     }
     /// Default color per seat, in palette order — which is separation order, so a
@@ -149,61 +155,61 @@ public final class CouchGame: ObservableObject {
     /// field rather than to four seats, since the AI fills the rest. Always a
     /// PERMUTATION of the palette — the pickers swap rather than overwrite, so no
     /// two seats can end up alike (see `assignColor`).
-    @Published public internal(set) var colorIndices = Array(0..<PieceCompiler.Grid.slots) {
+    public internal(set) var colorIndices = Array(0..<PieceCompiler.Grid.slots) {
         didSet { saveSetupMemory() }
     }
     /// Each human player's control scheme, chosen in setup (Casual/Pro). One
     /// entry per seat; only the first `playerCount` are used.
-    @Published public var schemes: [ControlScheme] = [.casual, .casual, .casual, .casual] {
+    public var schemes: [ControlScheme] = [.casual, .casual, .casual, .casual] {
         didSet { saveSetupMemory() }
     }
     /// The chosen circuit (a `Track.id` from `TrackLibrary.all`).
-    @Published public var trackID = TrackLibrary.builtins[0].id {
+    public var trackID = TrackLibrary.builtins[0].id {
         didSet { saveSetupMemory() }
     }
 
     /// **The series in progress, or nil** — persisted, since a series a phone
     /// forgets between races is unfinishable. Rules in `Tournament`, app side in
     /// `CouchTournament`.
-    @Published public internal(set) var tournament: Tournament? {
+    public internal(set) var tournament: Tournament? {
         didSet { saveSetupMemory() }
     }
 
     /// The line-up a series *will* race: drawn, then swapped by hand if you like.
     /// Separate from `tournament` so setup can offer one without committing.
-    @Published public internal(set) var pendingTournamentTracks: [String] = []
+    public internal(set) var pendingTournamentTracks: [String] = []
 
     /// **A track handed to us from outside** — a tapped link or a scanned code,
     /// waiting to be accepted or declined. Session-only: an offer nobody
     /// answered should not still be pending days later.
-    @Published public internal(set) var incomingTrack: IncomingTrack?
+    public internal(set) var incomingTrack: IncomingTrack?
 
     /// **Where a test drive came from**, or nil when the race on screen is a
     /// real one. Session-only on purpose: a drive is a question about a design,
     /// so it should not survive a relaunch and strand the app owing a return to
     /// an editor it no longer has open. See `CouchTestDrive`.
-    @Published var testDriveReturn: TestDriveReturn?
+    var testDriveReturn: TestDriveReturn?
     /// The fastest any car went during the current test drive — watched per tick,
     /// since it is a property of the run and not of the finished state.
-    @Published var testDrivePeakSpeed = 0.0
+    var testDrivePeakSpeed = 0.0
 
     /// Which race's result has already been scored into the series — see
     /// `recordTournamentResult`. Session-only: a relaunch mid-series has no
     /// finished race on screen to double-count.
-    var scoredRaceKey: String?
+    @ObservationIgnored var scoredRaceKey: String?
     /// 2P seating: face-to-face (default) vs side-by-side.
     ///
     /// Face-to-face is what two people do with a phone flat on a table — full-width
     /// band each. Side-by-side halves that and is cramped on an iPhone; it exists
     /// because cramming 3–4 players onto one screen needs it, not because two
     /// players want it. Eventually a per-device choice, once devices differ.
-    @Published public var faceToFace = true
+    public var faceToFace = true
     /// 3P seating: which quadrant stays open.
-    @Published public var openCorner: ZoneCorner = .topLeft
+    public var openCorner: ZoneCorner = .topLeft
 
-    @Published public internal(set) var session: GameSession?
-    public internal(set) var rig: CouchRig?
-    public internal(set) var hiscores: HiscoreBook
+    public internal(set) var session: GameSession?
+    @ObservationIgnored public internal(set) var rig: CouchRig?
+    @ObservationIgnored public internal(set) var hiscores: HiscoreBook
     public let settings = GameSettings()
 
     let hiscoreFile: HiscoreFile
@@ -213,45 +219,45 @@ public final class CouchGame: ObservableObject {
 
     /// **Everyone with a name on this device.** Empty is the normal starting state:
     /// guests need no profile, so the app is fully usable before this holds anything.
-    @Published public internal(set) var profiles = ProfileBook()
+    public internal(set) var profiles = ProfileBook()
 
     /// **Who is in each seat**, parallel to the seats themselves.
     ///
     /// Sized to `maxLocalPlayers` and defaulting to guests, so a seat always has an
     /// answer and no lookup can fail. A player who never opens the profile picker
     /// races as a guest forever, which is the intended default rather than a fallback.
-    @Published public internal(set) var seatIdentities: [SeatIdentity] =
+    public internal(set) var seatIdentities: [SeatIdentity] =
         Array(repeating: .guest, count: CouchGame.maxLocalPlayers)
 
     /// **The field as one list** — every car, and who drives it. The single source of
     /// truth: `playerCount` and `aiCount` are both derived from it, where they used to be
     /// independent steppers that could disagree with each other and with the grid.
-    @Published public internal(set) var entrants: [RaceEntrant] = [.guest] {
+    public internal(set) var entrants: [RaceEntrant] = [.guest] {
         didSet { saveSetupMemory() }
     }
 
     /// **Which profile each row last held**, so the three-way toggle is sticky: switch a
     /// row to AI and back and the same person returns rather than being asked again.
     /// Session-only — who is sitting where is not a property of the device.
-    var rememberedProfiles: [Int: UUID] = [:]
+    @ObservationIgnored var rememberedProfiles: [Int: UUID] = [:]
     /// Your saved tracks. Written on every editor change, but not yet READ by
     /// anything — the custom slot is still authoritative until the picker moves
     /// over, so a migration that gets this wrong cannot lose the slot.
-    @Published public internal(set) var library = TrackLibraryBook()
+    public internal(set) var library = TrackLibraryBook()
     /// Which library row the editor is currently updating, so an edit replaces
     /// it rather than piling up a row per keystroke.
-    var editedEntryID: String?
+    @ObservationIgnored var editedEntryID: String?
     /// The name the next new row should take, and the code the canvas was loaded from
     /// without claiming a row — both consumed on the first edit. See `startFrom`.
-    var pendingTrackName: String?
-    var startedFrom: String?
+    @ObservationIgnored var pendingTrackName: String?
+    @ObservationIgnored var startedFrom: String?
 
     func saveLibrary() { libraryFile.save(library) }
     /// Where the author identity comes from. Injectable so tests can supply a
     /// key (or none) without a Keychain.
     let signingKeys: SigningKeyStore
     /// What the last pasted code claimed — computed on paste, never on render.
-    @Published var pastedAttributionRaw: TrackAttribution = .unsigned
+    var pastedAttributionRaw: TrackAttribution = .unsigned
     let aiFleet = AIFleet()
     let sound = SoundEngine()
     let haptics = Haptics()
@@ -259,7 +265,7 @@ public final class CouchGame: ObservableObject {
     /// by the Mac shell, and never by the iOS one. A runtime flag rather than
     /// `#if os(macOS)` on purpose: the test suite runs ON macOS, and a
     /// compile-time switch would quietly move every touch test onto the keyboard.
-    @Published public var keyboardDriving = false {
+    public var keyboardDriving = false {
         didSet {
             // Two clusters, two drivers: a restored four-seat setup would
             // otherwise seat people who have no keys.
@@ -270,23 +276,23 @@ public final class CouchGame: ObservableObject {
     public let keyboard = KeyboardSeats()
     /// Which surface's buttons the arrow keys move between (see `MenuFocus`).
     public let menus = MenuFocusCenter()
-    var aiColorIndices: [Int] = []
+    @ObservationIgnored var aiColorIndices: [Int] = []
     /// Race seed, bumped before every race and recorded with each replay so
     /// runs stay reproducible. Seeded from the clock ONCE at launch (view
     /// layer only — the sim itself never touches wall-clock time) so grids
     /// differ across app runs instead of repeating from 1 each session.
-    var seed: UInt64 = UInt64(Date().timeIntervalSince1970.bitPattern)
+    @ObservationIgnored var seed: UInt64 = UInt64(Date().timeIntervalSince1970.bitPattern)
     /// The countdown second last seen by the audio frame, so a beep fires once per
     /// boundary rather than once per rendered frame.
-    var notedCountdownSeconds: Int?
-    var notedLapCount = 0
-    var notedFinish = false
+    @ObservationIgnored var notedCountdownSeconds: Int?
+    @ObservationIgnored var notedLapCount = 0
+    @ObservationIgnored var notedFinish = false
 
     /// **What this run has taken off the record book**, captured as it happens because the
     /// book itself cannot answer it afterwards. Drives the trial's "record" mark and the
-    /// results screen's record line. Published: it changes mid-race, on the frame a lap
+    /// results screen's record line. Tracked: it changes mid-race, on the frame a lap
     /// lands, and the HUD has to notice.
-    @Published public internal(set) var runRecords = RunRecords.none
+    public internal(set) var runRecords = RunRecords.none
 
     /// `signingKeys` is injectable so tests can run without a Keychain, which
     /// they must: `swift test` is headless and unentitled.
@@ -307,10 +313,6 @@ public final class CouchGame: ObservableObject {
         self.setupFile = SetupFile(filename: setupFilename)
         hiscores = hiscoreFile.load()
         profiles = profileFile.load()
-        // The custom track slot survives quitting: restore it before anything
-        // reads it. (Set the stored value, not the property — the property's
-        // observer would just re-save what we only read.)
-        editorLayout = Self.restoredCustomTrack()
         library = Self.migratedLibrary(libraryFile.load(), slot: Self.restoredCustomTrackCode())
         editedEntryID = Self.restoredCustomTrackCode().map { TrackCode.contentCode(of: $0) }
         libraryFile.save(library)

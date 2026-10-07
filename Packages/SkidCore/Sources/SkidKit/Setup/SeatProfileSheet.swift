@@ -19,7 +19,7 @@ import SwiftUI
 /// in the app, and a stock iOS sheet in the middle of a 90s menu was the one screen that
 /// still looked borrowed.
 struct SeatProfileSheet: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     /// The row being edited — an index into `game.entrants`.
     let seat: Int
     let dismiss: () -> Void

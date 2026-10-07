@@ -59,6 +59,27 @@ final class MenuHostedTests: XCTestCase {
         XCTAssertEqual(couch.phase, .setup, "Enter on START did not open race setup")
     }
 
+    /// **The window follows the game.** `GameView` switches screens on
+    /// `phase` alone, so this is the observation the whole app hangs off: if
+    /// the view stopped tracking it, a press would change the phase and leave
+    /// the old screen up. Race setup has a Back corner; the front door has none.
+    func testTheWindowFollowsThePhase() throws {
+        let couch = game()
+        let window = host(GameView(game: couch, net: NetworkedGame(displayName: "t")))
+        defer { window.close() }
+        let scope = try XCTUnwrap(couch.menus.active, "the window pushed no scope")
+        XCTAssertFalse(scope.targets.isEmpty, "the front door's buttons did not register")
+        XCTAssertFalse(scope.targets.contains(where: \.isCancel), "the front door has a Back")
+        couch.openSetup()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertTrue(
+            scope.targets.contains(where: \.isCancel), "the phase changed but the screen did not")
+        couch.backToMenu()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertFalse(
+            scope.targets.contains(where: \.isCancel), "back on the front door, setup is still up")
+    }
+
     /// **Escape takes the corner way out**: on race setup it goes back.
     func testEscapeGoesBackFromSetup() throws {
         let couch = game()

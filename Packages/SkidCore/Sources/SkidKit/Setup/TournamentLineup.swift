@@ -8,7 +8,7 @@ import SwiftUI
 /// fresh one, and tapping any row opens the track browser for that race. Manual
 /// picking is just swapping every row.
 struct TournamentLineup: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     /// Which race's track is being changed — an index into the line-up.
     @State private var choosingFor: Int?
 

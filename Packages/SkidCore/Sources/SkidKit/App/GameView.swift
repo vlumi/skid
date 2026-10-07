@@ -2,13 +2,22 @@ import SkidCore
 import SwiftUI
 
 public struct GameView: View {
-    @StateObject private var game = CouchGame()
+    @State private var games = BuiltOnce { CouchGame() }
     /// Created up front so the transport's delegate is live before the lobby
     /// appears — a peer that connects while the view is being built would
     /// otherwise be missed, which reads as a join that silently did nothing.
-    @StateObject private var net = NetworkedGame(displayName: DeviceName.uniqueKey())
+    @State private var nets = BuiltOnce { NetworkedGame(displayName: DeviceName.uniqueKey()) }
+
+    private var game: CouchGame { games.value }
+    private var net: NetworkedGame { nets.value }
 
     public init() {}
+
+    /// A window over games the caller owns — the hosted tests' way in.
+    init(game: CouchGame, net: NetworkedGame) {
+        _games = State(initialValue: BuiltOnce { game })
+        _nets = State(initialValue: BuiltOnce { net })
+    }
 
     public var body: some View {
         ZStack {
@@ -22,8 +31,8 @@ public struct GameView: View {
                     RaceScreen(game: game, session: session, rig: rig, net: net)
                         // **Identity, or a rematch keeps the old race's wiring.** A
                         // rematch replaces the session and the rig while the phase
-                        // stays `.racing`, so SwiftUI reuses this view and its
-                        // `@ObservedObject`s keep their ORIGINAL references — the pad
+                        // stays `.racing`, so SwiftUI reuses this view and what it
+                        // holds across updates keeps its ORIGINAL references — the pad
                         // on screen then drives a session nobody advances, which is
                         // exactly "the client's controls do nothing".
                         //
@@ -96,4 +105,17 @@ public struct GameView: View {
         .keyboardDriving(game)
         #endif
     }
+}
+
+/// **Built once per view identity, as `@StateObject` did.** `@State` keeps only
+/// the first instance it is given, but evaluates its initial value on EVERY
+/// init of the view — and `CouchGame.init` writes the library file and
+/// consumes launch flags, so a discarded copy is not free. The box is what
+/// gets thrown away; what it builds is built on first read, from the kept box.
+@MainActor
+final class BuiltOnce<Value: AnyObject> {
+    private let make: () -> Value
+    private(set) lazy var value = make()
+
+    init(_ make: @escaping () -> Value) { self.make = make }
 }

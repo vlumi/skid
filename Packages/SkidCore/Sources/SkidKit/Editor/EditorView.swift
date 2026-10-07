@@ -9,7 +9,7 @@ import SwiftUI
 /// mode (`EditorGateMode`). Save is enabled once the layout closes into a valid
 /// track.
 struct EditorView: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
 
     @State private var zoom: CGFloat = 1
     @State private var pan: CGSize = .zero

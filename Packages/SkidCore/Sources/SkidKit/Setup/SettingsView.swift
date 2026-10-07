@@ -10,7 +10,7 @@ import SwiftUI
 ///
 /// The look is `Retro` — see there for why the menus stopped looking like iOS.
 struct SettingsView: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     @ObservedObject var settings: GameSettings
     let close: () -> Void
 

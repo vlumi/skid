@@ -4,9 +4,9 @@ import SwiftUI
 /// The race itself: world canvas, per-player d-pad overlays, zone chrome,
 /// zone-aware HUD, the multitouch input surface, pause menu, results card.
 struct RaceScreen: View {
-    @ObservedObject var game: CouchGame
-    @ObservedObject var session: GameSession
-    @ObservedObject var rig: CouchRig
+    let game: CouchGame
+    let session: GameSession
+    let rig: CouchRig
     /// Always present — `NetworkedGame` is created once by `GameView` — but idle in
     /// a couch race, where it reports no stall and no divergence, so the status
     /// overlay draws nothing at all locally.
@@ -260,7 +260,7 @@ struct RaceScreen: View {
 struct PauseMenu: View {
     let game: CouchGame
     let session: GameSession
-    @ObservedObject var rig: CouchRig
+    let rig: CouchRig
     @ObservedObject var settings: GameSettings
 
     /// **No Tuning button here any more.** The dials moved to a shake gesture

@@ -5,7 +5,7 @@ import SwiftUI
 /// opponents, contact vs ghost, hiscores, start. Deliberately minimal —
 /// only what a couch session needs.
 struct SetupView: View {
-    @ObservedObject var game: CouchGame
+    let game: CouchGame
     /// Whether the track browser is showing.
     ///
     /// Opens immediately under `-skid-tracks`, which exists for the same reason
