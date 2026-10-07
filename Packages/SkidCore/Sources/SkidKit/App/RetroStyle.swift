@@ -350,3 +350,19 @@ extension View {
         frame(maxWidth: width).frame(maxWidth: .infinity)
     }
 }
+
+extension View {
+    /// **Every button draws only what the game draws.** The game styles its
+    /// buttons itself (bevels, pills, icons) and leaves SwiftUI's style at its
+    /// default — which on iOS decorates nothing, but on macOS wraps every
+    /// button in a grey system bezel: each retro pill sat inside a rounded
+    /// Mac button. Plain on the Mac only: on iOS the default style also tints
+    /// text labels, which the screens rely on.
+    func retroButtonsOnMac() -> some View {
+        #if os(macOS)
+        return buttonStyle(.plain)
+        #else
+        return self
+        #endif
+    }
+}

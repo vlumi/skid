@@ -86,6 +86,7 @@ public struct GameView: View {
         // its own over it.
         .menuFocusScope()
         .menuFocusCenter(game.menus)
+        .retroButtonsOnMac()
         .tuningOnShake(settings: game.settings, keyboardDriving: game.keyboardDriving) {
             game.resetAllData()
         }
