@@ -114,8 +114,8 @@ final class HeightTests: XCTestCase {
     /// Note there is no upward arc to assert: the launch kick is gone, so a car drops
     /// off the lip rather than being thrown over it. Cars are heavy; that is the
     /// intended feel, and the gate is how far you cover before landing.
-    func testDrivingOffTheEndGoesBallistic() {
-        let track = TestTracks.jumpRing()
+    func testDrivingOffTheEndGoesBallistic() throws {
+        let track = try TestTracks.jumpRing()
         var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
         var driver = AIDriver()
         for _ in 0..<(30 * Race.tickRate) where !race.cars[0].state.isAirborne {
@@ -303,8 +303,8 @@ final class HeightTests: XCTestCase {
     /// promoted into the elevated pass and drawn on the bridge. Being on a ramp
     /// now means at the ramp's height AND on its asphalt: 113 grass positions
     /// qualified before, none do now, while all 24 real ramp points still do.
-    func testGrassCarsAreNotTreatedAsClimbing() {
-        let track = TestTracks.steepBridge()
+    func testGrassCarsAreNotTreatedAsClimbing() throws {
+        let track = try TestTracks.steepBridge()
         func climbing(_ point: Vec2, height: Double) -> Bool {
             track.isOnRamp(point, height: height)
                 && track.distanceToCenterline(point, height: height) <= track.width / 2

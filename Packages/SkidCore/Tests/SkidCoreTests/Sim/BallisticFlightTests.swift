@@ -11,14 +11,13 @@ import XCTest
 /// then flew for 8 ticks, so the car was already at the bottom before it
 /// visually landed.
 final class BallisticFlightTests: XCTestCase {
-    private func deckTrack() -> Track {
-        // swiftlint:disable:next force_try
-        try! PieceCompiler.compile(TrackCode.decode(TestTracks.Code.bridgeRing), id: "t")
+    private func deckTrack() throws -> Track {
+        try PieceCompiler.compile(TrackCode.decode(TestTracks.Code.bridgeRing), id: "t")
     }
 
     /// A car pushed off the side of a deck falls, rather than teleporting down.
-    func testFallingOffADeckDescendsOverTime() {
-        let track = deckTrack()
+    func testFallingOffADeckDescendsOverTime() throws {
+        let track = try deckTrack()
         var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
         race.cars[0].state.height = 1
         race.cars[0].state.position = Vec2(-200, 600)  // off the road entirely
@@ -40,8 +39,8 @@ final class BallisticFlightTests: XCTestCase {
     }
 
     /// Gravity accelerates: the second half of a drop covers more than the first.
-    func testTheFallAccelerates() {
-        let track = deckTrack()
+    func testTheFallAccelerates() throws {
+        let track = try deckTrack()
         var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
         race.cars[0].state.height = 1
         race.cars[0].state.position = Vec2(-200, 600)
@@ -57,8 +56,8 @@ final class BallisticFlightTests: XCTestCase {
     }
 
     /// Landing stops the fall — the car does not sink through the ground.
-    func testLandingStopsTheFall() {
-        let track = deckTrack()
+    func testLandingStopsTheFall() throws {
+        let track = try deckTrack()
         var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
         race.cars[0].state.height = 1
         race.cars[0].state.position = Vec2(-200, 600)
@@ -71,8 +70,8 @@ final class BallisticFlightTests: XCTestCase {
     /// **Flight ends by meeting a surface, not by a timer.** A higher car is in
     /// the air longer, which a fixed tick count could never express.
     func testAHigherFallTakesLonger() {
-        func ticksToLand(from height: Double) -> Int {
-            let track = deckTrack()
+        func ticksToLand(from height: Double) throws -> Int {
+            let track = try deckTrack()
             var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
             race.cars[0].state.height = height
             race.cars[0].state.position = Vec2(-200, 600)
@@ -82,16 +81,16 @@ final class BallisticFlightTests: XCTestCase {
             }
             return 300
         }
-        XCTAssertGreaterThan(ticksToLand(from: 1.0), ticksToLand(from: 0.3))
+        XCTAssertGreaterThan(try ticksToLand(from: 1.0), try ticksToLand(from: 0.3))
     }
 
     /// **A fall lands on what is BENEATH it, not always the ground.** This is
     /// what lets a jump go from the ground onto a deck, and a fall from an upper
     /// storey settle on a lower one rather than dropping through.
-    func testAFallLandsOnTheRoadBeneathIt() {
+    func testAFallLandsOnTheRoadBeneathIt() throws {
         // A flat road held at height 1: a car dropped above it must stop there,
         // not continue to 0.
-        var track = deckTrack()
+        var track = try deckTrack()
         track.heights = Array(repeating: 1, count: track.centerline.count)
         var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
         race.cars[0].state.position = track.centerline[0]
@@ -112,8 +111,8 @@ final class BallisticFlightTests: XCTestCase {
     /// because that is the shipping mechanism; a hand-built corridor would test
     /// arithmetic rather than the road. Note the car does NOT arc upward off the lip:
     /// cars are heavy, and dropping ballistically off the end is the intended feel.
-    func testAFasterCarCrossesMoreOfTheGap() {
-        let track = TestTracks.jumpRing()
+    func testAFasterCarCrossesMoreOfTheGap() throws {
+        let track = try TestTracks.jumpRing()
 
         func flight(pace: Double) -> (ticks: Int, distance: Double) {
             var race = Race(
@@ -147,8 +146,8 @@ final class BallisticFlightTests: XCTestCase {
     }
 
     /// A car on the road is not airborne, and its height is unaffected.
-    func testDrivingOnTheRoadIsNotFlight() {
-        let track = deckTrack()
+    func testDrivingOnTheRoadIsNotFlight() throws {
+        let track = try deckTrack()
         var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
         for _ in 0..<30 { race.advance(inputs: [PlayerID(0): .init(steer: 0, throttle: 1)]) }
         XCTAssertFalse(race.cars[0].state.isAirborne)
@@ -157,8 +156,8 @@ final class BallisticFlightTests: XCTestCase {
 
     /// Flight is ballistic: no steering, no throttle, no drag. Horizontal
     /// velocity is carried unchanged until landing.
-    func testHorizontalVelocityIsUnchangedInFlight() {
-        let track = deckTrack()
+    func testHorizontalVelocityIsUnchangedInFlight() throws {
+        let track = try deckTrack()
         var race = Race(track: track, players: [PlayerID(0)], config: RaceConfig(laps: nil))
         race.cars[0].state.height = 1
         race.cars[0].state.position = Vec2(-200, 600)

@@ -125,7 +125,7 @@ final class WallContactTests: XCTestCase {
     /// speed in that would be the instant-stop the first version of this shipped
     /// with (reported as "the car instantly stops touching the wall at any angle").
     func testAScrapeBleedsTheCarDown() {
-        var race = race()
+        let race = race()
         var car = race.cars[0].state
         car.height = 0
         let radians = 45.0 * Double.pi / 180

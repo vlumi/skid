@@ -26,28 +26,27 @@ final class AttributionTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "skid.editor.customTrack")
     }
 
-    private var layout: TrackLayout {
-        // swiftlint:disable:next force_try
-        try! TrackCode.decode(TestTracks.Code.bridgeRing)
+    private func layout() throws -> TrackLayout {
+        try TrackCode.decode(TestTracks.Code.bridgeRing)
     }
 
     func testUnsignedPastesAsUnsigned() {
         let game = game()
-        XCTAssertTrue(game.loadCustomTrack(code: TrackCode.encode(layout)))
+        XCTAssertTrue(game.loadCustomTrack(code: TrackCode.encode(try layout())))
         XCTAssertEqual(game.pastedAttribution, .unsigned)
         XCTAssertFalse(game.pastedAttribution.isWorthShowing)
     }
 
     func testMyOwnSignatureReadsAsMine() throws {
         let game = game()
-        let code = try TrackCode.encode(layout, signedBy: mine)
+        let code = try TrackCode.encode(layout(), signedBy: mine)
         XCTAssertTrue(game.loadCustomTrack(code: code))
         XCTAssertEqual(game.pastedAttribution, .mine)
     }
 
     func testSomeoneElsesSignatureCarriesTheirKey() throws {
         let game = game()
-        let code = try TrackCode.encode(layout, signedBy: theirs)
+        let code = try TrackCode.encode(layout(), signedBy: theirs)
         XCTAssertTrue(game.loadCustomTrack(code: code))
         XCTAssertEqual(game.pastedAttribution, .other(publicKey: theirs.publicKey))
     }
@@ -57,7 +56,7 @@ final class AttributionTests: XCTestCase {
     /// refusing it would punish the recipient for the sharer's edit.
     func testABrokenSignatureStillLoadsTheTrack() throws {
         let game = game()
-        let signed = try TrackCode.encode(layout, signedBy: theirs)
+        let signed = try TrackCode.encode(layout(), signedBy: theirs)
         var blob = try XCTUnwrap(TrackCode.base64urlDecode(signed))
         blob[8] ^= 0x01
         let tampered = TrackCode.finish(Array(blob.dropFirst(2)))
@@ -71,7 +70,7 @@ final class AttributionTests: XCTestCase {
     /// the same track either way.
     func testShareCodeSignsByDefaultAndCanBeShort() throws {
         let game = game()
-        game.editorLayout = layout
+        game.editorLayout = try layout()
         let signed = try XCTUnwrap(game.shareCode())
         let short = try XCTUnwrap(game.shareCode(signed: false))
 
@@ -91,9 +90,9 @@ final class AttributionTests: XCTestCase {
     /// With no key available, sharing still works — unsigned.
     func testSharingWithoutAKeyFallsBackToUnsigned() throws {
         let game = CouchGame(signingKeys: NoSigningKey())
-        game.editorLayout = layout
+        game.editorLayout = try layout()
         let code = try XCTUnwrap(game.shareCode())
         XCTAssertNil(TrackCode.signature(of: code))
-        XCTAssertEqual(try TrackCode.decode(code), layout)
+        XCTAssertEqual(try TrackCode.decode(code), try layout())
     }
 }

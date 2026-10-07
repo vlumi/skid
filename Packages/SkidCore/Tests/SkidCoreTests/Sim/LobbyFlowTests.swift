@@ -8,15 +8,15 @@ import XCTest
 /// deadlocked — so the flow itself is now pinned.
 @MainActor
 final class LobbyFlowTests: XCTestCase {
-    func testOnlyTheHostIsTheHostAfterARosterUpdate() {
+    func testOnlyTheHostIsTheHostAfterARosterUpdate() throws {
         // A guest showing a working Start button means two devices can both try to
         // begin the race. Reported from device: the guest's Start rendered (and did
         // nothing), which is what a wrong `isHost` looks like.
         var hostRoster = RaceRoster()
         let host = "phoneA#aaaa"
         let guest = "phoneB#bbbb"
-        try? hostRoster.join(host, seats: 2)
-        try? hostRoster.join(guest, seats: 2)
+        try hostRoster.join(host, seats: 2)
+        try hostRoster.join(guest, seats: 2)
 
         // What the guest receives and adopts.
         let update = RosterUpdate(roster: hostRoster)
@@ -39,12 +39,12 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertNotEqual(empty.host, "anybody#0000")
     }
 
-    func testTheStartMessageCarriesEverythingBothPeersNeed() {
+    func testTheStartMessageCarriesEverythingBothPeersNeed() throws {
         // Anything missing here is a divergence at tick 1 rather than an error, so
         // the round trip is worth asserting on the exact values.
         var roster = RaceRoster()
-        try? roster.join("a#1111", seats: 2)
-        try? roster.join("b#2222", seats: 1)
+        try roster.join("a#1111", seats: 2)
+        try roster.join("b#2222", seats: 1)
         let start = RaceStart(
             course: .builtin("clover"), seed: 12345, roster: roster, laps: 3)
 
@@ -61,11 +61,11 @@ final class LobbyFlowTests: XCTestCase {
         }
     }
 
-    func testASharedTrackTravelsAsItsCode() {
+    func testASharedTrackTravelsAsItsCode() throws {
         // A guest may never have seen the host's custom track — carrying the share
         // code rather than an id is what makes that work at all.
         var roster = RaceRoster()
-        try? roster.join("a#1111", seats: 1)
+        try roster.join("a#1111", seats: 1)
         let code = TrackCode.encode(TrackLibrary.layout(id: "eight") ?? TrackLayout(pieces: []))
         let start = RaceStart(
             course: .shared(code), seed: 7, roster: roster, laps: 3)
@@ -88,15 +88,15 @@ final class LobbyFlowTests: XCTestCase {
     }
 
     @MainActor
-    func testTheHostStartPathBuildsASessionAndARig() {
+    func testTheHostStartPathBuildsASessionAndARig() throws {
         // The whole hand-off, which two device sessions never got through: the
         // lobby's start message must produce a session, a rig with one band per
         // LOCAL seat, and a racing phase.
         let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         var roster = RaceRoster()
         let me = "hostPhone#aaaa"
-        try? roster.join(me, seats: 2)
-        try? roster.join("guest#bbbb", seats: 2)
+        try roster.join(me, seats: 2)
+        try roster.join("guest#bbbb", seats: 2)
         let start = RaceStart(
             course: .builtin(game.trackID), seed: 9, roster: roster, laps: 3)
 
@@ -113,12 +113,12 @@ final class LobbyFlowTests: XCTestCase {
     /// colors, on host and guest alike. Colors used to hang off the raw seat
     /// number, which is exactly what this start message distinguishes them from.
     @MainActor
-    func testTheStartPathPaintsTheRostersColorClaims() {
+    func testTheStartPathPaintsTheRostersColorClaims() throws {
         let game = CouchGame(setupFilename: "test-\(UUID().uuidString).json")
         var roster = RaceRoster()
         let me = "hostPhone#aaaa"
-        try? roster.join(me, seats: 2, colors: [8, 4])
-        try? roster.join("guest#bbbb", seats: 1, colors: [2])
+        try roster.join(me, seats: 2, colors: [8, 4])
+        try roster.join("guest#bbbb", seats: 1, colors: [2])
         let start = RaceStart(
             course: .builtin(game.trackID), seed: 9, roster: roster, laps: 3)
 
@@ -150,7 +150,7 @@ final class LobbyFlowTests: XCTestCase {
         func view(advancedBy dt: TimeInterval) -> RaceSnapshot? { nil }
     }
 
-    func testAMalformedLobbyMessageIsRejected() {
+    func testAMalformedLobbyMessageIsRejected() throws {
         XCTAssertNil(RaceStart(bytes: []))
         XCTAssertNil(RaceStart(bytes: [200]))
         XCTAssertNil(RaceStart(bytes: [200, 1, 2, 3]))
@@ -158,14 +158,14 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertNil(JoinRequest(bytes: [201, 9]))
         // A lobby message must not be mistaken for a different kind.
         var roster = RaceRoster()
-        try? roster.join("a#1111", seats: 1)
+        try roster.join("a#1111", seats: 1)
         let update = RosterUpdate(roster: roster).encoded
         XCTAssertNil(RaceStart(bytes: update), "a roster decoded as a start")
         XCTAssertNil(JoinRequest(bytes: update), "a roster decoded as a join request")
     }
 
     @MainActor
-    func testEveryPhysicsInputComesFromTheHostNotTheDevice() {
+    func testEveryPhysicsInputComesFromTheHostNotTheDevice() throws {
         // **The desync, found after five device sessions.** Each device raced with its
         // OWN persisted tuning — 19 physics values behind a tuning panel. Any value
         // nudged on either phone made the cars
@@ -185,8 +185,8 @@ final class LobbyFlowTests: XCTestCase {
 
         var roster = RaceRoster()
         let me = "guest#bbbb"
-        try? roster.join("host#aaaa", seats: 1)
-        try? roster.join(me, seats: 1)
+        try roster.join("host#aaaa", seats: 1)
+        try roster.join(me, seats: 1)
 
         // The host's message carries the host's physics, which differ from ours.
         var hostTuning = CarTuning()
@@ -207,12 +207,12 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertEqual(session.race.tuning.turnRate, hostTuning.turnRate, accuracy: 1e-9)
     }
 
-    func testTheStartMessageCarriesTheWholePhysicsPicture() {
+    func testTheStartMessageCarriesTheWholePhysicsPicture() throws {
         // A round trip over the wire, so nothing silently fails to encode. Anything
         // missing here is a divergence rather than an error, which is the worst kind of
         // bug to find — it took five device sessions to find the last one.
         var roster = RaceRoster()
-        try? roster.join("a#1111", seats: 2)
+        try roster.join("a#1111", seats: 2)
         var tuning = CarTuning()
         tuning.engineAccel += 123
         tuning.aimFlipBoost += 0.5
@@ -227,7 +227,7 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertEqual(back.laps, 5)
     }
 
-    func testAJoinRequestCarriesTheSeatCountToTheHost() {
+    func testAJoinRequestCarriesTheSeatCountToTheHost() throws {
         // **The message that seats a player**, and it was untested in both
         // directions — Codecov caught that, and it matters: the host builds the
         // roster from this number, and a guest silently never appearing is the
@@ -242,7 +242,7 @@ final class LobbyFlowTests: XCTestCase {
         }
         // End to end: the number a guest sends is the number the host seats.
         var roster = RaceRoster()
-        try? roster.join("host#aaaa", seats: 1)
+        try roster.join("host#aaaa", seats: 1)
         guard let decoded = JoinRequest(bytes: JoinRequest(seats: 3).encoded) else {
             return XCTFail("no request")
         }
@@ -251,11 +251,11 @@ final class LobbyFlowTests: XCTestCase {
         XCTAssertEqual(roster.seatCount, 4)
     }
 
-    func testAJoinRequestIsDistinctFromTheOtherLobbyMessages() {
+    func testAJoinRequestIsDistinctFromTheOtherLobbyMessages() throws {
         // Three lobby messages share one receive path, so a tag collision would
         // route a join into the roster decoder or vice versa.
         var roster = RaceRoster()
-        try? roster.join("a#1111", seats: 1)
+        try roster.join("a#1111", seats: 1)
         let join = JoinRequest(seats: 2).encoded
         let update = RosterUpdate(roster: roster).encoded
         let start = RaceStart(

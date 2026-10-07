@@ -63,9 +63,11 @@ jobs:
           key: spm-${{ runner.os }}-${{ env.XCODE_VERSION }}-${{ hashFiles('Packages/SkidCore/Package.swift') }}
           restore-keys: |
             spm-${{ runner.os }}-${{ env.XCODE_VERSION }}-
+      # Warnings fail the build: the codebase is at zero, and a warning that
+      # is allowed to stay is one nobody reads again.
       - name: Run logic tests with coverage
         working-directory: Packages/SkidCore
-        run: swift test --enable-code-coverage
+        run: swift test --enable-code-coverage -Xswiftc -warnings-as-errors
       - name: Export coverage report
         working-directory: Packages/SkidCore
         run: |
@@ -97,7 +99,7 @@ jobs:
       # never read the flag.
       - name: Build with experimental features on
         working-directory: Packages/SkidCore
-        run: SKID_EXPERIMENTAL=1 swift build --build-tests
+        run: SKID_EXPERIMENTAL=1 swift build --build-tests -Xswiftc -warnings-as-errors
 
   build:
     name: Build app
@@ -124,11 +126,11 @@ jobs:
             -project Skid.xcodeproj \
             -scheme Skid-iOS \
             -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES
       - name: Build macOS
         run: |
           xcodebuild build \
             -project Skid.xcodeproj \
             -scheme Skid-macOS \
             -destination 'generic/platform=macOS' \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES
