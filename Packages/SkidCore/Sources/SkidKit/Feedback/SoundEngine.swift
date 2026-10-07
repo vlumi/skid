@@ -24,7 +24,7 @@ public final class SoundEngine {
         var beepGain: Double = 0
     }
 
-    private final class State: @unchecked Sendable {
+    final class State: @unchecked Sendable {
         private let lock = NSLock()
         private var mix = Mix()
 
@@ -73,7 +73,7 @@ public final class SoundEngine {
         #endif
         let format = engine.outputNode.outputFormat(forBus: 0)
         let sampleRate = format.sampleRate > 0 ? format.sampleRate : 44100
-        let node = makeSourceNode(sampleRate: sampleRate)
+        let node = Self.makeSourceNode(sampleRate: sampleRate, state: state)
         engine.attach(node)
         engine.connect(
             node, to: engine.mainMixerNode,
@@ -188,8 +188,12 @@ public final class SoundEngine {
         return Double(Int64(bitPattern: seed % 2000) - 1000) / 1000
     }
 
-    private func makeSourceNode(sampleRate: Double) -> AVAudioSourceNode {
-        let state = self.state
+    /// **`nonisolated`, or the audio thread traps.** A closure made inside a
+    /// `@MainActor` method is main-actor isolated, and Swift 6 checks that at
+    /// run time: the first buffer the render thread pulled hit
+    /// `dispatch_assert_queue` and killed the app as a race started. Made here,
+    /// the block belongs to no actor, and reaches the game only through `state`.
+    nonisolated static func makeSourceNode(sampleRate: Double, state: State) -> AVAudioSourceNode {
         var bank = EngineBank()
         var smoothedSkid = 0.0
         var noiseFilter = 0.0
