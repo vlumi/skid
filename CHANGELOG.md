@@ -14,6 +14,8 @@ The `## vX.Y.Z` heading is written by the release lane too, whenever a release c
 
 ### Unreleased (next build)
 
+### build 24 — 2026-10-07
+
 - **The track editor uses a big screen.** On a Mac window or an iPad the tools dock against the track: the selected piece's tools and undo on the left, the modes and the next piece's settings on the right, the next piece below — and the track gets the middle at full height. Phones keep their layout.
 - **Mac buttons look like the game's.** Every button on the Mac sat inside a grey system frame; they now draw exactly as on iPhone.
 - **The menus work from the keyboard on the Mac.** Arrows (or WASD) move an amber highlight between buttons, Enter or Space presses it, and Escape takes the screen's corner way out — Back, or a sheet's ×. It works in sheets too, in the pause menu (Escape resumes) and on the results card; while a name is being typed, the keys stay with the text field.
