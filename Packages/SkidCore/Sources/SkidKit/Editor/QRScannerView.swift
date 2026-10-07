@@ -49,10 +49,8 @@ struct QRScannerView: UIViewRepresentable {
         var onFailure: ((String) -> Void)?
         private let session = AVCaptureSession()
 
-        // UIKit requires this as an overridable `class var`; `static` would not
-        // override anything, so the usual preference does not apply.
-        // swiftlint:disable:next static_over_final_class
-        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        override static var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        /// Always this type: `layerClass` above is what UIKit builds the layer from.
         private var previewLayer: AVCaptureVideoPreviewLayer {
             layer as! AVCaptureVideoPreviewLayer  // swiftlint:disable:this force_cast
         }
